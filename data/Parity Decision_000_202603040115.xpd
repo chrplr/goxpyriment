@@ -1,0 +1,12 @@
+#--EXPERIMENT INFO
+#e mainfile: Parity Decision
+#--SUBJECT INFO
+#s id: 0
+##
+#subject_id,number,key,rt,correct
+0,9,106,1231,true
+0,8,102,510,true
+0,1,106,0,true
+0,0,106,0,false
+0,6,102,0,true
+0,3,102,0,false
