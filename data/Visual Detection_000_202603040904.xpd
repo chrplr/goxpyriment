@@ -1,0 +1,7 @@
+#--EXPERIMENT INFO
+#e mainfile: Visual Detection
+#--SUBJECT INFO
+#s id: 0
+##
+#subject_id,trial,wait_time,key,rt
+0,0,1612,32,2653

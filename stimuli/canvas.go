@@ -74,7 +74,16 @@ func (c *Canvas) Blit(stim VisualStimulus, screen *io.Screen) error {
 	if err := screen.Renderer.SetRenderTarget(c.Texture); err != nil {
 		return err
 	}
-	defer screen.Renderer.SetRenderTarget(prevTarget)
+	
+	// Set the screen offset to the center of this canvas
+	oldOffset := screen.CanvasOffset
+	screen.CanvasOffset = &sdl.FPoint{X: c.Size.X / 2, Y: c.Size.Y / 2}
+	
+	// Ensure we restore both the render target AND the offset
+	defer func() {
+		screen.Renderer.SetRenderTarget(prevTarget)
+		screen.CanvasOffset = oldOffset
+	}()
 
 	// Draw the stimulus onto the canvas texture
 	return stim.Draw(screen)

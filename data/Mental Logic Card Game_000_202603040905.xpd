@@ -1,0 +1,10 @@
+#--EXPERIMENT INFO
+#e mainfile: Mental Logic Card Game
+#--SUBJECT INFO
+#s id: 0
+##
+#subject_id,condition,response,rt,correct
+0,Inference,0,6001,false
+0,Inference,115,1194,false
+0,NoInf,113,454,true
+0,LackOfInf,113,1869,false

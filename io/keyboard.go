@@ -65,6 +65,24 @@ func (k *Keyboard) WaitKeys(keys []sdl.Keycode, timeoutMS int) (sdl.Keycode, err
 	}
 }
 
+// Check polls for keyboard events and returns the first key pressed since the last call, without blocking.
+func (k *Keyboard) Check() (sdl.Keycode, error) {
+	var event sdl.Event
+	for sdl.PollEvent(&event) {
+		if event.Type == sdl.EVENT_KEY_DOWN {
+			keycode := event.KeyboardEvent().Key
+			if keycode == sdl.K_ESCAPE {
+				return 0, sdl.EndLoop
+			}
+			return keycode, nil
+		}
+		if event.Type == sdl.EVENT_QUIT {
+			return 0, sdl.EndLoop
+		}
+	}
+	return 0, nil
+}
+
 // Clear clears all keyboard events from the queue.
 func (k *Keyboard) Clear() {
 	var event sdl.Event

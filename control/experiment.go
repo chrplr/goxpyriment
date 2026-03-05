@@ -16,6 +16,7 @@ type Experiment struct {
 	Design          *design.Experiment
 	Screen          *io.Screen
 	Keyboard        *io.Keyboard
+	Mouse           *io.Mouse
 	Data            *io.DataFile
 	SubjectID       int
 	BackgroundColor sdl.Color
@@ -72,6 +73,7 @@ func (e *Experiment) Initialize() error {
 	}
 	e.Screen = screen
 	e.Keyboard = &io.Keyboard{}
+	e.Mouse = &io.Mouse{}
 	
 	// Initialize DataFile
 	dataFile, err := io.NewDataFile("", e.SubjectID, e.Name)
@@ -81,6 +83,33 @@ func (e *Experiment) Initialize() error {
 	e.Data = dataFile
 	
 	return nil
+}
+
+// HandleEvents processes pending SDL events and returns the first keyboard and mouse button pressed, and any termination signal.
+func (e *Experiment) HandleEvents() (sdl.Keycode, uint32, error) {
+	var key sdl.Keycode
+	var btn uint32
+
+	var event sdl.Event
+	for sdl.PollEvent(&event) {
+		switch event.Type {
+		case sdl.EVENT_QUIT:
+			return 0, 0, sdl.EndLoop
+		case sdl.EVENT_KEY_DOWN:
+			k := event.KeyboardEvent().Key
+			if k == sdl.K_ESCAPE {
+				return 0, 0, sdl.EndLoop
+			}
+			if key == 0 {
+				key = k
+			}
+		case sdl.EVENT_MOUSE_BUTTON_DOWN:
+			if btn == 0 {
+				btn = uint32(event.MouseButtonEvent().Button)
+			}
+		}
+	}
+	return key, btn, nil
 }
 
 func (e *Experiment) AddDataVariableNames(names []string) {
@@ -121,6 +150,14 @@ func (e *Experiment) SetVSync(vsync int) error {
 		return nil
 	}
 	return e.Screen.SetVSync(vsync)
+}
+
+// SetLogicalSize sets a device-independent resolution for the experiment.
+func (e *Experiment) SetLogicalSize(width, height int32) error {
+	if e.Screen == nil {
+		return nil
+	}
+	return e.Screen.SetLogicalSize(width, height)
 }
 
 // LoadFont loads a TTF font from the specified path and sets it as the default for the experiment.

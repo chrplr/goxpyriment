@@ -53,8 +53,12 @@ func (p *Picture) preload(screen *io.Screen) error {
 	}
 	defer surface.Destroy()
 
-	p.Width = float32(surface.W)
-	p.Height = float32(surface.H)
+	if p.Width == 0 {
+		p.Width = float32(surface.W)
+	}
+	if p.Height == 0 {
+		p.Height = float32(surface.H)
+	}
 
 	texture, err := screen.Renderer.CreateTextureFromSurface(surface)
 	if err != nil {

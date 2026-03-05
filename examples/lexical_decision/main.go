@@ -3,6 +3,7 @@ package main
 import (
 	_ "embed"
 	"encoding/csv"
+	"flag"
 	"fmt"
 	"goxpyriment/control"
 	"goxpyriment/misc"
@@ -15,8 +16,8 @@ import (
 	"github.com/Zyko0/go-sdl3/sdl"
 )
 
-//go:embed assets/Roboto-Regular.ttf
-var robotoFont []byte
+//go:embed assets/Inconsolata.ttf
+var inconsolataFont []byte
 
 const (
 	WordResponseKey   = sdl.K_F
@@ -32,6 +33,9 @@ type lexicalTrial struct {
 
 func main() {
 	rand.Seed(time.Now().UnixNano())
+
+	fullscreen := flag.Bool("F", false, "Launch in fullscreen display mode")
+	flag.Parse()
 
 	// 1. Get CSV file from command line
 	if len(os.Args) < 2 {
@@ -66,13 +70,13 @@ func main() {
 	}
 
 	// 3. Create and initialize the experiment
-	exp := control.NewExperiment("Lexical Decision", 800, 600, false)
+	exp := control.NewExperiment("Lexical Decision", 1368, 1024, *fullscreen)
 	if err := exp.Initialize(); err != nil {
 		log.Fatalf("failed to initialize experiment: %v", err)
 	}
 	defer exp.End()
 
-	if err := exp.LoadFontFromMemory(robotoFont, 32); err != nil {
+	if err := exp.LoadFontFromMemory(inconsolataFont, 32); err != nil {
 		log.Printf("Warning: failed to load font: %v. Using fallback.", err)
 	}
 

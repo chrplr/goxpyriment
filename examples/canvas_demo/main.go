@@ -1,26 +1,30 @@
 package main
-
 import (
 	_ "embed"
+	"flag"
 	"goxpyriment/control"
 	"goxpyriment/stimuli"
 	"log"
+	"time"
 
 	"github.com/Zyko0/go-sdl3/sdl"
 )
 
-//go:embed assets/Roboto-Regular.ttf
-var robotoFont []byte
+//go:embed assets/Inconsolata.ttf
+var inconsolataFont []byte
 
 func main() {
+	fullscreen := flag.Bool("F", false, "Launch in fullscreen display mode")
+	flag.Parse()
+
 	// 1. Create and initialize the experiment
-	exp := control.NewExperiment("Canvas Demo", 800, 600, false)
+	exp := control.NewExperiment("Canvas Demo", 1368, 1024, *fullscreen)
 	if err := exp.Initialize(); err != nil {
 		log.Fatalf("failed to initialize experiment: %v", err)
 	}
 	defer exp.End()
 
-	if err := exp.LoadFontFromMemory(robotoFont, 24); err != nil {
+	if err := exp.LoadFontFromMemory(inconsolataFont, 24); err != nil {
 		log.Printf("Warning: failed to load font: %v. Using fallback.", err)
 	}
 

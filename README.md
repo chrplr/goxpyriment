@@ -1,10 +1,15 @@
 # goxpyriment
 
-`goxpyriment` is a high-level Go framework for building behavioral and psychological experiments. It leverages **SDL3** for hardware-accelerated rendering and high-precision timing, providing a clean and idiomatic API for experimental psychologists and neuroscientists who prefer the performance and simplicity of Go.
 
-It is heavily inspired from the excellent library [expyriment.org](http://expyriment.org) by Florian Krause & Oliver Lindemann.
+goxpyriment` is a high-level Go framework for building behavioral and psychological experiments.
 
-It is an alpha version, likely to be full of bugs. Use at you own peril. Also, future versions may not be compatible a tthe API level! 
+It is directly inspired from [expyriment.org](http://expyriment.org) ; see Krause, F., & Lindemann, O. (2014). Expyriment: A Python library for cognitive and neuroscientific experiments. Behavior Research Methods, 46(2), 416-428. <https://doi.org/10.3758/s13428-013-0390-6>.
+
+Actually, to start, I gave Gemini 3 the link to [expyriment's API documentation](https://docs.expyriment.org/expyriment.html) and asked it to try and implement it in Go using the [go-sdl3](https://github.com/Zyko0/go-sdl3) bindings for [SDL3]{libsld.org)
+
+
+**NOTE: This software in an alpha version, a proof of concept that without any doubt has some bugs. It need thourough tessting and robustification. Also, future versions may not be compatible at the API level! So if you want to try and use it, I recommand you to clone this repository. Check out [expe3000-go](http://github.com/chrplr/expe3000-go) for a less ambitious but efficient, no-code, experiment generator ** 
+
 
 ## Features
 

@@ -2,6 +2,7 @@ package main
 
 import (
 	_ "embed"
+	"flag"
 	"fmt"
 	"goxpyriment/control"
 	"goxpyriment/design"
@@ -14,8 +15,8 @@ import (
 
 // Assets embedded in the binary
 //
-//go:embed assets/Roboto-Regular.ttf
-var robotoFont []byte
+//go:embed assets/Inconsolata.ttf
+var inconsolataFont []byte
 
 //go:embed assets/cards_pics_small/QH.png
 var qhImg []byte
@@ -36,9 +37,8 @@ const (
 	BackDisplayDuration = 1000
 	MaxResponseTime     = 5000
 	InterTrialTime      = 2000
-	CardW, CardH        = 300, 458
-	Gap                 = 100
-	Shift               = CardW + Gap
+	BaseCardW, BaseCardH = 300, 458
+	BaseGap              = 100
 )
 
 var (
@@ -76,14 +76,44 @@ type cardTrial struct {
 }
 
 func main() {
+	develop := flag.Bool("d", false, "Develop mode (windowed display)")
+	scaling := flag.Float64("scaling", 1.0, "Scaling factor for stimuli")
+	fullscreenFlag := flag.Bool("F", false, "Force Fullscreen")
+	flag.Parse()
+
+	// Default is fullscreen unless develop mode is requested
+	isFullscreen := !*develop
+	if *fullscreenFlag {
+		isFullscreen = true
+	}
+
+	var winW, winH int
+	winW, winH = 1280, 1024
+
+	// Scaled dimensions
+	cardW := float32(BaseCardW) * float32(*scaling)
+	cardH := float32(BaseCardH) * float32(*scaling)
+	gap := float32(BaseGap) * float32(*scaling)
+	shift := cardW + gap
+
 	// 1. Initialize experiment
-	exp := control.NewExperiment("Mental Logic Card Game", 1200, 800, false)
+	exp := control.NewExperiment("Mental Logic Card Game", winW, winH, isFullscreen)
 	if err := exp.Initialize(); err != nil {
 		log.Fatalf("failed to initialize experiment: %v", err)
 	}
 	defer exp.End()
 
-	if err := exp.LoadFontFromMemory(robotoFont, 24); err != nil {
+	// Set logical size to ensure consistent centering and coordinates
+	if err := exp.SetLogicalSize(1280, 1024); err != nil {
+		log.Printf("Warning: failed to set logical size: %v", err)
+	}
+
+	// Wait for fullscreen transition to stabilize
+	if isFullscreen {
+		misc.Wait(2000)
+	}
+
+	if err := exp.LoadFontFromMemory(inconsolataFont, 24); err != nil {
 		log.Printf("Warning: failed to load font: %v", err)
 	}
 
@@ -98,6 +128,13 @@ func main() {
 		"blue_back": stimuli.NewPictureFromMemory(blueBackImg, 0, 0),
 	}
 	// Stimuli will be preloaded automatically on first Draw
+	for _, p := range pics {
+		p.Width = float32(cardW)
+		p.Height = float32(cardH)
+	}
+
+	// Fixation Cross
+	fixation := stimuli.NewFixCross(50*float32(*scaling), 4*float32(*scaling), control.DefaultTextColor)
 
 	// 3. Define trials (More complete set representing conditions)
 	trials := []cardTrial{
@@ -112,18 +149,34 @@ func main() {
 	design.ShuffleList(trials)
 
 	// Prepare reusable canvases
-	canvas1 := stimuli.NewCanvas(float32(3*CardW+2*Gap), float32(CardH), sdl.Color{A: 0})
-	canvas2 := stimuli.NewCanvas(float32(3*CardW+2*Gap), float32(CardH), sdl.Color{A: 0})
+	canvas1 := stimuli.NewCanvas(3*cardW+2*gap, cardH, sdl.Color{A: 0})
+	canvas2 := stimuli.NewCanvas(3*cardW+2*gap, cardH, sdl.Color{A: 0})
 
 	// 4. Run Experiment
 	err := exp.Run(func() error {
-		// Instructions
-		instr := stimuli.NewTextBox(Instructions, 700, sdl.FPoint{X: 0, Y: 0}, control.DefaultTextColor)
+		// Wait for fullscreen transition to stabilize before showing instructions
+		if isFullscreen {
+			misc.Wait(2000)
+		}
+
+		// Instructions - Initialize here to ensure correct centering after fullscreen transition
+		instr := stimuli.NewTextBox(Instructions, 1000, sdl.FPoint{X: 0, Y: 0}, control.DefaultTextColor)
+		
+		// Small extra wait to ensure renderer is ready
+		misc.Wait(100)
+		
 		if err := instr.Present(exp.Screen, true, true); err != nil {
 			return err
 		}
-		if _, err := exp.Keyboard.WaitKeys([]sdl.Keycode{sdl.K_SPACE}, -1); err != nil {
-			return err
+		for {
+			key, _, err := exp.HandleEvents()
+			if err != nil {
+				return err
+			}
+			if key == sdl.K_SPACE {
+				break
+			}
+			misc.Wait(10)
 		}
 
 		for _, ct := range trials {
@@ -131,7 +184,7 @@ func main() {
 			canvas1.Clear(exp.Screen)
 			for i := 0; i < 3; i++ {
 				p := pics[ct.Backs[i]]
-				p.SetPosition(sdl.FPoint{X: float32(-Shift + i*Shift), Y: 0})
+				p.SetPosition(sdl.FPoint{X: -shift + float32(i)*shift, Y: 0})
 				canvas1.Blit(p, exp.Screen)
 			}
 
@@ -143,14 +196,13 @@ func main() {
 				} else {
 					p = pics[ct.Backs[i]]
 				}
-				p.SetPosition(sdl.FPoint{X: float32(-Shift + i*Shift), Y: 0})
+				p.SetPosition(sdl.FPoint{X: -shift + float32(i)*shift, Y: 0})
 				canvas2.Blit(p, exp.Screen)
 			}
 
-			// Trial Sequence
-			if err := exp.Screen.Clear(); err != nil { return err }
-			if err := exp.Screen.Update(); err != nil { return err }
-			misc.Wait(1000)
+			// Pre-trial Fixation
+			if err := fixation.Present(exp.Screen, true, true); err != nil { return err }
+			if err := waitInterruption(exp, 1000); err != nil { return err }
 
 			// Show Backs
 			if err := canvas1.Present(exp.Screen, true, true); err != nil { return err }
@@ -173,9 +225,9 @@ func main() {
 			
 			fmt.Printf("Trial: %s, Resp: %d, RT: %d, Correct: %v\n", ct.Condition, resp, rt, correct)
 
-			if err := exp.Screen.Clear(); err != nil { return err }
-			if err := exp.Screen.Update(); err != nil { return err }
-			misc.Wait(InterTrialTime)
+			// Inter-trial Fixation
+			if err := fixation.Present(exp.Screen, true, true); err != nil { return err }
+			if err := waitInterruption(exp, InterTrialTime); err != nil { return err }
 		}
 
 		return sdl.EndLoop
@@ -186,10 +238,35 @@ func main() {
 	}
 }
 
+func waitInterruption(exp *control.Experiment, timeout int) error {
+	start := misc.GetTime()
+	for {
+		_, _, err := exp.HandleEvents()
+		if err != nil {
+			return err
+		}
+		if int(misc.GetTime()-start) >= timeout {
+			return nil
+		}
+		misc.Wait(1)
+	}
+}
+
 func waitResponse(exp *control.Experiment, timeout int) (sdl.Keycode, int64, error) {
 	start := misc.GetTime()
-	key, err := exp.Keyboard.WaitKeys([]sdl.Keycode{sdl.K_Q, sdl.K_S, sdl.K_D, sdl.K_N}, timeout)
-	return key, misc.GetTime() - start, err
+	for {
+		key, _, err := exp.HandleEvents()
+		if err != nil {
+			return 0, misc.GetTime() - start, err
+		}
+		if key == sdl.K_Q || key == sdl.K_S || key == sdl.K_D || key == sdl.K_N {
+			return key, misc.GetTime() - start, nil
+		}
+		if timeout > 0 && int(misc.GetTime()-start) >= timeout {
+			return 0, int64(timeout), nil
+		}
+		misc.Wait(1)
+	}
 }
 
 func checkCorrect(key sdl.Keycode, expected int) bool {

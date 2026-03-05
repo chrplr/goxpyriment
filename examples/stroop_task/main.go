@@ -2,6 +2,7 @@ package main
 
 import (
 	_ "embed"
+	"flag"
 	"fmt"
 	"goxpyriment/control"
 	"goxpyriment/misc"
@@ -13,8 +14,8 @@ import (
 	"github.com/Zyko0/go-sdl3/sdl"
 )
 
-//go:embed assets/Roboto-Regular.ttf
-var robotoFont []byte
+//go:embed assets/Inconsolata.ttf
+var inconsolataFont []byte
 
 var (
 	Red    = sdl.Color{R: 255, G: 0, B: 0, A: 255}
@@ -33,14 +34,36 @@ func main() {
 	// Initialize random seed
 	rand.Seed(time.Now().UnixNano())
 
+	develop := flag.Bool("d", false, "Develop mode (windowed display)")
+	fullscreenFlag := flag.Bool("F", false, "Force Fullscreen")
+	flag.Parse()
+
+	// Default is fullscreen unless develop mode is requested
+	isFullscreen := !*develop
+	if *fullscreenFlag {
+		isFullscreen = true
+	}
+
+	winW, winH := 1920, 1080
+
 	// 1. Create and initialize the experiment
-	exp := control.NewExperiment("Stroop Task", 800, 600, false)
+	exp := control.NewExperiment("Stroop Task", winW, winH, isFullscreen)
 	if err := exp.Initialize(); err != nil {
 		log.Fatalf("failed to initialize experiment: %v", err)
 	}
 	defer exp.End()
 
-	if err := exp.LoadFontFromMemory(robotoFont, 32); err != nil {
+	// Set logical size for consistent centering
+	if err := exp.SetLogicalSize(int32(winW), int32(winH)); err != nil {
+		log.Printf("Warning: failed to set logical size: %v", err)
+	}
+
+	// Wait for fullscreen transition to stabilize
+	if isFullscreen {
+		misc.Wait(2000)
+	}
+
+	if err := exp.LoadFontFromMemory(inconsolataFont, 32); err != nil {
 		log.Printf("Warning: failed to load font: %v. Using fallback.", err)
 	}
 
@@ -61,22 +84,25 @@ func main() {
 	})
 
 	instrText := "Name the COLOR of the word as quickly as possible!\n\nUse keys R, G, B, Y for Red, Green, Blue, Yellow.\n\nPress SPACE to start."
-	instructions := stimuli.NewTextBox(instrText, 600, sdl.FPoint{X: 0, Y: 100}, control.DefaultTextColor)
 
 	// 3. Run the experiment logic
 	err := exp.Run(func() error {
 		// Instructions
+		instructions := stimuli.NewTextBox(instrText, 800, sdl.FPoint{X: 0, Y: 0}, control.DefaultTextColor)
 		if err := instructions.Present(exp.Screen, true, true); err != nil {
 			return err
 		}
+		var key sdl.Keycode
+		var subErr error
 		for {
-			key, err := exp.Keyboard.Wait()
-			if err != nil {
-				return err
+			key, _, subErr = exp.HandleEvents()
+			if subErr != nil {
+				return subErr
 			}
 			if key == sdl.K_SPACE {
 				break
 			}
+			misc.Wait(10)
 		}
 
 		// Loop through trials
@@ -99,9 +125,9 @@ func main() {
 			// Wait for response
 			startTime := misc.GetTime()
 			for {
-				key, err := exp.Keyboard.Wait()
-				if err != nil {
-					return err
+				key, _, subErr = exp.HandleEvents()
+				if subErr != nil {
+					return subErr
 				}
 				
 				var resp string
@@ -119,6 +145,7 @@ func main() {
 					fmt.Printf("Trial %d: Word=%s, Color=%s, Resp=%s, RT=%d ms, Correct=%v, Congruent=%v\n", i, t.word, t.name, resp, rt, correct, congruent)
 					break
 				}
+				misc.Wait(1)
 			}
 			
 			// Small pause between trials

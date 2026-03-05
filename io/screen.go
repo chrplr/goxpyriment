@@ -9,12 +9,14 @@ import (
 // Screen represents the display window and the hardware-accelerated renderer.
 // It manages the double-buffering scheme and global font settings.
 type Screen struct {
-	Window      *sdl.Window
-	Renderer    *sdl.Renderer
-	BgColor     sdl.Color
-	Width       int
-	Height      int
-	DefaultFont *ttf.Font
+	Window       *sdl.Window
+	Renderer     *sdl.Renderer
+	BgColor      sdl.Color
+	Width        int
+	Height       int
+	DefaultFont  *ttf.Font
+	CanvasOffset *sdl.FPoint // If not nil, use this instead of true center
+	LogicalSize  *sdl.FPoint // If not nil, use this for CenterToSDL
 }
 
 // NewScreen initializes a new SDL window and renderer with specified dimensions, background color, and fullscreen mode.
@@ -39,12 +41,31 @@ func NewScreen(title string, width, height int, bgColor sdl.Color, fullscreen bo
 
 // CenterToSDL converts center-based coordinates to SDL top-left based coordinates.
 func (s *Screen) CenterToSDL(x, y float32) (float32, float32) {
-	w, h, err := s.Renderer.RenderOutputSize()
-	if err != nil {
-		// Fallback to screen size if error
-		return float32(s.Width)/2 + x, float32(s.Height)/2 - y
+	if s.CanvasOffset != nil {
+		return s.CanvasOffset.X + x, s.CanvasOffset.Y - y
 	}
+	if s.LogicalSize != nil {
+		return s.LogicalSize.X/2 + x, s.LogicalSize.Y/2 - y
+	}
+	w, h, _ := s.Renderer.RenderOutputSize()
 	return float32(w)/2 + x, float32(h)/2 - y
+}
+
+// LogicalCenterToSDL converts center-based coordinates to SDL top-left based coordinates using specified dimensions.
+func (s *Screen) LogicalCenterToSDL(x, y float32, width, height float32) (float32, float32) {
+	return width/2 + x, height/2 - y
+}
+
+// SetLogicalSize sets a device-independent resolution for the renderer.
+func (s *Screen) SetLogicalSize(width, height int32) error {
+	s.LogicalSize = &sdl.FPoint{X: float32(width), Y: float32(height)}
+	return s.Renderer.SetLogicalPresentation(width, height, sdl.LOGICAL_PRESENTATION_LETTERBOX)
+}
+
+// Size returns the current renderer output size.
+func (s *Screen) Size() (int32, int32, error) {
+	w, h, err := s.Renderer.RenderOutputSize()
+	return w, h, err
 }
 
 // Clear clears the screen with the background color.

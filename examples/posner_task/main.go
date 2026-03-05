@@ -2,6 +2,7 @@ package main
 
 import (
 	_ "embed"
+	"flag"
 	"fmt"
 	"goxpyriment/control"
 	"goxpyriment/misc"
@@ -13,8 +14,8 @@ import (
 	"github.com/Zyko0/go-sdl3/sdl"
 )
 
-//go:embed assets/Roboto-Regular.ttf
-var robotoFont []byte
+//go:embed assets/Inconsolata.ttf
+var inconsolataFont []byte
 
 //go:embed assets/star.png
 var starImg []byte
@@ -40,8 +41,11 @@ type trial struct {
 func main() {
 	rand.Seed(time.Now().UnixNano())
 
+	fullscreen := flag.Bool("F", false, "Launch in fullscreen display mode")
+	flag.Parse()
+
 	// 1. Create and initialize the experiment
-	exp := control.NewExperiment("Posner-task", 800, 600, false)
+	exp := control.NewExperiment("Posner-task", 1368, 1024, *fullscreen)
 	exp.BackgroundColor = Grey
 	exp.ForegroundColor = Black
 	
@@ -50,7 +54,7 @@ func main() {
 	}
 	defer exp.End()
 
-	if err := exp.LoadFontFromMemory(robotoFont, 32); err != nil {
+	if err := exp.LoadFontFromMemory(inconsolataFont, 32); err != nil {
 		log.Printf("Warning: failed to load font: %v. Using fallback.", err)
 	}
 

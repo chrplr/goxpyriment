@@ -23,10 +23,7 @@ func (m *Mouse) Position() (float32, float32) {
 
 // SetPosition moves the mouse cursor to the specified coordinates.
 func (m *Mouse) SetPosition(x, y float32) error {
-	// Note: In a real app, you might need the window context. 
-	// For simplicity, we'll assume the active window.
-	// SDL3 WarpMouseInWindow requires a window pointer.
-	return nil // Placeholder for now or add window to Mouse struct
+	return nil // Placeholder
 }
 
 // WaitPress blocks until a mouse button is pressed.
@@ -42,4 +39,20 @@ func (m *Mouse) WaitPress() (uint32, error) {
 			}
 		}
 	}
+}
+
+// Check polls for mouse button events without blocking.
+func (m *Mouse) Check() (uint32, error) {
+	var event sdl.Event
+	for sdl.PollEvent(&event) {
+		if event.Type == sdl.EVENT_MOUSE_BUTTON_DOWN {
+			return uint32(event.MouseButtonEvent().Button), nil
+		}
+		if event.Type == sdl.EVENT_QUIT {
+			return 0, sdl.EndLoop
+		}
+		// Note: Keyboard events might be here too, but we are draining the queue.
+		// If we want both, we need a unified Event handler in Experiment.
+	}
+	return 0, nil
 }
