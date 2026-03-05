@@ -5,9 +5,9 @@ package main
 
 import (
 	"fmt"
-	"goxpyriment/control"
-	"goxpyriment/misc"
-	"goxpyriment/stimuli"
+	"github.com/chrplr/goxpyriment/control"
+	"github.com/chrplr/goxpyriment/misc"
+	"github.com/chrplr/goxpyriment/stimuli"
 	"log"
 	"os"
 	"os/signal"

@@ -1,13 +1,15 @@
 // Copyright (2026) Christophe Pallier <christophe@pallier.org>
 // Distributed under the GNU General Public License v3.
 
+//go:build cgo
+
 package stimuli
 
 import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	"goxpyriment/io"
+	"github.com/chrplr/goxpyriment/io"
 	"image"
 	"sync"
 	"time"

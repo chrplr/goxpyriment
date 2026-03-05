@@ -4,8 +4,8 @@
 package control
 
 import (
-	"goxpyriment/design"
-	"goxpyriment/io"
+	"github.com/chrplr/goxpyriment/design"
+	"github.com/chrplr/goxpyriment/io"
 	"github.com/Zyko0/go-sdl3/bin/binsdl"
 	"github.com/Zyko0/go-sdl3/bin/binimg"
 	"github.com/Zyko0/go-sdl3/bin/binttf"

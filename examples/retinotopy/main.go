@@ -4,7 +4,8 @@
 package main
 
 import (
-	_ "embed"
+	"bytes"
+	"embed"
 	"encoding/csv"
 	"flag"
 	"fmt"
@@ -16,15 +17,21 @@ import (
 	"path/filepath"
 	"strconv"
 
-	"goxpyriment/control"
-	"goxpyriment/misc"
-	"goxpyriment/stimuli"
+	"github.com/chrplr/goxpyriment/control"
+	"github.com/chrplr/goxpyriment/misc"
+	"github.com/chrplr/goxpyriment/stimuli"
 
 	"github.com/Zyko0/go-sdl3/sdl"
 )
 
 //go:embed assets/Inconsolata.ttf
 var defaultFont []byte
+
+//go:embed assets/stimuli_png/fixationGrid.png
+var fixationGridData []byte
+
+//go:embed assets/StimuliOrder/*.csv
+var stimuliOrderFS embed.FS
 
 const (
 	WindowWidth     = 768
@@ -91,9 +98,7 @@ func (r *Retinotopy) showStatus(msg string) error {
 	return nil
 }
 
-func (r *Retinotopy) LoadStimuli(subjID int, runID int) error {
-	baseDir := filepath.Join("examples", "retinotopy", "assets")
-
+func (r *Retinotopy) LoadStimuli(subjID int, runID int, assetsDir string) error {
 	// 1. Load Orders
 	if err := r.showStatus("Loading orders..."); err != nil { return err }
 	if err := r.loadOrders(subjID, runID); err != nil {
@@ -104,10 +109,10 @@ func (r *Retinotopy) LoadStimuli(subjID int, runID int) error {
 	if err := r.showStatus("Loading 100 patterns..."); err != nil { return err }
 	r.Patterns = make([][]byte, 100)
 	for i := 1; i <= 100; i++ {
-		path := filepath.Join(baseDir, "stimuli_png", "patterns", fmt.Sprintf("pattern_%04d.png", i))
+		path := filepath.Join(assetsDir, "stimuli_png", "patterns", fmt.Sprintf("pattern_%04d.png", i))
 		data, err := loadRawRGB(path)
 		if err != nil {
-			return fmt.Errorf("failed to load pattern %d: %v", i, err)
+			return fmt.Errorf("failed to load pattern %d at %s: %v", i, path, err)
 		}
 		r.Patterns[i-1] = data
 		if i%10 == 0 {
@@ -139,10 +144,10 @@ func (r *Retinotopy) LoadStimuli(subjID int, runID int) error {
 	if err := r.showStatus(fmt.Sprintf("Loading %d masks from %s...", numMasks, maskDir)); err != nil { return err }
 	r.Masks = make([][]byte, numMasks)
 	for i := 1; i <= numMasks; i++ {
-		path := filepath.Join(baseDir, "stimuli_png", "masks", maskDir, fmt.Sprintf("%s_%04d.png", maskPrefix, i))
+		path := filepath.Join(assetsDir, "stimuli_png", "masks", maskDir, fmt.Sprintf("%s_%04d.png", maskPrefix, i))
 		data, err := loadRawGray(path)
 		if err != nil {
-			return fmt.Errorf("failed to load mask %d: %v", i, err)
+			return fmt.Errorf("failed to load mask %d at %s: %v", i, path, err)
 		}
 		r.Masks[i-1] = data
 		if i%50 == 0 {
@@ -152,8 +157,7 @@ func (r *Retinotopy) LoadStimuli(subjID int, runID int) error {
 
 	// 4. Load Fixation Grid
 	if err := r.showStatus("Loading fixation grid..."); err != nil { return err }
-	gridPath := filepath.Join(baseDir, "stimuli_png", "fixationGrid.png")
-	gridTex, err := r.loadTextureWithAlpha(gridPath)
+	gridTex, err := r.loadTextureFromBytes(fixationGridData)
 	if err != nil {
 		return err
 	}
@@ -191,11 +195,10 @@ func (r *Retinotopy) LoadStimuli(subjID int, runID int) error {
 }
 
 func (r *Retinotopy) loadOrders(subjID int, runID int) error {
-	baseDir := filepath.Join("examples", "retinotopy", "assets")
 	// Mask Order
-	f, err := os.Open(filepath.Join(baseDir, "StimuliOrder", "maskOrderRetinotopy.csv"))
+	f, err := stimuliOrderFS.Open("assets/StimuliOrder/maskOrderRetinotopy.csv")
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to open embedded mask order: %v", err)
 	}
 	defer f.Close()
 	reader := csv.NewReader(f)
@@ -222,9 +225,9 @@ func (r *Retinotopy) loadOrders(subjID int, runID int) error {
 	}
 
 	// Pattern and Dot Order
-	f2, err := os.Open(filepath.Join(baseDir, "StimuliOrder", fmt.Sprintf("sub-%03d_stimuliOrderRetinotopy.csv", subjID)))
+	f2, err := stimuliOrderFS.Open(fmt.Sprintf("assets/StimuliOrder/sub-%03d_stimuliOrderRetinotopy.csv", subjID))
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to open embedded subject order (sub-%03d): %v", subjID, err)
 	}
 	defer f2.Close()
 	reader2 := csv.NewReader(f2)
@@ -256,11 +259,8 @@ func (r *Retinotopy) loadOrders(subjID int, runID int) error {
 	return nil
 }
 
-func (r *Retinotopy) loadTextureWithAlpha(path string) (*sdl.Texture, error) {
-	f, err := os.Open(path)
-	if err != nil { return nil, err }
-	defer f.Close()
-	img, _, err := image.Decode(f)
+func (r *Retinotopy) loadTextureFromBytes(data []byte) (*sdl.Texture, error) {
+	img, _, err := image.Decode(bytes.NewReader(data))
 	if err != nil { return nil, err }
 	
 	bounds := img.Bounds()
@@ -469,9 +469,34 @@ func main() {
 	runID := flag.Int("r", 1, "Run ID (1-6)")
 	develop := flag.Bool("d", false, "Develop mode (windowed display)")
 	scaling := flag.Float64("scaling", 1.0, "Scaling factor for stimuli (e.g., 0.5, 1.5)")
+	assetsDirFlag := flag.String("assets", "", "Path to assets directory")
 	// Keep -F for backward compatibility if needed, but we'll prioritize -d
 	fullscreenFlag := flag.Bool("F", false, "Force Fullscreen (redundant if -d is not used)")
 	flag.Parse()
+
+	// Assets discovery
+	assetsDir := *assetsDirFlag
+	if assetsDir == "" {
+		// Try common locations
+		candidates := []string{
+			filepath.Join("examples", "retinotopy", "assets"), // Development from project root
+			"assets",                  // Standalone from dist root
+			"../assets",               // Standalone from linux_x64/ etc.
+			"../../examples/retinotopy/assets", // If run from within some subfolders
+		}
+		for _, c := range candidates {
+			// Check for something that is still external (patterns or masks)
+			if _, err := os.Stat(filepath.Join(c, "stimuli_png", "patterns")); err == nil {
+				assetsDir = c
+				break
+			}
+		}
+	}
+	// Fallback to default if not found (will fail later with clear message)
+	if assetsDir == "" {
+		assetsDir = filepath.Join("examples", "retinotopy", "assets")
+	}
+	log.Printf("Using assets directory: %s", assetsDir)
 
 	// Default is fullscreen unless develop mode is requested
 	isFullscreen := !*develop
@@ -520,7 +545,7 @@ func main() {
 	}
 
 	retino := NewRetinotopy(exp, runLabel, *scaling)
-	if err := retino.LoadStimuli(*subjID, *runID); err != nil {
+	if err := retino.LoadStimuli(*subjID, *runID, assetsDir); err != nil {
 		log.Fatal(err)
 	}
 

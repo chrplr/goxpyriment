@@ -4,7 +4,7 @@
 package stimuli
 
 import (
-	"goxpyriment/io"
+	"github.com/chrplr/goxpyriment/io"
 	"math"
 	"github.com/Zyko0/go-sdl3/sdl"
 )

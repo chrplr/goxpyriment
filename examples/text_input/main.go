@@ -7,8 +7,8 @@ import (
 	_ "embed"
 	"flag"
 	"fmt"
-	"goxpyriment/control"
-	"goxpyriment/stimuli"
+	"github.com/chrplr/goxpyriment/control"
+	"github.com/chrplr/goxpyriment/stimuli"
 	"log"
 
 	"github.com/Zyko0/go-sdl3/sdl"

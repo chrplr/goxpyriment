@@ -5,7 +5,7 @@ package design
 
 import (
 	"fmt"
-	"goxpyriment/stimuli"
+	"github.com/chrplr/goxpyriment/stimuli"
 	"math/rand"
 )
 

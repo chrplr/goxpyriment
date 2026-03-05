@@ -25,6 +25,11 @@
   - Audio: `Sound`, `Tone`.
 - **`misc/`**: Utility functions for high-precision timing (`Wait`, `GetTime`) and geometric calculations.
 
+
+### examples
+
+Examples are provided in the examples folder which has its own go.mod (we use the "sub-module setup" here). This is to avoi go get github.com/chrplr.com/goxpyriment to download the full repository.
+
 ## Building and Running
 
 ### Prerequisites

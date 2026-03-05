@@ -4,7 +4,7 @@
 package stimuli
 
 import (
-	"goxpyriment/io"
+	"github.com/chrplr/goxpyriment/io"
 	"image"
 	"image/color"
 	"math"
