@@ -1,3 +1,6 @@
+// Copyright (2026) Christophe Pallier <christophe@pallier.org>
+// Distributed under the GNU General Public License v3.
+
 package misc
 
 import (

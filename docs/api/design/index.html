@@ -1,0 +1,816 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#375EAB">
+
+  <title>design - Go Documentation Server</title>
+
+<link type="text/css" rel="stylesheet" href="/lib/godoc/style.css">
+
+<script>window.initFuncs = [];</script>
+<script src="/lib/godoc/jquery.js" defer></script>
+
+
+
+<script>var goVersion = "go1.21.1";</script>
+<script src="/lib/godoc/godocs.js" defer></script>
+</head>
+<body>
+
+<div id='lowframe' style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="/pkg/">Go Documentation Server</a></div>
+<div class="top-heading" id="heading-narrow"><a href="/pkg/">GoDoc</a></div>
+<a href="#" id="menu-button"><span id="menu-button-arrow">&#9661;</span></a>
+<form method="GET" action="/search">
+<div id="menu">
+
+<span class="search-box"><input type="search" id="search" name="q" placeholder="Search" aria-label="Search" required><button type="submit"><span><!-- magnifying glass: --><svg width="24" height="24" viewBox="0 0 24 24"><title>submit search</title><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/><path d="M0 0h24v24H0z" fill="none"/></svg></span></button></span>
+</div>
+</form>
+
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Package design
+    <span class="text-muted"></span>
+  </h1>
+
+
+
+
+
+
+
+<div id="nav"></div>
+
+
+<!--
+	Copyright 2009 The Go Authors. All rights reserved.
+	Use of this source code is governed by a BSD-style
+	license that can be found in the LICENSE file.
+-->
+<!--
+	Note: Static (i.e., not template-generated) href and id
+	attributes start with "pkg-" to make it impossible for
+	them to conflict with generated attributes (some of which
+	correspond to Go identifiers).
+-->
+
+	<script>
+	document.ANALYSIS_DATA = null;
+	document.CALLGRAPH = null;
+	</script>
+
+	
+		
+		<div id="short-nav">
+			<dl>
+			<dd><code>import "goxpyriment/design"</code></dd>
+			</dl>
+			<dl>
+			<dd><a href="#pkg-overview" class="overviewLink">Overview</a></dd>
+			<dd><a href="#pkg-index" class="indexLink">Index</a></dd>
+			
+			
+			</dl>
+		</div>
+		<!-- The package's Name is printed as title by the top-level template -->
+		<div id="pkg-overview" class="toggleVisible">
+			<div class="collapsed">
+				<h2 class="toggleButton" title="Click to show Overview section">Overview ▹</h2>
+			</div>
+			<div class="expanded">
+				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
+				
+				
+			</div>
+		</div>
+
+		<div id="pkg-index" class="toggleVisible">
+		<div class="collapsed">
+			<h2 class="toggleButton" title="Click to show Index section">Index ▹</h2>
+		</div>
+		<div class="expanded">
+			<h2 class="toggleButton" title="Click to hide Index section">Index ▾</h2>
+
+		<!-- Table of contents for API; must be named manual-nav to turn off auto nav. -->
+			<div id="manual-nav">
+			<dl>
+			
+				<dd><a href="#pkg-constants">Constants</a></dd>
+			
+			
+			
+				
+				<dd><a href="#CoinFlip">func CoinFlip(headBias float64) bool</a></dd>
+			
+				
+				<dd><a href="#IsPermutationType">func IsPermutationType(typeStr string) bool</a></dd>
+			
+				
+				<dd><a href="#LatinSquare">func LatinSquare[T any](elements []T, permutationType string) ([][]T, error)</a></dd>
+			
+				
+				<dd><a href="#LatinSquareInts">func LatinSquareInts(n int, permutationType string) ([][]int, error)</a></dd>
+			
+				
+				<dd><a href="#MakeMultipliedShuffledList">func MakeMultipliedShuffledList[T any](list []T, xtimes int) []T</a></dd>
+			
+				
+				<dd><a href="#RandElement">func RandElement[T any](list []T) T</a></dd>
+			
+				
+				<dd><a href="#RandInt">func RandInt(a, b int) int</a></dd>
+			
+				
+				<dd><a href="#RandIntSequence">func RandIntSequence(first, last int) []int</a></dd>
+			
+				
+				<dd><a href="#RandNorm">func RandNorm(a, b float64) float64</a></dd>
+			
+				
+				<dd><a href="#ShuffleList">func ShuffleList[T any](list []T)</a></dd>
+			
+			
+				
+				<dd><a href="#Block">type Block</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#NewBlock">func NewBlock(name string) *Block</a></dd>
+				
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Block.AddTrial">func (b *Block) AddTrial(t *Trial, copies int, randomPosition bool)</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Block.ClearTrials">func (b *Block) ClearTrials()</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Block.Copy">func (b *Block) Copy() *Block</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Block.GetFactor">func (b *Block) GetFactor(name string) interface{}</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Block.RemoveTrial">func (b *Block) RemoveTrial(index int)</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Block.SetFactor">func (b *Block) SetFactor(name string, value interface{})</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Block.ShuffleTrials">func (b *Block) ShuffleTrials()</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Block.Summary">func (b *Block) Summary() string</a></dd>
+				
+			
+				
+				<dd><a href="#Experiment">type Experiment</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#NewExperiment">func NewExperiment(name string) *Experiment</a></dd>
+				
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Experiment.AddBWSFactor">func (e *Experiment) AddBWSFactor(name string, conditions []interface{})</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Experiment.AddBlock">func (e *Experiment) AddBlock(b *Block, copies int)</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Experiment.AddDataVariableNames">func (e *Experiment) AddDataVariableNames(names []string)</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Experiment.AddExperimentInfo">func (e *Experiment) AddExperimentInfo(text string)</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Experiment.ClearBlocks">func (e *Experiment) ClearBlocks()</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Experiment.GetPermutedBWSFactorCondition">func (e *Experiment) GetPermutedBWSFactorCondition(name string, subjectID int) interface{}</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Experiment.ShuffleBlocks">func (e *Experiment) ShuffleBlocks()</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Experiment.Summary">func (e *Experiment) Summary() string</a></dd>
+				
+			
+				
+				<dd><a href="#Trial">type Trial</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#NewTrial">func NewTrial() *Trial</a></dd>
+				
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Trial.AddStimulus">func (t *Trial) AddStimulus(s stimuli.VisualStimulus)</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Trial.Compare">func (t *Trial) Compare(other *Trial) bool</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Trial.Copy">func (t *Trial) Copy() *Trial</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Trial.GetFactor">func (t *Trial) GetFactor(name string) interface{}</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Trial.SetFactor">func (t *Trial) SetFactor(name string, value interface{})</a></dd>
+				
+			
+			
+			</dl>
+			</div><!-- #manual-nav -->
+
+		
+
+		
+			<h3>Package files</h3>
+			<p>
+			<span style="font-size:90%">
+			
+				<a href="/src/goxpyriment/design/permute.go">permute.go</a>
+			
+				<a href="/src/goxpyriment/design/randomize.go">randomize.go</a>
+			
+				<a href="/src/goxpyriment/design/structure.go">structure.go</a>
+			
+			</span>
+			</p>
+		
+		</div><!-- .expanded -->
+		</div><!-- #pkg-index -->
+
+		
+
+		
+			<h2 id="pkg-constants">Constants</h2>
+			
+				<p>Permutation types
+
+				<pre>const (
+    <span id="PBalancedLatinSquare">PBalancedLatinSquare</span> = &#34;balanced&#34;
+    <span id="PCycledLatinSquare">PCycledLatinSquare</span>   = &#34;cycled&#34;
+    <span id="PRandom">PRandom</span>              = &#34;random&#34;
+)</pre>
+			
+		
+		
+		
+			
+			
+			<h2 id="CoinFlip">func <a href="/src/goxpyriment/design/randomize.go?s=940:976#L38">CoinFlip</a>
+				<a class="permalink" href="#CoinFlip">&#xb6;</a>
+				
+				
+			</h2>
+			<pre>func CoinFlip(headBias <a href="/pkg/builtin/#float64">float64</a>) <a href="/pkg/builtin/#bool">bool</a></pre>
+			<p>CoinFlip returns randomly true (head) or false (tail).
+
+			
+			
+
+		
+			
+			
+			<h2 id="IsPermutationType">func <a href="/src/goxpyriment/design/permute.go?s=366:409#L8">IsPermutationType</a>
+				<a class="permalink" href="#IsPermutationType">&#xb6;</a>
+				
+				
+			</h2>
+			<pre>func IsPermutationType(typeStr <a href="/pkg/builtin/#string">string</a>) <a href="/pkg/builtin/#bool">bool</a></pre>
+			<p>IsPermutationType returns true if the string is a known permutation type.
+
+			
+			
+
+		
+			
+			
+			<h2 id="LatinSquare">func <a href="/src/goxpyriment/design/permute.go?s=3052:3128#L125">LatinSquare</a>
+				<a class="permalink" href="#LatinSquare">&#xb6;</a>
+				
+				
+			</h2>
+			<pre>func LatinSquare[T <a href="/pkg/builtin/#any">any</a>](elements []T, permutationType <a href="/pkg/builtin/#string">string</a>) ([][]T, <a href="/pkg/builtin/#error">error</a>)</pre>
+			<p>LatinSquare returns a latin square permutation of elements.
+
+			
+			
+
+		
+			
+			
+			<h2 id="LatinSquareInts">func <a href="/src/goxpyriment/design/permute.go?s=1388:1456#L51">LatinSquareInts</a>
+				<a class="permalink" href="#LatinSquareInts">&#xb6;</a>
+				
+				
+			</h2>
+			<pre>func LatinSquareInts(n <a href="/pkg/builtin/#int">int</a>, permutationType <a href="/pkg/builtin/#string">string</a>) ([][]<a href="/pkg/builtin/#int">int</a>, <a href="/pkg/builtin/#error">error</a>)</pre>
+			<p>LatinSquare returns a latin square permutation of elements.
+If elements is a list, it returns a square array of those elements.
+For simplicity in Go, we&apos;ll provide a version for ints and a generic one for slices.
+
+			
+			
+
+		
+			
+			
+			<h2 id="MakeMultipliedShuffledList">func <a href="/src/goxpyriment/design/randomize.go?s=1519:1583#L62">MakeMultipliedShuffledList</a>
+				<a class="permalink" href="#MakeMultipliedShuffledList">&#xb6;</a>
+				
+				
+			</h2>
+			<pre>func MakeMultipliedShuffledList[T <a href="/pkg/builtin/#any">any</a>](list []T, xtimes <a href="/pkg/builtin/#int">int</a>) []T</pre>
+			<p>MakeMultipliedShuffledList manifolds the list &apos;xtimes&apos; and shuffles each copy.
+
+			
+			
+
+		
+			
+			
+			<h2 id="RandElement">func <a href="/src/goxpyriment/design/randomize.go?s=755:790#L29">RandElement</a>
+				<a class="permalink" href="#RandElement">&#xb6;</a>
+				
+				
+			</h2>
+			<pre>func RandElement[T <a href="/pkg/builtin/#any">any</a>](list []T) T</pre>
+			<p>RandElement returns a random element from a slice.
+
+			
+			
+
+		
+			
+			
+			<h2 id="RandInt">func <a href="/src/goxpyriment/design/randomize.go?s=614:640#L21">RandInt</a>
+				<a class="permalink" href="#RandInt">&#xb6;</a>
+				
+				
+			</h2>
+			<pre>func RandInt(a, b <a href="/pkg/builtin/#int">int</a>) <a href="/pkg/builtin/#int">int</a></pre>
+			<p>RandInt returns a random integer in the range [a, b].
+
+			
+			
+
+		
+			
+			
+			<h2 id="RandIntSequence">func <a href="/src/goxpyriment/design/randomize.go?s=298:341#L6">RandIntSequence</a>
+				<a class="permalink" href="#RandIntSequence">&#xb6;</a>
+				
+				
+			</h2>
+			<pre>func RandIntSequence(first, last <a href="/pkg/builtin/#int">int</a>) []<a href="/pkg/builtin/#int">int</a></pre>
+			<p>RandIntSequence returns a randomised sequence of integers in given range.
+
+			
+			
+
+		
+			
+			
+			<h2 id="RandNorm">func <a href="/src/goxpyriment/design/randomize.go?s=1097:1132#L43">RandNorm</a>
+				<a class="permalink" href="#RandNorm">&#xb6;</a>
+				
+				
+			</h2>
+			<pre>func RandNorm(a, b <a href="/pkg/builtin/#float64">float64</a>) <a href="/pkg/builtin/#float64">float64</a></pre>
+			<p>RandNorm returns a normally distributed random number in given range [a, b].
+
+			
+			
+
+		
+			
+			
+			<h2 id="ShuffleList">func <a href="/src/goxpyriment/design/randomize.go?s=1314:1347#L55">ShuffleList</a>
+				<a class="permalink" href="#ShuffleList">&#xb6;</a>
+				
+				
+			</h2>
+			<pre>func ShuffleList[T <a href="/pkg/builtin/#any">any</a>](list []T)</pre>
+			<p>ShuffleList shuffles any slice in place.
+
+			
+			
+
+		
+		
+			
+			
+			<h2 id="Block">type <a href="/src/goxpyriment/design/structure.go?s=1303:1451#L55">Block</a>
+				<a class="permalink" href="#Block">&#xb6;</a>
+				
+				
+			</h2>
+			<p>Block represents a block of trials.
+
+			<pre>type Block struct {
+<span id="Block.ID"></span>    ID      <a href="/pkg/builtin/#int">int</a>
+<span id="Block.Name"></span>    Name    <a href="/pkg/builtin/#string">string</a>
+<span id="Block.Factors"></span>    Factors map[<a href="/pkg/builtin/#string">string</a>]interface{}
+<span id="Block.Trials"></span>    Trials  []*<a href="#Trial">Trial</a>
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewBlock">func <a href="/src/goxpyriment/design/structure.go?s=1453:1486#L63">NewBlock</a>
+					<a class="permalink" href="#NewBlock">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func NewBlock(name <a href="/pkg/builtin/#string">string</a>) *<a href="#Block">Block</a></pre>
+				
+				
+				
+			
+
+			
+				
+				<h3 id="Block.AddTrial">func (*Block) <a href="/src/goxpyriment/design/structure.go?s=2135:2202#L96">AddTrial</a>
+					<a class="permalink" href="#Block.AddTrial">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (b *<a href="#Block">Block</a>) AddTrial(t *<a href="#Trial">Trial</a>, copies <a href="/pkg/builtin/#int">int</a>, randomPosition <a href="/pkg/builtin/#bool">bool</a>)</pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Block.ClearTrials">func (*Block) <a href="/src/goxpyriment/design/structure.go?s=2610:2639#L117">ClearTrials</a>
+					<a class="permalink" href="#Block.ClearTrials">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (b *<a href="#Block">Block</a>) ClearTrials()</pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Block.Copy">func (*Block) <a href="/src/goxpyriment/design/structure.go?s=1767:1796#L79">Copy</a>
+					<a class="permalink" href="#Block.Copy">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (b *<a href="#Block">Block</a>) Copy() *<a href="#Block">Block</a></pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Block.GetFactor">func (*Block) <a href="/src/goxpyriment/design/structure.go?s=1687:1737#L75">GetFactor</a>
+					<a class="permalink" href="#Block.GetFactor">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (b *<a href="#Block">Block</a>) GetFactor(name <a href="/pkg/builtin/#string">string</a>) interface{}</pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Block.RemoveTrial">func (*Block) <a href="/src/goxpyriment/design/structure.go?s=2697:2735#L122">RemoveTrial</a>
+					<a class="permalink" href="#Block.RemoveTrial">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (b *<a href="#Block">Block</a>) RemoveTrial(index <a href="/pkg/builtin/#int">int</a>)</pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Block.SetFactor">func (*Block) <a href="/src/goxpyriment/design/structure.go?s=1599:1656#L71">SetFactor</a>
+					<a class="permalink" href="#Block.SetFactor">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (b *<a href="#Block">Block</a>) SetFactor(name <a href="/pkg/builtin/#string">string</a>, value interface{})</pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Block.ShuffleTrials">func (*Block) <a href="/src/goxpyriment/design/structure.go?s=2550:2581#L113">ShuffleTrials</a>
+					<a class="permalink" href="#Block.ShuffleTrials">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (b *<a href="#Block">Block</a>) ShuffleTrials()</pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Block.Summary">func (*Block) <a href="/src/goxpyriment/design/structure.go?s=2855:2887#L129">Summary</a>
+					<a class="permalink" href="#Block.Summary">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (b *<a href="#Block">Block</a>) Summary() <a href="/pkg/builtin/#string">string</a></pre>
+				
+				
+				
+				
+			
+		
+			
+			
+			<h2 id="Experiment">type <a href="/src/goxpyriment/design/structure.go?s=3123:3354#L137">Experiment</a>
+				<a class="permalink" href="#Experiment">&#xb6;</a>
+				
+				
+			</h2>
+			<p>Experiment represents a basic experiment structure.
+
+			<pre>type Experiment struct {
+<span id="Experiment.Name"></span>    Name   <a href="/pkg/builtin/#string">string</a>
+<span id="Experiment.Blocks"></span>    Blocks []*<a href="#Block">Block</a>
+
+<span id="Experiment.DataVariableNames"></span>    DataVariableNames []<a href="/pkg/builtin/#string">string</a>
+<span id="Experiment.ExperimentInfo"></span>    ExperimentInfo    []<a href="/pkg/builtin/#string">string</a>
+<span id="Experiment.BWSFactors"></span>    BWSFactors        map[<a href="/pkg/builtin/#string">string</a>][]interface{}
+<span id="Experiment.BWSFactorNames"></span>    BWSFactorNames    []<a href="/pkg/builtin/#string">string</a>
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewExperiment">func <a href="/src/goxpyriment/design/structure.go?s=3356:3399#L147">NewExperiment</a>
+					<a class="permalink" href="#NewExperiment">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func NewExperiment(name <a href="/pkg/builtin/#string">string</a>) *<a href="#Experiment">Experiment</a></pre>
+				
+				
+				
+			
+
+			
+				
+				<h3 id="Experiment.AddBWSFactor">func (*Experiment) <a href="/src/goxpyriment/design/structure.go?s=4254:4326#L184">AddBWSFactor</a>
+					<a class="permalink" href="#Experiment.AddBWSFactor">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (e *<a href="#Experiment">Experiment</a>) AddBWSFactor(name <a href="/pkg/builtin/#string">string</a>, conditions []interface{})</pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Experiment.AddBlock">func (*Experiment) <a href="/src/goxpyriment/design/structure.go?s=3669:3720#L158">AddBlock</a>
+					<a class="permalink" href="#Experiment.AddBlock">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (e *<a href="#Experiment">Experiment</a>) AddBlock(b *<a href="#Block">Block</a>, copies <a href="/pkg/builtin/#int">int</a>)</pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Experiment.AddDataVariableNames">func (*Experiment) <a href="/src/goxpyriment/design/structure.go?s=4022:4079#L176">AddDataVariableNames</a>
+					<a class="permalink" href="#Experiment.AddDataVariableNames">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (e *<a href="#Experiment">Experiment</a>) AddDataVariableNames(names []<a href="/pkg/builtin/#string">string</a>)</pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Experiment.AddExperimentInfo">func (*Experiment) <a href="/src/goxpyriment/design/structure.go?s=4146:4197#L180">AddExperimentInfo</a>
+					<a class="permalink" href="#Experiment.AddExperimentInfo">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (e *<a href="#Experiment">Experiment</a>) AddExperimentInfo(text <a href="/pkg/builtin/#string">string</a>)</pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Experiment.ClearBlocks">func (*Experiment) <a href="/src/goxpyriment/design/structure.go?s=3930:3964#L171">ClearBlocks</a>
+					<a class="permalink" href="#Experiment.ClearBlocks">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (e *<a href="#Experiment">Experiment</a>) ClearBlocks()</pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Experiment.GetPermutedBWSFactorCondition">func (*Experiment) <a href="/src/goxpyriment/design/structure.go?s=4416:4506#L189">GetPermutedBWSFactorCondition</a>
+					<a class="permalink" href="#Experiment.GetPermutedBWSFactorCondition">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (e *<a href="#Experiment">Experiment</a>) GetPermutedBWSFactorCondition(name <a href="/pkg/builtin/#string">string</a>, subjectID <a href="/pkg/builtin/#int">int</a>) interface{}</pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Experiment.ShuffleBlocks">func (*Experiment) <a href="/src/goxpyriment/design/structure.go?s=3865:3901#L167">ShuffleBlocks</a>
+					<a class="permalink" href="#Experiment.ShuffleBlocks">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (e *<a href="#Experiment">Experiment</a>) ShuffleBlocks()</pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Experiment.Summary">func (*Experiment) <a href="/src/goxpyriment/design/structure.go?s=4924:4961#L212">Summary</a>
+					<a class="permalink" href="#Experiment.Summary">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (e *<a href="#Experiment">Experiment</a>) Summary() <a href="/pkg/builtin/#string">string</a></pre>
+				
+				
+				
+				
+			
+		
+			
+			
+			<h2 id="Trial">type <a href="/src/goxpyriment/design/structure.go?s=245:345#L3">Trial</a>
+				<a class="permalink" href="#Trial">&#xb6;</a>
+				
+				
+			</h2>
+			<p>Trial represents a single trial in an experiment.
+
+			<pre>type Trial struct {
+<span id="Trial.ID"></span>    ID      <a href="/pkg/builtin/#int">int</a>
+<span id="Trial.Factors"></span>    Factors map[<a href="/pkg/builtin/#string">string</a>]interface{}
+<span id="Trial.Stimuli"></span>    Stimuli []<a href="/pkg/goxpyriment/stimuli/">stimuli</a>.<a href="/pkg/goxpyriment/stimuli/#VisualStimulus">VisualStimulus</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewTrial">func <a href="/src/goxpyriment/design/structure.go?s=347:369#L9">NewTrial</a>
+					<a class="permalink" href="#NewTrial">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func NewTrial() *<a href="#Trial">Trial</a></pre>
+				
+				
+				
+			
+
+			
+				
+				<h3 id="Trial.AddStimulus">func (*Trial) <a href="/src/goxpyriment/design/structure.go?s=526:579#L17">AddStimulus</a>
+					<a class="permalink" href="#Trial.AddStimulus">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (t *<a href="#Trial">Trial</a>) AddStimulus(s <a href="/pkg/goxpyriment/stimuli/">stimuli</a>.<a href="/pkg/goxpyriment/stimuli/#VisualStimulus">VisualStimulus</a>)</pre>
+				<p>AddStimulus adds a stimulus to the trial.
+
+				
+				
+				
+			
+				
+				<h3 id="Trial.Compare">func (*Trial) <a href="/src/goxpyriment/design/structure.go?s=1059:1101#L42">Compare</a>
+					<a class="permalink" href="#Trial.Compare">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (t *<a href="#Trial">Trial</a>) Compare(other *<a href="#Trial">Trial</a>) <a href="/pkg/builtin/#bool">bool</a></pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Trial.Copy">func (*Trial) <a href="/src/goxpyriment/design/structure.go?s=787:816#L29">Copy</a>
+					<a class="permalink" href="#Trial.Copy">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (t *<a href="#Trial">Trial</a>) Copy() *<a href="#Trial">Trial</a></pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Trial.GetFactor">func (*Trial) <a href="/src/goxpyriment/design/structure.go?s=707:757#L25">GetFactor</a>
+					<a class="permalink" href="#Trial.GetFactor">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (t *<a href="#Trial">Trial</a>) GetFactor(name <a href="/pkg/builtin/#string">string</a>) interface{}</pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Trial.SetFactor">func (*Trial) <a href="/src/goxpyriment/design/structure.go?s=619:676#L21">SetFactor</a>
+					<a class="permalink" href="#Trial.SetFactor">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (t *<a href="#Trial">Trial</a>) SetFactor(name <a href="/pkg/builtin/#string">string</a>, value interface{})</pre>
+				
+				
+				
+				
+			
+		
+	
+
+	
+
+
+
+
+
+
+
+<div id="footer">
+Build version go1.21.1.<br>
+Except as <a href="https://developers.google.com/site-policies#restrictions">noted</a>,
+the content of this page is licensed under the
+Creative Commons Attribution 3.0 License,
+and code is licensed under a <a href="/LICENSE">BSD license</a>.<br>
+<a href="https://golang.org/doc/tos.html">Terms of Service</a> |
+<a href="https://www.google.com/intl/en/policies/privacy/">Privacy Policy</a>
+</div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+</body>
+</html>

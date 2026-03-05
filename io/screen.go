@@ -1,3 +1,6 @@
+// Copyright (2026) Christophe Pallier <christophe@pallier.org>
+// Distributed under the GNU General Public License v3.
+
 // Package io provides input/output handling for screen, keyboard, mouse, and other devices.
 package io
 

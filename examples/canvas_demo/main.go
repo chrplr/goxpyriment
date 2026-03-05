@@ -1,3 +1,6 @@
+// Copyright (2026) Christophe Pallier <christophe@pallier.org>
+// Distributed under the GNU General Public License v3.
+
 package main
 import (
 	_ "embed"
@@ -5,7 +8,6 @@ import (
 	"goxpyriment/control"
 	"goxpyriment/stimuli"
 	"log"
-	"time"
 
 	"github.com/Zyko0/go-sdl3/sdl"
 )

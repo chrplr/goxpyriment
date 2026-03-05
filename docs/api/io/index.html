@@ -1,0 +1,1356 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#375EAB">
+
+  <title>io - Go Documentation Server</title>
+
+<link type="text/css" rel="stylesheet" href="/lib/godoc/style.css">
+
+<script>window.initFuncs = [];</script>
+<script src="/lib/godoc/jquery.js" defer></script>
+
+
+
+<script>var goVersion = "go1.21.1";</script>
+<script src="/lib/godoc/godocs.js" defer></script>
+</head>
+<body>
+
+<div id='lowframe' style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="/pkg/">Go Documentation Server</a></div>
+<div class="top-heading" id="heading-narrow"><a href="/pkg/">GoDoc</a></div>
+<a href="#" id="menu-button"><span id="menu-button-arrow">&#9661;</span></a>
+<form method="GET" action="/search">
+<div id="menu">
+
+<span class="search-box"><input type="search" id="search" name="q" placeholder="Search" aria-label="Search" required><button type="submit"><span><!-- magnifying glass: --><svg width="24" height="24" viewBox="0 0 24 24"><title>submit search</title><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/><path d="M0 0h24v24H0z" fill="none"/></svg></span></button></span>
+</div>
+</form>
+
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Package io
+    <span class="text-muted"></span>
+  </h1>
+
+
+
+
+
+
+
+<div id="nav"></div>
+
+
+<!--
+	Copyright 2009 The Go Authors. All rights reserved.
+	Use of this source code is governed by a BSD-style
+	license that can be found in the LICENSE file.
+-->
+<!--
+	Note: Static (i.e., not template-generated) href and id
+	attributes start with "pkg-" to make it impossible for
+	them to conflict with generated attributes (some of which
+	correspond to Go identifiers).
+-->
+
+	<script>
+	document.ANALYSIS_DATA = null;
+	document.CALLGRAPH = null;
+	</script>
+
+	
+		
+		<div id="short-nav">
+			<dl>
+			<dd><code>import "goxpyriment/io"</code></dd>
+			</dl>
+			<dl>
+			<dd><a href="#pkg-overview" class="overviewLink">Overview</a></dd>
+			<dd><a href="#pkg-index" class="indexLink">Index</a></dd>
+			
+			
+			</dl>
+		</div>
+		<!-- The package's Name is printed as title by the top-level template -->
+		<div id="pkg-overview" class="toggleVisible">
+			<div class="collapsed">
+				<h2 class="toggleButton" title="Click to show Overview section">Overview ▹</h2>
+			</div>
+			<div class="expanded">
+				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
+				<p>Package io provides input/output handling for screen, keyboard, mouse, and other devices.
+
+				
+			</div>
+		</div>
+
+		<div id="pkg-index" class="toggleVisible">
+		<div class="collapsed">
+			<h2 class="toggleButton" title="Click to show Index section">Index ▹</h2>
+		</div>
+		<div class="expanded">
+			<h2 class="toggleButton" title="Click to hide Index section">Index ▾</h2>
+
+		<!-- Table of contents for API; must be named manual-nav to turn off auto nav. -->
+			<div id="manual-nav">
+			<dl>
+			
+				<dd><a href="#pkg-constants">Constants</a></dd>
+			
+			
+			
+				
+				<dd><a href="#GetAvailableParallelPorts">func GetAvailableParallelPorts() []string</a></dd>
+			
+				
+				<dd><a href="#GetAvailablePorts">func GetAvailablePorts() ([]string, error)</a></dd>
+			
+				
+				<dd><a href="#IsParallelPort">func IsParallelPort(name string) bool</a></dd>
+			
+			
+				
+				<dd><a href="#DLPIO8">type DLPIO8</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#NewDLPIO8">func NewDLPIO8(device string, baudrate int) (*DLPIO8, error)</a></dd>
+				
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#DLPIO8.Close">func (d *DLPIO8) Close() error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#DLPIO8.Ping">func (d *DLPIO8) Ping() (bool, error)</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#DLPIO8.Read">func (d *DLPIO8) Read() ([]byte, error)</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#DLPIO8.Set">func (d *DLPIO8) Set(lines string) error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#DLPIO8.SetAllLow">func (d *DLPIO8) SetAllLow() error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#DLPIO8.Unset">func (d *DLPIO8) Unset(lines string) error</a></dd>
+				
+			
+				
+				<dd><a href="#DataFile">type DataFile</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#NewDataFile">func NewDataFile(directory string, subjectID int, expName string) (*DataFile, error)</a></dd>
+				
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#DataFile.Add">func (df *DataFile) Add(data []interface{})</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#DataFile.AddVariableNames">func (df *DataFile) AddVariableNames(names []string)</a></dd>
+				
+			
+				
+				<dd><a href="#GamePad">type GamePad</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#GetGamePads">func GetGamePads() ([]*GamePad, error)</a></dd>
+				
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#GamePad.Close">func (g *GamePad) Close()</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#GamePad.WaitPress">func (g *GamePad) WaitPress() (sdl.GamepadButton, error)</a></dd>
+				
+			
+				
+				<dd><a href="#Keyboard">type Keyboard</a></dd>
+				
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Keyboard.Check">func (k *Keyboard) Check() (sdl.Keycode, error)</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Keyboard.Clear">func (k *Keyboard) Clear()</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Keyboard.Wait">func (k *Keyboard) Wait() (sdl.Keycode, error)</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Keyboard.WaitKeys">func (k *Keyboard) WaitKeys(keys []sdl.Keycode, timeoutMS int) (sdl.Keycode, error)</a></dd>
+				
+			
+				
+				<dd><a href="#Mouse">type Mouse</a></dd>
+				
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Mouse.Check">func (m *Mouse) Check() (uint32, error)</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Mouse.Position">func (m *Mouse) Position() (float32, float32)</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Mouse.SetPosition">func (m *Mouse) SetPosition(x, y float32) error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Mouse.ShowCursor">func (m *Mouse) ShowCursor(show bool) error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Mouse.WaitPress">func (m *Mouse) WaitPress() (uint32, error)</a></dd>
+				
+			
+				
+				<dd><a href="#OutputFile">type OutputFile</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#NewOutputFile">func NewOutputFile(directory, filename string) (*OutputFile, error)</a></dd>
+				
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#OutputFile.Save">func (o *OutputFile) Save() error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#OutputFile.Write">func (o *OutputFile) Write(content string)</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#OutputFile.WriteComment">func (o *OutputFile) WriteComment(comment string)</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#OutputFile.WriteLine">func (o *OutputFile) WriteLine(content string)</a></dd>
+				
+			
+				
+				<dd><a href="#ParallelPort">type ParallelPort</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#NewParallelPort">func NewParallelPort(address uintptr, device string) *ParallelPort</a></dd>
+				
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#ParallelPort.Clear">func (p *ParallelPort) Clear() error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#ParallelPort.Initialize">func (p *ParallelPort) Initialize() error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#ParallelPort.Poll">func (p *ParallelPort) Poll() (byte, error)</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#ParallelPort.Send">func (p *ParallelPort) Send(data byte) error</a></dd>
+				
+			
+				
+				<dd><a href="#Screen">type Screen</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#NewScreen">func NewScreen(title string, width, height int, bgColor sdl.Color, fullscreen bool) (*Screen, error)</a></dd>
+				
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Screen.CenterToSDL">func (s *Screen) CenterToSDL(x, y float32) (float32, float32)</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Screen.Clear">func (s *Screen) Clear() error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Screen.Destroy">func (s *Screen) Destroy()</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Screen.LogicalCenterToSDL">func (s *Screen) LogicalCenterToSDL(x, y float32, width, height float32) (float32, float32)</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Screen.SetLogicalSize">func (s *Screen) SetLogicalSize(width, height int32) error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Screen.SetVSync">func (s *Screen) SetVSync(vsync int) error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Screen.Size">func (s *Screen) Size() (int32, int32, error)</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Screen.Update">func (s *Screen) Update() error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Screen.VSync">func (s *Screen) VSync() (int, error)</a></dd>
+				
+			
+				
+				<dd><a href="#SerialPort">type SerialPort</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#NewSerialPort">func NewSerialPort(name string, baud int) *SerialPort</a></dd>
+				
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#SerialPort.Clear">func (s *SerialPort) Clear() error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#SerialPort.Close">func (s *SerialPort) Close() error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#SerialPort.Open">func (s *SerialPort) Open() error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#SerialPort.Poll">func (s *SerialPort) Poll() (byte, error)</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#SerialPort.ReadInput">func (s *SerialPort) ReadInput() ([]byte, error)</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#SerialPort.ReadLine">func (s *SerialPort) ReadLine() (string, error)</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#SerialPort.Send">func (s *SerialPort) Send(data byte) error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#SerialPort.SendLine">func (s *SerialPort) SendLine(data string, cr, lf bool) error</a></dd>
+				
+			
+			
+			</dl>
+			</div><!-- #manual-nav -->
+
+		
+
+		
+			<h3>Package files</h3>
+			<p>
+			<span style="font-size:90%">
+			
+				<a href="/src/goxpyriment/io/data.go">data.go</a>
+			
+				<a href="/src/goxpyriment/io/dlpio8.go">dlpio8.go</a>
+			
+				<a href="/src/goxpyriment/io/gamepad.go">gamepad.go</a>
+			
+				<a href="/src/goxpyriment/io/keyboard.go">keyboard.go</a>
+			
+				<a href="/src/goxpyriment/io/mouse.go">mouse.go</a>
+			
+				<a href="/src/goxpyriment/io/ports.go">ports.go</a>
+			
+				<a href="/src/goxpyriment/io/screen.go">screen.go</a>
+			
+			</span>
+			</p>
+		
+		</div><!-- .expanded -->
+		</div><!-- #pkg-index -->
+
+		
+
+		
+			<h2 id="pkg-constants">Constants</h2>
+			
+				<p>Default settings for OutputFile and DataFile
+
+				<pre>const (
+    <span id="OutputFileCommentChar">OutputFileCommentChar</span> = &#34;#&#34;
+    <span id="OutputFileEOL">OutputFileEOL</span>         = &#34;\n&#34;
+    <span id="DataFileDirectory">DataFileDirectory</span>     = &#34;data&#34;
+    <span id="DataFileDelimiter">DataFileDelimiter</span>     = &#34;,&#34;
+)</pre>
+			
+		
+		
+		
+			
+			
+			<h2 id="GetAvailableParallelPorts">func <a href="/src/goxpyriment/io/ports.go?s=5280:5321#L193">GetAvailableParallelPorts</a>
+				<a class="permalink" href="#GetAvailableParallelPorts">&#xb6;</a>
+				
+				
+			</h2>
+			<pre>func GetAvailableParallelPorts() []<a href="/pkg/builtin/#string">string</a></pre>
+			<p>GetAvailableParallelPorts returns a list of potentially available parallel ports.
+
+			
+			
+
+		
+			
+			
+			<h2 id="GetAvailablePorts">func <a href="/src/goxpyriment/io/ports.go?s=3277:3319#L133">GetAvailablePorts</a>
+				<a class="permalink" href="#GetAvailablePorts">&#xb6;</a>
+				
+				
+			</h2>
+			<pre>func GetAvailablePorts() ([]<a href="/pkg/builtin/#string">string</a>, <a href="/pkg/builtin/#error">error</a>)</pre>
+			<p>GetAvailablePorts returns a list of available serial ports.
+
+			
+			
+
+		
+			
+			
+			<h2 id="IsParallelPort">func <a href="/src/goxpyriment/io/ports.go?s=5622:5659#L206">IsParallelPort</a>
+				<a class="permalink" href="#IsParallelPort">&#xb6;</a>
+				
+				
+			</h2>
+			<pre>func IsParallelPort(name <a href="/pkg/builtin/#string">string</a>) <a href="/pkg/builtin/#bool">bool</a></pre>
+			<p>Helper to determine if a string represents a parallel port name.
+
+			
+			
+
+		
+		
+			
+			
+			<h2 id="DLPIO8">type <a href="/src/goxpyriment/io/dlpio8.go?s=241:281#L4">DLPIO8</a>
+				<a class="permalink" href="#DLPIO8">&#xb6;</a>
+				
+				
+			</h2>
+			<p>DLPIO8 represents a connection to a DLP-IO8-G device.
+
+			<pre>type DLPIO8 struct {
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewDLPIO8">func <a href="/src/goxpyriment/io/dlpio8.go?s=344:404#L9">NewDLPIO8</a>
+					<a class="permalink" href="#NewDLPIO8">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func NewDLPIO8(device <a href="/pkg/builtin/#string">string</a>, baudrate <a href="/pkg/builtin/#int">int</a>) (*<a href="#DLPIO8">DLPIO8</a>, <a href="/pkg/builtin/#error">error</a>)</pre>
+				<p>NewDLPIO8 creates a new connection to a DLP-IO8-G device.
+
+				
+				
+			
+
+			
+				
+				<h3 id="DLPIO8.Close">func (*DLPIO8) <a href="/src/goxpyriment/io/dlpio8.go?s=1312:1342#L47">Close</a>
+					<a class="permalink" href="#DLPIO8.Close">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (d *<a href="#DLPIO8">DLPIO8</a>) Close() <a href="/pkg/builtin/#error">error</a></pre>
+				<p>Close closes the connection to the device.
+
+				
+				
+				
+			
+				
+				<h3 id="DLPIO8.Ping">func (*DLPIO8) <a href="/src/goxpyriment/io/dlpio8.go?s=1457:1494#L55">Ping</a>
+					<a class="permalink" href="#DLPIO8.Ping">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (d *<a href="#DLPIO8">DLPIO8</a>) Ping() (<a href="/pkg/builtin/#bool">bool</a>, <a href="/pkg/builtin/#error">error</a>)</pre>
+				<p>Ping checks if the device is still responding.
+
+				
+				
+				
+			
+				
+				<h3 id="DLPIO8.Read">func (*DLPIO8) <a href="/src/goxpyriment/io/dlpio8.go?s=1814:1853#L72">Read</a>
+					<a class="permalink" href="#DLPIO8.Read">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (d *<a href="#DLPIO8">DLPIO8</a>) Read() ([]<a href="/pkg/builtin/#byte">byte</a>, <a href="/pkg/builtin/#error">error</a>)</pre>
+				<p>Read returns the states (0 or 1) of all 8 lines.
+
+				
+				
+				
+			
+				
+				<h3 id="DLPIO8.Set">func (*DLPIO8) <a href="/src/goxpyriment/io/dlpio8.go?s=2187:2227#L93">Set</a>
+					<a class="permalink" href="#DLPIO8.Set">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (d *<a href="#DLPIO8">DLPIO8</a>) Set(lines <a href="/pkg/builtin/#string">string</a>) <a href="/pkg/builtin/#error">error</a></pre>
+				<p>Set sets the specified lines (e.g., &quot;123&quot;) to HIGH (1).
+
+				
+				
+				
+			
+				
+				<h3 id="DLPIO8.SetAllLow">func (*DLPIO8) <a href="/src/goxpyriment/io/dlpio8.go?s=2865:2899#L116">SetAllLow</a>
+					<a class="permalink" href="#DLPIO8.SetAllLow">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (d *<a href="#DLPIO8">DLPIO8</a>) SetAllLow() <a href="/pkg/builtin/#error">error</a></pre>
+				<p>SetAllLow sets all lines to LOW.
+
+				
+				
+				
+			
+				
+				<h3 id="DLPIO8.Unset">func (*DLPIO8) <a href="/src/goxpyriment/io/dlpio8.go?s=2372:2414#L100">Unset</a>
+					<a class="permalink" href="#DLPIO8.Unset">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (d *<a href="#DLPIO8">DLPIO8</a>) Unset(lines <a href="/pkg/builtin/#string">string</a>) <a href="/pkg/builtin/#error">error</a></pre>
+				<p>Unset sets the specified lines (e.g., &quot;123&quot;) to LOW (0).
+
+				
+				
+				
+			
+		
+			
+			
+			<h2 id="DataFile">type <a href="/src/goxpyriment/io/data.go?s=2040:2142#L86">DataFile</a>
+				<a class="permalink" href="#DataFile">&#xb6;</a>
+				
+				
+			</h2>
+			<p>DataFile represents a data file for experiment results.
+
+			<pre>type DataFile struct {
+    *<a href="#OutputFile">OutputFile</a>
+<span id="DataFile.Delimiter"></span>    Delimiter     <a href="/pkg/builtin/#string">string</a>
+<span id="DataFile.SubjectID"></span>    SubjectID     <a href="/pkg/builtin/#int">int</a>
+<span id="DataFile.VariableNames"></span>    VariableNames []<a href="/pkg/builtin/#string">string</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewDataFile">func <a href="/src/goxpyriment/io/data.go?s=2183:2267#L94">NewDataFile</a>
+					<a class="permalink" href="#NewDataFile">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func NewDataFile(directory <a href="/pkg/builtin/#string">string</a>, subjectID <a href="/pkg/builtin/#int">int</a>, expName <a href="/pkg/builtin/#string">string</a>) (*<a href="#DataFile">DataFile</a>, <a href="/pkg/builtin/#error">error</a>)</pre>
+				<p>NewDataFile creates a new DataFile.
+
+				
+				
+			
+
+			
+				
+				<h3 id="DataFile.Add">func (*DataFile) <a href="/src/goxpyriment/io/data.go?s=3007:3050#L128">Add</a>
+					<a class="permalink" href="#DataFile.Add">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (df *<a href="#DataFile">DataFile</a>) Add(data []interface{})</pre>
+				<p>Add appends data to the data file.
+
+				
+				
+				
+			
+				
+				<h3 id="DataFile.AddVariableNames">func (*DataFile) <a href="/src/goxpyriment/io/data.go?s=3483:3535#L145">AddVariableNames</a>
+					<a class="permalink" href="#DataFile.AddVariableNames">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (df *<a href="#DataFile">DataFile</a>) AddVariableNames(names []<a href="/pkg/builtin/#string">string</a>)</pre>
+				<p>AddVariableNames sets the column headers for the data.
+
+				
+				
+				
+			
+		
+			
+			
+			<h2 id="GamePad">type <a href="/src/goxpyriment/io/gamepad.go?s=218:285#L1">GamePad</a>
+				<a class="permalink" href="#GamePad">&#xb6;</a>
+				
+				
+			</h2>
+			<p>GamePad represents a game controller.
+
+			<pre>type GamePad struct {
+<span id="GamePad.ID"></span>    ID     <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#JoystickID">JoystickID</a>
+<span id="GamePad.Handle"></span>    Handle *<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#Gamepad">Gamepad</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="GetGamePads">func <a href="/src/goxpyriment/io/gamepad.go?s=340:378#L7">GetGamePads</a>
+					<a class="permalink" href="#GetGamePads">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func GetGamePads() ([]*<a href="#GamePad">GamePad</a>, <a href="/pkg/builtin/#error">error</a>)</pre>
+				<p>GetGamePads returns a list of connected gamepads.
+
+				
+				
+			
+
+			
+				
+				<h3 id="GamePad.Close">func (*GamePad) <a href="/src/goxpyriment/io/gamepad.go?s=1124:1149#L42">Close</a>
+					<a class="permalink" href="#GamePad.Close">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (g *<a href="#GamePad">GamePad</a>) Close()</pre>
+				<p>Close closes the gamepad handle.
+
+				
+				
+				
+			
+				
+				<h3 id="GamePad.WaitPress">func (*GamePad) <a href="/src/goxpyriment/io/gamepad.go?s=703:759#L25">WaitPress</a>
+					<a class="permalink" href="#GamePad.WaitPress">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (g *<a href="#GamePad">GamePad</a>) WaitPress() (<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#GamepadButton">GamepadButton</a>, <a href="/pkg/builtin/#error">error</a>)</pre>
+				<p>WaitPress blocks until a gamepad button is pressed.
+
+				
+				
+				
+			
+		
+			
+			
+			<h2 id="Keyboard">type <a href="/src/goxpyriment/io/keyboard.go?s=235:259#L1">Keyboard</a>
+				<a class="permalink" href="#Keyboard">&#xb6;</a>
+				
+				
+			</h2>
+			<p>Keyboard provides methods for handling keyboard input.
+
+			<pre>type Keyboard struct {
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+				
+				<h3 id="Keyboard.Check">func (*Keyboard) <a href="/src/goxpyriment/io/keyboard.go?s=1765:1812#L62">Check</a>
+					<a class="permalink" href="#Keyboard.Check">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (k *<a href="#Keyboard">Keyboard</a>) Check() (<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#Keycode">Keycode</a>, <a href="/pkg/builtin/#error">error</a>)</pre>
+				<p>Check polls for keyboard events and returns the first key pressed since the last call, without blocking.
+
+				
+				
+				
+			
+				
+				<h3 id="Keyboard.Clear">func (*Keyboard) <a href="/src/goxpyriment/io/keyboard.go?s=2173:2199#L80">Clear</a>
+					<a class="permalink" href="#Keyboard.Clear">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (k *<a href="#Keyboard">Keyboard</a>) Clear()</pre>
+				<p>Clear clears all keyboard events from the queue.
+
+				
+				
+				
+			
+				
+				<h3 id="Keyboard.Wait">func (*Keyboard) <a href="/src/goxpyriment/io/keyboard.go?s=320:366#L5">Wait</a>
+					<a class="permalink" href="#Keyboard.Wait">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (k *<a href="#Keyboard">Keyboard</a>) Wait() (<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#Keycode">Keycode</a>, <a href="/pkg/builtin/#error">error</a>)</pre>
+				<p>Wait blocks until a key is pressed and returns the key.
+
+				
+				
+				
+			
+				
+				<h3 id="Keyboard.WaitKeys">func (*Keyboard) <a href="/src/goxpyriment/io/keyboard.go?s=646:729#L13">WaitKeys</a>
+					<a class="permalink" href="#Keyboard.WaitKeys">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (k *<a href="#Keyboard">Keyboard</a>) WaitKeys(keys []<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#Keycode">Keycode</a>, timeoutMS <a href="/pkg/builtin/#int">int</a>) (<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#Keycode">Keycode</a>, <a href="/pkg/builtin/#error">error</a>)</pre>
+				<p>WaitKeys blocks until one of the specified keys is pressed or a timeout occurs.
+If keys is nil, any key will trigger a return.
+If timeoutMS is -1, it waits indefinitely.
+Returns the keycode and any error (e.g., sdl.EndLoop for quit).
+
+				
+				
+				
+			
+		
+			
+			
+			<h2 id="Mouse">type <a href="/src/goxpyriment/io/mouse.go?s=229:248#L1">Mouse</a>
+				<a class="permalink" href="#Mouse">&#xb6;</a>
+				
+				
+			</h2>
+			<p>Mouse provides methods for handling mouse input.
+
+			<pre>type Mouse struct{}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+				
+				<h3 id="Mouse.Check">func (*Mouse) <a href="/src/goxpyriment/io/mouse.go?s=1130:1169#L38">Check</a>
+					<a class="permalink" href="#Mouse.Check">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#Mouse">Mouse</a>) Check() (<a href="/pkg/builtin/#uint32">uint32</a>, <a href="/pkg/builtin/#error">error</a>)</pre>
+				<p>Check polls for mouse button events without blocking.
+
+				
+				
+				
+			
+				
+				<h3 id="Mouse.Position">func (*Mouse) <a href="/src/goxpyriment/io/mouse.go?s=476:521#L12">Position</a>
+					<a class="permalink" href="#Mouse.Position">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#Mouse">Mouse</a>) Position() (<a href="/pkg/builtin/#float32">float32</a>, <a href="/pkg/builtin/#float32">float32</a>)</pre>
+				<p>Position returns the current (x, y) coordinates of the mouse.
+
+				
+				
+				
+			
+				
+				<h3 id="Mouse.SetPosition">func (*Mouse) <a href="/src/goxpyriment/io/mouse.go?s=640:687#L18">SetPosition</a>
+					<a class="permalink" href="#Mouse.SetPosition">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#Mouse">Mouse</a>) SetPosition(x, y <a href="/pkg/builtin/#float32">float32</a>) <a href="/pkg/builtin/#error">error</a></pre>
+				<p>SetPosition moves the mouse cursor to the specified coordinates.
+
+				
+				
+				
+			
+				
+				<h3 id="Mouse.ShowCursor">func (*Mouse) <a href="/src/goxpyriment/io/mouse.go?s=297:340#L4">ShowCursor</a>
+					<a class="permalink" href="#Mouse.ShowCursor">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#Mouse">Mouse</a>) ShowCursor(show <a href="/pkg/builtin/#bool">bool</a>) <a href="/pkg/builtin/#error">error</a></pre>
+				<p>ShowCursor shows or hides the mouse cursor.
+
+				
+				
+				
+			
+				
+				<h3 id="Mouse.WaitPress">func (*Mouse) <a href="/src/goxpyriment/io/mouse.go?s=773:816#L23">WaitPress</a>
+					<a class="permalink" href="#Mouse.WaitPress">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (m *<a href="#Mouse">Mouse</a>) WaitPress() (<a href="/pkg/builtin/#uint32">uint32</a>, <a href="/pkg/builtin/#error">error</a>)</pre>
+				<p>WaitPress blocks until a mouse button is pressed.
+
+				
+				
+				
+			
+		
+			
+			
+			<h2 id="OutputFile">type <a href="/src/goxpyriment/io/data.go?s=430:558#L14">OutputFile</a>
+				<a class="permalink" href="#OutputFile">&#xb6;</a>
+				
+				
+			</h2>
+			<p>OutputFile represents a general output file.
+
+			<pre>type OutputFile struct {
+<span id="OutputFile.Filename"></span>    Filename    <a href="/pkg/builtin/#string">string</a>
+<span id="OutputFile.Directory"></span>    Directory   <a href="/pkg/builtin/#string">string</a>
+<span id="OutputFile.FullPath"></span>    FullPath    <a href="/pkg/builtin/#string">string</a>
+<span id="OutputFile.CommentChar"></span>    CommentChar <a href="/pkg/builtin/#string">string</a>
+<span id="OutputFile.Buffer"></span>    Buffer      []<a href="/pkg/builtin/#string">string</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewOutputFile">func <a href="/src/goxpyriment/io/data.go?s=603:670#L23">NewOutputFile</a>
+					<a class="permalink" href="#NewOutputFile">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func NewOutputFile(directory, filename <a href="/pkg/builtin/#string">string</a>) (*<a href="#OutputFile">OutputFile</a>, <a href="/pkg/builtin/#error">error</a>)</pre>
+				<p>NewOutputFile creates a new OutputFile.
+
+				
+				
+			
+
+			
+				
+				<h3 id="OutputFile.Save">func (*OutputFile) <a href="/src/goxpyriment/io/data.go?s=1592:1625#L64">Save</a>
+					<a class="permalink" href="#OutputFile.Save">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (o *<a href="#OutputFile">OutputFile</a>) Save() <a href="/pkg/builtin/#error">error</a></pre>
+				<p>Save flushes the buffer to disk.
+
+				
+				
+				
+			
+				
+				<h3 id="OutputFile.Write">func (*OutputFile) <a href="/src/goxpyriment/io/data.go?s=1183:1225#L49">Write</a>
+					<a class="permalink" href="#OutputFile.Write">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (o *<a href="#OutputFile">OutputFile</a>) Write(content <a href="/pkg/builtin/#string">string</a>)</pre>
+				<p>Write adds content to the buffer.
+
+				
+				
+				
+			
+				
+				<h3 id="OutputFile.WriteComment">func (*OutputFile) <a href="/src/goxpyriment/io/data.go?s=1463:1512#L59">WriteComment</a>
+					<a class="permalink" href="#OutputFile.WriteComment">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (o *<a href="#OutputFile">OutputFile</a>) WriteComment(comment <a href="/pkg/builtin/#string">string</a>)</pre>
+				<p>WriteComment adds a comment line to the buffer.
+
+				
+				
+				
+			
+				
+				<h3 id="OutputFile.WriteLine">func (*OutputFile) <a href="/src/goxpyriment/io/data.go?s=1326:1372#L54">WriteLine</a>
+					<a class="permalink" href="#OutputFile.WriteLine">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (o *<a href="#OutputFile">OutputFile</a>) WriteLine(content <a href="/pkg/builtin/#string">string</a>)</pre>
+				<p>WriteLine adds content followed by EOL to the buffer.
+
+				
+				
+				
+			
+		
+			
+			
+			<h2 id="ParallelPort">type <a href="/src/goxpyriment/io/ports.go?s=3620:3831#L141">ParallelPort</a>
+				<a class="permalink" href="#ParallelPort">&#xb6;</a>
+				
+				
+			</h2>
+			<p>ParallelPort represents a connection to a parallel device (LPT).
+Note: Actual hardware access to parallel ports is highly platform-dependent.
+On Linux, this typically uses /dev/parportN.
+On Windows, it often requires a third-party driver like InpOut32.
+
+			<pre>type ParallelPort struct {
+<span id="ParallelPort.Address"></span>    Address <a href="/pkg/builtin/#uintptr">uintptr</a> <span class="comment">// Base address (e.g., 0x378)</span>
+<span id="ParallelPort.Device"></span>    Device  <a href="/pkg/builtin/#string">string</a>  <span class="comment">// Device path (e.g., &#34;/dev/parport0&#34; on Linux)</span>
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewParallelPort">func <a href="/src/goxpyriment/io/ports.go?s=3889:3955#L150">NewParallelPort</a>
+					<a class="permalink" href="#NewParallelPort">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func NewParallelPort(address <a href="/pkg/builtin/#uintptr">uintptr</a>, device <a href="/pkg/builtin/#string">string</a>) *<a href="#ParallelPort">ParallelPort</a></pre>
+				<p>NewParallelPort creates a new ParallelPort instance.
+
+				
+				
+			
+
+			
+				
+				<h3 id="ParallelPort.Clear">func (*ParallelPort) <a href="/src/goxpyriment/io/ports.go?s=5135:5171#L188">Clear</a>
+					<a class="permalink" href="#ParallelPort.Clear">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (p *<a href="#ParallelPort">ParallelPort</a>) Clear() <a href="/pkg/builtin/#error">error</a></pre>
+				<p>Clear clears the parallel port (sets data lines to 0).
+
+				
+				
+				
+			
+				
+				<h3 id="ParallelPort.Initialize">func (*ParallelPort) <a href="/src/goxpyriment/io/ports.go?s=4083:4124#L158">Initialize</a>
+					<a class="permalink" href="#ParallelPort.Initialize">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (p *<a href="#ParallelPort">ParallelPort</a>) Initialize() <a href="/pkg/builtin/#error">error</a></pre>
+				<p>Initialize attempts to open the parallel port device.
+
+				
+				
+				
+			
+				
+				<h3 id="ParallelPort.Poll">func (*ParallelPort) <a href="/src/goxpyriment/io/ports.go?s=4989:5032#L182">Poll</a>
+					<a class="permalink" href="#ParallelPort.Poll">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (p *<a href="#ParallelPort">ParallelPort</a>) Poll() (<a href="/pkg/builtin/#byte">byte</a>, <a href="/pkg/builtin/#error">error</a>)</pre>
+				<p>Poll polls the parallel port status lines.
+Returns the state of the status lines (Acknowledge, Paper-Out, Selected).
+Following Expyriment&apos;s convention, this returns 3 bits of data.
+
+				
+				
+				
+			
+				
+				<h3 id="ParallelPort.Send">func (*ParallelPort) <a href="/src/goxpyriment/io/ports.go?s=4627:4671#L173">Send</a>
+					<a class="permalink" href="#ParallelPort.Send">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (p *<a href="#ParallelPort">ParallelPort</a>) Send(data <a href="/pkg/builtin/#byte">byte</a>) <a href="/pkg/builtin/#error">error</a></pre>
+				<p>Send sends data (8 bits) through the data lines of the parallel port.
+
+				
+				
+				
+			
+		
+			
+			
+			<h2 id="Screen">type <a href="/src/goxpyriment/io/screen.go?s=449:748#L4">Screen</a>
+				<a class="permalink" href="#Screen">&#xb6;</a>
+				
+				
+			</h2>
+			<p>Screen represents the display window and the hardware-accelerated renderer.
+It manages the double-buffering scheme and global font settings.
+
+			<pre>type Screen struct {
+<span id="Screen.Window"></span>    Window       *<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#Window">Window</a>
+<span id="Screen.Renderer"></span>    Renderer     *<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#Renderer">Renderer</a>
+<span id="Screen.BgColor"></span>    BgColor      <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#Color">Color</a>
+<span id="Screen.Width"></span>    Width        <a href="/pkg/builtin/#int">int</a>
+<span id="Screen.Height"></span>    Height       <a href="/pkg/builtin/#int">int</a>
+<span id="Screen.DefaultFont"></span>    DefaultFont  *<a href="/pkg/github.com/Zyko0/go-sdl3/ttf/">ttf</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/ttf/#Font">Font</a>
+<span id="Screen.CanvasOffset"></span>    CanvasOffset *<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#FPoint">FPoint</a> <span class="comment">// If not nil, use this instead of true center</span>
+<span id="Screen.LogicalSize"></span>    LogicalSize  *<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#FPoint">FPoint</a> <span class="comment">// If not nil, use this for CenterToSDL</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewScreen">func <a href="/src/goxpyriment/io/screen.go?s=871:971#L16">NewScreen</a>
+					<a class="permalink" href="#NewScreen">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func NewScreen(title <a href="/pkg/builtin/#string">string</a>, width, height <a href="/pkg/builtin/#int">int</a>, bgColor <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#Color">Color</a>, fullscreen <a href="/pkg/builtin/#bool">bool</a>) (*<a href="#Screen">Screen</a>, <a href="/pkg/builtin/#error">error</a>)</pre>
+				<p>NewScreen initializes a new SDL window and renderer with specified dimensions, background color, and fullscreen mode.
+
+				
+				
+			
+
+			
+				
+				<h3 id="Screen.CenterToSDL">func (*Screen) <a href="/src/goxpyriment/io/screen.go?s=1389:1450#L36">CenterToSDL</a>
+					<a class="permalink" href="#Screen.CenterToSDL">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (s *<a href="#Screen">Screen</a>) CenterToSDL(x, y <a href="/pkg/builtin/#float32">float32</a>) (<a href="/pkg/builtin/#float32">float32</a>, <a href="/pkg/builtin/#float32">float32</a>)</pre>
+				<p>CenterToSDL converts center-based coordinates to SDL top-left based coordinates.
+
+				
+				
+				
+			
+				
+				<h3 id="Screen.Clear">func (*Screen) <a href="/src/goxpyriment/io/screen.go?s=2472:2502#L65">Clear</a>
+					<a class="permalink" href="#Screen.Clear">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (s *<a href="#Screen">Screen</a>) Clear() <a href="/pkg/builtin/#error">error</a></pre>
+				<p>Clear clears the screen with the background color.
+
+				
+				
+				
+			
+				
+				<h3 id="Screen.Destroy">func (*Screen) <a href="/src/goxpyriment/io/screen.go?s=3308:3334#L96">Destroy</a>
+					<a class="permalink" href="#Screen.Destroy">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (s *<a href="#Screen">Screen</a>) Destroy()</pre>
+				<p>Destroy cleans up the window and renderer.
+
+				
+				
+				
+			
+				
+				<h3 id="Screen.LogicalCenterToSDL">func (*Screen) <a href="/src/goxpyriment/io/screen.go?s=1826:1917#L48">LogicalCenterToSDL</a>
+					<a class="permalink" href="#Screen.LogicalCenterToSDL">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (s *<a href="#Screen">Screen</a>) LogicalCenterToSDL(x, y <a href="/pkg/builtin/#float32">float32</a>, width, height <a href="/pkg/builtin/#float32">float32</a>) (<a href="/pkg/builtin/#float32">float32</a>, <a href="/pkg/builtin/#float32">float32</a>)</pre>
+				<p>LogicalCenterToSDL converts center-based coordinates to SDL top-left based coordinates using specified dimensions.
+
+				
+				
+				
+			
+				
+				<h3 id="Screen.SetLogicalSize">func (*Screen) <a href="/src/goxpyriment/io/screen.go?s=2030:2088#L53">SetLogicalSize</a>
+					<a class="permalink" href="#Screen.SetLogicalSize">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (s *<a href="#Screen">Screen</a>) SetLogicalSize(width, height <a href="/pkg/builtin/#int32">int32</a>) <a href="/pkg/builtin/#error">error</a></pre>
+				<p>SetLogicalSize sets a device-independent resolution for the renderer.
+
+				
+				
+				
+			
+				
+				<h3 id="Screen.SetVSync">func (*Screen) <a href="/src/goxpyriment/io/screen.go?s=3037:3079#L85">SetVSync</a>
+					<a class="permalink" href="#Screen.SetVSync">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (s *<a href="#Screen">Screen</a>) SetVSync(vsync <a href="/pkg/builtin/#int">int</a>) <a href="/pkg/builtin/#error">error</a></pre>
+				<p>SetVSync toggles vertical synchronization.
+vsync: 1 to enable, 0 to disable, -1 for adaptive vsync.
+
+				
+				
+				
+			
+				
+				<h3 id="Screen.Size">func (*Screen) <a href="/src/goxpyriment/io/screen.go?s=2305:2350#L59">Size</a>
+					<a class="permalink" href="#Screen.Size">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (s *<a href="#Screen">Screen</a>) Size() (<a href="/pkg/builtin/#int32">int32</a>, <a href="/pkg/builtin/#int32">int32</a>, <a href="/pkg/builtin/#error">error</a>)</pre>
+				<p>Size returns the current renderer output size.
+
+				
+				
+				
+			
+				
+				<h3 id="Screen.Update">func (*Screen) <a href="/src/goxpyriment/io/screen.go?s=2692:2723#L73">Update</a>
+					<a class="permalink" href="#Screen.Update">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (s *<a href="#Screen">Screen</a>) Update() <a href="/pkg/builtin/#error">error</a></pre>
+				<p>Update presents the rendered buffer.
+
+				
+				
+				
+			
+				
+				<h3 id="Screen.VSync">func (*Screen) <a href="/src/goxpyriment/io/screen.go?s=3169:3206#L90">VSync</a>
+					<a class="permalink" href="#Screen.VSync">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (s *<a href="#Screen">Screen</a>) VSync() (<a href="/pkg/builtin/#int">int</a>, <a href="/pkg/builtin/#error">error</a>)</pre>
+				<p>VSync returns the current VSync state.
+
+				
+				
+				
+			
+		
+			
+			
+			<h2 id="SerialPort">type <a href="/src/goxpyriment/io/ports.go?s=262:365#L6">SerialPort</a>
+				<a class="permalink" href="#SerialPort">&#xb6;</a>
+				
+				
+			</h2>
+			<p>SerialPort represents a connection to a serial device.
+
+			<pre>type SerialPort struct {
+<span id="SerialPort.PortName"></span>    PortName <a href="/pkg/builtin/#string">string</a>
+<span id="SerialPort.BaudRate"></span>    BaudRate <a href="/pkg/builtin/#int">int</a>
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewSerialPort">func <a href="/src/goxpyriment/io/ports.go?s=419:472#L14">NewSerialPort</a>
+					<a class="permalink" href="#NewSerialPort">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func NewSerialPort(name <a href="/pkg/builtin/#string">string</a>, baud <a href="/pkg/builtin/#int">int</a>) *<a href="#SerialPort">SerialPort</a></pre>
+				<p>NewSerialPort creates a new SerialPort instance.
+
+				
+				
+			
+
+			
+				
+				<h3 id="SerialPort.Clear">func (*SerialPort) <a href="/src/goxpyriment/io/ports.go?s=3073:3107#L125">Clear</a>
+					<a class="permalink" href="#SerialPort.Clear">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (s *<a href="#SerialPort">SerialPort</a>) Clear() <a href="/pkg/builtin/#error">error</a></pre>
+				<p>Clear clears the serial port input buffer.
+
+				
+				
+				
+			
+				
+				<h3 id="SerialPort.Close">func (*SerialPort) <a href="/src/goxpyriment/io/ports.go?s=924:958#L39">Close</a>
+					<a class="permalink" href="#SerialPort.Close">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (s *<a href="#SerialPort">SerialPort</a>) Close() <a href="/pkg/builtin/#error">error</a></pre>
+				<p>Close closes the serial port.
+
+				
+				
+				
+			
+				
+				<h3 id="SerialPort.Open">func (*SerialPort) <a href="/src/goxpyriment/io/ports.go?s=598:631#L22">Open</a>
+					<a class="permalink" href="#SerialPort.Open">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (s *<a href="#SerialPort">SerialPort</a>) Open() <a href="/pkg/builtin/#error">error</a></pre>
+				<p>Open opens the serial port with the configured settings.
+
+				
+				
+				
+			
+				
+				<h3 id="SerialPort.Poll">func (*SerialPort) <a href="/src/goxpyriment/io/ports.go?s=1740:1781#L76">Poll</a>
+					<a class="permalink" href="#SerialPort.Poll">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (s *<a href="#SerialPort">SerialPort</a>) Poll() (<a href="/pkg/builtin/#byte">byte</a>, <a href="/pkg/builtin/#error">error</a>)</pre>
+				<p>Poll polls the serial port for a single byte of data.
+Returns the byte read, or 0 if no data is available.
+
+				
+				
+				
+			
+				
+				<h3 id="SerialPort.ReadInput">func (*SerialPort) <a href="/src/goxpyriment/io/ports.go?s=2380:2428#L96">ReadInput</a>
+					<a class="permalink" href="#SerialPort.ReadInput">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (s *<a href="#SerialPort">SerialPort</a>) ReadInput() ([]<a href="/pkg/builtin/#byte">byte</a>, <a href="/pkg/builtin/#error">error</a>)</pre>
+				<p>ReadInput reads all currently available input from the serial port.
+
+				
+				
+				
+			
+				
+				<h3 id="SerialPort.ReadLine">func (*SerialPort) <a href="/src/goxpyriment/io/ports.go?s=2790:2837#L116">ReadLine</a>
+					<a class="permalink" href="#SerialPort.ReadLine">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (s *<a href="#SerialPort">SerialPort</a>) ReadLine() (<a href="/pkg/builtin/#string">string</a>, <a href="/pkg/builtin/#error">error</a>)</pre>
+				<p>ReadLine reads a line from the serial port (until a newline character).
+
+				
+				
+				
+			
+				
+				<h3 id="SerialPort.Send">func (*SerialPort) <a href="/src/goxpyriment/io/ports.go?s=1129:1171#L50">Send</a>
+					<a class="permalink" href="#SerialPort.Send">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (s *<a href="#SerialPort">SerialPort</a>) Send(data <a href="/pkg/builtin/#byte">byte</a>) <a href="/pkg/builtin/#error">error</a></pre>
+				<p>Send sends a single byte of data through the serial port.
+
+				
+				
+				
+			
+				
+				<h3 id="SerialPort.SendLine">func (*SerialPort) <a href="/src/goxpyriment/io/ports.go?s=1379:1440#L59">SendLine</a>
+					<a class="permalink" href="#SerialPort.SendLine">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (s *<a href="#SerialPort">SerialPort</a>) SendLine(data <a href="/pkg/builtin/#string">string</a>, cr, lf <a href="/pkg/builtin/#bool">bool</a>) <a href="/pkg/builtin/#error">error</a></pre>
+				<p>SendLine sends a string followed by an optional carriage return and/or line feed.
+
+				
+				
+				
+			
+		
+	
+
+	
+
+
+
+
+
+
+
+<div id="footer">
+Build version go1.21.1.<br>
+Except as <a href="https://developers.google.com/site-policies#restrictions">noted</a>,
+the content of this page is licensed under the
+Creative Commons Attribution 3.0 License,
+and code is licensed under a <a href="/LICENSE">BSD license</a>.<br>
+<a href="https://golang.org/doc/tos.html">Terms of Service</a> |
+<a href="https://www.google.com/intl/en/policies/privacy/">Privacy Policy</a>
+</div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+</body>
+</html>
