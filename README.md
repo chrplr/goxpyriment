@@ -32,7 +32,7 @@ Actually, to start, I gave Gemini 3 the link to [expyriment's API documentation]
 ## Installation
 
 ```bash
-go get github.com/yourusername/goxpyriment
+go get github.com/chrplr/goxpyriment
 ```
 
 ## Quick Start
@@ -43,8 +43,8 @@ A simple "Hello World" experiment that waits for a key press:
 package main
 
 import (
-	"goxpyriment/control"
-	"goxpyriment/stimuli"
+	"github.com/chrplr/goxpyriment/control"
+	"github.com/chrplr/goxpyriment/stimuli"
 	"log"
 )
 
@@ -78,24 +78,48 @@ func main() {
 - `misc/`: Timing and geometry utilities.
 - `examples/`: Ready-to-run examples (Stroop task, Lexical Decision, etc.).
 
-## Examples
+## Building and Running Examples
+
+You can build all examples at once using the provided script:
+
+```bash
+cd examples
+./build.sh
+```
+
+To run a specific example, navigate to its directory and use `go run`:
+
+```bash
+cd examples/parity_decision
+go run .
+```
+
+Alternatively, you can build and run the binary:
+
+```bash
+cd examples/parity_decision
+go build .
+./parity_decision
+```
+
+### Example Highlights
 
 The repository includes several experimental paradigms in the `examples/` directory:
 
-### Retinotopy Mapping
+#### Retinotopy Mapping
 A high-performance implementation of Retinotopic Mapping stimuli (wedges, rings, and bars) using 15 Hz dynamic alpha-masking.
 ```bash
 # Run a specific run (1-6) for a subject
 go run examples/retinotopy/main.go -s 0 -r 1
 ```
 
-### Stroop Task
+#### Stroop Task
 A classic Stroop interference task defaulting to 1920x1080 resolution.
 ```bash
 go run examples/stroop_task/main.go
 ```
 
-### Mental Logic Card Game
+#### Mental Logic Card Game
 An experiment testing mental logic and inference through card presentation and manipulation.
 ```bash
 go run examples/card_game/main.go
@@ -107,5 +131,5 @@ go run examples/card_game/main.go
 
 This project is licensed under the GNU Public License v3 - see the [LICENSE](LICENSE.txt) file for details.
 
-Christophe Pallier, 2006
+Christophe Pallier, 2026
 
