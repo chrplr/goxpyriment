@@ -78,17 +78,30 @@ func main() {
 - `misc/`: Timing and geometry utilities.
 - `examples/`: Ready-to-run examples (Stroop task, Lexical Decision, etc.).
 
-## Running Examples
+## Examples
 
-The repository includes several classic experimental paradigms in the `examples/` directory:
+The repository includes several experimental paradigms in the `examples/` directory:
 
+### Retinotopy Mapping
+A high-performance implementation of Retinotopic Mapping stimuli (wedges, rings, and bars) using 15 Hz dynamic alpha-masking.
 ```bash
-# Run the Parity Decision task
-go run examples/parity_decision/main.go
+# Run a specific run (1-6) for a subject
+go run examples/retinotopy/main.go -s 0 -r 1
+```
 
-# Run the Stroop task
+### Stroop Task
+A classic Stroop interference task defaulting to 1920x1080 resolution.
+```bash
 go run examples/stroop_task/main.go
 ```
+
+### Mental Logic Card Game
+An experiment testing mental logic and inference through card presentation and manipulation.
+```bash
+go run examples/card_game/main.go
+```
+
+*Note: Most examples support a `-d` flag for windowed development mode.*
 
 ## License
 
