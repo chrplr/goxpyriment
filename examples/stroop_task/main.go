@@ -17,16 +17,6 @@ import (
 	"github.com/Zyko0/go-sdl3/sdl"
 )
 
-//go:embed assets/Inconsolata.ttf
-var inconsolataFont []byte
-
-var (
-	Red    = sdl.Color{R: 255, G: 0, B: 0, A: 255}
-	Green  = sdl.Color{R: 0, G: 255, B: 0, A: 255}
-	Blue   = sdl.Color{R: 0, G: 0, B: 255, A: 255}
-	Yellow = sdl.Color{R: 255, G: 255, B: 0, A: 255}
-)
-
 type stroopTrial struct {
 	word  string
 	color sdl.Color
@@ -66,13 +56,9 @@ func main() {
 		misc.Wait(2000)
 	}
 
-	if err := exp.LoadFontFromMemory(inconsolataFont, 32); err != nil {
-		log.Printf("Warning: failed to load font: %v. Using fallback.", err)
-	}
-
 	// 2. Prepare design and stimuli
 	words := []string{"RED", "GREEN", "BLUE", "YELLOW"}
-	colors := []sdl.Color{Red, Green, Blue, Yellow}
+	colors := []sdl.Color{control.Red, control.Green, control.Blue, control.Yellow}
 	colorNames := []string{"RED", "GREEN", "BLUE", "YELLOW"}
 
 	var trials []stroopTrial

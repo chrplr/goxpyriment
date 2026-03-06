@@ -4,8 +4,12 @@
 package control
 
 import (
+	"log"
+
+	"github.com/chrplr/goxpyriment/assets_embed"
 	"github.com/chrplr/goxpyriment/design"
 	"github.com/chrplr/goxpyriment/io"
+	"github.com/chrplr/goxpyriment/stimuli"
 	"github.com/Zyko0/go-sdl3/bin/binsdl"
 	"github.com/Zyko0/go-sdl3/bin/binimg"
 	"github.com/Zyko0/go-sdl3/bin/binttf"
@@ -77,7 +81,15 @@ func (e *Experiment) Initialize() error {
 	e.Screen = screen
 	e.Keyboard = &io.Keyboard{}
 	e.Mouse = &io.Mouse{}
-	
+
+	// Load default font if not already set
+	if e.DefaultFont == nil {
+		if err := e.LoadFontFromMemory(assets_embed.InconsolataFont, 32); err != nil {
+			// Non-fatal error, just warn
+			log.Printf("Warning: failed to load default embedded font: %v", err)
+		}
+	}
+
 	// Initialize DataFile
 	dataFile, err := io.NewDataFile("", e.SubjectID, e.Name)
 	if err != nil {
@@ -192,6 +204,16 @@ func (e *Experiment) LoadFontFromMemory(data []byte, size float32) error {
 		e.Screen.DefaultFont = font
 	}
 	return nil
+}
+
+// PlayBuzzer plays the embedded buzzer sound.
+func (e *Experiment) PlayBuzzer() error {
+	return stimuli.PlaySoundFromMemory(e.AudioDevice, assets_embed.BuzzerWav)
+}
+
+// PlayCorrect plays the embedded correct sound.
+func (e *Experiment) PlayCorrect() error {
+	return stimuli.PlaySoundFromMemory(e.AudioDevice, assets_embed.CorrectWav)
 }
 
 // End cleans up resources.

@@ -90,3 +90,13 @@ func (s *Sound) Unload() error {
 	}
 	return nil
 }
+
+// PlaySoundFromMemory is a helper to play a sound from a byte slice on a given audio device.
+func PlaySoundFromMemory(audioDevice sdl.AudioDeviceID, data []byte) error {
+	s := NewSoundFromMemory(data)
+	if err := s.PreloadDevice(audioDevice); err != nil {
+		return err
+	}
+	defer s.Unload()
+	return s.Play()
+}

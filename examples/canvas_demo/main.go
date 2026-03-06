@@ -3,17 +3,14 @@
 
 package main
 import (
-	_ "embed"
 	"flag"
+	"log"
+
 	"github.com/chrplr/goxpyriment/control"
 	"github.com/chrplr/goxpyriment/stimuli"
-	"log"
 
 	"github.com/Zyko0/go-sdl3/sdl"
 )
-
-//go:embed assets/Inconsolata.ttf
-var inconsolataFont []byte
 
 func main() {
 	fullscreen := flag.Bool("F", false, "Launch in fullscreen display mode")
@@ -26,17 +23,13 @@ func main() {
 	}
 	defer exp.End()
 
-	if err := exp.LoadFontFromMemory(inconsolataFont, 24); err != nil {
-		log.Printf("Warning: failed to load font: %v. Using fallback.", err)
-	}
-
 	// 2. Prepare Canvas
 	canvas := stimuli.NewCanvas(400, 400, sdl.Color{R: 50, G: 50, B: 50, A: 255})
 	
 	// Prepare sub-stimuli to draw on canvas
 	// Coordinates are relative to canvas center (0,0)
 	rect := stimuli.NewRectangle(0, 0, 100, 100, sdl.Color{R: 200, G: 0, B: 0, A: 255})
-	text := stimuli.NewTextLine("Inside Canvas", 0, -80, sdl.Color{R: 255, G: 255, B: 255, A: 255})
+	text := stimuli.NewTextLine("Inside Canvas", 0, -80, control.White)
 	
 	// Title
 	title := stimuli.NewTextLine("Canvas Demo (Press Space)", 0, 250, control.DefaultTextColor)

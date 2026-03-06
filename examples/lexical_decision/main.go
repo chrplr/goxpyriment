@@ -19,9 +19,6 @@ import (
 	"github.com/Zyko0/go-sdl3/sdl"
 )
 
-//go:embed assets/Inconsolata.ttf
-var inconsolataFont []byte
-
 const (
 	WordResponseKey   = sdl.K_F
 	NonWordResponseKey = sdl.K_J
@@ -78,10 +75,6 @@ func main() {
 		log.Fatalf("failed to initialize experiment: %v", err)
 	}
 	defer exp.End()
-
-	if err := exp.LoadFontFromMemory(inconsolataFont, 32); err != nil {
-		log.Printf("Warning: failed to load font: %v. Using fallback.", err)
-	}
 
 	exp.Data.AddVariableNames([]string{"item", "category", "key", "rt"})
 

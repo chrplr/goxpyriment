@@ -24,9 +24,6 @@ import (
 	"github.com/Zyko0/go-sdl3/sdl"
 )
 
-//go:embed assets/Inconsolata.ttf
-var defaultFont []byte
-
 //go:embed assets/stimuli_png/fixationGrid.png
 var fixationGridData []byte
 
@@ -43,11 +40,11 @@ const (
 )
 
 var (
-	BackgroundColor = sdl.Color{R: 127, G: 127, B: 127, A: 255}
+	BackgroundColor = control.Gray
 	FixationColors  = []sdl.Color{
-		{R: 255, G: 255, B: 255, A: 255}, // White
-		{R: 0, G: 0, B: 0, A: 255},       // Black
-		{R: 255, G: 0, B: 0, A: 255},     // Red
+		control.White,
+		control.Black,
+		control.Red,
 	}
 )
 
@@ -80,7 +77,7 @@ func NewRetinotopy(exp *control.Experiment, runLabel string, scaling float64) *R
 func (r *Retinotopy) showStatus(msg string) error {
 	fmt.Println(msg)
 	r.Exp.Screen.Clear()
-	txt := stimuli.NewTextLine(msg, 0, 0, sdl.Color{R: 255, G: 255, B: 255, A: 255})
+	txt := stimuli.NewTextLine(msg, 0, 0, control.White)
 	if err := txt.Present(r.Exp.Screen, false, true); err != nil {
 		return err
 	}
@@ -347,7 +344,7 @@ func loadRawGray(path string) ([]byte, error) {
 
 func (r *Retinotopy) Instructions() error {
 	msg := "Press the response button as soon as the color of the dot changes\n\nPress any key to start"
-	instr := stimuli.NewTextBox(msg, 600, sdl.FPoint{X: 0, Y: 0}, sdl.Color{R: 255, G: 255, B: 255, A: 255})
+	instr := stimuli.NewTextBox(msg, 600, sdl.FPoint{X: 0, Y: 0}, control.White)
 	instr.Present(r.Exp.Screen, true, true)
 
 	for {
@@ -539,10 +536,6 @@ func main() {
 
 	// Hide the mouse cursor
 	exp.Mouse.ShowCursor(false)
-
-	if err := exp.LoadFontFromMemory(defaultFont, 24); err != nil {
-		log.Printf("Warning: failed to load font: %v", err)
-	}
 
 	retino := NewRetinotopy(exp, runLabel, *scaling)
 	if err := retino.LoadStimuli(*subjID, *runID, assetsDir); err != nil {

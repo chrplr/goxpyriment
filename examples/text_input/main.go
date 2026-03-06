@@ -4,7 +4,6 @@
 package main
 
 import (
-	_ "embed"
 	"flag"
 	"fmt"
 	"github.com/chrplr/goxpyriment/control"
@@ -13,9 +12,6 @@ import (
 
 	"github.com/Zyko0/go-sdl3/sdl"
 )
-
-//go:embed assets/Inconsolata.ttf
-var inconsolataFont []byte
 
 func main() {
 	fullscreen := flag.Bool("F", false, "Launch in fullscreen display mode")
@@ -28,17 +24,13 @@ func main() {
 	}
 	defer exp.End()
 
-	if err := exp.LoadFontFromMemory(inconsolataFont, 32); err != nil {
-		log.Printf("Warning: failed to load font: %v. Using fallback.", err)
-	}
-
 	// 2. Prepare TextInput
 	ti := stimuli.NewTextInput("Please enter your name:", 
-		sdl.FPoint{X: 0, Y: 0}, 
+		sdl.FPoint{X: 100, Y: 10}, 
 		400, 
 		sdl.Color{R: 50, G: 50, B: 50, A: 255}, 
 		sdl.Color{R: 200, G: 200, B: 200, A: 255}, 
-		sdl.Color{R: 255, G: 255, B: 255, A: 255})
+		control.White)
 
 	// 3. Run the experiment logic
 	err := exp.Run(func() error {
@@ -56,7 +48,7 @@ func main() {
 			400, 
 			sdl.Color{R: 50, G: 50, B: 50, A: 255}, 
 			sdl.Color{R: 50, G: 50, B: 50, A: 255}, // Hide frame
-			sdl.Color{R: 255, G: 255, B: 255, A: 255})
+			control.White)
 		
 		if _, err := msg.Get(exp.Screen, exp.Keyboard); err != nil {
 			return err

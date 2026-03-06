@@ -7,6 +7,7 @@ import (
 	_ "embed"
 	"flag"
 	"fmt"
+	"github.com/chrplr/goxpyriment/assets_embed"
 	"github.com/chrplr/goxpyriment/control"
 	"github.com/chrplr/goxpyriment/misc"
 	"github.com/chrplr/goxpyriment/stimuli"
@@ -17,9 +18,6 @@ import (
 	"github.com/Zyko0/go-sdl3/sdl"
 	"github.com/Zyko0/go-sdl3/ttf"
 )
-
-//go:embed assets/Inconsolata.ttf
-var inconsolataFont []byte
 
 const (
 	NTrialsPerTarget = 1
@@ -48,13 +46,8 @@ func main() {
 		log.Printf("Warning: failed to set logical size: %v", err)
 	}
 
-	// Default font size for instructions (32pt)
-	if err := exp.LoadFontFromMemory(inconsolataFont, 32); err != nil {
-		log.Printf("Warning: failed to load font: %v. Using fallback.", err)
-	}
-
 	// Create a larger font specifically for the numbers (64pt)
-	fontIO, _ := sdl.IOFromBytes(inconsolataFont)
+	fontIO, _ := sdl.IOFromBytes(assets_embed.InconsolataFont)
 	bigFont, err := ttf.OpenFontIO(fontIO, true, 64)
 	if err != nil {
 		log.Printf("Warning: failed to load big font: %v", err)

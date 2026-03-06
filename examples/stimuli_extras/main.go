@@ -13,9 +13,6 @@ import (
 	"github.com/Zyko0/go-sdl3/sdl"
 )
 
-//go:embed assets/Inconsolata.ttf
-var inconsolataFont []byte
-
 func main() {
 	fullscreen := flag.Bool("F", false, "Launch in fullscreen display mode")
 	flag.Parse()
@@ -27,31 +24,27 @@ func main() {
 	}
 	defer exp.End()
 
-	if err := exp.LoadFontFromMemory(inconsolataFont, 24); err != nil {
-		log.Printf("Warning: failed to load font: %v. Using fallback.", err)
-	}
-
 	// 2. Prepare stimuli
 	
 	// VisualMask
 	mask := stimuli.NewVisualMask(400, 400, 10, 10, 
-		sdl.Color{R: 127, G: 127, B: 127, A: 255}, 
-		sdl.Color{R: 0, G: 0, B: 0, A: 255}, 50)
+		control.Gray, 
+		control.Black, 50)
 	
 	// GaborPatch
 	gabor := stimuli.NewGaborPatch(40, 45, 20, 0, 0, 1, 
-		sdl.Color{R: 127, G: 127, B: 127, A: 255}, 300)
+		control.Gray, 300)
 	
 	// DotCloud
 	cloud := stimuli.NewDotCloud(200, 
 		sdl.Color{R: 50, G: 50, B: 50, A: 255}, 
-		sdl.Color{R: 255, G: 255, B: 255, A: 255})
+		control.White)
 	cloud.Make(50, 5, 2)
 	
 	// StimulusCircle
 	var dots []stimuli.VisualStimulus
 	for i := 0; i < 12; i++ {
-		dots = append(dots, stimuli.NewCircle(10, sdl.Color{R: 0, G: 255, B: 0, A: 255}))
+		dots = append(dots, stimuli.NewCircle(10, control.Green))
 	}
 	circle := stimuli.NewStimulusCircle(150, dots)
 	circle.Make(true, true)

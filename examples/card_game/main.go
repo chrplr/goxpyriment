@@ -18,9 +18,6 @@ import (
 
 // Assets embedded in the binary
 //
-//go:embed assets/Inconsolata.ttf
-var inconsolataFont []byte
-
 //go:embed assets/cards_pics_small/QH.png
 var qhImg []byte
 
@@ -114,10 +111,6 @@ func main() {
 	// Wait for fullscreen transition to stabilize
 	if isFullscreen {
 		misc.Wait(2000)
-	}
-
-	if err := exp.LoadFontFromMemory(inconsolataFont, 24); err != nil {
-		log.Printf("Warning: failed to load font: %v", err)
 	}
 
 	exp.AddDataVariableNames([]string{"condition", "response", "rt", "correct"})

@@ -17,9 +17,6 @@ import (
 	"github.com/Zyko0/go-sdl3/sdl"
 )
 
-//go:embed assets/Inconsolata.ttf
-var inconsolataFont []byte
-
 //go:embed assets/star.png
 var starImg []byte
 
@@ -28,11 +25,6 @@ var leftArrowImg []byte
 
 //go:embed assets/right_arrow.png
 var rightArrowImg []byte
-
-var (
-	Grey  = sdl.Color{R: 127, G: 127, B: 127, A: 255}
-	Black = sdl.Color{R: 0, G: 0, B: 0, A: 255}
-)
 
 const MaxResponseDuration = 2000
 
@@ -49,17 +41,13 @@ func main() {
 
 	// 1. Create and initialize the experiment
 	exp := control.NewExperiment("Posner-task", 1368, 1024, *fullscreen)
-	exp.BackgroundColor = Grey
-	exp.ForegroundColor = Black
+	exp.BackgroundColor = control.Gray
+	exp.ForegroundColor = control.Black
 	
 	if err := exp.Initialize(); err != nil {
 		log.Fatalf("failed to initialize experiment: %v", err)
 	}
 	defer exp.End()
-
-	if err := exp.LoadFontFromMemory(inconsolataFont, 32); err != nil {
-		log.Printf("Warning: failed to load font: %v. Using fallback.", err)
-	}
 
 	// 2. Prepare design
 	var trials []trial
@@ -76,7 +64,7 @@ func main() {
 	})
 
 	// 3. Prepare stimuli
-	cross := stimuli.NewFixCross(40, 6, Black)
+	cross := stimuli.NewFixCross(40, 6, control.Black)
 	
 	targetLeft := stimuli.NewPictureFromMemory(starImg, -150, 0)
 	targetRight := stimuli.NewPictureFromMemory(starImg, 150, 0)
@@ -84,7 +72,7 @@ func main() {
 	cueRight := stimuli.NewPictureFromMemory(rightArrowImg, 0, 0)
 
 	instrText := "Keep your eyes fixated on the central cross.\n\nA cue will appear followed by a star.\nPress the spacebar as quickly as possible when you see the *STAR*.\n\nNote that the cue indicates the most probable location of the star.\n\nPress space to start."
-	instructions := stimuli.NewTextBox(instrText, 600, sdl.FPoint{X: 0, Y: 100}, Black)
+	instructions := stimuli.NewTextBox(instrText, 600, sdl.FPoint{X: 0, Y: 100}, control.Black)
 
 	// 4. Run the experiment logic
 	err := exp.Run(func() error {

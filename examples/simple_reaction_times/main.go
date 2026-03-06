@@ -17,9 +17,6 @@ import (
 	"github.com/Zyko0/go-sdl3/sdl"
 )
 
-//go:embed assets/Inconsolata.ttf
-var inconsolataFont []byte
-
 const (
 	NTrials          = 20
 	MinWaitTime      = 1000
@@ -42,10 +39,6 @@ func main() {
 	defer exp.End()
 
 	exp.Data.AddVariableNames([]string{"trial", "wait_time", "key", "rt"})
-
-	if err := exp.LoadFontFromMemory(inconsolataFont, 32); err != nil {
-		log.Printf("Warning: failed to load font: %v. Using fallback.", err)
-	}
 
 	// 2. Prepare stimuli
 	target := stimuli.NewTextLine("+", 0, 0, control.DefaultTextColor)

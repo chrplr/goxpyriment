@@ -39,6 +39,14 @@ func (t *TextBox) preload(screen *io.Screen, font *ttf.Font) error {
 		return nil
 	}
 
+	if t.Text == "" {
+		t.Width = 0
+		t.Height = float32(font.Height())
+		t.Texture = nil
+		t.Font = font
+		return nil
+	}
+
 	// Set alignment
 	font.SetWrapAlignment(t.Alignment)
 

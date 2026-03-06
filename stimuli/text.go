@@ -33,7 +33,15 @@ func (t *TextLine) preload(screen *io.Screen, font *ttf.Font) error {
 	if font == nil {
 		return nil // Fallback to DebugText if no font provided
 	}
-	
+
+	if t.Text == "" {
+		t.Width = 0
+		t.Height = float32(font.Height())
+		t.Texture = nil
+		t.Font = font
+		return nil
+	}
+
 	surface, err := font.RenderTextBlended(t.Text, t.Color)
 	if err != nil {
 		return err

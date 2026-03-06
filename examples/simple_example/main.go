@@ -16,9 +16,6 @@ import (
 	"github.com/Zyko0/go-sdl3/sdl"
 )
 
-//go:embed assets/Inconsolata.ttf
-var inconsolataFont []byte
-
 //go:embed assets/bonjour.wav
 var bonjourWav []byte
 
@@ -32,10 +29,6 @@ func main() {
 	}
 	defer exp.End()
 
-	if err := exp.LoadFontFromMemory(inconsolataFont, 32); err != nil {
-		log.Printf("Warning: failed to load font: %v. Using fallback.", err)
-	}
-
 	// 2. Prepare design
 	block := design.NewBlock("Main Block")
 	for i := 0; i < 5; i++ {
@@ -44,10 +37,10 @@ func main() {
 		block.AddTrial(trial, 1, false)
 	}
 
-	// 3. Prepare stimuli
+		// 3. Prepare stimuli
 	instr := stimuli.NewTextBox("Press any key to start the experiment", 600, sdl.FPoint{X: 0, Y: 100}, control.DefaultTextColor)
 	fixation := stimuli.NewTextLine("+", 0, 0, control.DefaultTextColor)
-	rect := stimuli.NewRectangle(0, 0, 100, 100, sdl.Color{R: 255, G: 0, B: 0, A: 255})
+	rect := stimuli.NewRectangle(0, 0, 100, 100, control.Red)
 	finish := stimuli.NewTextBox("Experiment Finished! Press any key to exit.", 600, sdl.FPoint{X: 0, Y: 100}, control.DefaultTextColor)
 	sound := stimuli.NewSoundFromMemory(bonjourWav)
 
