@@ -100,21 +100,19 @@ func main() {
 }
 ```
 
-Assuming Go is installed on your computer (), you can generate a executable program from the above code:
+Assuming Go is installed on your computer (<https://go.dev/doc/install>), you can generate an executable program from the above code:
 
 ```bash
 # Note: the files are in `examples/hello_word` in this repository 
 cp main.go assets/Inconsolata.ttf assets/bonjour.wav  ~/tmp
-cd ~tmp
+cd ~/tmp
 go mod init hello
 go mod tidy
 go build . -o hello_goxpy
 ```
 
-
-You can then run `hello_goxpy` from any location on your computer.
-
-As cross-compiling is trivial in Go, one can easily generate apps for Windows, MacOS and Linux, on intel or arm architecture, from any computer.
+You can then execute `hello_goxpy` from any location on your computer.
+Moreover, as cross-compiling is [trivial](https://golangcookbook.com/chapters/running/cross-compiling/) in Go, one can easily generate apps for Windows, MacOS and Linux, on intel or arm architecture, from any computer.
  
  
 
