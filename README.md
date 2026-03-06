@@ -69,20 +69,15 @@ func main() {
 	}
 	defer exp.End()
 
-	if err := exp.LoadFontFromMemory(inconsolataFont, 32); err != nil {
-		log.Printf("Warning: failed to load font: %v. Using fallback.", err)
-	}
+	exp.LoadFontFromMemory(inconsolataFont, 32)
 
 	greetings := stimuli.NewTextBox("Hello World !", 600, sdl.FPoint{X: 0, Y: 100}, control.DefaultTextColor)
 	instr := stimuli.NewTextBox("Press any key to start the experiment", 600, sdl.FPoint{X: 0, Y: 100}, control.DefaultTextColor)
 	finish := stimuli.NewTextBox("Experiment Finished!\n Press any key to exit.", 600, sdl.FPoint{X: 0, Y: 100}, control.DefaultTextColor)
 
 	sound := stimuli.NewSoundFromMemory(bonjourWav)
-	if err := sound.PreloadDevice(exp.AudioDevice); err != nil {
-		log.Printf("Warning: failed to load sound: %v", err)
-	}
+	sound.PreloadDevice(exp.AudioDevice)
 
-	// Run the experiment logic
 	exp.Run(func() error {
 		instr.Present(exp.Screen, true, true)
 		exp.Keyboard.Wait()
