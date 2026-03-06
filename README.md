@@ -1,7 +1,7 @@
 # goxpyriment
 
 
-goxpyriment` is a high-level Go framework for building behavioral and psychological experiments.
+`goxpyriment` is a high-level Go framework for building behavioral and psychological experiments.
 
 It is directly inspired from [expyriment.org](http://expyriment.org) ; see Krause, F., & Lindemann, O. (2014). Expyriment: A Python library for cognitive and neuroscientific experiments. Behavior Research Methods, 46(2), 416-428. <https://doi.org/10.3758/s13428-013-0390-6>.
 
