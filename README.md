@@ -37,7 +37,7 @@ go get github.com/chrplr/goxpyriment
 
 ## Quick Start
 
-Here is the code `main.go` of a simple "Hello World" experiment.
+Here is the code of a simple "Hello World" experiment.
 
 ```go
 package main
@@ -98,8 +98,8 @@ func main() {
 Assuming Go is installed on your computer (<https://go.dev/doc/install>), you can generate an executable program from the above code:
 
 ```bash
-# Note: the files are in `examples/hello_word` in this repository 
-cp main.go assets/Inconsolata.ttf assets/bonjour.wav  ~/tmp
+# Note: main.go and the assets are in `examples/hello_word` in this repository 
+cp -r examples/hello_world  ~/tmp
 cd ~/tmp
 go mod init hello
 go mod tidy
@@ -109,13 +109,6 @@ go build . -o hello_goxpy
 You can then execute `hello_goxpy` from any location on your computer.
 Moreover, as cross-compiling is [trivial](https://golangcookbook.com/chapters/running/cross-compiling/) in Go, one can easily generate apps for Windows, MacOS and Linux, on intel or arm architecture, from any computer.
  
- 
-
-
-
-
-, read [this](examples/hello_world/README.md)
-
 
 ## Project Structure
 
