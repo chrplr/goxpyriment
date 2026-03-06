@@ -53,9 +53,6 @@ import (
 	"github.com/Zyko0/go-sdl3/sdl"
 )
 
-//go:embed assets/Inconsolata.ttf
-var inconsolataFont []byte
-
 //go:embed assets/bonjour.wav
 var bonjourWav []byte
 
@@ -68,8 +65,6 @@ func main() {
 		log.Fatalf("failed to initialize experiment: %v", err)
 	}
 	defer exp.End()
-
-	exp.LoadFontFromMemory(inconsolataFont, 32)
 
 	greetings := stimuli.NewTextBox("Hello World !", 600, sdl.FPoint{X: 0, Y: 100}, control.DefaultTextColor)
 	instr := stimuli.NewTextBox("Press any key to start the experiment", 600, sdl.FPoint{X: 0, Y: 100}, control.DefaultTextColor)
@@ -102,7 +97,7 @@ Assuming Go is installed on your computer (<https://go.dev/doc/install>), you ca
 cp -r examples/hello_world  ~/tmp
 cd ~/tmp
 go mod init hello
-go mod tidy
+go mod tidy   # This will download all the necessary modules. Will take some time the first time.
 go build . -o hello_goxpy
 ```
 
