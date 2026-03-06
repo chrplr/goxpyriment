@@ -37,17 +37,18 @@ go get github.com/chrplr/goxpyriment
 
 ## Quick Start
 
-A simple "Hello World" experiment (see the folder examples/hello_world):
+Here is the code `main.go` of a simple "Hello World" experiment.
 
 ```go
 package main
 
 import (
-	_ "embed"
+	_ "embed"   # to embed stimuli files, font, ... inside the executable
 	"flag"
+	"log"
+
 	"github.com/chrplr/goxpyriment/control"
 	"github.com/chrplr/goxpyriment/stimuli"
-	"log"
 
 	"github.com/Zyko0/go-sdl3/sdl"
 )
@@ -61,7 +62,7 @@ var bonjourWav []byte
 func main() {
 	fullscreen := flag.Bool("F", false, "Launch in fullscreen display mode")
 	flag.Parse()
-        
+
 	exp := control.NewExperiment("My First Go Experiment", 1368, 1024, *fullscreen)
 	if err := exp.Initialize(); err != nil {
 		log.Fatalf("failed to initialize experiment: %v", err)
@@ -72,48 +73,55 @@ func main() {
 		log.Printf("Warning: failed to load font: %v. Using fallback.", err)
 	}
 
-        greetings := stimuli.NewTextBox("Hello World !", 600, sdl.FPoint{X: 0, Y: 100}, control.DefaultTextColor)
+	greetings := stimuli.NewTextBox("Hello World !", 600, sdl.FPoint{X: 0, Y: 100}, control.DefaultTextColor)
 	instr := stimuli.NewTextBox("Press any key to start the experiment", 600, sdl.FPoint{X: 0, Y: 100}, control.DefaultTextColor)
 	finish := stimuli.NewTextBox("Experiment Finished!\n Press any key to exit.", 600, sdl.FPoint{X: 0, Y: 100}, control.DefaultTextColor)
-        
+
 	sound := stimuli.NewSoundFromMemory(bonjourWav)
 	if err := sound.PreloadDevice(exp.AudioDevice); err != nil {
 		log.Printf("Warning: failed to load sound: %v", err)
 	}
 
 	// Run the experiment logic
-	err := exp.Run(func() error {
-		if err := instr.Present(exp.Screen, true, true); err != nil {
-			return err
-		}
-		if _, err := exp.Keyboard.Wait(); err != nil {
-			return err
-		}
+	exp.Run(func() error {
+		instr.Present(exp.Screen, true, true)
+		exp.Keyboard.Wait()
+		sound.Play()
 
-		if err := sound.Play(); err != nil {
-			return err
-		}
+		greetings.Present(exp.Screen, true, true)
+		exp.Keyboard.Wait()
 
-                greetings.Present(exp.Screen, true, true)
-                exp.Keyboard.Wait()
-                
-		if err := finish.Present(exp.Screen, true, true); err != nil {
-			return err
-		}
-		if _, err := exp.Keyboard.Wait(); err != nil {
-			return err
-		}
+		finish.Present(exp.Screen, true, true)
+		exp.Keyboard.Wait()
 
-		return sdl.EndLoop // Graceful exit
+		return sdl.EndLoop
 	})
 
-	if err != nil && err != sdl.EndLoop {
-		log.Fatalf("experiment error: %v", err)
-	}
 }
 ```
 
-To generate a executable program from this code, read [this](examples/hello_world/README.md)
+Assuming Go is installed on your computer (), you can generate a executable program from the above code:
+
+```bash
+# Note: the files are in `examples/hello_word` in this repository 
+cp main.go assets/Inconsolata.ttf assets/bonjour.wav  ~/tmp
+cd ~tmp
+go mod init hello
+go mod tidy
+go build . -o hello_goxpy
+```
+
+
+You can then run `hello_goxpy` from any location on your computer.
+
+As cross-compiling is trivial in Go, one can easily generate apps for Windows, MacOS and Linux, on intel or arm architecture, from any computer.
+ 
+ 
+
+
+
+
+, read [this](examples/hello_world/README.md)
 
 
 ## Project Structure
