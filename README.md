@@ -37,37 +37,84 @@ go get github.com/chrplr/goxpyriment
 
 ## Quick Start
 
-A simple "Hello World" experiment that waits for a key press:
+A simple "Hello World" experiment (see the folder examples/hello_world):
 
 ```go
 package main
 
 import (
+	_ "embed"
+	"flag"
 	"github.com/chrplr/goxpyriment/control"
 	"github.com/chrplr/goxpyriment/stimuli"
 	"log"
+
+	"github.com/Zyko0/go-sdl3/sdl"
 )
 
+//go:embed assets/Inconsolata.ttf
+var inconsolataFont []byte
+
+//go:embed assets/bonjour.wav
+var bonjourWav []byte
+
 func main() {
-	// 1. Initialize the experiment
-	exp := control.NewExperiment("Hello World", 800, 600, false)
+	fullscreen := flag.Bool("F", false, "Launch in fullscreen display mode")
+	flag.Parse()
+        
+	exp := control.NewExperiment("My First Go Experiment", 1368, 1024, *fullscreen)
 	if err := exp.Initialize(); err != nil {
-		log.Fatal(err)
+		log.Fatalf("failed to initialize experiment: %v", err)
 	}
 	defer exp.End()
 
-	// 2. Prepare a stimulus
-	text := stimuli.NewTextLine("Hello, GoXpyriment!", 0, 0, control.DefaultTextColor)
+	if err := exp.LoadFontFromMemory(inconsolataFont, 32); err != nil {
+		log.Printf("Warning: failed to load font: %v. Using fallback.", err)
+	}
 
-	// 3. Run the logic
-	exp.Run(func() error {
-		// Present the text and wait for any key
-		text.Present(exp.Screen, true, true)
-		exp.Keyboard.Wait()
-		return nil
+        greetings := stimuli.NewTextBox("Hello World !", 600, sdl.FPoint{X: 0, Y: 100}, control.DefaultTextColor)
+	instr := stimuli.NewTextBox("Press any key to start the experiment", 600, sdl.FPoint{X: 0, Y: 100}, control.DefaultTextColor)
+	finish := stimuli.NewTextBox("Experiment Finished!\n Press any key to exit.", 600, sdl.FPoint{X: 0, Y: 100}, control.DefaultTextColor)
+        
+	sound := stimuli.NewSoundFromMemory(bonjourWav)
+	if err := sound.PreloadDevice(exp.AudioDevice); err != nil {
+		log.Printf("Warning: failed to load sound: %v", err)
+	}
+
+	// Run the experiment logic
+	err := exp.Run(func() error {
+		if err := instr.Present(exp.Screen, true, true); err != nil {
+			return err
+		}
+		if _, err := exp.Keyboard.Wait(); err != nil {
+			return err
+		}
+
+		if err := sound.Play(); err != nil {
+			return err
+		}
+
+                greetings.Present(exp.Screen, true, true)
+                exp.Keyboard.Wait()
+                
+		if err := finish.Present(exp.Screen, true, true); err != nil {
+			return err
+		}
+		if _, err := exp.Keyboard.Wait(); err != nil {
+			return err
+		}
+
+		return sdl.EndLoop // Graceful exit
 	})
+
+	if err != nil && err != sdl.EndLoop {
+		log.Fatalf("experiment error: %v", err)
+	}
 }
 ```
+
+To generate a executable program from this code, read [this](examples/hello_world/README.md)
+
 
 ## Project Structure
 
