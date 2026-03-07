@@ -39,6 +39,7 @@ func main() {
 
 	// Run the experiment logic
 	exp.Run(func() error {
+		exp.PlayCorrect()
 		instr.Present(exp.Screen, true, true)
 		exp.Keyboard.Wait()
 		sound.Play()

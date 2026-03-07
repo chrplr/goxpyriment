@@ -47,14 +47,14 @@ func main() {
 	defer exp.End()
 
 	// Set logical size for consistent centering
-	if err := exp.SetLogicalSize(int32(winW), int32(winH)); err != nil {
-		log.Printf("Warning: failed to set logical size: %v", err)
-	}
+	//if err := exp.SetLogicalSize(int32(winW), int32(winH)); err != nil {
+	//	log.Printf("Warning: failed to set logical size: %v", err)
+	//}
 
 	// Wait for fullscreen transition to stabilize
-	if isFullscreen {
-		misc.Wait(2000)
-	}
+	// if isFullscreen {
+	//	misc.Wait(2000)
+	// }
 
 	// 2. Prepare design and stimuli
 	words := []string{"RED", "GREEN", "BLUE", "YELLOW"}

@@ -10,7 +10,7 @@ import "github.com/Zyko0/go-sdl3/sdl"
 const (
 	DefaultWindowWidth  = 800         // Default width of the experiment window in pixels.
 	DefaultWindowHeight = 600         // Default height of the experiment window in pixels.
-	DefaultWindowTitle  = "Expyriment" // Default title of the experiment window.
+	DefaultWindowTitle  = "Goxpyriment" // Default title of the experiment window.
 )
 
 var (

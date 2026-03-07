@@ -109,9 +109,9 @@ func main() {
 	}
 
 	// Wait for fullscreen transition to stabilize
-	if isFullscreen {
-		misc.Wait(2000)
-	}
+	// if isFullscreen {
+	//	misc.Wait(2000)
+	// }
 
 	exp.AddDataVariableNames([]string{"condition", "response", "rt", "correct"})
 

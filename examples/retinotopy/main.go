@@ -530,9 +530,9 @@ func main() {
 	}
 
 	// Wait for fullscreen transition to stabilize
-	if isFullscreen {
-		misc.Wait(2000)
-	}
+	// if isFullscreen {
+	//	misc.Wait(2000)
+	//}
 
 	// Hide the mouse cursor
 	exp.Mouse.ShowCursor(false)
