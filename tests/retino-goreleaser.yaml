@@ -1,0 +1,90 @@
+# .goreleaser.yaml
+version: 2
+
+before:
+  hooks:
+    - go mod tidy
+    # Download SDL3 DLLs for Windows to bundle them in the installers
+    - "bash -c 'mkdir -p libs/windows_amd64 libs/windows_arm64'"
+    - "bash -c 'if [ ! -f sdl3_win_amd64.zip ]; then curl -L https://github.com/libsdl-org/SDL/releases/download/release-3.2.4/SDL3-3.2.4-win32-x64.zip -o sdl3_win_amd64.zip; fi'"
+    - "bash -c 'unzip -o -j sdl3_win_amd64.zip SDL3.dll -d libs/windows_amd64'"
+    - "bash -c 'if [ ! -f sdl3_win_arm64.zip ]; then curl -L https://github.com/libsdl-org/SDL/releases/download/release-3.2.4/SDL3-3.2.4-win32-arm64.zip -o sdl3_win_arm64.zip; fi'"
+    - "bash -c 'unzip -o -j sdl3_win_arm64.zip SDL3.dll -d libs/windows_arm64'"
+
+builds:
+  - id: unix
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    main: ./retinotopy.go
+    binary: retinotopy
+
+  - id: windows
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    main: ./retinotopy.go
+    binary: retinotopy
+
+archives:
+  - id: unix-zip
+    ids:
+      - unix
+    name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
+    formats: [zip]
+    files:
+      - assets/**/*
+      - README.md
+
+  - id: windows-zip
+    ids:
+      - windows
+    name_template: "{{ .ProjectName }}_{{ .Os }}_{{ .Arch }}"
+    formats: [zip]
+    files:
+      - assets/**/*
+      - README.md
+      - src: "libs/{{ .Os }}_{{ .Arch }}/SDL3.dll"
+        dst: "."
+        strip_parent: true
+
+nfpms:
+  - id: linux-pkgs
+    ids:
+      - unix
+    maintainer: Christophe Pallier <christophe@pallier.org>
+    description: Retinotopy Experiment
+    homepage: https://github.com/chrplr/retinotopy-go
+    license: GPL-3.0
+    formats:
+      - deb
+      - rpm
+    # By linking to 'unix' id and NOT including the binary in contents, 
+    # GoReleaser will automatically put it in /usr/bin/retinotopy.
+    contents:
+      - src: assets/**/*
+        dst: /usr/share/retinotopy/assets
+      - src: README.md
+        dst: /usr/share/doc/retinotopy/README.md
+
+checksum:
+  name_template: 'checksums.txt'
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-next"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
