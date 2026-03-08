@@ -69,11 +69,25 @@ func (s *Sound) PreloadDevice(audioDevice sdl.AudioDeviceID) error {
 // Play plays the sound.
 func (s *Sound) Play() error {
 	if s.Stream == nil {
-		// Attempt to preload if not already done. 
+		return nil
 	}
 	// Clear any remaining data and put new data
 	s.Stream.Clear()
 	return s.Stream.PutData(s.Data)
+}
+
+// Wait blocks until the sound has finished playing.
+func (s *Sound) Wait() {
+	if s.Stream == nil {
+		return
+	}
+	for {
+		n, _ := s.Stream.Queued()
+		if n <= 0 {
+			break
+		}
+		sdl.Delay(10)
+	}
 }
 
 // Present plays the sound (implements Stimulus interface).
@@ -91,12 +105,20 @@ func (s *Sound) Unload() error {
 	return nil
 }
 
-// PlaySoundFromMemory is a helper to play a sound from a byte slice on a given audio device.
+// PlaySoundFromMemory is a helper to play a sound from a byte slice on a given audio device in the background.
 func PlaySoundFromMemory(audioDevice sdl.AudioDeviceID, data []byte) error {
 	s := NewSoundFromMemory(data)
 	if err := s.PreloadDevice(audioDevice); err != nil {
 		return err
 	}
-	defer s.Unload()
-	return s.Play()
+	if err := s.Play(); err != nil {
+		s.Unload()
+		return err
+	}
+	// Run cleanup in background
+	go func() {
+		s.Wait()
+		s.Unload()
+	}()
+	return nil
 }

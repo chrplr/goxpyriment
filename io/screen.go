@@ -24,22 +24,41 @@ type Screen struct {
 
 // NewScreen initializes a new SDL window and renderer with specified dimensions, background color, and fullscreen mode.
 func NewScreen(title string, width, height int, bgColor sdl.Color, fullscreen bool) (*Screen, error) {
-	var flags sdl.WindowFlags
+	var flags sdl.WindowFlags = sdl.WINDOW_HIDDEN
+
+	w, h := width, height
 	if fullscreen {
-		flags = sdl.WINDOW_FULLSCREEN
+		flags |= sdl.WINDOW_FULLSCREEN
+		// Use native resolution for the window creation to avoid mode-switching glitches
+		display := sdl.GetPrimaryDisplay()
+		if mode, err := display.DesktopDisplayMode(); err == nil {
+			w, h = int(mode.W), int(mode.H)
+		}
 	}
-	window, renderer, err := sdl.CreateWindowAndRenderer(title, width, height, flags)
+
+	window, renderer, err := sdl.CreateWindowAndRenderer(title, w, h, flags)
 	if err != nil {
 		return nil, err
 	}
 
-	return &Screen{
+	s := &Screen{
 		Window:   window,
 		Renderer: renderer,
 		BgColor:  bgColor,
 		Width:    width,
 		Height:   height,
-	}, nil
+	}
+
+	// Apply logical scaling if fullscreen or if requested resolution doesn't match window size
+	if fullscreen || w != width || h != height {
+		_ = s.SetLogicalSize(int32(width), int32(height))
+	}
+
+	if err := window.Show(); err != nil {
+		return nil, err
+	}
+
+	return s, nil
 }
 
 // CenterToSDL converts center-based coordinates to SDL top-left based coordinates.
