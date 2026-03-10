@@ -39,7 +39,9 @@ func main() {
 
 	// Run the experiment logic
 	exp.Run(func() error {
-		exp.PlayCorrect()
+		if err := stimuli.PlayPing(exp.AudioDevice); err != nil {
+			log.Printf("Warning: failed to play ping: %v", err)
+		}
 		instr.Present(exp.Screen, true, true)
 		exp.Keyboard.Wait()
 		sound.Play()

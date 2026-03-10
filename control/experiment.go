@@ -9,13 +9,20 @@ import (
 	"github.com/chrplr/goxpyriment/assets_embed"
 	"github.com/chrplr/goxpyriment/design"
 	"github.com/chrplr/goxpyriment/io"
-	"github.com/chrplr/goxpyriment/stimuli"
-	"github.com/Zyko0/go-sdl3/bin/binsdl"
 	"github.com/Zyko0/go-sdl3/bin/binimg"
+	"github.com/Zyko0/go-sdl3/bin/binsdl"
 	"github.com/Zyko0/go-sdl3/bin/binttf"
 	"github.com/Zyko0/go-sdl3/sdl"
 	"github.com/Zyko0/go-sdl3/ttf"
 )
+
+// EventState provides a convenient summary of the last processed input events.
+// It is updated by Experiment.PollEvents.
+type EventState struct {
+	LastKey         sdl.Keycode
+	LastMouseButton uint32
+	QuitRequested   bool
+}
 
 // Experiment manages the overall state and initialization.
 type Experiment struct {
@@ -30,13 +37,16 @@ type Experiment struct {
 	ForegroundColor sdl.Color
 	DefaultFont     *ttf.Font
 	AudioDevice     sdl.AudioDeviceID
+	Audio           *AudioManager
 	WindowWidth     int
 	WindowHeight    int
 	Fullscreen      bool
-	
-	sdlLoader interface { Unload() }
-	imgLoader interface { Unload() }
-	ttfLoader interface { Unload() }
+
+	sdlLoader interface{ Unload() }
+	imgLoader interface{ Unload() }
+	ttfLoader interface{ Unload() }
+
+	event EventState
 }
 
 // NewExperiment creates a new Experiment instance.
@@ -58,22 +68,23 @@ func (e *Experiment) Initialize() error {
 	e.sdlLoader = binsdl.Load()
 	e.imgLoader = binimg.Load()
 	e.ttfLoader = binttf.Load()
-	
+
 	if err := sdl.Init(sdl.INIT_VIDEO | sdl.INIT_EVENTS | sdl.INIT_AUDIO); err != nil {
 		return err
 	}
-	
+
 	if err := ttf.Init(); err != nil {
 		return err
 	}
-	
+
 	// Initialize Audio
 	dev, err := sdl.AUDIO_DEVICE_DEFAULT_PLAYBACK.OpenAudioDevice(nil)
 	if err != nil {
 		return err
 	}
 	e.AudioDevice = dev
-	
+	e.Audio = &AudioManager{Device: dev}
+
 	screen, err := io.NewScreen(e.Name, e.WindowWidth, e.WindowHeight, e.BackgroundColor, e.Fullscreen)
 	if err != nil {
 		return err
@@ -96,35 +107,57 @@ func (e *Experiment) Initialize() error {
 		return err
 	}
 	e.Data = dataFile
-	
+
 	return nil
 }
 
-// HandleEvents processes pending SDL events and returns the first keyboard and mouse button pressed, and any termination signal.
-func (e *Experiment) HandleEvents() (sdl.Keycode, uint32, error) {
-	var key sdl.Keycode
-	var btn uint32
+// PollEvents processes all pending SDL events, updates the experiment's event
+// state, and optionally forwards each SDL event to the provided handler.
+// The handler can return true to stop processing further events.
+func (e *Experiment) PollEvents(handle func(ev sdl.Event) bool) EventState {
+	// Reset summary for this polling cycle.
+	e.event.LastKey = 0
+	e.event.LastMouseButton = 0
+	e.event.QuitRequested = false
 
-	var event sdl.Event
-	for sdl.PollEvent(&event) {
-		switch event.Type {
+	var ev sdl.Event
+	for sdl.PollEvent(&ev) {
+		switch ev.Type {
 		case sdl.EVENT_QUIT:
-			return 0, 0, sdl.EndLoop
+			e.event.QuitRequested = true
 		case sdl.EVENT_KEY_DOWN:
-			k := event.KeyboardEvent().Key
+			k := ev.KeyboardEvent().Key
 			if k == sdl.K_ESCAPE {
-				return 0, 0, sdl.EndLoop
+				e.event.QuitRequested = true
 			}
-			if key == 0 {
-				key = k
+			if e.event.LastKey == 0 {
+				e.event.LastKey = k
 			}
 		case sdl.EVENT_MOUSE_BUTTON_DOWN:
-			if btn == 0 {
-				btn = uint32(event.MouseButtonEvent().Button)
+			if e.event.LastMouseButton == 0 {
+				e.event.LastMouseButton = uint32(ev.MouseButtonEvent().Button)
+			}
+		}
+
+		if handle != nil {
+			if stop := handle(ev); stop {
+				break
 			}
 		}
 	}
-	return key, btn, nil
+
+	return e.event
+}
+
+// HandleEvents processes pending SDL events and returns the first keyboard and
+// mouse button pressed, and any termination signal. It is kept for backward
+// compatibility and now delegates to PollEvents.
+func (e *Experiment) HandleEvents() (sdl.Keycode, uint32, error) {
+	state := e.PollEvents(nil)
+	if state.QuitRequested {
+		return 0, 0, sdl.EndLoop
+	}
+	return state.LastKey, state.LastMouseButton, nil
 }
 
 func (e *Experiment) AddDataVariableNames(names []string) {
@@ -175,6 +208,15 @@ func (e *Experiment) SetLogicalSize(width, height int32) error {
 	return e.Screen.SetLogicalSize(width, height)
 }
 
+// Flip presents the backbuffer to the display using the experiment's screen.
+// When VSync is enabled, this will typically block until the next vertical retrace.
+func (e *Experiment) Flip() error {
+	if e.Screen == nil {
+		return nil
+	}
+	return e.Screen.Flip()
+}
+
 // LoadFont loads a TTF font from the specified path and sets it as the default for the experiment.
 func (e *Experiment) LoadFont(path string, size float32) error {
 	font, err := ttf.OpenFont(path, size)
@@ -206,16 +248,6 @@ func (e *Experiment) LoadFontFromMemory(data []byte, size float32) error {
 	return nil
 }
 
-// PlayBuzzer plays the embedded buzzer sound.
-func (e *Experiment) PlayBuzzer() error {
-	return stimuli.PlaySoundFromMemory(e.AudioDevice, assets_embed.BuzzerWav)
-}
-
-// PlayCorrect plays the embedded correct sound.
-func (e *Experiment) PlayCorrect() error {
-	return stimuli.PlaySoundFromMemory(e.AudioDevice, assets_embed.CorrectWav)
-}
-
 // End cleans up resources.
 func (e *Experiment) End() {
 	if e.Data != nil {
@@ -226,6 +258,9 @@ func (e *Experiment) End() {
 	}
 	if e.Screen != nil {
 		e.Screen.Destroy()
+	}
+	if e.Audio != nil {
+		e.Audio.Shutdown()
 	}
 	if e.AudioDevice != 0 {
 		e.AudioDevice.Close()

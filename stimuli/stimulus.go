@@ -22,3 +22,49 @@ type VisualStimulus interface {
 	GetPosition() sdl.FPoint
 	SetPosition(pos sdl.FPoint)
 }
+
+// PreloadVisualOnScreen attempts to preload GPU resources for a visual
+// stimulus on the given screen without presenting it. For known stimulus
+// types it calls their internal preload routines; for others it falls back
+// to calling Draw, which will lazily allocate textures without updating the
+// screen contents.
+func PreloadVisualOnScreen(screen *io.Screen, v VisualStimulus) error {
+	switch s := v.(type) {
+	case *TextLine:
+		f := s.Font
+		if f == nil {
+			f = screen.DefaultFont
+		}
+		if f == nil {
+			return nil
+		}
+		return s.preload(screen, f)
+	case *TextBox:
+		f := s.Font
+		if f == nil {
+			f = screen.DefaultFont
+		}
+		if f == nil {
+			return nil
+		}
+		return s.preload(screen, f)
+	case *Picture:
+		return s.preload(screen)
+	case *VisualMask:
+		return s.preload(screen)
+	default:
+		// Fallback: let the stimulus lazily allocate its resources via Draw.
+		return v.Draw(screen)
+	}
+}
+
+// PreloadAllVisual preloads a slice of visual stimuli on the given screen.
+func PreloadAllVisual(screen *io.Screen, visuals []VisualStimulus) error {
+	for _, v := range visuals {
+		if err := PreloadVisualOnScreen(screen, v); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+

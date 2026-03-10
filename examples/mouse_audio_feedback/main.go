@@ -49,13 +49,13 @@ func main() {
 		}
 
 		if btn == uint32(sdl.BUTTON_LEFT) {
-			feedbackText.Text = "Left button pressed! Playing correct sound."
-			if err := exp.PlayCorrect(); err != nil {
-				log.Printf("Error playing correct sound: %v", err)
+			feedbackText.Text = "Left button pressed! Playing ping sound."
+			if err := stimuli.PlayPing(exp.AudioDevice); err != nil {
+				log.Printf("Error playing ping sound: %v", err)
 			}
 		} else if btn == uint32(sdl.BUTTON_RIGHT) {
 			feedbackText.Text = "Right button pressed! Playing buzzer sound."
-			if err := exp.PlayBuzzer(); err != nil {
+			if err := stimuli.PlayBuzzer(exp.AudioDevice); err != nil {
 				log.Printf("Error playing buzzer sound: %v", err)
 			}
 		}

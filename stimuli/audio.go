@@ -112,13 +112,10 @@ func PlaySoundFromMemory(audioDevice sdl.AudioDeviceID, data []byte) error {
 		return err
 	}
 	if err := s.Play(); err != nil {
-		s.Unload()
+		_ = s.Unload()
 		return err
 	}
-	// Run cleanup in background
-	go func() {
-		s.Wait()
-		s.Unload()
-	}()
-	return nil
+	// Synchronous behavior: wait for the sound to finish and then clean up.
+	s.Wait()
+	return s.Unload()
 }

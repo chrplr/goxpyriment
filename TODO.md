@@ -1,0 +1,1 @@
+* write documentation for users who want to distribute their experiment as binary executables packaged in installers for different plateforms and architecture (setup.Exe, .dmg, deb or appimage) (see  the example for retinotopy program: example_retinotopy_build.yml)

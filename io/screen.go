@@ -109,6 +109,13 @@ func (s *Screen) Update() error {
 	return s.Renderer.Present()
 }
 
+// Flip is an alias for Update and presents the backbuffer to the display.
+// When VSync is enabled on the renderer, this call will typically block
+// until the next vertical retrace, providing a well-defined stimulus onset.
+func (s *Screen) Flip() error {
+	return s.Update()
+}
+
 // SetVSync toggles vertical synchronization.
 // vsync: 1 to enable, 0 to disable, -1 for adaptive vsync.
 func (s *Screen) SetVSync(vsync int) error {

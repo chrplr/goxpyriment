@@ -1,9 +1,11 @@
 package main
 
 import (
+	"log"
+
 	"github.com/chrplr/goxpyriment/control"
 	"github.com/chrplr/goxpyriment/misc"
-	"log"
+	"github.com/chrplr/goxpyriment/stimuli"
 )
 
 func main() {
@@ -14,14 +16,14 @@ func main() {
 	defer exp.End()
 
 	log.Println("Playing Buzzer...")
-	if err := exp.PlayBuzzer(); err != nil {
+	if err := stimuli.PlayBuzzer(exp.AudioDevice); err != nil {
 		log.Printf("Error playing buzzer: %v", err)
 	}
 	misc.Wait(1000)
 
-	log.Println("Playing Correct...")
-	if err := exp.PlayCorrect(); err != nil {
-		log.Printf("Error playing correct: %v", err)
+	log.Println("Playing Ping...")
+	if err := stimuli.PlayPing(exp.AudioDevice); err != nil {
+		log.Printf("Error playing ping: %v", err)
 	}
 	misc.Wait(1000)
 }
