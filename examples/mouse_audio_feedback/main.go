@@ -4,19 +4,26 @@ package main
 
 import (
 	"flag"
+	"log"
+
 	"github.com/chrplr/goxpyriment/control"
 	"github.com/chrplr/goxpyriment/stimuli"
-	"log"
 
 	"github.com/Zyko0/go-sdl3/sdl"
 )
 
 func main() {
-	fullscreen := flag.Bool("F", false, "Launch in fullscreen display mode")
+	develop := flag.Bool("d", false, "Developer mode (windowed 1024x1024)")
+	subject := flag.Int("s", 0, "Subject ID")
 	flag.Parse()
 
 	// 1. Create and initialize the experiment
-	exp := control.NewExperiment("Mouse Audio Feedback", 800, 600, *fullscreen)
+	width, height, fullscreen := 0, 0, true
+	if *develop {
+		width, height, fullscreen = 1024, 1024, false
+	}
+	exp := control.NewExperiment("Mouse Audio Feedback", width, height, fullscreen)
+	exp.SubjectID = *subject
 	if err := exp.Initialize(); err != nil {
 		log.Fatalf("failed to initialize experiment: %v", err)
 	}

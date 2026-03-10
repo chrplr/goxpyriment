@@ -19,14 +19,14 @@ func GetGamePads() ([]*GamePad, error) {
 	if err != nil {
 		return nil, err
 	}
-	
-	res := make([]*GamePad, len(ids))
-	for i, id := range ids {
+
+	res := make([]*GamePad, 0, len(ids))
+	for _, id := range ids {
 		handle, err := id.OpenGamepad()
 		if err != nil {
 			continue
 		}
-		res[i] = &GamePad{ID: id, Handle: handle}
+		res = append(res, &GamePad{ID: id, Handle: handle})
 	}
 	return res, nil
 }
@@ -52,5 +52,6 @@ func (g *GamePad) WaitPress() (sdl.GamepadButton, error) {
 func (g *GamePad) Close() {
 	if g.Handle != nil {
 		g.Handle.Close()
+		g.Handle = nil
 	}
 }

@@ -6,26 +6,49 @@
 package stimuli
 
 import (
-	"bytes"
 	"encoding/binary"
 	"fmt"
 	"github.com/chrplr/goxpyriment/io"
 	"image"
+	"math"
 	"sync"
 	"time"
 	"unsafe"
 
 	"github.com/Zyko0/go-sdl3/sdl"
-	"github.com/zergon321/reisen"
+	"github.com/asticode/go-astiav"
 )
 
-// Video represents a video stimulus that can be played with audio.
-// It uses FFmpeg via the reisen library for decoding and SDL3 for rendering and audio playback.
+// Video represents a video stimulus that can be played with optional audio.
+// It uses FFmpeg via the go-astiav bindings for demuxing/decoding and SDL3
+// for rendering frames and streaming audio to the experiment's audio device.
+//
+// Typical usage:
+//
+//	v := stimuli.NewVideo("assets/clip.mp4")
+//	if err := v.Preload(); err != nil { log.Fatal(err) }
+//	if err := v.PreloadDevice(exp.Screen, exp.AudioDevice); err != nil { log.Fatal(err) }
+//	if err := v.Play(); err != nil { log.Fatal(err) }
+//
+//	err := exp.Run(func() error {
+//	    if err := v.Update(); err != nil { return err }
+//	    if err := v.Present(exp.Screen, true, true); err != nil { return err }
+//	    if !v.IsPlaying() { return sdl.EndLoop }
+//	    return nil
+//	})
 type Video struct {
 	FilePath string
-	media    *reisen.Media
-	vStream  *reisen.VideoStream
-	aStream  *reisen.AudioStream
+	
+	// astiav resources
+	fctx         *astiav.FormatContext
+	vStream      *astiav.Stream
+	vCodecCtx    *astiav.CodecContext
+	vIndex       int
+	aStream      *astiav.Stream
+	aCodecCtx    *astiav.CodecContext
+	aIndex       int
+	swsCtx       *astiav.SoftwareScaleContext
+	resampleCtx  *astiav.SoftwareResampleContext
 
 	// SDL resources
 	texture     *sdl.Texture
@@ -59,48 +82,103 @@ type Video struct {
 	FPS    float64
 }
 
-// NewVideo creates a new video stimulus.
+// NewVideo creates a new video stimulus for the given file path.
+// The underlying FFmpeg/SDL resources are allocated lazily in Preload and
+// PreloadDevice.
 func NewVideo(filePath string) *Video {
 	return &Video{
 		FilePath: filePath,
 	}
 }
 
-// Preload opens the video file and prepares streams.
+// Preload opens the media file, discovers the best video and audio streams,
+// allocates and opens the corresponding codec contexts, and prepares the
+// software scaler/resampler. It does not allocate any SDL resources.
 func (v *Video) Preload() error {
-	media, err := reisen.NewMedia(v.FilePath)
+	v.fctx = astiav.AllocFormatContext()
+	if err := v.fctx.OpenInput(v.FilePath, nil, nil); err != nil {
+		return err
+	}
+	if err := v.fctx.FindStreamInfo(nil); err != nil {
+		return err
+	}
+
+	v.vIndex = -1
+	v.aIndex = -1
+
+	for i, s := range v.fctx.Streams() {
+		if s.CodecParameters().MediaType() == astiav.MediaTypeVideo && v.vIndex == -1 {
+			v.vIndex = i
+			v.vStream = s
+		} else if s.CodecParameters().MediaType() == astiav.MediaTypeAudio && v.aIndex == -1 {
+			v.aIndex = i
+			v.aStream = s
+		}
+	}
+
+	if v.vIndex == -1 {
+		return fmt.Errorf("no video stream found in %s", v.FilePath)
+	}
+
+	// Setup Video Decoder
+	vCodec := astiav.FindDecoder(v.vStream.CodecParameters().CodecID())
+	if vCodec == nil {
+		return fmt.Errorf("video decoder not found")
+	}
+	v.vCodecCtx = astiav.AllocCodecContext(vCodec)
+	if err := v.vStream.CodecParameters().ToCodecContext(v.vCodecCtx); err != nil {
+		return err
+	}
+	if err := v.vCodecCtx.Open(vCodec, nil); err != nil {
+		return err
+	}
+
+	v.Width = v.vCodecCtx.Width()
+	v.Height = v.vCodecCtx.Height()
+	v.FPS = v.vStream.AvgFrameRate().Float64()
+	if v.FPS == 0 {
+		v.FPS = 25.0 // Fallback
+	}
+
+	// Setup Software Scaler for RGBA conversion
+	swsCtx, err := astiav.CreateSoftwareScaleContext(
+		v.Width, v.Height, v.vCodecCtx.PixelFormat(),
+		v.Width, v.Height, astiav.PixelFormatRgba,
+		astiav.NewSoftwareScaleContextFlags(astiav.SoftwareScaleContextFlagBilinear),
+	)
 	if err != nil {
 		return err
 	}
-	v.media = media
+	v.swsCtx = swsCtx
 
-	if len(v.media.VideoStreams()) == 0 {
-		return fmt.Errorf("no video streams found in %s", v.FilePath)
-	}
+	// Setup Audio Decoder if exists
+	if v.aIndex != -1 {
+		aCodec := astiav.FindDecoder(v.aStream.CodecParameters().CodecID())
+		if aCodec != nil {
+			v.aCodecCtx = astiav.AllocCodecContext(aCodec)
+			if err := v.aStream.CodecParameters().ToCodecContext(v.aCodecCtx); err != nil {
+				return err
+			}
+			if err := v.aCodecCtx.Open(aCodec, nil); err != nil {
+				return err
+			}
 
-	v.vStream = v.media.VideoStreams()[0]
-	if err := v.vStream.Open(); err != nil {
-		return err
-	}
-
-	v.Width = v.vStream.Width()
-	v.Height = v.vStream.Height()
-	fps, _ := v.vStream.FrameRate()
-	v.FPS = float64(fps)
-
-	if len(v.media.AudioStreams()) > 0 {
-		v.aStream = v.media.AudioStreams()[0]
-		if err := v.aStream.Open(); err != nil {
-			return err
+			// Setup Audio Resampler
+			v.resampleCtx = astiav.AllocSoftwareResampleContext()
 		}
 	}
 
 	return nil
 }
 
-// PreloadDevice prepares SDL-specific resources for the video.
+// PreloadDevice prepares SDL‑specific resources for the video:
+//   - creates a texture on the provided Screen's renderer for video frames,
+//   - creates and binds an SDL AudioStream to the given audio device (if
+//     the video has an audio stream).
+//
+// If Preload has not been called yet, PreloadDevice will call it first.
 func (v *Video) PreloadDevice(screen *io.Screen, audioDevice sdl.AudioDeviceID) error {
-	if v.media == nil {
+	if v.fctx == nil {
 		if err := v.Preload(); err != nil {
 			return err
 		}
@@ -114,11 +192,11 @@ func (v *Video) PreloadDevice(screen *io.Screen, audioDevice sdl.AudioDeviceID) 
 	v.texture = tex
 
 	// Create audio stream if video has audio
-	if v.aStream != nil {
+	if v.aCodecCtx != nil {
 		spec := sdl.AudioSpec{
 			Format:   sdl.AUDIO_F32,
 			Channels: 2,
-			Freq:     int32(v.aStream.SampleRate()),
+			Freq:     int32(v.aCodecCtx.SampleRate()),
 		}
 		as, err := sdl.CreateAudioStream(&spec, &spec)
 		if err != nil {
@@ -133,8 +211,14 @@ func (v *Video) PreloadDevice(screen *io.Screen, audioDevice sdl.AudioDeviceID) 
 	return nil
 }
 
-// Play starts video decoding and playback.
+// Play starts (or resumes) video decoding and playback.
+// It creates internal frame/audio buffers, launches the decoding goroutine,
+// and resets the playback clock. Calling Play while paused resumes from the
+// paused position.
 func (v *Video) Play() error {
+	v.stopMutex.Lock()
+	defer v.stopMutex.Unlock()
+
 	if v.isPlaying && !v.isPaused {
 		return nil
 	}
@@ -151,11 +235,11 @@ func (v *Video) Play() error {
 	v.errChan = make(chan error, 1)
 	v.stopChan = make(chan struct{})
 	v.isPlaying = true
+	v.isDecoding = true
 	v.startTime = time.Now()
 	v.lastFrameTime = 0
 
 	// Start decoding goroutine
-	v.isDecoding = true
 	v.wg.Add(1)
 	go v.decodeLoop()
 
@@ -171,81 +255,172 @@ func (v *Video) decodeLoop() {
 		v.wg.Done()
 	}()
 
-	if err := v.media.OpenDecode(); err != nil {
+	pkt := astiav.AllocPacket()
+	defer pkt.Free()
+	vFrame := astiav.AllocFrame()
+	defer vFrame.Free()
+	rgbaFrame := astiav.AllocFrame()
+	defer rgbaFrame.Free()
+	aFrame := astiav.AllocFrame()
+	defer aFrame.Free()
+	resampledFrame := astiav.AllocFrame()
+	defer resampledFrame.Free()
+
+	// Initialize rgbaFrame for scaling
+	rgbaFrame.SetWidth(v.Width)
+	rgbaFrame.SetHeight(v.Height)
+	rgbaFrame.SetPixelFormat(astiav.PixelFormatRgba)
+	if err := rgbaFrame.AllocBuffer(1); err != nil {
 		v.errChan <- err
 		return
 	}
-	defer v.media.CloseDecode()
+
+	// Initialize resampledFrame for audio
+	if v.aCodecCtx != nil {
+		resampledFrame.SetChannelLayout(astiav.ChannelLayoutStereo)
+		resampledFrame.SetSampleFormat(astiav.SampleFormatFlt)
+		resampledFrame.SetSampleRate(v.aCodecCtx.SampleRate())
+		resampledFrame.SetNbSamples(1024) // Buffer for resampled samples
+		if err := resampledFrame.AllocBuffer(0); err != nil {
+			v.errChan <- err
+			return
+		}
+	}
 
 	for {
 		select {
 		case <-v.stopChan:
 			return
 		default:
-			packet, gotPacket, err := v.media.ReadPacket()
+			err := v.fctx.ReadFrame(pkt)
 			if err != nil {
+				if err == astiav.ErrEof {
+					return
+				}
 				v.errChan <- err
 				return
 			}
-			if !gotPacket {
-				return
-			}
 
-			switch packet.Type() {
-			case reisen.StreamVideo:
-				s := v.media.Streams()[packet.StreamIndex()].(*reisen.VideoStream)
-				videoFrame, gotFrame, err := s.ReadVideoFrame()
-				if err != nil {
-					select {
-					case v.errChan <- err:
-					case <-v.stopChan:
-					}
+			if pkt.StreamIndex() == v.vIndex {
+				if err := v.vCodecCtx.SendPacket(pkt); err != nil {
+					v.errChan <- err
+					pkt.Unref()
 					return
 				}
-				if gotFrame && videoFrame != nil {
+				for {
+					err := v.vCodecCtx.ReceiveFrame(vFrame)
+					if err != nil {
+						if err == astiav.ErrEagain || err == astiav.ErrEof {
+							break
+						}
+						v.errChan <- err
+						pkt.Unref()
+						return
+					}
+
+					// Scale to RGBA
+					if err := v.swsCtx.ScaleFrame(vFrame, rgbaFrame); err != nil {
+						v.errChan <- err
+						pkt.Unref()
+						return
+					}
+
+					// Create image.RGBA and copy data
+					rgba := image.NewRGBA(image.Rect(0, 0, v.Width, v.Height))
+					data, err := rgbaFrame.Data().Bytes(1)
+					if err != nil {
+						v.errChan <- err
+						pkt.Unref()
+						return
+					}
+					copy(rgba.Pix, data)
+
 					select {
-					case v.frameBuffer <- videoFrame.Image():
+					case v.frameBuffer <- rgba:
 					case <-v.stopChan:
+						pkt.Unref()
 						return
 					}
 				}
-			case reisen.StreamAudio:
-				s := v.media.Streams()[packet.StreamIndex()].(*reisen.AudioStream)
-				audioFrame, gotFrame, err := s.ReadAudioFrame()
-				if err != nil {
-					select {
-					case v.errChan <- err:
-					case <-v.stopChan:
-					}
+			} else if pkt.StreamIndex() == v.aIndex && v.aCodecCtx != nil {
+				if err := v.aCodecCtx.SendPacket(pkt); err != nil {
+					v.errChan <- err
+					pkt.Unref()
 					return
 				}
-				if gotFrame && audioFrame != nil {
-					// Convert float64 samples (reisen default) to float32 (SDL3)
-					reader := bytes.NewReader(audioFrame.Data())
-					for reader.Len() > 0 {
-						var left64, right64 float64
-						if err := binary.Read(reader, binary.LittleEndian, &left64); err != nil {
+				for {
+					err := v.aCodecCtx.ReceiveFrame(aFrame)
+					if err != nil {
+						if err == astiav.ErrEagain || err == astiav.ErrEof {
 							break
 						}
-						if err := binary.Read(reader, binary.LittleEndian, &right64); err != nil {
-							break
-						}
-						select {
-						case v.sampleBuffer <- [2]float32{float32(left64), float32(right64)}:
-						case <-v.stopChan:
+						v.errChan <- err
+						pkt.Unref()
+						return
+					}
+
+					// Resample
+					if err := v.resampleCtx.ConvertFrame(aFrame, resampledFrame); err != nil {
+						v.errChan <- err
+						pkt.Unref()
+						return
+					}
+
+					// Extract samples
+					data, err := resampledFrame.Data().Bytes(0)
+					if err != nil {
+						v.errChan <- err
+						pkt.Unref()
+						return
+					}
+					
+					// data is expected to be interleaved float32 stereo
+					if nbSamples := resampledFrame.NbSamples(); nbSamples > 0 {
+						const bytesPerSample = 4 // float32
+						expectedLen := nbSamples * 2 * bytesPerSample
+						if len(data) < expectedLen {
+							v.errChan <- fmt.Errorf("audio buffer too small: got %d bytes, expected at least %d", len(data), expectedLen)
+							pkt.Unref()
 							return
+						}
+						for i := 0; i < nbSamples; i++ {
+							base := i * 2 * bytesPerSample
+							leftBits := binary.LittleEndian.Uint32(data[base : base+bytesPerSample])
+							rightBits := binary.LittleEndian.Uint32(data[base+bytesPerSample : base+2*bytesPerSample])
+							s := [2]float32{
+								math.Float32frombits(leftBits),
+								math.Float32frombits(rightBits),
+							}
+							select {
+							case v.sampleBuffer <- s:
+							case <-v.stopChan:
+								pkt.Unref()
+								return
+							}
 						}
 					}
 				}
 			}
+			pkt.Unref()
 		}
 	}
 }
 
-// Update handles frame timing and audio streaming. 
-// Should be called frequently in the main loop.
+// Update advances decoding and playback state.
+// It should be called frequently (typically once per frame) from the main
+// experiment loop to:
+//   - pull decoded frames/audio from internal buffers,
+//   - push audio samples into the SDL AudioStream,
+//   - update which frame should currently be displayed based on the FPS.
 func (v *Video) Update() error {
-	if !v.isPlaying || v.isPaused {
+	v.stopMutex.Lock()
+	isPlaying := v.isPlaying
+	isPaused := v.isPaused
+	startTime := v.startTime
+	lastFrameTime := v.lastFrameTime
+	v.stopMutex.Unlock()
+
+	if !isPlaying || isPaused {
 		return nil
 	}
 
@@ -281,16 +456,18 @@ func (v *Video) Update() error {
 	}
 
 	// Frame synchronization
-	now := time.Since(v.startTime)
+	now := time.Since(startTime)
 	frameDuration := time.Second / time.Duration(v.FPS)
 	
-	if now >= v.lastFrameTime+frameDuration {
+	if now >= lastFrameTime+frameDuration {
 		select {
 		case frame := <-v.frameBuffer:
 			v.frameMutex.Lock()
 			v.currentFrame = frame
 			v.frameMutex.Unlock()
+			v.stopMutex.Lock()
 			v.lastFrameTime += frameDuration
+			v.stopMutex.Unlock()
 		default:
 			// No frame ready yet
 		}
@@ -299,8 +476,15 @@ func (v *Video) Update() error {
 	return nil
 }
 
-// Draw renders the current video frame to the screen.
+// Draw renders the current video frame centered on the screen.
 func (v *Video) Draw(screen *io.Screen) error {
+	return v.DrawAt(screen, nil)
+}
+
+// DrawAt renders the current video frame to the given destination rectangle.
+// If dest is nil, the frame is centered at its native size using the
+// renderer's current output size.
+func (v *Video) DrawAt(screen *io.Screen, dest *sdl.FRect) error {
 	v.frameMutex.Lock()
 	frame := v.currentFrame
 	v.frameMutex.Unlock()
@@ -310,25 +494,31 @@ func (v *Video) Draw(screen *io.Screen) error {
 	}
 
 	// Update texture with frame pixels
-	err := v.texture.Update(nil, frame.Pix, int32(frame.Stride))
-	if err != nil {
+	if err := v.texture.Update(nil, frame.Pix, int32(frame.Stride)); err != nil {
 		return err
 	}
 
-	// Draw the texture
-	// Calculate destination rectangle (centered by default)
-	w, h, _ := screen.Renderer.RenderOutputSize()
-	dest := sdl.FRect{
-		X: float32(w-int32(v.Width)) / 2,
-		Y: float32(h-int32(v.Height)) / 2,
-		W: float32(v.Width),
-		H: float32(v.Height),
+	// Choose destination rectangle
+	var dst sdl.FRect
+	if dest != nil {
+		dst = *dest
+	} else {
+		// Centered at native size
+		w, h, _ := screen.Renderer.RenderOutputSize()
+		dst = sdl.FRect{
+			X: float32(w-int32(v.Width)) / 2,
+			Y: float32(h-int32(v.Height)) / 2,
+			W: float32(v.Width),
+			H: float32(v.Height),
+		}
 	}
-	
-	return screen.Renderer.RenderTexture(v.texture, nil, &dest)
+
+	return screen.Renderer.RenderTexture(v.texture, nil, &dst)
 }
 
-// Present implements the Stimulus interface.
+// Present implements the Stimulus interface for Video by drawing the current
+// frame (optionally clearing the screen first) and optionally updating the
+// screen. It does not itself advance decoding; call Update separately.
 func (v *Video) Present(screen *io.Screen, clear, update bool) error {
 	if clear {
 		if err := screen.Clear(); err != nil {
@@ -344,8 +534,12 @@ func (v *Video) Present(screen *io.Screen, clear, update bool) error {
 	return nil
 }
 
-// Pause pauses the video playback.
+// Pause pauses video playback, preserving the current playback position.
+// Use Play() to resume from this position.
 func (v *Video) Pause() {
+	v.stopMutex.Lock()
+	defer v.stopMutex.Unlock()
+
 	if !v.isPlaying || v.isPaused {
 		return
 	}
@@ -355,16 +549,25 @@ func (v *Video) Pause() {
 
 // IsPaused returns true if the video is currently paused.
 func (v *Video) IsPaused() bool {
+	v.stopMutex.Lock()
+	defer v.stopMutex.Unlock()
+
 	return v.isPaused
 }
 
 // IsPlaying returns true if the video is currently active (playing or paused).
 func (v *Video) IsPlaying() bool {
+	v.stopMutex.Lock()
+	defer v.stopMutex.Unlock()
+
 	return v.isPlaying
 }
 
 // IsFinished returns true if the video has finished playback.
 func (v *Video) IsFinished() bool {
+	v.stopMutex.Lock()
+	defer v.stopMutex.Unlock()
+
 	return !v.isPlaying && !v.isPaused
 }
 
@@ -381,8 +584,11 @@ func (v *Video) Stop() {
 	}
 	v.isPlaying = false
 	v.isPaused = false
-	v.currentFrame = nil
 	v.stopMutex.Unlock()
+
+	v.frameMutex.Lock()
+	v.currentFrame = nil
+	v.frameMutex.Unlock()
 
 	v.wg.Wait()
 }
@@ -390,13 +596,24 @@ func (v *Video) Stop() {
 // Seek moves the playback position to the specified time.
 // Note: This stops the current playback and should be called before Play() or while the video is stopped.
 func (v *Video) Seek(t time.Duration) error {
-	if v.isPlaying {
+	v.stopMutex.Lock()
+	isPlaying := v.isPlaying
+	v.stopMutex.Unlock()
+
+	if isPlaying {
 		v.Stop()
 	}
-	if v.vStream == nil {
+	if v.fctx == nil {
 		return fmt.Errorf("video stream not preloaded")
 	}
-	return v.vStream.Rewind(t)
+
+	// Seek using microseconds (AV_TIME_BASE)
+	ts := int64(t.Seconds() * 1000000)
+	if err := v.fctx.SeekFrame(-1, ts, astiav.NewSeekFlags().Add(astiav.SeekFlagBackward)); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // Unload cleans up all resources associated with the video stimulus.
@@ -410,17 +627,28 @@ func (v *Video) Unload() error {
 		v.audioStream.Destroy()
 		v.audioStream = nil
 	}
-	if v.vStream != nil {
-		v.vStream.Close()
-		v.vStream = nil
+	
+	if v.swsCtx != nil {
+		v.swsCtx.Free()
+		v.swsCtx = nil
 	}
-	if v.aStream != nil {
-		v.aStream.Close()
-		v.aStream = nil
+	if v.resampleCtx != nil {
+		v.resampleCtx.Free()
+		v.resampleCtx = nil
 	}
-	if v.media != nil {
-		v.media.Close()
-		v.media = nil
+	if v.vCodecCtx != nil {
+		v.vCodecCtx.Free()
+		v.vCodecCtx = nil
 	}
+	if v.aCodecCtx != nil {
+		v.aCodecCtx.Free()
+		v.aCodecCtx = nil
+	}
+	if v.fctx != nil {
+		v.fctx.CloseInput()
+		v.fctx.Free()
+		v.fctx = nil
+	}
+	
 	return nil
 }

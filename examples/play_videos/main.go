@@ -4,27 +4,38 @@
 package main
 
 import (
+	"flag"
 	"fmt"
-	"github.com/chrplr/goxpyriment/control"
-	"github.com/chrplr/goxpyriment/misc"
-	"github.com/chrplr/goxpyriment/stimuli"
 	"log"
 	"os"
 	"os/signal"
 	"path/filepath"
 	"syscall"
 
+	"github.com/chrplr/goxpyriment/control"
+	"github.com/chrplr/goxpyriment/misc"
+	"github.com/chrplr/goxpyriment/stimuli"
+
 	"github.com/Zyko0/go-sdl3/sdl"
 )
 
 func main() {
+	develop := flag.Bool("d", false, "Developer mode (windowed 1024x1024)")
+	subject := flag.Int("s", 0, "Subject ID")
+	flag.Parse()
+
 	// 1. Setup Signal Handling for Ctrl-C in console
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 	terminate := false
 
 	// 2. Create and initialize the experiment
-	exp := control.NewExperiment("Video Player Example", 1280, 720, false)
+	width, height, fullscreen := 0, 0, true
+	if *develop {
+		width, height, fullscreen = 1024, 1024, false
+	}
+	exp := control.NewExperiment("Video Player Example", width, height, fullscreen)
+	exp.SubjectID = *subject
 	if err := exp.Initialize(); err != nil {
 		log.Fatalf("failed to initialize experiment: %v", err)
 	}

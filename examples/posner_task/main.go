@@ -36,11 +36,17 @@ type trial struct {
 func main() {
 	rand.Seed(time.Now().UnixNano())
 
-	fullscreen := flag.Bool("F", false, "Launch in fullscreen display mode")
+	develop := flag.Bool("d", false, "Developer mode (windowed 1024x1024)")
+	subject := flag.Int("s", 0, "Subject ID")
 	flag.Parse()
 
 	// 1. Create and initialize the experiment
-	exp := control.NewExperiment("Posner-task", 1368, 1024, *fullscreen)
+	width, height, fullscreen := 0, 0, true
+	if *develop {
+		width, height, fullscreen = 1024, 1024, false
+	}
+	exp := control.NewExperiment("Posner-task", width, height, fullscreen)
+	exp.SubjectID = *subject
 	exp.BackgroundColor = control.Gray
 	exp.ForegroundColor = control.Black
 	

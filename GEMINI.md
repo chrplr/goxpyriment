@@ -6,7 +6,8 @@
 ### Key Technologies
 - **Language:** Go (1.25+)
 - **Graphics & I/O:** SDL3 (via `github.com/Zyko0/go-sdl3`)
-- **Bindings:** `purego` for C-interop without CGO requirements in many cases.
+- **Media Decoding:** FFmpeg (via `github.com/asticode/go-astiav`)
+- **Bindings:** `purego` for C-interop without CGO requirements in many cases (though `go-astiav` requires CGO).
 
 ## Architecture
 
@@ -35,6 +36,7 @@ Examples are provided in the examples folder which has its own go.mod (we use th
 ### Prerequisites
 - Go 1.25 or higher.
 - SDL3 libraries must be available on the system.
+- FFmpeg 7.x development libraries (libavcodec, libavformat, libavutil, libswscale, libswresample, libavdevice, libavfilter) must be installed for CGO-based video support.
 
 ### Key Commands
 - **Run the main demo:**

@@ -12,15 +12,19 @@ import (
 	"time"
 )
 
-// Default settings for OutputFile and DataFile
+// Default settings for OutputFile and DataFile.
+// DataFileDirectory is the default folder used when no explicit output
+// directory is provided by the calling code.
 const (
 	OutputFileCommentChar = "#"
 	OutputFileEOL         = "\n"
-	DataFileDirectory     = "data"
+	DataFileDirectory     = "xpd_results"
 	DataFileDelimiter     = ","
 )
 
-// OutputFile represents a general output file.
+// OutputFile represents a generic buffered text file on disk.
+// It is used as the backend for `DataFile` but can also be used for logs
+// or any other line‑oriented output the experiment needs to produce.
 type OutputFile struct {
 	Filename    string
 	Directory   string
@@ -29,7 +33,9 @@ type OutputFile struct {
 	Buffer      []string
 }
 
-// NewOutputFile creates a new OutputFile.
+// NewOutputFile creates a new OutputFile in the given directory with the
+// provided filename. The directory is created if it does not exist and the
+// file is truncated if it already exists.
 func NewOutputFile(directory, filename string) (*OutputFile, error) {
 	if _, err := os.Stat(directory); os.IsNotExist(err) {
 		if err := os.MkdirAll(directory, 0755); err != nil {
@@ -92,7 +98,9 @@ func (o *OutputFile) Save() error {
 	return writer.Flush()
 }
 
-// DataFile represents a data file for experiment results.
+// DataFile represents an experiment data file in CSV‑like format.
+// It prepends subject ID to each row and supports quoted fields when they
+// contain delimiters or quotes.
 type DataFile struct {
 	*OutputFile
 	Delimiter     string
@@ -100,7 +108,9 @@ type DataFile struct {
 	VariableNames []string
 }
 
-// NewDataFile creates a new DataFile.
+// NewDataFile creates a new DataFile in the given directory (or in the
+// default `data` directory if empty). The filename is derived from the
+// experiment name, subject id and a timestamp.
 func NewDataFile(directory string, subjectID int, expName string) (*DataFile, error) {
 	if directory == "" {
 		directory = DataFileDirectory
@@ -134,7 +144,9 @@ func NewDataFile(directory string, subjectID int, expName string) (*DataFile, er
 	return df, nil
 }
 
-// Add appends data to the data file.
+// Add appends a row of data to the data file.
+// The subject ID is automatically prepended as the first column.
+// Fields containing the delimiter or quotes are properly escaped.
 func (df *DataFile) Add(data []interface{}) {
 	parts := make([]string, 0, len(data)+1)
 	parts = append(parts, fmt.Sprint(df.SubjectID))
@@ -151,14 +163,17 @@ func (df *DataFile) Add(data []interface{}) {
 	df.WriteLine(strings.Join(parts, df.Delimiter))
 }
 
-// AddVariableNames sets the column headers for the data.
+// AddVariableNames appends variable names and writes a header comment.
+// This should typically be called once near the start of an experiment to
+// document the column structure of subsequent calls to Add.
 func (df *DataFile) AddVariableNames(names []string) {
 	df.VariableNames = append(df.VariableNames, names...)
 	// In Expyriment, this usually re-writes the header.
-	// For this prototype, we'll just append a comment or handle it simply.
 	header := "subject_id"
 	if len(df.VariableNames) > 0 {
 		header += df.Delimiter + strings.Join(df.VariableNames, df.Delimiter)
 	}
-	df.WriteComment(header)
+	// Write the header as a plain CSV line (no leading comment character)
+	// so that spreadsheet programs can automatically detect column names.
+	df.WriteLine(header)
 }

@@ -1,0 +1,6 @@
+#--EXPERIMENT INFO
+#e mainfile: Dual Video Player Example
+#--SUBJECT INFO
+#s id: 0
+##
+subject_id,pair_index,phase,video_left,video_right,key,t_rel_ms

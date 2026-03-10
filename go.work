@@ -3,4 +3,5 @@ go 1.25.7
 use (
 	.
 	examples
+	tests/set_fullscreen/go_example
 )

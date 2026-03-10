@@ -24,7 +24,24 @@ type EventState struct {
 	QuitRequested   bool
 }
 
-// Experiment manages the overall state and initialization.
+// Experiment manages the global state of a behavioral or psychophysics experiment.
+// It owns the SDL window/renderer (`Screen`), input devices (`Keyboard`, `Mouse`),
+// audio device/manager, and the `DataFile` used for logging responses.
+//
+// Typical usage:
+//
+//	exp := control.NewExperiment("My Experiment", 1368, 1024, false)
+//	if err := exp.Initialize(); err != nil { log.Fatal(err) }
+//	defer exp.End()
+//
+//	err := exp.Run(func() error {
+//		// draw stimuli using exp.Screen / stimuli package
+//		// collect input via exp.Keyboard / exp.HandleEvents
+//		// log responses via exp.Data.Add(...)
+//		// return sdl.EndLoop to terminate the run loop
+//		return sdl.EndLoop
+//	})
+//	if err != nil && err != sdl.EndLoop { log.Fatal(err) }
 type Experiment struct {
 	Name            string
 	Design          *design.Experiment
@@ -41,6 +58,7 @@ type Experiment struct {
 	WindowWidth     int
 	WindowHeight    int
 	Fullscreen      bool
+	OutputDirectory string
 
 	sdlLoader interface{ Unload() }
 	imgLoader interface{ Unload() }
@@ -49,7 +67,14 @@ type Experiment struct {
 	event EventState
 }
 
-// NewExperiment creates a new Experiment instance.
+// NewExperiment creates a new Experiment instance with the requested logical
+// window size and fullscreen flag.
+//
+// If width and height are non‑zero, they define the logical coordinate space
+// used for drawing (even if the physical window is scaled).
+//
+// If width == 0 and height == 0, the experiment will automatically switch to
+// exclusive fullscreen at the current desktop resolution during Initialize().
 func NewExperiment(name string, width, height int, fullscreen bool) *Experiment {
 	return &Experiment{
 		Name:            name,
@@ -60,10 +85,23 @@ func NewExperiment(name string, width, height int, fullscreen bool) *Experiment 
 		WindowWidth:     width,
 		WindowHeight:    height,
 		Fullscreen:      fullscreen,
+		OutputDirectory: "",
 	}
 }
 
-// Initialize sets up SDL and the screen.
+// SetOutputDirectory overrides the default folder used to store .xpd result
+// files. If not called, Initialize will use io.DataFileDirectory, which
+// defaults to "xpd_results".
+func (e *Experiment) SetOutputDirectory(dir string) {
+	e.OutputDirectory = dir
+}
+
+// Initialize loads the embedded SDL/TTF binaries, initializes SDL (video,
+// events and audio), opens the default playback audio device, creates the
+// main window/renderer (`io.Screen`), and creates the default `DataFile`.
+//
+// It must be called exactly once before using the experiment, and `End`
+// should be deferred immediately after successful initialization.
 func (e *Experiment) Initialize() error {
 	e.sdlLoader = binsdl.Load()
 	e.imgLoader = binimg.Load()
@@ -75,6 +113,12 @@ func (e *Experiment) Initialize() error {
 
 	if err := ttf.Init(); err != nil {
 		return err
+	}
+
+	// If no explicit window size was provided, we use the autodetect mode (0,0)
+	// which io.NewScreen handles by using native resolution and high pixel density.
+	if e.WindowWidth == 0 && e.WindowHeight == 0 {
+		e.Fullscreen = true
 	}
 
 	// Initialize Audio
@@ -102,7 +146,8 @@ func (e *Experiment) Initialize() error {
 	}
 
 	// Initialize DataFile
-	dataFile, err := io.NewDataFile("", e.SubjectID, e.Name)
+	outDir := e.OutputDirectory
+	dataFile, err := io.NewDataFile(outDir, e.SubjectID, e.Name)
 	if err != nil {
 		return err
 	}
@@ -111,9 +156,13 @@ func (e *Experiment) Initialize() error {
 	return nil
 }
 
-// PollEvents processes all pending SDL events, updates the experiment's event
-// state, and optionally forwards each SDL event to the provided handler.
-// The handler can return true to stop processing further events.
+// PollEvents processes all pending SDL events, updates the experiment's
+// aggregate `EventState`, and optionally forwards each SDL event to the
+// provided handler callback.
+//
+// The handler can return true to stop processing further events for this
+// polling cycle. The returned `EventState` summarizes the last keyboard and
+// mouse button pressed and whether a quit/escape was requested.
 func (e *Experiment) PollEvents(handle func(ev sdl.Event) bool) EventState {
 	// Reset summary for this polling cycle.
 	e.event.LastKey = 0
@@ -149,9 +198,13 @@ func (e *Experiment) PollEvents(handle func(ev sdl.Event) bool) EventState {
 	return e.event
 }
 
-// HandleEvents processes pending SDL events and returns the first keyboard and
-// mouse button pressed, and any termination signal. It is kept for backward
-// compatibility and now delegates to PollEvents.
+// HandleEvents is a convenience wrapper around PollEvents.
+// It processes pending SDL events and returns:
+//   - the first key pressed since the last call (0 if none),
+//   - the first mouse button pressed (0 if none),
+//   - sdl.EndLoop if a quit or ESC key was detected.
+//
+// This mirrors the higher‑level event interface of the original Expyriment.
 func (e *Experiment) HandleEvents() (sdl.Keycode, uint32, error) {
 	state := e.PollEvents(nil)
 	if state.QuitRequested {
@@ -278,7 +331,12 @@ func (e *Experiment) End() {
 	}
 }
 
-// Run executes the main experiment logic.
+// Run executes the main experiment logic inside SDL's run loop.
+//
+// The provided callback is called once per frame until it returns either:
+//   - nil          to continue the loop,
+//   - sdl.EndLoop  to terminate cleanly,
+//   - any other error, which is returned to the caller.
 func (e *Experiment) Run(logic func() error) error {
 	// For simplicity in this prototype, we'll run the logic directly.
 	// In a real implementation, we'd handle the RunLoop properly.

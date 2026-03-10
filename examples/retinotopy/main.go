@@ -464,7 +464,7 @@ func (r *Retinotopy) updateCombinedTexture(patternID, maskID int) {
 func main() {
 	subjID := flag.Int("s", 0, "Subject ID")
 	runID := flag.Int("r", 1, "Run ID (1-6)")
-	develop := flag.Bool("d", false, "Develop mode (windowed display)")
+	develop := flag.Bool("d", false, "Developer mode (windowed 1024x1024)")
 	scaling := flag.Float64("scaling", 1.0, "Scaling factor for stimuli (e.g., 0.5, 1.5)")
 	assetsDirFlag := flag.String("assets", "", "Path to assets directory")
 	// Keep -F for backward compatibility if needed, but we'll prioritize -d
@@ -495,17 +495,15 @@ func main() {
 	}
 	log.Printf("Using assets directory: %s", assetsDir)
 
-	// Default is fullscreen unless develop mode is requested
-	isFullscreen := !*develop
-	if *fullscreenFlag {
-		isFullscreen = true
+	// Determine window mode:
+	// - default: exclusive fullscreen at desktop resolution (0,0)
+	// - developer mode: 1024x1024 window.
+	width, height, fullscreen := 0, 0, true
+	if *develop {
+		width, height, fullscreen = 1024, 1024, false
 	}
-
-	var winW, winH int
-	if isFullscreen {
-		winW, winH = 1280, 1024
-	} else {
-		winW, winH = 900, 900
+	if *fullscreenFlag {
+		fullscreen = true
 	}
 
 	labels := map[int]string{
@@ -516,7 +514,7 @@ func main() {
 		log.Fatalf("Invalid run ID: %d", *runID)
 	}
 
-	exp := control.NewExperiment("Retinotopy", winW, winH, isFullscreen)
+	exp := control.NewExperiment("Retinotopy", width, height, fullscreen)
 	exp.BackgroundColor = BackgroundColor
 	exp.SubjectID = *subjID
 	if err := exp.Initialize(); err != nil {
@@ -524,13 +522,9 @@ func main() {
 	}
 	defer exp.End()
 
-	// Set logical size to ensure consistent centering and coordinates
-	if err := exp.SetLogicalSize(int32(winW), int32(winH)); err != nil {
-		log.Printf("Warning: failed to set logical size: %v", err)
-	}
 
 	// Wait for fullscreen transition to stabilize
-	// if isFullscreen {
+	// if fullscreen {
 	//	misc.Wait(2000)
 	//}
 

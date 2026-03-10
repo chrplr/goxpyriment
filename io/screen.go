@@ -9,8 +9,12 @@ import (
 	"github.com/Zyko0/go-sdl3/ttf"
 )
 
-// Screen represents the display window and the hardware-accelerated renderer.
-// It manages the double-buffering scheme and global font settings.
+// Screen wraps the SDL window and hardware‑accelerated renderer.
+// It is responsible for:
+//   - managing the backbuffer / presenting frames (Clear, Update, Flip),
+//   - tracking the logical coordinate system and conversion from centered
+//     coordinates to SDL's top‑left space (CenterToSDL),
+//   - holding the default font and optional canvas/logical size overrides.
 type Screen struct {
 	Window       *sdl.Window
 	Renderer     *sdl.Renderer
@@ -22,21 +26,50 @@ type Screen struct {
 	LogicalSize  *sdl.FPoint // If not nil, use this for CenterToSDL
 }
 
-// NewScreen initializes a new SDL window and renderer with specified dimensions, background color, and fullscreen mode.
+// NewScreen initializes a new SDL window and renderer.
+//
+// width and height specify the logical experiment resolution. When fullscreen
+// is true, or when width/height are 0, the physical window is created at the
+// desktop's native resolution in exclusive fullscreen and the renderer is
+// configured with a logical size matching the requested resolution (if > 0).
 func NewScreen(title string, width, height int, bgColor sdl.Color, fullscreen bool) (*Screen, error) {
-	var flags sdl.WindowFlags = sdl.WINDOW_HIDDEN
-
-	w, h := width, height
-	if fullscreen {
-		flags |= sdl.WINDOW_FULLSCREEN
-		// Use native resolution for the window creation to avoid mode-switching glitches
-		display := sdl.GetPrimaryDisplay()
-		if mode, err := display.DesktopDisplayMode(); err == nil {
-			w, h = int(mode.W), int(mode.H)
+	// Exclusive fullscreen path: mimic tests/set_fullscreen/go_example/main.go.
+	// When fullscreen is requested OR no explicit size is provided (0x0),
+	// we ask SDL to create a fullscreen window at the native resolution
+	// and then create a renderer for it.
+	if fullscreen || (width == 0 && height == 0) {
+		window, err := sdl.CreateWindow(
+			title,
+			0, 0,
+			sdl.WINDOW_HIGH_PIXEL_DENSITY|sdl.WINDOW_FULLSCREEN,
+		)
+		if err != nil {
+			return nil, err
 		}
+
+		renderer, err := window.CreateRenderer("")
+		if err != nil {
+			window.Destroy()
+			return nil, err
+		}
+
+		// Query the actual physical pixel dimensions.
+		w, h, err := window.SizeInPixels()
+		if err != nil {
+			w, h = 0, 0
+		}
+
+		return &Screen{
+			Window:   window,
+			Renderer: renderer,
+			BgColor:  bgColor,
+			Width:    int(w),
+			Height:   int(h),
+		}, nil
 	}
 
-	window, renderer, err := sdl.CreateWindowAndRenderer(title, w, h, flags)
+	// Windowed path: create a hidden window+renderer pair and show it.
+	window, renderer, err := sdl.CreateWindowAndRenderer(title, width, height, sdl.WINDOW_HIDDEN)
 	if err != nil {
 		return nil, err
 	}
@@ -49,19 +82,17 @@ func NewScreen(title string, width, height int, bgColor sdl.Color, fullscreen bo
 		Height:   height,
 	}
 
-	// Apply logical scaling if fullscreen or if requested resolution doesn't match window size
-	if fullscreen || w != width || h != height {
-		_ = s.SetLogicalSize(int32(width), int32(height))
-	}
-
 	if err := window.Show(); err != nil {
+		window.Destroy()
 		return nil, err
 	}
 
 	return s, nil
 }
 
-// CenterToSDL converts center-based coordinates to SDL top-left based coordinates.
+// CenterToSDL converts center‑based coordinates to SDL top‑left based
+// coordinates using either the current logical size, canvas offset, or the
+// renderer output size as a fallback.
 func (s *Screen) CenterToSDL(x, y float32) (float32, float32) {
 	if s.CanvasOffset != nil {
 		return s.CanvasOffset.X + x, s.CanvasOffset.Y - y
@@ -78,7 +109,9 @@ func (s *Screen) LogicalCenterToSDL(x, y float32, width, height float32) (float3
 	return width/2 + x, height/2 - y
 }
 
-// SetLogicalSize sets a device-independent resolution for the renderer.
+// SetLogicalSize sets a device‑independent logical resolution for the
+// renderer. All subsequent drawing operations are scaled to this size using
+// SDL's logical presentation (letterboxed by default).
 func (s *Screen) SetLogicalSize(width, height int32) error {
 	s.LogicalSize = &sdl.FPoint{X: float32(width), Y: float32(height)}
 	return s.Renderer.SetLogicalPresentation(width, height, sdl.LOGICAL_PRESENTATION_LETTERBOX)

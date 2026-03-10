@@ -7,11 +7,12 @@ import (
 	_ "embed"
 	"flag"
 	"fmt"
+	"log"
+
 	"github.com/chrplr/goxpyriment/control"
 	"github.com/chrplr/goxpyriment/design"
 	"github.com/chrplr/goxpyriment/misc"
 	"github.com/chrplr/goxpyriment/stimuli"
-	"log"
 
 	"github.com/Zyko0/go-sdl3/sdl"
 )
@@ -76,19 +77,10 @@ type cardTrial struct {
 }
 
 func main() {
-	develop := flag.Bool("d", false, "Develop mode (windowed display)")
+	develop := flag.Bool("d", false, "Developer mode (windowed 1024x1024)")
 	scaling := flag.Float64("scaling", 1.0, "Scaling factor for stimuli")
 	fullscreenFlag := flag.Bool("F", false, "Force Fullscreen")
 	flag.Parse()
-
-	// Default is fullscreen unless develop mode is requested
-	isFullscreen := !*develop
-	if *fullscreenFlag {
-		isFullscreen = true
-	}
-
-	var winW, winH int
-	winW, winH = 1280, 1024
 
 	// Scaled dimensions
 	cardW := float32(BaseCardW) * float32(*scaling)
@@ -97,11 +89,27 @@ func main() {
 	shift := cardW + gap
 
 	// 1. Initialize experiment
-	exp := control.NewExperiment("Mental Logic Card Game", winW, winH, isFullscreen)
+	width, height, fullscreen := 0, 0, true
+	if *develop {
+		width, height, fullscreen = 1024, 1024, false
+	}
+	if *fullscreenFlag {
+		fullscreen = true
+	}
+	exp := control.NewExperiment("Mental Logic Card Game", width, height, fullscreen)
 	if err := exp.Initialize(); err != nil {
 		log.Fatalf("failed to initialize experiment: %v", err)
 	}
 	defer exp.End()
+
+	// Prepare event log header and write it as comments in the data file.
+	// We log condition, response key, RT, and correctness.
+	evLog := exp.CollectEventLog()
+	evLog.SetSubjectID(fmt.Sprintf("%d", exp.SubjectID))
+	evLog.SetCSVHeader([]string{"condition", "response", "rt", "correct"})
+	exp.Data.WriteComment("--EVENT LOG")
+	exp.Data.WriteComment(evLog.String())
+	exp.Data.WriteComment("--TRIAL DATA")
 
 	// Set logical size to ensure consistent centering and coordinates
 	if err := exp.SetLogicalSize(1280, 1024); err != nil {
@@ -109,7 +117,7 @@ func main() {
 	}
 
 	// Wait for fullscreen transition to stabilize
-	// if isFullscreen {
+	// if fullscreen {
 	//	misc.Wait(2000)
 	// }
 
@@ -151,7 +159,7 @@ func main() {
 	// 4. Run Experiment
 	err := exp.Run(func() error {
 		// Wait for fullscreen transition to stabilize before showing instructions
-		if isFullscreen {
+		if fullscreen {
 			misc.Wait(2000)
 		}
 

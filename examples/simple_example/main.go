@@ -20,10 +20,16 @@ import (
 var bonjourWav []byte
 
 func main() {
-	fullscreen := flag.Bool("F", false, "Launch in fullscreen display mode")
+	develop := flag.Bool("d", false, "Developer mode (windowed 1024x1024)")
+	subject := flag.Int("s", 0, "Subject ID")
 	flag.Parse()
 	// 1. Create and initialize the experiment
-	exp := control.NewExperiment("My First Go Experiment", 1368, 1024, *fullscreen)
+	width, height, fullscreen := 0, 0, true
+	if *develop {
+		width, height, fullscreen = 1024, 1024, false
+	}
+	exp := control.NewExperiment("My First Go Experiment", width, height, fullscreen)
+	exp.SubjectID = *subject
 	if err := exp.Initialize(); err != nil {
 		log.Fatalf("failed to initialize experiment: %v", err)
 	}

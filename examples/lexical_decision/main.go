@@ -8,13 +8,14 @@ import (
 	"encoding/csv"
 	"flag"
 	"fmt"
-	"github.com/chrplr/goxpyriment/control"
-	"github.com/chrplr/goxpyriment/misc"
-	"github.com/chrplr/goxpyriment/stimuli"
 	"log"
 	"math/rand"
 	"os"
 	"time"
+
+	"github.com/chrplr/goxpyriment/control"
+	"github.com/chrplr/goxpyriment/misc"
+	"github.com/chrplr/goxpyriment/stimuli"
 
 	"github.com/Zyko0/go-sdl3/sdl"
 )
@@ -34,15 +35,17 @@ type lexicalTrial struct {
 func main() {
 	rand.Seed(time.Now().UnixNano())
 
-	fullscreen := flag.Bool("F", false, "Launch in fullscreen display mode")
+	develop := flag.Bool("d", false, "Developer mode (windowed 1024x1024)")
+	subject := flag.Int("s", 0, "Subject ID")
 	flag.Parse()
 
 	// 1. Get CSV file from command line
-	if len(os.Args) < 2 {
-		fmt.Println("Usage: go run main.go CSVFILE")
+	args := flag.Args()
+	if len(args) < 1 {
+		fmt.Println("Usage: lexical_decision [-F] CSVFILE")
 		os.Exit(1)
 	}
-	stimFile := os.Args[1]
+	stimFile := args[0]
 
 	// 2. Load stimuli from CSV
 	file, err := os.Open(stimFile)
@@ -63,6 +66,10 @@ func main() {
 		if i == 0 {
 			continue // skip header
 		}
+		if len(record) < 2 {
+			log.Printf("skipping malformed CSV line %d: %#v", i+1, record)
+			continue
+		}
 		item := record[0]
 		category := record[1]
 		stim := stimuli.NewTextLine(item, 0, 0, control.DefaultTextColor)
@@ -70,11 +77,24 @@ func main() {
 	}
 
 	// 3. Create and initialize the experiment
-	exp := control.NewExperiment("Lexical Decision", 1368, 1024, *fullscreen)
+	width, height, fullscreen := 0, 0, true
+	if *develop {
+		width, height, fullscreen = 1024, 1024, false
+	}
+	exp := control.NewExperiment("Lexical Decision", width, height, fullscreen)
+	exp.SubjectID = *subject
 	if err := exp.Initialize(); err != nil {
 		log.Fatalf("failed to initialize experiment: %v", err)
 	}
 	defer exp.End()
+
+	// Prepare event log header and write it as comments in the data file
+	evLog := exp.CollectEventLog()
+	evLog.SetSubjectID(fmt.Sprintf("%d", exp.SubjectID))
+	evLog.SetCSVHeader([]string{"item", "category", "key", "rt"})
+	exp.Data.WriteComment("--EVENT LOG")
+	exp.Data.WriteComment(evLog.String())
+	exp.Data.WriteComment("--TRIAL DATA")
 
 	exp.Data.AddVariableNames([]string{"item", "category", "key", "rt"})
 

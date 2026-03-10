@@ -7,19 +7,24 @@ import (
 	"github.com/Zyko0/go-sdl3/sdl"
 )
 
-// Keyboard provides methods for handling keyboard input.
+// Keyboard provides blocking and non‑blocking helpers around SDL's keyboard
+// events, mirroring the high‑level API of Expyriment.
 type Keyboard struct {
 }
 
-// Wait blocks until a key is pressed and returns the key.
+// Wait blocks until any key is pressed and returns its SDL keycode.
+// If the ESC key or a quit event is received, it returns sdl.EndLoop.
 func (k *Keyboard) Wait() (sdl.Keycode, error) {
 	return k.WaitKeys(nil, -1)
 }
 
-// WaitKeys blocks until one of the specified keys is pressed or a timeout occurs.
-// If keys is nil, any key will trigger a return.
-// If timeoutMS is -1, it waits indefinitely.
-// Returns the keycode and any error (e.g., sdl.EndLoop for quit).
+// WaitKeys blocks until one of the specified keys is pressed or a timeout
+// occurs.
+//
+//   - If keys is nil, any key will trigger a return.
+//   - If timeoutMS is -1, it waits indefinitely.
+//   - On timeout, it returns keycode 0 and nil error.
+//   - On ESC or quit, it returns sdl.EndLoop.
 func (k *Keyboard) WaitKeys(keys []sdl.Keycode, timeoutMS int) (sdl.Keycode, error) {
 	start := sdl.Ticks()
 	for {
@@ -68,7 +73,9 @@ func (k *Keyboard) WaitKeys(keys []sdl.Keycode, timeoutMS int) (sdl.Keycode, err
 	}
 }
 
-// Check polls for keyboard events and returns the first key pressed since the last call, without blocking.
+// Check polls for keyboard events without blocking and returns the first key
+// pressed since the last call (or 0 if none). ESC or a quit event yields
+// sdl.EndLoop.
 func (k *Keyboard) Check() (sdl.Keycode, error) {
 	var event sdl.Event
 	for sdl.PollEvent(&event) {
@@ -86,7 +93,8 @@ func (k *Keyboard) Check() (sdl.Keycode, error) {
 	return 0, nil
 }
 
-// Clear clears all keyboard events from the queue.
+// Clear drains all pending keyboard (and other) events from SDL's event queue.
+// This is useful between trials to avoid processing stale key presses.
 func (k *Keyboard) Clear() {
 	var event sdl.Event
 	for sdl.PollEvent(&event) {

@@ -7,12 +7,13 @@ import (
 	_ "embed"
 	"flag"
 	"fmt"
-	"github.com/chrplr/goxpyriment/control"
-	"github.com/chrplr/goxpyriment/misc"
-	"github.com/chrplr/goxpyriment/stimuli"
 	"log"
 	"math/rand"
 	"time"
+
+	"github.com/chrplr/goxpyriment/control"
+	"github.com/chrplr/goxpyriment/misc"
+	"github.com/chrplr/goxpyriment/stimuli"
 
 	"github.com/Zyko0/go-sdl3/sdl"
 )
@@ -27,24 +28,29 @@ func main() {
 	// Initialize random seed
 	rand.Seed(time.Now().UnixNano())
 
-	develop := flag.Bool("d", false, "Develop mode (windowed display)")
-	fullscreenFlag := flag.Bool("F", false, "Force Fullscreen")
+	develop := flag.Bool("d", false, "Developer mode (windowed 1024x1024)")
 	flag.Parse()
 
-	// Default is fullscreen unless develop mode is requested
-	isFullscreen := !*develop
-	if *fullscreenFlag {
-		isFullscreen = true
-	}
-
-	winW, winH := 1920, 1080
-
 	// 1. Create and initialize the experiment
-	exp := control.NewExperiment("Stroop Task", winW, winH, isFullscreen)
+	width, height, fullscreen := 0, 0, true
+	if *develop {
+		width, height, fullscreen = 1024, 1024, false
+	}
+	exp := control.NewExperiment("Stroop Task", width, height, fullscreen)
 	if err := exp.Initialize(); err != nil {
 		log.Fatalf("failed to initialize experiment: %v", err)
 	}
 	defer exp.End()
+
+	// Prepare event log header and write it as comments in the data file.
+	// We will log word, ink color, response, RT, correctness and congruency.
+	evLog := exp.CollectEventLog()
+	evLog.SetSubjectID(fmt.Sprintf("%d", exp.SubjectID))
+	evLog.SetCSVHeader([]string{"trial", "word", "ink_color", "response", "rt", "correct", "congruent"})
+	exp.Data.WriteComment("--EVENT LOG")
+	exp.Data.WriteComment(evLog.String())
+	exp.Data.WriteComment("--TRIAL DATA")
+	exp.Data.AddVariableNames([]string{"trial", "word", "ink_color", "response", "rt", "correct", "congruent"})
 
 	// Set logical size for consistent centering
 	//if err := exp.SetLogicalSize(int32(winW), int32(winH)); err != nil {
@@ -118,19 +124,35 @@ func main() {
 				if subErr != nil {
 					return subErr
 				}
-				
+
 				var resp string
 				switch key {
-				case sdl.K_R: resp = "RED"
-				case sdl.K_G: resp = "GREEN"
-				case sdl.K_B: resp = "BLUE"
-				case sdl.K_Y: resp = "YELLOW"
+				case sdl.K_R:
+					resp = "RED"
+				case sdl.K_G:
+					resp = "GREEN"
+				case sdl.K_B:
+					resp = "BLUE"
+				case sdl.K_Y:
+					resp = "YELLOW"
 				}
 
 				if resp != "" {
 					rt := misc.GetTime() - startTime
 					correct := resp == t.name
 					congruent := t.word == t.name
+
+					// Log to data file
+					exp.Data.Add([]interface{}{
+						i,
+						t.word,
+						t.name,
+						resp,
+						rt,
+						correct,
+						congruent,
+					})
+
 					fmt.Printf("Trial %d: Word=%s, Color=%s, Resp=%s, RT=%d ms, Correct=%v, Congruent=%v\n", i, t.word, t.name, resp, rt, correct, congruent)
 					break
 				}
