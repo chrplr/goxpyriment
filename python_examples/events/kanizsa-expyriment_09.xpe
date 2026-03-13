@@ -1,0 +1,18 @@
+#Expyriment 0.10.0 (Python 3.7.9), .xpe-file, coding: UTF-8
+#date: Mon Apr 05 2021 07:36:10
+#sha1: 8263c3
+#modules: 
+#display: size=(800, 600), window_mode=True, open_gl=2
+#os: uname_result(system='Linux', node='is154920', release='5.8.0-48-generic', version='#54~20.04.1-Ubuntu SMP Sat Mar 20 13:40:25 UTC 2021', machine='x86_64', processor='x86_64')
+Time,Type,Event,Value,Detail,Detail2
+124,design,log,
+#design: #exp: Kanisza square
+#design: block_cnt,block_id,trial_cnt,trial_id
+124,design,logged,
+124,Experiment,started
+124,stderr,received,'Traceback (most recent call last):'
+124,stderr,received,'  File "kanizsa-expyriment.py", line 61, in <module>'
+124,stderr,received,'    color_tl=BLACK, color_tr=BLACK, color_bl=BLACK,  color_br=BLACK)'
+124,stderr,received,'  File "kanizsa-expyriment.py", line 41, in Kanisza_square'
+124,stderr,received,'    rect = Rectangle((width, height), square_color,  position = (0, 0), corner_anti_aliasing = true)'
+124,stderr,received,"NameError: name 'true' is not defined"

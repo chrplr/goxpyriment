@@ -1,0 +1,16 @@
+#Expyriment 0.10.0 (Python 3.7.9), .xpe-file, coding: UTF-8
+#date: Tue Apr 20 2021 14:55:27
+#sha1: f0fecf
+#modules: 
+#display: size=(800, 600), window_mode=True, open_gl=2
+#os: uname_result(system='Linux', node='is154920', release='5.8.0-50-generic', version='#56~20.04.1-Ubuntu SMP Mon Apr 12 21:46:35 UTC 2021', machine='x86_64', processor='x86_64')
+Time,Type,Event,Value,Detail,Detail2
+126,design,log,
+#design: #exp: Herman's Grid
+#design: block_cnt,block_id,trial_cnt,trial_id
+126,design,logged,
+126,Experiment,started
+126,stderr,received,'Traceback (most recent call last):'
+126,stderr,received,'  File "grid_expyriment.py", line 31, in <module>'
+126,stderr,received,'    stimuli.Rectanle((cell_side_length, cell_side_length),'
+126,stderr,received,"AttributeError: module 'expyriment.stimuli' has no attribute 'Rectanle'"

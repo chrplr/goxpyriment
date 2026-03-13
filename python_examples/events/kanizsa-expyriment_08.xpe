@@ -1,0 +1,15 @@
+#Expyriment 0.10.0 (Python 3.7.9), .xpe-file, coding: UTF-8
+#date: Sun Apr 04 2021 07:45:32
+#sha1: 9a0b43
+#modules: 
+#display: size=(800, 600), window_mode=True, open_gl=2
+#os: uname_result(system='Linux', node='is154920', release='5.8.0-48-generic', version='#54~20.04.1-Ubuntu SMP Sat Mar 20 13:40:25 UTC 2021', machine='x86_64', processor='x86_64')
+Time,Type,Event,Value,Detail,Detail2
+156,design,log,
+#design: #exp: Kanisza square
+#design: block_cnt,block_id,trial_cnt,trial_id
+156,design,logged,
+156,Experiment,started
+173,Stimulus,presented,0
+80266,Keyboard,received,113,wait
+80266,Experiment,ended

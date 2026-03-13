@@ -1,0 +1,18 @@
+#Expyriment 0.10.0 (Python 3.7.9), .xpe-file, coding: UTF-8
+#date: Mon Apr 05 2021 07:50:41
+#sha1: 3629a5
+#modules: 
+#display: size=(800, 600), window_mode=True, open_gl=2
+#os: uname_result(system='Linux', node='is154920', release='5.8.0-48-generic', version='#54~20.04.1-Ubuntu SMP Sat Mar 20 13:40:25 UTC 2021', machine='x86_64', processor='x86_64')
+Time,Type,Event,Value,Detail,Detail2
+143,design,log,
+#design: #exp: Kanisza square
+#design: block_cnt,block_id,trial_cnt,trial_id
+143,design,logged,
+143,Experiment,started
+144,Stimulus,presented,1
+144,Stimulus,presented,2
+145,stderr,received,'Traceback (most recent call last):'
+145,stderr,received,'  File "kanisza-expyriment_v1.py", line 27, in <module>'
+145,stderr,received,'    stimuli.CircleCircle(radius, (0,0,0), 0, (left, bottom)).present(clear=True, update=False)'
+145,stderr,received,"AttributeError: module 'expyriment.stimuli' has no attribute 'CircleCircle'"

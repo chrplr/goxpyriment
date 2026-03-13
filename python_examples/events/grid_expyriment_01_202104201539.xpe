@@ -1,0 +1,62 @@
+#Expyriment 0.10.0 (Python 3.7.9), .xpe-file, coding: UTF-8
+#date: Tue Apr 20 2021 15:39:01
+#sha1: 72e008
+#modules: 
+#display: size=(3840, 2160), window_mode=False, open_gl=2
+#os: uname_result(system='Linux', node='is154920', release='5.8.0-50-generic', version='#56~20.04.1-Ubuntu SMP Mon Apr 12 21:46:35 UTC 2021', machine='x86_64', processor='x86_64')
+Time,Type,Event,Value,Detail,Detail2
+10152,design,log,
+#design: #exp: Herman's Grid
+#design: block_cnt,block_id,trial_cnt,trial_id
+10152,design,logged,
+10152,Experiment,started
+10258,Stimulus,presented,1
+11427,Keyboard,received,275,wait
+11518,Stimulus,presented,1
+11925,Keyboard,received,275,wait
+12018,Stimulus,presented,1
+12336,Keyboard,received,275,wait
+12429,Stimulus,presented,1
+12649,Keyboard,received,275,wait
+12744,Stimulus,presented,1
+12994,Keyboard,received,275,wait
+13086,Stimulus,presented,1
+13291,Keyboard,received,275,wait
+13385,Stimulus,presented,1
+13658,Keyboard,received,275,wait
+13751,Stimulus,presented,1
+14019,Keyboard,received,275,wait
+14110,Stimulus,presented,1
+14242,Keyboard,received,275,wait
+14335,Stimulus,presented,1
+15631,Keyboard,received,275,wait
+15722,Stimulus,presented,1
+15857,Keyboard,received,275,wait
+15952,Stimulus,presented,1
+16043,Keyboard,received,275,wait
+16136,Stimulus,presented,1
+16240,Keyboard,received,275,wait
+16335,Stimulus,presented,1
+16412,Keyboard,received,275,wait
+16508,Stimulus,presented,1
+16555,Keyboard,received,275,wait
+16652,Stimulus,presented,1
+16717,Keyboard,received,275,wait
+16812,Stimulus,presented,1
+16864,Keyboard,received,275,wait
+16961,Stimulus,presented,1
+17033,Keyboard,received,275,wait
+17125,Stimulus,presented,1
+17182,Keyboard,received,275,wait
+17275,Stimulus,presented,1
+17613,Keyboard,received,276,wait
+17704,Stimulus,presented,1
+18934,Keyboard,received,276,wait
+19028,Stimulus,presented,1
+19108,Keyboard,received,276,wait
+19202,Stimulus,presented,1
+19843,Experiment,paused
+19852,Stimulus,presented,2302
+21256,Keyboard,received,y,wait_char
+21256,Experiment,ended
+21268,Stimulus,presented,2302

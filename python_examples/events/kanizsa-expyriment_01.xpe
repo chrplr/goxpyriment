@@ -1,0 +1,16 @@
+#Expyriment 0.10.0 (Python 3.7.9), .xpe-file, coding: UTF-8
+#date: Sun Apr 04 2021 07:15:35
+#sha1: 73812e
+#modules: 
+#display: size=(800, 600), window_mode=True, open_gl=2
+#os: uname_result(system='Linux', node='is154920', release='5.8.0-48-generic', version='#54~20.04.1-Ubuntu SMP Sat Mar 20 13:40:25 UTC 2021', machine='x86_64', processor='x86_64')
+Time,Type,Event,Value,Detail,Detail2
+147,design,log,
+#design: #exp: Kanisza square
+#design: block_cnt,block_id,trial_cnt,trial_id
+147,design,logged,
+147,Experiment,started
+147,stderr,received,'Traceback (most recent call last):'
+147,stderr,received,'  File "kanizsa-expyriment.py", line 32, in <module>'
+147,stderr,received,"    bl = BlanckScreen(Colour('gray'))"
+147,stderr,received,"NameError: name 'BlanckScreen' is not defined"

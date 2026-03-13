@@ -1,0 +1,18 @@
+#Expyriment 0.10.0 (Python 3.7.9), .xpe-file, coding: UTF-8
+#date: Tue Apr 20 2021 15:02:31
+#sha1: 5f8db7
+#modules: 
+#display: size=(3840, 2160), window_mode=False, open_gl=2
+#os: uname_result(system='Linux', node='is154920', release='5.8.0-50-generic', version='#56~20.04.1-Ubuntu SMP Mon Apr 12 21:46:35 UTC 2021', machine='x86_64', processor='x86_64')
+Time,Type,Event,Value,Detail,Detail2
+13607,design,log,
+#design: #exp: Herman's Grid
+#design: block_cnt,block_id,trial_cnt,trial_id
+13607,design,logged,
+13607,Experiment,started
+13608,stderr,received,'Traceback (most recent call last):'
+13608,stderr,received,'  File "grid_expyriment.py", line 35, in <module>'
+13609,stderr,received,'    r.plot(exp.screen)'
+13609,stderr,received,'  File "/home/cp983411/anaconda3/envs/expyriment/lib/python3.7/site-packages/expyriment/stimuli/_visual.py", line 924, in plot'
+13612,stderr,received,'    if not stimulus._set_surface(stimulus._get_surface()):'
+13612,stderr,received,"AttributeError: 'Screen' object has no attribute '_set_surface'"

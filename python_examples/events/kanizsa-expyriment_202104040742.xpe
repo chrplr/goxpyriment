@@ -1,0 +1,11 @@
+#Expyriment 0.10.0 (Python 3.7.9), .xpe-file, coding: UTF-8
+#date: Sun Apr 04 2021 07:42:29
+#sha1: 686180
+#modules: 
+#display: size=(800, 600), window_mode=True, open_gl=2
+#os: uname_result(system='Linux', node='is154920', release='5.8.0-48-generic', version='#54~20.04.1-Ubuntu SMP Sat Mar 20 13:40:25 UTC 2021', machine='x86_64', processor='x86_64')
+Time,Type,Event,Value,Detail,Detail2
+100,stderr,received,'Traceback (most recent call last):'
+100,stderr,received,'  File "kanizsa-expyriment.py", line 42, in <module>'
+100,stderr,received,"    rect = Rectangle((width, height), Colour('gray'),  position=(0, 0), corner_anti_aliasing=True)"
+100,stderr,received,"NameError: name 'width' is not defined"

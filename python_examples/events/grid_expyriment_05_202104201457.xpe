@@ -1,0 +1,16 @@
+#Expyriment 0.10.0 (Python 3.7.9), .xpe-file, coding: UTF-8
+#date: Tue Apr 20 2021 14:57:52
+#sha1: 02275a
+#modules: 
+#display: size=(3840, 2160), window_mode=False, open_gl=2
+#os: uname_result(system='Linux', node='is154920', release='5.8.0-50-generic', version='#56~20.04.1-Ubuntu SMP Mon Apr 12 21:46:35 UTC 2021', machine='x86_64', processor='x86_64')
+Time,Type,Event,Value,Detail,Detail2
+10753,design,log,
+#design: #exp: Herman's Grid
+#design: block_cnt,block_id,trial_cnt,trial_id
+10753,design,logged,
+10753,Experiment,started
+10754,stderr,received,'Traceback (most recent call last):'
+10754,stderr,received,'  File "grid_expyriment.py", line 34, in <module>'
+10754,stderr,received,'    position=(x_left, y_top)).blit(exp.screen)'
+10754,stderr,received,"AttributeError: 'Rectangle' object has no attribute 'blit'"

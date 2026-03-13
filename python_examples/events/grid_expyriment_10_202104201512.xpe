@@ -1,0 +1,48 @@
+#Expyriment 0.10.0 (Python 3.7.9), .xpe-file, coding: UTF-8
+#date: Tue Apr 20 2021 15:12:13
+#sha1: 640409
+#modules: 
+#display: size=(3840, 2160), window_mode=False, open_gl=2
+#os: uname_result(system='Linux', node='is154920', release='5.8.0-50-generic', version='#56~20.04.1-Ubuntu SMP Mon Apr 12 21:46:35 UTC 2021', machine='x86_64', processor='x86_64')
+Time,Type,Event,Value,Detail,Detail2
+10233,design,log,
+#design: #exp: Herman's Grid
+#design: block_cnt,block_id,trial_cnt,trial_id
+10233,design,logged,
+10233,Experiment,started
+10326,Stimulus,presented,2
+11040,Keyboard,received,+,wait_char
+11139,Stimulus,presented,2
+12396,Keyboard,received,+,wait_char
+12488,Stimulus,presented,2
+12585,Keyboard,received,+,wait_char
+12677,Stimulus,presented,2
+12772,Keyboard,received,+,wait_char
+12866,Stimulus,presented,2
+12949,Keyboard,received,+,wait_char
+13039,Stimulus,presented,2
+13100,Keyboard,received,+,wait_char
+13208,Stimulus,presented,2
+13281,Keyboard,received,+,wait_char
+13374,Stimulus,presented,2
+13462,Keyboard,received,+,wait_char
+13553,Stimulus,presented,2
+14365,Keyboard,received,+,wait_char
+14456,Stimulus,presented,2
+14538,Keyboard,received,+,wait_char
+14632,Stimulus,presented,2
+14717,Keyboard,received,+,wait_char
+14808,Stimulus,presented,2
+14881,Keyboard,received,+,wait_char
+14974,Stimulus,presented,2
+15064,Keyboard,received,+,wait_char
+15156,Stimulus,presented,2
+15253,Keyboard,received,+,wait_char
+15349,Stimulus,presented,2
+15421,Keyboard,received,+,wait_char
+15516,Stimulus,presented,2
+17105,Experiment,paused
+17116,Stimulus,presented,1603
+18013,Keyboard,received,y,wait_char
+18013,Experiment,ended
+18018,Stimulus,presented,1603

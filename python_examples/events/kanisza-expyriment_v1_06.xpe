@@ -1,0 +1,22 @@
+#Expyriment 0.10.0 (Python 3.7.9), .xpe-file, coding: UTF-8
+#date: Mon Apr 05 2021 07:51:58
+#sha1: b34b64
+#modules: 
+#display: size=(800, 600), window_mode=True, open_gl=2
+#os: uname_result(system='Linux', node='is154920', release='5.8.0-48-generic', version='#54~20.04.1-Ubuntu SMP Sat Mar 20 13:40:25 UTC 2021', machine='x86_64', processor='x86_64')
+Time,Type,Event,Value,Detail,Detail2
+137,design,log,
+#design: #exp: Kanisza square
+#design: block_cnt,block_id,trial_cnt,trial_id
+137,design,logged,
+137,Experiment,started
+138,Stimulus,presented,1
+138,Stimulus,presented,2
+139,Stimulus,presented,3
+140,Stimulus,presented,4
+140,stderr,received,'Traceback (most recent call last):'
+140,stderr,received,'  File "kanisza-expyriment_v1.py", line 29, in <module>'
+140,stderr,received,'    stimuli.Rectangle((width, height), 0, (127,127,127),  (0, 0)).present(clear=True, update=False)'
+140,stderr,received,'  File "/home/cp983411/anaconda3/envs/expyriment/lib/python3.7/site-packages/expyriment/stimuli/_rectangle.py", line 64, in __init__'
+140,stderr,received,'    elif line_width < 0 or line_width >= min(self._size):'
+140,stderr,received,"TypeError: '<' not supported between instances of 'tuple' and 'int'"

@@ -1,0 +1,16 @@
+#Expyriment 0.10.0 (Python 3.7.9), .xpe-file, coding: UTF-8
+#date: Sun Apr 04 2021 07:15:47
+#sha1: b5c1ed
+#modules: 
+#display: size=(800, 600), window_mode=True, open_gl=2
+#os: uname_result(system='Linux', node='is154920', release='5.8.0-48-generic', version='#54~20.04.1-Ubuntu SMP Sat Mar 20 13:40:25 UTC 2021', machine='x86_64', processor='x86_64')
+Time,Type,Event,Value,Detail,Detail2
+169,design,log,
+#design: #exp: Kanisza square
+#design: block_cnt,block_id,trial_cnt,trial_id
+169,design,logged,
+169,Experiment,started
+169,stderr,received,'Traceback (most recent call last):'
+169,stderr,received,'  File "kanizsa-expyriment.py", line 32, in <module>'
+169,stderr,received,"    bl = BlankScreen(Colour('gray'))"
+169,stderr,received,"NameError: name 'Colour' is not defined"
