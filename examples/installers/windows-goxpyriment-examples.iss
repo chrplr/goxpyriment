@@ -16,15 +16,16 @@ SetupIconFile=..\\..\\assets\\icon.ico
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Files]
-; 1. Install ONLY the compiled .exe files. 
-; The 'skipifsourcedoesntexist' flag ensures that excluded video examples 
-; (which weren't built) don't cause the installer creation to fail. [cite: 3]
-Source: "..\*\*.exe"; DestDir: "{app}\bin"; Flags: recursesubdirs ignoreversion skipifsourcedoesntexist
+; 1. Recurse through the examples directory (..) to find all .exe files.
+; We use '..\*.exe' with 'recursesubdirs' to find all binaries in subfolders.
+; We exclude the 'installers' folder itself to prevent the setup from packaging itself.
+Source: "..\*.exe"; DestDir: "{app}\bin"; Flags: recursesubdirs ignoreversion; Excludes: "installers\*"
 
-; 2. Install the assets folder from the root directory [cite: 4]
+; 2. Install the assets folder from the root directory
 Source: "..\..\assets\*"; DestDir: "{app}\assets"; Flags: ignoreversion recursesubdirs
 
 [Icons]
-; Create a shortcut to the binaries folder [cite: 5]
+; Create a shortcut to the folder containing the binaries
 Name: "{group}\Browse Example Binaries"; Filename: "{app}\bin"
+; Shortcut for uninstallation
 Name: "{group}\Uninstall Goxpyriment Examples"; Filename: "{uninstallexe}"
