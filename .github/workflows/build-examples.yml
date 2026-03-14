@@ -22,8 +22,10 @@ jobs:
         shell: pwsh
         run: |
           cd examples
+          # DISABLE CGO to prevent go-astiav from looking for C libraries
+          $env:CGO_ENABLED = "0"
           # List of examples to exclude due to FFmpeg/go-astiav dependencies on Windows
-          $excludeList = @("play_videos", "play_two_videos", "retinotopy")
+          $excludeList = @("play_videos", "play_two_videos")
           
           Get-ChildItem -Directory | ForEach-Object {
             $dirName = $_.Name
