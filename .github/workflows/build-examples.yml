@@ -62,7 +62,7 @@ jobs:
           name: macos-dmg
           path: examples/installers/goxpyriment-examples.dmg
 
-  build-linux-appimages:
+build-linux-appimages:
     runs-on: ubuntu-latest
     env:
       CGO_ENABLED: 0
@@ -96,8 +96,10 @@ jobs:
           cd examples
           APPDIR_ROOT="installers/AppImages"
           TOOL="./installers/appimagetool"
+          
           for dir in */; do
             name="${dir%/}"
+            # Skip non-example directories
             if [[ "${name}" == "assets" || "${name}" == "installers" || "${name}" == "xpd_results" ]]; then
               continue
             fi
@@ -107,6 +109,7 @@ jobs:
             if [[ ! -f "${dir}/main.go" ]]; then
               continue
             fi
+
             echo "Packaging ${name} as AppImage..."
             appdir="${APPDIR_ROOT}/${name}.AppDir"
             mkdir -p "${appdir}/usr/bin" "${appdir}/usr/share/applications"
@@ -114,6 +117,7 @@ jobs:
             BINARY_SOURCE_PATH="${dir%/}/${name}"
             TARGET_BINARY_PATH="${appdir}/usr/bin/${name}"
 
+            # Ensure binary exists
             if [[ -f "$BINARY_SOURCE_PATH" ]]; then
               cp "$BINARY_SOURCE_PATH" "$TARGET_BINARY_PATH"
             else
@@ -121,34 +125,26 @@ jobs:
               (cd "${dir}" && go build -o "$TARGET_BINARY_PATH" .)
             fi
 
-            # Check if binary was created and is executable
             if [[ ! -f "$TARGET_BINARY_PATH" ]]; then
-              echo "Error: Binary ${TARGET_BINARY_PATH} was not created for ${name}. Skipping."
-              continue # Skip this example
+              echo "Error: Binary ${TARGET_BINARY_PATH} was not created. Skipping."
+              continue 
             fi
-            if [[ ! -x "$TARGET_BINARY_PATH" ]]; then
-              echo "Warning: Binary ${TARGET_BINARY_PATH} is not executable for ${name}. Attempting to make it executable."
-              chmod +x "$TARGET_BINARY_PATH"
-              if [[ ! -x "$TARGET_BINARY_PATH" ]]; then
-                echo "Error: Failed to make binary ${TARGET_BINARY_PATH} executable for ${name}. Skipping."
-                continue # Skip this example
-              fi
-            fi
+            chmod +x "$TARGET_BINARY_PATH"
 
-            # Generate AppRun script
-            cat <<EOF > "${appdir}/AppRun"
-            #!/bin/sh
-            # APPDIR is the path where the AppImage is mounted.
-            EXECUTABLE="\${APPDIR}/usr/bin/${name}"
-            echo "Attempting to execute: \$EXECUTABLE" # Debugging line
-            exec "\$EXECUTABLE" "\$@"
-            EOF
+            # --- Refactored AppRun Generation ---
+            # Using curly braces avoids the EOF indentation issue entirely.
+            {
+              echo '#!/bin/sh'
+              echo '# APPDIR is the path where the AppImage is mounted.'
+              echo 'EXECUTABLE="${APPDIR}/usr/bin/'"${name}"'"'
+              echo 'echo "Attempting to execute: $EXECUTABLE"'
+              echo 'exec "$EXECUTABLE" "$@"'
+            } > "${appdir}/AppRun"
             chmod +x "${appdir}/AppRun"
 
-            # Generate .desktop file
+            # --- Refactored Desktop File Generation ---
             desktop_dir="${appdir}/usr/share/applications"
             desktop="${desktop_dir}/${name}.desktop"
-            mkdir -p "${desktop_dir}"
             {
               echo "[Desktop Entry]"
               echo "Type=Application"
@@ -157,6 +153,7 @@ jobs:
               echo "Icon=${name}"
               echo "Categories=Education;"
             } > "${desktop}"
+            
             cp "${desktop}" "${appdir}/${name}.desktop"
             cp ../assets/icon_256.png "${appdir}/${name}.png"
             "${TOOL}" "${appdir}" "${APPDIR_ROOT}/${name}.AppImage"
