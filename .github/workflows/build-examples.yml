@@ -24,8 +24,7 @@ jobs:
           bash build.sh
 
       - name: Install Inno Setup
-        run: |
-          choco install innosetup -y
+        run: choco install innosetup -y
 
       - name: Build Windows installer (Inno Setup)
         run: |
@@ -99,51 +98,25 @@ jobs:
           
           for dir in */; do
             name="${dir%/}"
-            # Skip non-example directories
-            if [[ "${name}" == "assets" || "${name}" == "installers" || "${name}" == "xpd_results" ]]; then
-              continue
-            fi
-            if [[ "${name}" == "play_two_videos" || "${name}" == "play_videos" ]]; then
-              continue
-            fi
-            if [[ ! -f "${dir}/main.go" ]]; then
-              continue
-            fi
+            if [[ "${name}" == "assets" || "${name}" == "installers" || "${name}" == "xpd_results" ]]; then continue; fi
+            if [[ "${name}" == "play_two_videos" || "${name}" == "play_videos" ]]; then continue; fi
+            if [[ ! -f "${dir}/main.go" ]]; then continue; fi
 
-            echo "Packaging ${name} as AppImage..."
             appdir="${APPDIR_ROOT}/${name}.AppDir"
             mkdir -p "${appdir}/usr/bin" "${appdir}/usr/share/applications"
             
-            BINARY_SOURCE_PATH="${dir%/}/${name}"
             TARGET_BINARY_PATH="${appdir}/usr/bin/${name}"
+            (cd "${dir}" && go build -o "../../${TARGET_BINARY_PATH}" .)
+            chmod +x "../../${TARGET_BINARY_PATH}"
 
-            # Ensure binary exists
-            if [[ -f "$BINARY_SOURCE_PATH" ]]; then
-              cp "$BINARY_SOURCE_PATH" "$TARGET_BINARY_PATH"
-            else
-              echo "    (rebuilding ${name})"
-              (cd "${dir}" && go build -o "$TARGET_BINARY_PATH" .)
-            fi
-
-            if [[ ! -f "$TARGET_BINARY_PATH" ]]; then
-              echo "Error: Binary ${TARGET_BINARY_PATH} was not created. Skipping."
-              continue 
-            fi
-            chmod +x "$TARGET_BINARY_PATH"
-
-            # --- Refactored AppRun Generation ---
             {
               echo '#!/bin/sh'
-              echo '# APPDIR is the path where the AppImage is mounted.'
               echo 'EXECUTABLE="${APPDIR}/usr/bin/'"${name}"'"'
-              echo 'echo "Attempting to execute: $EXECUTABLE"'
               echo 'exec "$EXECUTABLE" "$@"'
             } > "${appdir}/AppRun"
             chmod +x "${appdir}/AppRun"
 
-            # --- Refactored Desktop File Generation ---
-            desktop_dir="${appdir}/usr/share/applications"
-            desktop="${desktop_dir}/${name}.desktop"
+            desktop="${appdir}/usr/share/applications/${name}.desktop"
             {
               echo "[Desktop Entry]"
               echo "Type=Application"
@@ -160,8 +133,8 @@ jobs:
 
       - name: Archive AppImages
         run: |
-          cd examples/installers
-          tar czf goxpyriment-examples-appimages.tar.gz -C AppImages .
+          cd examples/installers/AppImages
+          tar czf ../goxpyriment-examples-appimages.tar.gz *.AppImage
 
       - name: Upload Linux AppImages artifact
         uses: actions/upload-artifact@v4
@@ -171,10 +144,7 @@ jobs:
 
   create-release:
     runs-on: ubuntu-latest
-    needs:
-      - build-windows-installers
-      - build-macos-dmg
-      - build-linux-appimages
+    needs: [build-windows-installers, build-macos-dmg, build-linux-appimages]
     if: startsWith(github.ref, 'refs/tags/')
     permissions:
       contents: write
@@ -186,17 +156,24 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: artifacts
+          merge-multiple: true
 
-      - name: Create GitHub Release and Upload Assets
+      - name: Generate Master Checksum
+        run: |
+          cd artifacts
+          sha256sum goxpyriment-examples-setup.exe > SHA256SUMS
+          sha256sum goxpyriment-examples.dmg >> SHA256SUMS
+          sha256sum goxpyriment-examples-appimages.tar.gz >> SHA256SUMS
+
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           name: Goxpyriment examples ${{ github.ref_name }}
           tag_name: ${{ github.ref_name }}
-          draft: false
-          prerelease: false
           files: |
-            artifacts/windows-installer/goxpyriment-examples-setup.exe
-            artifacts/macos-dmg/goxpyriment-examples.dmg
-            artifacts/linux-appimages/goxpyriment-examples-appimages.tar.gz
+            artifacts/goxpyriment-examples-setup.exe
+            artifacts/goxpyriment-examples.dmg
+            artifacts/goxpyriment-examples-appimages.tar.gz
+            artifacts/SHA256SUMS
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
