@@ -137,12 +137,12 @@ jobs:
 
             # Generate AppRun script
             cat <<EOF > "${appdir}/AppRun"
-#!/bin/sh
-# APPDIR is the path where the AppImage is mounted.
-EXECUTABLE="\${APPDIR}/usr/bin/${name}"
-echo "Attempting to execute: \$EXECUTABLE" # Debugging line
-exec "\$EXECUTABLE" "\$@"
-EOF
+            #!/bin/sh
+            # APPDIR is the path where the AppImage is mounted.
+            EXECUTABLE="\${APPDIR}/usr/bin/${name}"
+            echo "Attempting to execute: \$EXECUTABLE" # Debugging line
+            exec "\$EXECUTABLE" "\$@"
+            EOF
             chmod +x "${appdir}/AppRun"
 
             # Generate .desktop file
