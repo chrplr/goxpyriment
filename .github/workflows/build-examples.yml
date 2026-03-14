@@ -93,7 +93,6 @@ jobs:
             if [[ "${name}" == "assets" || "${name}" == "installers" || "${name}" == "xpd_results" ]]; then
               continue
             fi
-            # Skip video/FFmpeg-dependent examples for now (go-astiav / cgo disabled)
             if [[ "${name}" == "play_two_videos" || "${name}" == "play_videos" ]]; then
               continue
             fi
@@ -103,18 +102,14 @@ jobs:
             echo "Packaging ${name} as AppImage..."
             appdir="${APPDIR_ROOT}/${name}.AppDir"
             mkdir -p "${appdir}/usr/bin" "${appdir}/usr/share/applications"
-            # Binary: go build already produced it as the folder name
             if [[ -f "${dir%/}/${name}" ]]; then
               cp "${dir%/}/${name}" "${appdir}/usr/bin/${name}"
             else
-              # Fallback: build just this example
               (cd "${dir}" && go build -o "../${appdir}/usr/bin/${name}" .)
             fi
-            # AppRun
             echo '#!/bin/sh' > "${appdir}/AppRun"
             echo "exec ./usr/bin/${name} \"\$@\"" >> "${appdir}/AppRun"
             chmod +x "${appdir}/AppRun"
-            # .desktop
             desktop_dir="${appdir}/usr/share/applications"
             desktop="${desktop_dir}/${name}.desktop"
             mkdir -p "${desktop_dir}"
@@ -126,9 +121,7 @@ jobs:
               echo "Icon=application-default-icon"
               echo "Categories=Education;"
             } > "${desktop}"
-            # AppImageKit expects a .desktop file at the root of the AppDir as well.
             cp "${desktop}" "${appdir}/${name}.desktop"
-            # Provide a dummy icon so appimagetool is satisfied.
             touch "${appdir}/application-default-icon.png"
             APPIMAGE_EXTRACT_AND_RUN=1 "${TOOL}" "${appdir}" "${APPDIR_ROOT}/${name}.AppImage"
           done
@@ -145,61 +138,33 @@ jobs:
           path: examples/installers/goxpyriment-examples-appimages.tar.gz
 
   create-release:
-    permissions:
-      contents: write
     runs-on: ubuntu-latest
     needs:
       - build-windows-installers
       - build-macos-dmg
       - build-linux-appimages
     if: startsWith(github.ref, 'refs/tags/')
+    permissions:
+      contents: write # Crucial for creating releases
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Download installers
+      - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
-          path: installers
+          path: artifacts
 
-      - name: Create GitHub Release
-        id: create_release
-        uses: actions/create-release@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Create GitHub Release and Upload Assets
+        uses: softprops/action-gh-release@v2
         with:
+          name: Goxpyriment examples ${{ github.ref_name }}
           tag_name: ${{ github.ref_name }}
-          release_name: "Goxpyriment examples ${github.ref_name}"
           draft: false
           prerelease: false
-
-      - name: Upload Windows installer to release
-        uses: actions/upload-release-asset@v1
+          files: |
+            artifacts/windows-installer/goxpyriment-examples-setup.exe
+            artifacts/macos-dmg/goxpyriment-examples.dmg
+            artifacts/linux-appimages/goxpyriment-examples-appimages.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: installers/windows-installer/goxpyriment-examples-setup.exe
-          asset_name: goxpyriment-examples-setup-${{ github.ref_name }}.exe
-          asset_content_type: application/vnd.microsoft.portable-executable
-
-      - name: Upload macOS DMG to release
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: installers/macos-dmg/goxpyriment-examples.dmg
-          asset_name: goxpyriment-examples-${{ github.ref_name }}.dmg
-          asset_content_type: application/x-apple-diskimage
-
-      - name: Upload Linux AppImages archive to release
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: installers/linux-appimages/goxpyriment-examples-appimages.tar.gz
-          asset_name: goxpyriment-examples-appimages-${{ github.ref_name }}.tar.gz
-          asset_content_type: application/gzip
-
