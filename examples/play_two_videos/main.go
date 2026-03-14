@@ -6,6 +6,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"os/signal"
@@ -13,7 +14,6 @@ import (
 	"syscall"
 
 	"github.com/chrplr/goxpyriment/control"
-	"github.com/chrplr/goxpyriment/io"
 	"github.com/chrplr/goxpyriment/clock"
 	"github.com/chrplr/goxpyriment/stimuli"
 
@@ -21,95 +21,69 @@ import (
 )
 
 func main() {
-	develop := flag.Bool("d", false, "Developer mode (windowed 1024x1024)")
-	subject := flag.Int("s", 0, "Subject ID")
+	develop := flag.Bool("d", false, "Developer mode (windowed)")
 	flag.Parse()
 
-	// 1. Setup Signal Handling for Ctrl-C in console
+	// 1. Setup Signal Handling for Ctrl-C
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
-	terminate := false
+	terminate := false // Declared here...
 
-	// 2. Create and initialize the experiment
-	width, height, fullscreen := 0, 0, true
+	// 2. Initialize the experiment
+	exp := control.NewExperiment("Dual Video Player", 0, 0, !*develop, control.Black, control.White, 32)
 	if *develop {
-		width, height, fullscreen = 1024, 1024, false
+		exp.Screen.Width, exp.Screen.Height = 1280, 720
 	}
-	exp := control.NewExperiment("Dual Video Player Example", width, height, fullscreen, control.Black, control.White, 32)
-	exp.SubjectID = *subject
 	if err := exp.Initialize(); err != nil {
-		log.Fatalf("failed to initialize experiment: %v", err)
+		log.Fatalf("failed to initialize: %v", err)
 	}
 	defer exp.End()
 
-	// Set up data recording: one row per key press
-	// subject_id, pair_index, phase, video_left, video_right, key, t_rel_ms
-	exp.Data.AddVariableNames([]string{"pair_index", "phase", "video_left", "video_right", "key", "t_rel_ms"})
+	exp.Data.AddVariableNames([]string{"pair_index", "video_left", "video_right", "key", "t_rel_ms"})
 
-	// 3. Identify video files in assets
+	// 3. Identify .mpg files in assets
 	files, err := os.ReadDir("assets")
 	if err != nil {
-		log.Fatalf("failed to read assets directory: %v", err)
+		log.Fatalf("failed to read assets: %v", err)
 	}
 
 	var videoFiles []string
-	for _, file := range files {
-		if file.IsDir() {
-			continue
-		}
-		ext := filepath.Ext(file.Name())
-		if  ext == ".mov" || ext == ".mkv" {
-			videoFiles = append(videoFiles, filepath.Join("assets", file.Name()))
+	for _, f := range files {
+		ext := filepath.Ext(f.Name())
+		if ext == ".mpg" || ext == ".mpeg" {
+			videoFiles = append(videoFiles, filepath.Join("assets", f.Name()))
 		}
 	}
 
 	if len(videoFiles) < 2 {
-		fmt.Println("Need at least two video files in assets folder.")
+		fmt.Println("Error: Need at least two .mpg files in the assets folder.")
 		return
 	}
 
-	// Use the first two videos found
-	leftPath := videoFiles[0]
-	rightPath := videoFiles[1]
-	pairIndex := 1
+	leftPath, rightPath := videoFiles[0], videoFiles[1]
 
-	fmt.Println("Controls: [SPACE] to pause/resume both, [S] to skip pair, [ESC] or close window to quit.")
-	fmt.Printf("Left video: %s\nRight video: %s\n", leftPath, rightPath)
+	// 4. Setup Stimuli
+	fix := stimuli.NewFixCross(40, 4, control.White)
+	
+	leftVid, err := stimuli.NewVideo(exp.Screen.Renderer, leftPath)
+	if err != nil { log.Fatalf("Left video error: %v", err) }
+	
+	rightVid, err := stimuli.NewVideo(exp.Screen.Renderer, rightPath)
+	if err != nil { log.Fatalf("Right video error: %v", err) }
 
-	// 4. Create fixation cross (centered)
-	fix := stimuli.NewFixCross(40, 4, control.DefaultTextColor)
+	fmt.Println("Controls: [SPACE] Pause/Resume, [R] Sync Rewind, [S] Skip, [ESC] Quit")
 
-	// 5. Prepare videos
-	leftVid := stimuli.NewVideo(leftPath)
-	rightVid := stimuli.NewVideo(rightPath)
-
-	if err := leftVid.Preload(); err != nil {
-		log.Fatalf("failed to preload left video %s: %v", leftPath, err)
-	}
-	if err := rightVid.Preload(); err != nil {
-		log.Fatalf("failed to preload right video %s: %v", rightPath, err)
-	}
-
-	if err := leftVid.PreloadDevice(exp.Screen, exp.AudioDevice); err != nil {
-		log.Fatalf("failed to prepare device for left video %s: %v", leftPath, err)
-	}
-	if err := rightVid.PreloadDevice(exp.Screen, exp.AudioDevice); err != nil {
-		log.Fatalf("failed to prepare device for right video %s: %v", rightPath, err)
-	}
-
-	// 6. Start both videos
-	if err := leftVid.Play(); err != nil {
-		log.Fatalf("failed to play left video %s: %v", leftPath, err)
-	}
-	if err := rightVid.Play(); err != nil {
-		log.Fatalf("failed to play right video %s: %v", rightPath, err)
-	}
-
+	leftVid.Play()
+	rightVid.Play()
 	videoStart := clock.GetTime()
 
-	// 7. Main loop for the pair of videos
+	// 5. Main Experiment Loop
+	// FIX: We now actually USE the 'terminate' variable to break sequences
 	err = exp.Run(func() error {
-		// Check for Ctrl-C
+		if terminate {
+			return sdl.EndLoop
+		}
+
 		select {
 		case <-sigChan:
 			terminate = true
@@ -117,175 +91,75 @@ func main() {
 		default:
 		}
 
-		// Update both videos (decoding + audio)
-		if err := leftVid.Update(); err != nil {
-			return err
-		}
-		if err := rightVid.Update(); err != nil {
-			return err
-		}
+		errL := leftVid.Update(exp.Screen.Renderer)
+		errR := rightVid.Update(exp.Screen.Renderer)
 
-		// Clear screen once
-		if err := exp.Screen.Clear(); err != nil {
-			return err
-		}
+		exp.Screen.Clear()
 
-		// Draw left and right videos manually with positioning, scaling each to fit
 		w, h, _ := exp.Screen.Renderer.RenderOutputSize()
-		screenW := float32(w)
-		screenH := float32(h)
+		screenW, screenH := float32(w), float32(h)
 
-		// Each video must fit within half the screen width and full height
-		maxVideoW := screenW / 2
-		maxVideoH := screenH
+		leftDest := calculateDestRect(leftVid, screenW*0.25, screenH*0.5, screenW/2, screenH)
+		rightDest := calculateDestRect(rightVid, screenW*0.75, screenH*0.5, screenW/2, screenH)
 
-		// Compute scaled size for left video (preserve aspect ratio)
-		leftScaleW := maxVideoW / float32(leftVid.Width)
-		leftScaleH := maxVideoH / float32(leftVid.Height)
-		leftScale := leftScaleW
-		if leftScaleH < leftScale {
-			leftScale = leftScaleH
-		}
-		leftW := float32(leftVid.Width) * leftScale
-		leftH := float32(leftVid.Height) * leftScale
+		leftVid.DrawAt(exp.Screen.Renderer, &leftDest)
+		rightVid.DrawAt(exp.Screen.Renderer, &rightDest)
+		fix.Present(exp.Screen, false, false)
+		
+		exp.Screen.Update()
 
-		// Compute scaled size for right video (preserve aspect ratio)
-		rightScaleW := maxVideoW / float32(rightVid.Width)
-		rightScaleH := maxVideoH / float32(rightVid.Height)
-		rightScale := rightScaleW
-		if rightScaleH < rightScale {
-			rightScale = rightScaleH
-		}
-		rightW := float32(rightVid.Width) * rightScale
-		rightH := float32(rightVid.Height) * rightScale
-
-		// Center positions for left and right videos (quarters of screen)
-		leftCenterX := screenW * 0.25
-		rightCenterX := screenW * 0.75
-		centerY := screenH * 0.5
-
-		// Destination rects for left and right videos (centered on their respective positions)
-		leftDest := sdl.FRect{
-			X: leftCenterX - leftW/2,
-			Y: centerY - leftH/2,
-			W: leftW,
-			H: leftH,
-		}
-		rightDest := sdl.FRect{
-			X: rightCenterX - rightW/2,
-			Y: centerY - rightH/2,
-			W: rightW,
-			H: rightH,
-		}
-
-		// Draw current frame of each video into its rect
-		if err := drawVideoToRect(leftVid, exp.Screen, &leftDest); err != nil {
-			return err
-		}
-		if err := drawVideoToRect(rightVid, exp.Screen, &rightDest); err != nil {
-			return err
-		}
-
-		// Draw fixation cross in the center
-		if err := fix.Present(exp.Screen, false, false); err != nil {
-			return err
-		}
-
-		// Update screen once
-		if err := exp.Screen.Update(); err != nil {
-			return err
-		}
-
-		// Exit when both videos are done (or one finished, depending on taste)
-		if !leftVid.IsPlaying() && !rightVid.IsPlaying() {
+		if errL == io.EOF && errR == io.EOF {
 			return sdl.EndLoop
 		}
 
-		// Handle events
 		key, _, err := exp.HandleEvents()
 		if err == sdl.EndLoop {
 			terminate = true
 			return sdl.EndLoop
 		}
-
-		// Record key presses during video playback
+		
 		if key != 0 {
-			now := clock.GetTime()
-			exp.Data.Add([]interface{}{
-				pairIndex,
-				"video",
-				filepath.Base(leftPath),
-				filepath.Base(rightPath),
-				key,
-				now - videoStart,
-			})
+			exp.Data.Add([]interface{}{1, filepath.Base(leftPath), filepath.Base(rightPath), key, clock.GetTime() - videoStart})
 		}
 
-		// Pause/Resume toggle for both
+		if key == sdl.K_R {
+			leftVid.Rewind()
+			rightVid.Rewind()
+			videoStart = clock.GetTime()
+		}
+
 		if key == sdl.K_SPACE {
 			if leftVid.IsPaused() || rightVid.IsPaused() {
-				fmt.Println("Resuming both videos...")
 				leftVid.Play()
 				rightVid.Play()
 			} else {
-				fmt.Println("Pausing both videos...")
 				leftVid.Pause()
 				rightVid.Pause()
 			}
 		}
 
-		// Skip both videos
-		if key == sdl.K_S {
-			fmt.Println("Skipping both videos...")
-			return sdl.EndLoop
-		}
+		if key == sdl.K_S { return sdl.EndLoop }
 
 		return nil
 	})
 
 	if err != nil && err != sdl.EndLoop {
-		log.Printf("error during dual video playback: %v", err)
+		log.Printf("Playback error: %v", err)
 	}
 
-	// Cleanup
-	leftVid.Unload()
-	rightVid.Unload()
+	leftVid.Close()
+	rightVid.Close()
+	fmt.Println("Finished playback.")
+}
 
-	// 8. Record keypresses during a 2-second blank screen that follows
-	if !terminate {
-		fmt.Println("Blank screen for 2 seconds (keys will be recorded)...")
-		if err := exp.Screen.Clear(); err == nil {
-			_ = exp.Screen.Update()
-		}
-
-		blankStart := clock.GetTime()
-		for {
-			now := clock.GetTime()
-			if now-blankStart >= 2000 {
-				break
-			}
-			key, _, err := exp.HandleEvents()
-			if err == sdl.EndLoop {
-				terminate = true
-				break
-			}
-			if key != 0 {
-				exp.Data.Add([]interface{}{
-					pairIndex,
-					"blank",
-					filepath.Base(leftPath),
-					filepath.Base(rightPath),
-					key,
-					now - blankStart,
-				})
-			}
-			sdl.Delay(10)
-		}
+func calculateDestRect(v *stimuli.Video, centerX, centerY, maxW, maxH float32) sdl.FRect {
+	scaleW := maxW / float32(v.Width)
+	scaleH := maxH / float32(v.Height)
+	scale := scaleW
+	if scaleH < scale {
+		scale = scaleH
 	}
+	w := float32(v.Width) * scale
+	h := float32(v.Height) * scale
+	return sdl.FRect{X: centerX - w/2, Y: centerY - h/2, W: w, H: h}
 }
-
-// drawVideoToRect draws the current frame of v into the given destination rectangle.
-func drawVideoToRect(v *stimuli.Video, screen *io.Screen, dest *sdl.FRect) error {
-	return v.DrawAt(screen, dest)
-}
-

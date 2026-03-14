@@ -6,6 +6,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"os/signal"
@@ -24,12 +25,10 @@ func main() {
 	subject := flag.Int("s", 0, "Subject ID")
 	flag.Parse()
 
-	// 1. Setup Signal Handling for Ctrl-C in console
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 	terminate := false
 
-	// 2. Create and initialize the experiment
 	width, height, fullscreen := 0, 0, true
 	if *develop {
 		width, height, fullscreen = 1024, 1024, false
@@ -41,7 +40,6 @@ func main() {
 	}
 	defer exp.End()
 
-	// 3. Identify video files in assets
 	files, err := os.ReadDir("assets")
 	if err != nil {
 		log.Fatalf("failed to read assets directory: %v", err)
@@ -49,51 +47,32 @@ func main() {
 
 	var videoFiles []string
 	for _, file := range files {
-		if file.IsDir() {
-			continue
-		}
+		if file.IsDir() { continue }
 		ext := filepath.Ext(file.Name())
-		if ext == ".mp4" || ext == ".mov" || ext == ".mkv" {
+		if ext == ".mpg" || ext == ".mpeg" {
 			videoFiles = append(videoFiles, filepath.Join("assets", file.Name()))
 		}
 	}
 
 	if len(videoFiles) == 0 {
-		fmt.Println("No video files found in assets folder.")
+		fmt.Println("No .mpg video files found in assets folder.")
 		return
 	}
 
-	fmt.Println("Controls: [SPACE] to pause/resume, [S] to skip video, [ESC] or close window to quit.")
-
-	// 4. Play each video
 	for i, videoPath := range videoFiles {
-		if terminate {
-			break
-		}
+		if terminate { break }
 
 		fmt.Printf("Playing video %d/%d: %s\n", i+1, len(videoFiles), videoPath)
 
-		vid := stimuli.NewVideo(videoPath)
-		if err := vid.Preload(); err != nil {
-			log.Printf("failed to preload video %s: %v", videoPath, err)
-			continue
-		}
-		if err := vid.PreloadDevice(exp.Screen, exp.AudioDevice); err != nil {
-			log.Printf("failed to prepare device for video %s: %v", videoPath, err)
-			vid.Unload()
+		vid, err := stimuli.NewVideo(exp.Screen.Renderer, videoPath)
+		if err != nil {
+			log.Printf("failed to load video %s: %v", videoPath, err)
 			continue
 		}
 
-		// Play the video
-		if err := vid.Play(); err != nil {
-			log.Printf("failed to play video %s: %v", videoPath, err)
-			vid.Unload()
-			continue
-		}
+		vid.Play()
 
-		// Main loop for the current video
 		err = exp.Run(func() error {
-			// Check for Ctrl-C
 			select {
 			case <-sigChan:
 				terminate = true
@@ -101,89 +80,58 @@ func main() {
 			default:
 			}
 
-			// Update video decoding and audio
-			if err := vid.Update(); err != nil {
+			if err := vid.Update(exp.Screen.Renderer); err != nil {
+				if err == io.EOF { return sdl.EndLoop }
 				return err
 			}
 
-			// Draw current frame
-			if err := vid.Present(exp.Screen, true, true); err != nil {
-				return err
-			}
+			exp.Screen.Clear()
+			vid.Draw(exp.Screen.Renderer, 0, 0)
+			exp.Screen.Update()
 
-			// Exit the loop when video ends
-			if !vid.IsPlaying() {
-				return sdl.EndLoop
-			}
+			if !vid.IsPlaying() { return sdl.EndLoop }
 
-			// Handle events
 			key, _, err := exp.HandleEvents()
 			if err == sdl.EndLoop {
-				// ESC or Window Close detected
 				terminate = true
 				return sdl.EndLoop
 			}
 			
-			// Pause/Resume toggle
 			if key == sdl.K_SPACE {
 				if vid.IsPaused() {
-					fmt.Println("Resuming...")
 					vid.Play()
 				} else {
-					fmt.Println("Pausing...")
 					vid.Pause()
 				}
 			}
 			
-			// Skip current video
-			if key == sdl.K_S {
-				fmt.Println("Skipping...")
-				return sdl.EndLoop
-			}
+			if key == sdl.K_S { return sdl.EndLoop }
 
 			return nil
 		})
 
-		if err != nil && err != sdl.EndLoop {
-			log.Printf("error during video playback: %v", err)
-		}
+		vid.Close()
 
-		vid.Unload()
-
-		// 5. 4-second gap (responsive to quit signals)
 		if i < len(videoFiles)-1 && !terminate {
-			fmt.Println("Waiting for 4 seconds...")
 			exp.Screen.Clear()
 			exp.Screen.Update()
-			
 			gapStartTime := clock.GetTime()
 			for clock.GetTime()-gapStartTime < 4000 {
-				// Poll events to keep window responsive and check for ESC/Quit
 				key, _, err := exp.HandleEvents()
-				if err == sdl.EndLoop {
-					terminate = true
+				if err == sdl.EndLoop || key != 0 {
+					if err == sdl.EndLoop { terminate = true }
 					break
 				}
-				if key != 0 {
-					// Any key skips the gap
-					break
-				}
-				
-				// Check for Ctrl-C
 				select {
 				case <-sigChan:
 					terminate = true
 					break
 				default:
 				}
-				
-				if terminate {
-					break
-				}
+				if terminate { break }
 				sdl.Delay(10)
 			}
 		}
 	}
-
 	fmt.Println("Finished.")
 }

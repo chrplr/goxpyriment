@@ -38,7 +38,6 @@ Examples are provided in the examples folder which has its own go.mod (we use th
 ### Prerequisites
 - Go 1.25 or higher.
 - SDL3 libraries must be available on the system.
-- FFmpeg 7.x development libraries (libavcodec, libavformat, libavutil, libswscale, libswresample, libavdevice, libavfilter) must be installed for CGO-based video support.
 
 ### Key Commands
 - **Run the main demo:**
