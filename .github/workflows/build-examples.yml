@@ -49,9 +49,18 @@ jobs:
         with:
           go-version: "1.25.x"
 
-      - name: Build macOS DMG
+      - name: Install FFmpeg (for video examples)
+        run: |
+          brew update
+          brew install ffmpeg pkg-config
+
+      - name: Build macOS DMG (including video examples)
         run: |
           cd examples/installers
+          BREW_PREFIX="$(brew --prefix)"
+          export PKG_CONFIG_PATH="${BREW_PREFIX}/lib/pkgconfig:${PKG_CONFIG_PATH:-}"
+          export CGO_CFLAGS="-I${BREW_PREFIX}/include ${CGO_CFLAGS:-}"
+          export CGO_LDFLAGS="-L${BREW_PREFIX}/lib ${CGO_LDFLAGS:-}"
           bash build-macos-dmg.sh
 
       - name: Upload macOS DMG artifact
@@ -60,11 +69,89 @@ jobs:
           name: macos-dmg
           path: examples/installers/goxpyriment-examples.dmg
 
+  build-linux-appimages:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.x"
+
+      - name: Build all examples
+        run: |
+          cd examples
+          bash build.sh
+
+      - name: Download appimagetool
+        run: |
+          cd examples
+          mkdir -p installers/AppImages
+          wget -q https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage -O installers/appimagetool
+          chmod +x installers/appimagetool
+
+      - name: Build AppImages for each example
+        run: |
+          cd examples
+          APPDIR_ROOT="installers/AppImages"
+          TOOL="./installers/appimagetool"
+          mkdir -p "${APPDIR_ROOT}"
+          for dir in */; do
+            name="${dir%/}"
+            if [[ "${name}" == "assets" || "${name}" == "installers" || "${name}" == "xpd_results" ]]; then
+              continue
+            fi
+            if [[ ! -f "${dir}/main.go" ]]; then
+              continue
+            fi
+            echo "Packaging ${name} as AppImage..."
+            appdir="${APPDIR_ROOT}/${name}.AppDir"
+            mkdir -p "${appdir}/usr/bin" "${appdir}/usr/share/applications"
+            # Binary: go build already produced it as the folder name
+            if [[ -f "${dir%/}/${name}" ]]; then
+              cp "${dir%/}/${name}" "${appdir}/usr/bin/${name}"
+            else
+              # Fallback: build just this example
+              (cd "${dir}" && go build -o "../${appdir}/usr/bin/${name}" .)
+            fi
+            # AppRun
+            cat > "${appdir}/AppRun" <<EOF
+#!/bin/sh
+HERE="\$(dirname "\$(readlink -f "\$0")")"
+exec "\$HERE/usr/bin/${name}" "\$@"
+EOF
+            chmod +x "${appdir}/AppRun"
+            # .desktop
+            cat > "${appdir}/usr/share/applications/${name}.desktop" <<EOF
+[Desktop Entry]
+Type=Application
+Name=${name}
+Exec=${name}
+Icon=application-default-icon
+Categories=Education;
+EOF
+            "${TOOL}" "${appdir}" "${APPDIR_ROOT}/${name}.AppImage"
+          done
+
+      - name: Archive AppImages
+        run: |
+          cd examples/installers
+          tar czf goxpyriment-examples-appimages.tar.gz -C AppImages .
+
+      - name: Upload Linux AppImages artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-appimages
+          path: examples/installers/goxpyriment-examples-appimages.tar.gz
+
   create-release:
     runs-on: ubuntu-latest
     needs:
       - build-windows-installers
       - build-macos-dmg
+      - build-linux-appimages
     if: startsWith(github.ref, 'refs/tags/')
     steps:
       - name: Checkout
@@ -105,4 +192,14 @@ jobs:
           asset_path: installers/macos-dmg/goxpyriment-examples.dmg
           asset_name: goxpyriment-examples-${{ github.ref_name }}.dmg
           asset_content_type: application/x-apple-diskimage
+
+      - name: Upload Linux AppImages archive to release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: installers/linux-appimages/goxpyriment-examples-appimages.tar.gz
+          asset_name: goxpyriment-examples-appimages-${{ github.ref_name }}.tar.gz
+          asset_content_type: application/gzip
 
