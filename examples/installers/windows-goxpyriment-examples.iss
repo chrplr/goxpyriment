@@ -27,4 +27,4 @@ Source: "..\..\assets\*"; DestDir: "{app}\assets"; Flags: ignoreversion recurses
 [Icons]
 ; Create a shortcut to the binaries folder [cite: 5]
 Name: "{group}\Browse Example Binaries"; Filename: "{app}\bin"
-Name: "{group}\Uninstall Goxpyriment Examples"; Filename: "{unsellexe}"
+Name: "{group}\Uninstall Goxpyriment Examples"; Filename: "{uninstallexe}"
