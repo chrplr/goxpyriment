@@ -1,0 +1,18 @@
+#--EXPERIMENT INFO
+#e mainfile: Mental-Rotation
+#--SUBJECT INFO
+#s id: 1
+##
+subject_id,trial_idx,angle,condition,response,is_correct,rt
+1,1,40,same,same,true,615
+1,2,80,mirrored,mirrored,true,804
+1,3,0,mirrored,mirrored,true,719
+1,4,0,mirrored,mirrored,true,663
+1,5,120,same,same,true,969
+1,6,40,same,mirrored,false,719
+1,7,40,same,same,true,846
+1,8,160,mirrored,same,false,745
+1,9,0,mirrored,mirrored,true,0
+1,10,120,mirrored,same,false,873
+1,11,160,same,same,true,2523
+1,12,160,mirrored,same,false,1402

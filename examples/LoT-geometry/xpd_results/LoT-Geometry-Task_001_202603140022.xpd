@@ -1,0 +1,12 @@
+#--EXPERIMENT INFO
+#e mainfile: LoT-Geometry-Task
+#--SUBJECT INFO
+#s id: 1
+##
+subject_id,trial_idx,seq_name,step,target_idx,click_idx,is_correct,rt
+1,1,Repeat CCW,3,7,2,false,2371
+1,1,Repeat CCW,4,6,6,true,2137
+1,1,Repeat CCW,5,5,5,true,2382
+1,1,Repeat CCW,6,4,5,false,1218
+1,1,Repeat CCW,7,3,3,true,4529
+1,1,Repeat CCW,8,2,7,false,6671

@@ -1,5 +1,6 @@
 # Data files
 /data/
+xpd_results/
 
 # Go binaries
 /goxpyriment

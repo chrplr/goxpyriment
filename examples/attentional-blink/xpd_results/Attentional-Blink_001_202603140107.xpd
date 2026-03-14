@@ -1,0 +1,8 @@
+#--EXPERIMENT INFO
+#e mainfile: Attentional-Blink
+#--SUBJECT INFO
+#s id: 1
+##
+subject_id,trial_idx,has_j,has_k,lag,response,is_correct,rt
+1,1,true,true,8,neither,false,1750
+1,2,true,true,6,neither,false,1135

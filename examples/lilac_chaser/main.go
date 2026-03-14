@@ -43,11 +43,6 @@ func main() {
 	for i := 0; i < n; i++ {
 		circles[i] = stimuli.NewCircle(radius, rose)
 		// Calculate position in polar coordinates
-		// Python script used sin/cos which resulted in clockwise or counter-clockwise distribution
-		// We'll use the same formula but remember that y axis in goxpyriment points UP.
-		// Pygame (Python): x = center_x + distance * cos(2*pi*k/n), y = center_y + distance * sin(2*pi*k/n)
-		// Pygame y is DOWN. Goxpyriment y is UP.
-		// To match visually, we can negate Y or just leave it (it's a circle anyway).
 		angle := 2 * math.Pi * float64(i) / float64(n)
 		x := float32(distance * float32(math.Cos(angle)))
 		y := float32(distance * float32(math.Sin(angle)))

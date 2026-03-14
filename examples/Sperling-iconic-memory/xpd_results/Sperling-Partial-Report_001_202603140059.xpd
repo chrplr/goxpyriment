@@ -1,0 +1,8 @@
+#--EXPERIMENT INFO
+#e mainfile: Sperling-Partial-Report
+#--SUBJECT INFO
+#s id: 1
+##
+subject_id,trial_idx,condition,cued_row,target_letters,response,accuracy
+1,1,whole,-1,WXGPSBVZR,,0
+1,2,partial,0,PTW,,0

@@ -1,0 +1,6 @@
+#--EXPERIMENT INFO
+#e mainfile: LoT-Geometry-Task
+#--SUBJECT INFO
+#s id: 1
+##
+subject_id,trial_idx,seq_name,step,target_idx,click_idx,is_correct,rt
