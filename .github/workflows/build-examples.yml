@@ -127,6 +127,8 @@ jobs:
             } > "${desktop}"
             # AppImageKit expects a .desktop file at the root of the AppDir as well.
             cp "${desktop}" "${appdir}/${name}.desktop"
+            # Provide a dummy icon so appimagetool is satisfied.
+            touch "${appdir}/application-default-icon.png"
             APPIMAGE_EXTRACT_AND_RUN=1 "${TOOL}" "${appdir}" "${APPDIR_ROOT}/${name}.AppImage"
           done
 
