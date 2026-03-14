@@ -40,6 +40,8 @@ jobs:
 
   build-macos-dmg:
     runs-on: macos-latest
+    env:
+      CGO_ENABLED: 0
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -49,18 +51,9 @@ jobs:
         with:
           go-version: "1.25.x"
 
-      - name: Install FFmpeg (for video examples)
-        run: |
-          brew update
-          brew install ffmpeg pkg-config
-
-      - name: Build macOS DMG (including video examples)
+      - name: Build macOS DMG (non-video examples)
         run: |
           cd examples/installers
-          BREW_PREFIX="$(brew --prefix)"
-          export PKG_CONFIG_PATH="${BREW_PREFIX}/lib/pkgconfig:${PKG_CONFIG_PATH:-}"
-          export CGO_CFLAGS="-I${BREW_PREFIX}/include ${CGO_CFLAGS:-}"
-          export CGO_LDFLAGS="-L${BREW_PREFIX}/lib ${CGO_LDFLAGS:-}"
           bash build-macos-dmg.sh
 
       - name: Upload macOS DMG artifact
@@ -121,7 +114,9 @@ jobs:
             echo "exec ./usr/bin/${name} \"\$@\"" >> "${appdir}/AppRun"
             chmod +x "${appdir}/AppRun"
             # .desktop
-            desktop="${appdir}/usr/share/applications/${name}.desktop"
+            desktop_dir="${appdir}/usr/share/applications"
+            desktop="${desktop_dir}/${name}.desktop"
+            mkdir -p "${desktop_dir}"
             {
               echo "[Desktop Entry]"
               echo "Type=Application"
@@ -130,6 +125,8 @@ jobs:
               echo "Icon=application-default-icon"
               echo "Categories=Education;"
             } > "${desktop}"
+            # AppImageKit expects a .desktop file at the root of the AppDir as well.
+            cp "${desktop}" "${appdir}/${name}.desktop"
             APPIMAGE_EXTRACT_AND_RUN=1 "${TOOL}" "${appdir}" "${APPDIR_ROOT}/${name}.AppImage"
           done
 
