@@ -99,7 +99,6 @@ jobs:
           
           for dir in */; do
             name="${dir%/}"
-            # Skip non-example directories
             if [[ "${name}" == "assets" || "${name}" == "installers" || "${name}" == "xpd_results" ]]; then continue; fi
             if [[ "${name}" == "play_two_videos" || "${name}" == "play_videos" ]]; then continue; fi
             if [[ ! -f "${dir}/main.go" ]]; then continue; fi
@@ -108,10 +107,9 @@ jobs:
             appdir="${ROOT_DIR}/${APPDIR_ROOT}/${name}.AppDir"
             mkdir -p "${appdir}/usr/bin" "${appdir}/usr/share/applications"
             
-            # Use absolute path for target binary
             TARGET_BINARY_PATH="${appdir}/usr/bin/${name}"
             
-            # Build using absolute path to avoid cd nesting issues
+            # Build using absolute path
             (cd "${dir}" && go build -o "${TARGET_BINARY_PATH}" .)
             chmod +x "${TARGET_BINARY_PATH}"
 
@@ -135,16 +133,17 @@ jobs:
             } > "${desktop}"
             
             cp "${desktop}" "${appdir}/${name}.desktop"
-            cp "${ROOT_DIR}/assets/icon_256.png" "${appdir}/${name}.png"
             
-            # Create the AppImage
+            # --- FIXED ICON PATH ---
+            # ROOT_DIR is /examples, so we go up one level to find /assets
+            cp "${ROOT_DIR}/../assets/icon_256.png" "${appdir}/${name}.png"
+            
             "${TOOL}" "${appdir}" "${ROOT_DIR}/${APPDIR_ROOT}/${name}.AppImage"
           done
 
       - name: Archive AppImages
         run: |
           cd examples/installers/AppImages
-          # Specifically archive only the .AppImage files
           tar czf ../goxpyriment-examples-appimages.tar.gz *.AppImage
 
       - name: Upload Linux AppImages artifact
