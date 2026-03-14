@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"github.com/chrplr/goxpyriment/assets_embed"
 	"github.com/chrplr/goxpyriment/control"
-	"github.com/chrplr/goxpyriment/misc"
+	"github.com/chrplr/goxpyriment/clock"
 	"github.com/chrplr/goxpyriment/stimuli"
 	"log"
 	"math/rand"
@@ -40,7 +40,7 @@ func main() {
 	if *develop {
 		width, height, fullscreen = 1024, 1024, false
 	}
-	exp := control.NewExperiment("Parity Decision", width, height, fullscreen)
+	exp := control.NewExperiment("Parity Decision", width, height, fullscreen, control.Black, control.White, 32)
 	exp.SubjectID = *subject
 	if err := exp.Initialize(); err != nil {
 		log.Fatalf("failed to initialize experiment: %v", err)
@@ -106,7 +106,7 @@ func main() {
 			if key == sdl.K_SPACE {
 				break
 			}
-			misc.Wait(10)
+			clock.Wait(10)
 		}
 
 		// Loop through trials
@@ -118,13 +118,13 @@ func main() {
 			if err := exp.Screen.Update(); err != nil {
 				return err
 			}
-			misc.Wait(1000)
+			clock.Wait(1000)
 
 			// Cue
 			if err := cue.Present(exp.Screen, true, true); err != nil {
 				return err
 			}
-			misc.Wait(500)
+			clock.Wait(500)
 
 			// Stimulus
 			if err := t.stim.Present(exp.Screen, true, true); err != nil {
@@ -132,14 +132,14 @@ func main() {
 			}
 
 			// Wait for response
-			startTime := misc.GetTime()
+			startTime := clock.GetTime()
 			for {
 				key, _, subErr = exp.HandleEvents()
 				if subErr != nil {
 					return subErr
 				}
 				if key == EvenResponse || key == OddResponse {
-					rt := misc.GetTime() - startTime
+					rt := clock.GetTime() - startTime
 					oddity := t.number % 2
 					var responseOddity int
 					if key == OddResponse {
@@ -152,11 +152,11 @@ func main() {
 					fmt.Printf("Trial %d: Num=%d, Key=%d, RT=%d ms, Correct=%v\n", i, t.number, key, rt, correct)
 					break
 				}
-				misc.Wait(1)
+				clock.Wait(1)
 			}
 			
 			// Small pause between trials
-			misc.Wait(500)
+			clock.Wait(500)
 		}
 
 		return sdl.EndLoop // Graceful exit

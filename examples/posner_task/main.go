@@ -8,7 +8,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/chrplr/goxpyriment/control"
-	"github.com/chrplr/goxpyriment/misc"
+	"github.com/chrplr/goxpyriment/clock"
 	"github.com/chrplr/goxpyriment/stimuli"
 	"log"
 	"math/rand"
@@ -45,9 +45,8 @@ func main() {
 	if *develop {
 		width, height, fullscreen = 1024, 1024, false
 	}
-	exp := control.NewExperiment("Posner-task", width, height, fullscreen)
+	exp := control.NewExperiment("Posner-task", width, height, fullscreen, control.Gray, control.White, 32)
 	exp.SubjectID = *subject
-	exp.BackgroundColor = control.Gray
 	exp.ForegroundColor = control.Black
 	
 	if err := exp.Initialize(); err != nil {
@@ -102,14 +101,14 @@ func main() {
 		if err := exp.Screen.Update(); err != nil {
 			return err
 		}
-		misc.Wait(1000)
+		clock.Wait(1000)
 
 		for _, t := range trials {
-			misc.Wait(1000)
+			clock.Wait(1000)
 			if err := cross.Present(exp.Screen, true, true); err != nil {
 				return err
 			}
-			misc.Wait(1000)
+			clock.Wait(1000)
 
 			// Show cue
 			var cue *stimuli.Picture
@@ -121,7 +120,7 @@ func main() {
 			if err := cue.Present(exp.Screen, true, true); err != nil {
 				return err
 			}
-			misc.Wait(2000)
+			clock.Wait(2000)
 
 			// Show target
 			var target *stimuli.Picture
@@ -135,12 +134,12 @@ func main() {
 			}
 
 			// Wait for response
-			startTime := misc.GetTime()
+			startTime := clock.GetTime()
 			key, err := exp.Keyboard.Wait()
 			if err != nil {
 				return err
 			}
-			rt := misc.GetTime() - startTime
+			rt := clock.GetTime() - startTime
 
 			fmt.Printf("Trial: %s, Side: %s, Key: %d, RT: %d ms\n", t.congruency, t.side, key, rt)
 

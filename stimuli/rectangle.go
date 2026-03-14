@@ -8,13 +8,14 @@ import (
 	"github.com/Zyko0/go-sdl3/sdl"
 )
 
-// Rectangle represents a rectangle stimulus.
+// Rectangle is a filled rectangle with center at (x,y) and size (w,h) in center-based coordinates.
 type Rectangle struct {
 	Position sdl.FPoint
 	Rect     sdl.FRect
 	Color    sdl.Color
 }
 
+// NewRectangle creates a rectangle centered at (x, y) with width w, height h, and the given color.
 func NewRectangle(x, y, w, h float32, color sdl.Color) *Rectangle {
 	return &Rectangle{
 		Position: sdl.FPoint{X: x, Y: y},

@@ -7,7 +7,7 @@ import (
 	"fmt"
 )
 
-// Permutation types
+// Permutation types for Latin square generation.
 const (
 	PBalancedLatinSquare = "balanced"
 	PCycledLatinSquare   = "cycled"
@@ -55,9 +55,8 @@ func balancedLatinSquareSequence(nElements, row int) []int {
 	return result
 }
 
-// LatinSquare returns a latin square permutation of elements.
-// If elements is a list, it returns a square array of those elements.
-// For simplicity in Go, we'll provide a version for ints and a generic one for slices.
+// LatinSquareInts returns an n×n Latin square of integers 0..n-1 using the given
+// permutation type (PBalancedLatinSquare, PCycledLatinSquare, or PRandom).
 func LatinSquareInts(n int, permutationType string) ([][]int, error) {
 	if !IsPermutationType(permutationType) {
 		return nil, fmt.Errorf("unknown permutation type: %s", permutationType)
@@ -131,7 +130,8 @@ func LatinSquareInts(n int, permutationType string) ([][]int, error) {
 	return square, nil
 }
 
-// LatinSquare returns a latin square permutation of elements.
+// LatinSquare returns a Latin square (matrix of rows) over the given elements,
+// using the same permutation types as LatinSquareInts.
 func LatinSquare[T any](elements []T, permutationType string) ([][]T, error) {
 	n := len(elements)
 	idxSquare, err := LatinSquareInts(n, permutationType)

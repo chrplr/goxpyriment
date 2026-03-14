@@ -109,7 +109,7 @@ go build -o simple_example.exe .
 By default (without `-d`), experiments that call:
 
 ```go
-control.NewExperiment("...", 0, 0, true)
+control.NewExperiment("...", 0, 0, true, control.Black, control.White, 32)
 ```
 
 will request **exclusive fullscreen** using the current desktop resolution. On Windows, this corresponds to a borderless fullscreen window.

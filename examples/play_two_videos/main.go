@@ -1,3 +1,6 @@
+// Copyright (2026) Christophe Pallier <christophe@pallier.org>
+// Distributed under the GNU General Public License v3.
+
 package main
 
 import (
@@ -11,7 +14,7 @@ import (
 
 	"github.com/chrplr/goxpyriment/control"
 	"github.com/chrplr/goxpyriment/io"
-	"github.com/chrplr/goxpyriment/misc"
+	"github.com/chrplr/goxpyriment/clock"
 	"github.com/chrplr/goxpyriment/stimuli"
 
 	"github.com/Zyko0/go-sdl3/sdl"
@@ -32,7 +35,7 @@ func main() {
 	if *develop {
 		width, height, fullscreen = 1024, 1024, false
 	}
-	exp := control.NewExperiment("Dual Video Player Example", width, height, fullscreen)
+	exp := control.NewExperiment("Dual Video Player Example", width, height, fullscreen, control.Black, control.White, 32)
 	exp.SubjectID = *subject
 	if err := exp.Initialize(); err != nil {
 		log.Fatalf("failed to initialize experiment: %v", err)
@@ -102,7 +105,7 @@ func main() {
 		log.Fatalf("failed to play right video %s: %v", rightPath, err)
 	}
 
-	videoStart := misc.GetTime()
+	videoStart := clock.GetTime()
 
 	// 7. Main loop for the pair of videos
 	err = exp.Run(func() error {
@@ -207,7 +210,7 @@ func main() {
 
 		// Record key presses during video playback
 		if key != 0 {
-			now := misc.GetTime()
+			now := clock.GetTime()
 			exp.Data.Add([]interface{}{
 				pairIndex,
 				"video",
@@ -255,9 +258,9 @@ func main() {
 			_ = exp.Screen.Update()
 		}
 
-		blankStart := misc.GetTime()
+		blankStart := clock.GetTime()
 		for {
-			now := misc.GetTime()
+			now := clock.GetTime()
 			if now-blankStart >= 2000 {
 				break
 			}

@@ -8,12 +8,12 @@ import (
 	"github.com/Zyko0/go-sdl3/sdl"
 )
 
-// BlankScreen represents an empty visual stimulus.
+// BlankScreen is a full-screen filled rectangle of one color (e.g. for inter-trial intervals).
 type BlankScreen struct {
 	Color sdl.Color
 }
 
-// NewBlankScreen creates a new BlankScreen stimulus.
+// NewBlankScreen creates a blank screen that draws the given color over the full screen.
 func NewBlankScreen(color sdl.Color) *BlankScreen {
 	return &BlankScreen{Color: color}
 }

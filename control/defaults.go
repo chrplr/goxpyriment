@@ -4,7 +4,11 @@
 // Package control manages the overall state and initialization of an experiment.
 package control
 
-import "github.com/Zyko0/go-sdl3/sdl"
+import (
+	"errors"
+
+	"github.com/Zyko0/go-sdl3/sdl"
+)
 
 // Default Experiment settings
 const (
@@ -22,14 +26,78 @@ var (
 
 // Common colors
 var (
-	Black   = sdl.Color{R: 0, G: 0, B: 0, A: 255}
-	White   = sdl.Color{R: 255, G: 255, B: 255, A: 255}
-	Red     = sdl.Color{R: 255, G: 0, B: 0, A: 255}
-	Green   = sdl.Color{R: 0, G: 255, B: 0, A: 255}
-	Blue    = sdl.Color{R: 0, G: 0, B: 255, A: 255}
-	Yellow  = sdl.Color{R: 255, G: 255, B: 0, A: 255}
-	Magenta = sdl.Color{R: 255, G: 0, B: 255, A: 255}
-	Cyan    = sdl.Color{R: 0, G: 255, B: 255, A: 255}
-	Gray    = sdl.Color{R: 128, G: 128, B: 128, A: 255}
+	Black    = sdl.Color{R: 0, G: 0, B: 0, A: 255}
+	White    = sdl.Color{R: 255, G: 255, B: 255, A: 255}
+	Red      = sdl.Color{R: 255, G: 0, B: 0, A: 255}
+	Green    = sdl.Color{R: 0, G: 255, B: 0, A: 255}
+	Blue     = sdl.Color{R: 0, G: 0, B: 255, A: 255}
+	Yellow   = sdl.Color{R: 255, G: 255, B: 0, A: 255}
+	Magenta  = sdl.Color{R: 255, G: 0, B: 255, A: 255}
+	Cyan     = sdl.Color{R: 0, G: 255, B: 255, A: 255}
+	Gray     = sdl.Color{R: 128, G: 128, B: 128, A: 255}
+	DarkGray = sdl.Color{R: 50, G: 50, B: 50, A: 255}
+	LightGray = sdl.Color{R: 200, G: 200, B: 200, A: 255}
 )
+
+// Keycode re-exports SDL key codes so callers can use control.K_SPACE etc. without importing go-sdl3.
+type Keycode = sdl.Keycode
+
+// Common key codes (re-exported from SDL for convenience).
+const (
+	K_SPACE = sdl.K_SPACE
+	K_ESCAPE = sdl.K_ESCAPE
+	K_S     = sdl.K_S
+	K_F     = sdl.K_F
+	K_J     = sdl.K_J
+	K_Q     = sdl.K_Q
+	K_R     = sdl.K_R
+	K_G     = sdl.K_G
+	K_B     = sdl.K_B
+	K_Y     = sdl.K_Y
+	K_N     = sdl.K_N
+	K_1     = sdl.K_1
+	K_2     = sdl.K_2
+	K_3     = sdl.K_3
+	K_4     = sdl.K_4
+	K_KP_1  = sdl.K_KP_1
+	K_KP_2  = sdl.K_KP_2
+	K_KP_3  = sdl.K_KP_3
+	K_KP_4  = sdl.K_KP_4
+)
+
+// Mouse button constants (re-exported from SDL).
+const (
+	BUTTON_LEFT  = uint32(sdl.BUTTON_LEFT)
+	BUTTON_RIGHT = uint32(sdl.BUTTON_RIGHT)
+)
+
+// Point returns an sdl.FPoint so callers can use control.Point(x,y) without importing go-sdl3.
+func Point(x, y float32) sdl.FPoint {
+	return sdl.FPoint{X: x, Y: y}
+}
+
+// Origin returns the center-origin point (0, 0).
+func Origin() sdl.FPoint {
+	return sdl.FPoint{X: 0, Y: 0}
+}
+
+// RGB returns an opaque sdl.Color with the given 0–255 components.
+func RGB(r, g, b uint8) sdl.Color {
+	return sdl.Color{R: r, G: g, B: b, A: 255}
+}
+
+// RGBA returns an sdl.Color with the given 0–255 components.
+func RGBA(r, g, b, a uint8) sdl.Color {
+	return sdl.Color{R: r, G: g, B: b, A: a}
+}
+
+// EndLoop is the sentinel error returned when the run loop should exit (e.g. ESC or window close).
+// Re-exported from SDL so callers can return control.EndLoop from exp.Run(...) without importing go-sdl3.
+var EndLoop = sdl.EndLoop
+
+// IsEndLoop reports whether err is the sentinel used for graceful run-loop exit (ESC or window close).
+// Use it to avoid importing go-sdl3 just to check: if err != nil && !control.IsEndLoop(err) { log.Fatal(err) }.
+func IsEndLoop(err error) bool {
+	return err != nil && errors.Is(err, sdl.EndLoop)
+}
 

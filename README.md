@@ -60,7 +60,13 @@ func main() {
 	fullscreen := flag.Bool("F", false, "Launch in fullscreen display mode")
 	flag.Parse()
 
-	exp := control.NewExperiment("My First Go Experiment", 1368, 1024, *fullscreen)
+	exp := control.NewExperiment(
+		"My First Go Experiment",
+		1368, 1024, *fullscreen,
+		control.Black,  // background color
+		control.White,  // foreground (text) color
+		32,             // default font size in points
+	)
 	if err := exp.Initialize(); err != nil {
 		log.Fatalf("failed to initialize experiment: %v", err)
 	}
@@ -71,22 +77,25 @@ func main() {
 	finish := stimuli.NewTextBox("Experiment Finished!\n Press any key to exit.", 600, sdl.FPoint{X: 0, Y: 100}, control.DefaultTextColor)
 
 	sound := stimuli.NewSoundFromMemory(bonjourWav)
-	sound.PreloadDevice(exp.AudioDevice)
+	if err := sound.PreloadDevice(exp.AudioDevice); err != nil {
+		log.Printf("Warning: failed to load sound: %v", err)
+	}
 
 	exp.Run(func() error {
-		instr.Present(exp.Screen, true, true)
-		exp.Keyboard.Wait()
-		sound.Play()
+		_ = stimuli.PlayPing(exp.AudioDevice)
 
-		greetings.Present(exp.Screen, true, true)
-		exp.Keyboard.Wait()
+		_ = instr.Present(exp.Screen, true, true)
+		_, _ = exp.Keyboard.Wait()
 
-		finish.Present(exp.Screen, true, true)
-		exp.Keyboard.Wait()
+		_ = sound.Play()
+		_ = greetings.Present(exp.Screen, true, true)
+		_, _ = exp.Keyboard.Wait()
+
+		_ = finish.Present(exp.Screen, true, true)
+		_, _ = exp.Keyboard.Wait()
 
 		return sdl.EndLoop
 	})
-
 }
 ```
 
@@ -107,11 +116,12 @@ Moreover, as cross-compiling is [trivial](https://golangcookbook.com/chapters/ru
 
 ## Project Structure
 
-- `control/`: Experiment lifecycle and state management.
+- `control/`: Experiment lifecycle and state management (window, fonts, colors).
 - `design/`: Tools for building the experimental structure (Trials, Blocks).
 - `stimuli/`: A comprehensive library of visual and auditory stimuli.
 - `io/`: Screen, Keyboard, and Mouse handling.
-- `misc/`: Timing and geometry utilities.
+- `clock/`: Timing utilities.
+- `geometry/`: Geometry utilities.
 - `examples/`: Ready-to-run examples (Stroop task, Lexical Decision, etc.).
 
 ## Building and Running Examples

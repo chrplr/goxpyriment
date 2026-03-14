@@ -9,7 +9,7 @@ import (
 	"github.com/Zyko0/go-sdl3/sdl"
 )
 
-// Circle represents a circle stimulus.
+// Circle is a filled circle with the given radius and color; Position is center-based.
 type Circle struct {
 	Radius   float32
 	Position sdl.FPoint

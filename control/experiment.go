@@ -38,10 +38,10 @@ type EventState struct {
 //		// draw stimuli using exp.Screen / stimuli package
 //		// collect input via exp.Keyboard / exp.HandleEvents
 //		// log responses via exp.Data.Add(...)
-//		// return sdl.EndLoop to terminate the run loop
-//		return sdl.EndLoop
+//		// return control.EndLoop to terminate the run loop
+//		return control.EndLoop
 //	})
-//	if err != nil && err != sdl.EndLoop { log.Fatal(err) }
+//	if err != nil && !control.IsEndLoop(err) { log.Fatal(err) }
 type Experiment struct {
 	Name            string
 	Design          *design.Experiment
@@ -52,6 +52,7 @@ type Experiment struct {
 	SubjectID       int
 	BackgroundColor sdl.Color
 	ForegroundColor sdl.Color
+	DefaultFontSize float32
 	DefaultFont     *ttf.Font
 	AudioDevice     sdl.AudioDeviceID
 	Audio           *AudioManager
@@ -68,19 +69,20 @@ type Experiment struct {
 }
 
 // NewExperiment creates a new Experiment instance with the requested logical
-// window size and fullscreen flag.
+// window size, fullscreen flag, background/foreground colors, and default font size.
 //
 // If width and height are non‑zero, they define the logical coordinate space
 // used for drawing (even if the physical window is scaled).
 //
 // If width == 0 and height == 0, the experiment will automatically switch to
 // exclusive fullscreen at the current desktop resolution during Initialize().
-func NewExperiment(name string, width, height int, fullscreen bool) *Experiment {
+func NewExperiment(name string, width, height int, fullscreen bool, bg, fg sdl.Color, defaultFontSize float32) *Experiment {
 	return &Experiment{
 		Name:            name,
 		Design:          design.NewExperiment(name),
-		BackgroundColor: DefaultBackgroundColor,
-		ForegroundColor: DefaultTextColor,
+		BackgroundColor: bg,
+		ForegroundColor: fg,
+		DefaultFontSize: defaultFontSize,
 		SubjectID:       0, // Default subject ID
 		WindowWidth:     width,
 		WindowHeight:    height,
@@ -139,7 +141,11 @@ func (e *Experiment) Initialize() error {
 
 	// Load default font if not already set
 	if e.DefaultFont == nil {
-		if err := e.LoadFontFromMemory(assets_embed.InconsolataFont, 32); err != nil {
+		size := e.DefaultFontSize
+		if size <= 0 {
+			size = 32 // sensible library default
+		}
+		if err := e.LoadFontFromMemory(assets_embed.InconsolataFont, size); err != nil {
 			// Non-fatal error, just warn
 			log.Printf("Warning: failed to load default embedded font: %v", err)
 		}

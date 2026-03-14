@@ -108,7 +108,7 @@ go build -o simple_example .
 By default (without `-d`), experiments created via:
 
 ```go
-control.NewExperiment("...", 0, 0, true)
+control.NewExperiment("...", 0, 0, true, control.Black, control.White, 32)
 ```
 
 will use **exclusive fullscreen** at the current desktop resolution.

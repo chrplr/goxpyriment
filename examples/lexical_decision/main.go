@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"github.com/chrplr/goxpyriment/control"
-	"github.com/chrplr/goxpyriment/misc"
+	"github.com/chrplr/goxpyriment/clock"
 	"github.com/chrplr/goxpyriment/stimuli"
 
 	"github.com/Zyko0/go-sdl3/sdl"
@@ -81,7 +81,7 @@ func main() {
 	if *develop {
 		width, height, fullscreen = 1024, 1024, false
 	}
-	exp := control.NewExperiment("Lexical Decision", width, height, fullscreen)
+	exp := control.NewExperiment("Lexical Decision", width, height, fullscreen, control.Black, control.White, 32)
 	exp.SubjectID = *subject
 	if err := exp.Initialize(); err != nil {
 		log.Fatalf("failed to initialize experiment: %v", err)
@@ -128,13 +128,13 @@ func main() {
 			if err := exp.Screen.Update(); err != nil {
 				return err
 			}
-			misc.Wait(1000)
+			clock.Wait(1000)
 
 			// Cue
 			if err := cue.Present(exp.Screen, true, true); err != nil {
 				return err
 			}
-			misc.Wait(500)
+			clock.Wait(500)
 
 			// Stimulus
 			if err := t.stim.Present(exp.Screen, true, true); err != nil {
@@ -142,12 +142,12 @@ func main() {
 			}
 
 			// Wait for response
-			startTime := misc.GetTime()
+			startTime := clock.GetTime()
 			key, err := exp.Keyboard.WaitKeys([]sdl.Keycode{WordResponseKey, NonWordResponseKey}, MaxResponseDelay)
 			if err != nil {
 				return err
 			}
-			rt := misc.GetTime() - startTime
+			rt := clock.GetTime() - startTime
 			
 			// RT would be 0 or very large if wait timed out and returned 0,
 			// but RT is calculated from startTime.
@@ -157,7 +157,7 @@ func main() {
 			fmt.Printf("Trial: Item=%s, Cat=%s, Key=%d, RT=%d ms\n", t.item, t.category, key, rt)
 
 			// Small pause between trials
-			misc.Wait(500)
+			clock.Wait(500)
 		}
 
 		return sdl.EndLoop

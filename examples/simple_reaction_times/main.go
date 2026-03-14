@@ -8,7 +8,7 @@ import (
 	"flag"
 	"fmt"
 	"github.com/chrplr/goxpyriment/control"
-	"github.com/chrplr/goxpyriment/misc"
+	"github.com/chrplr/goxpyriment/clock"
 	"github.com/chrplr/goxpyriment/stimuli"
 	"log"
 	"math/rand"
@@ -37,7 +37,7 @@ func main() {
 	if *develop {
 		width, height, fullscreen = 1024, 1024, false
 	}
-	exp := control.NewExperiment("Visual Detection", width, height, fullscreen)
+	exp := control.NewExperiment("Visual Detection", width, height, fullscreen, control.Black, control.White, 32)
 	exp.SubjectID = *subject
 	if err := exp.Initialize(); err != nil {
 		log.Fatalf("failed to initialize experiment: %v", err)
@@ -79,7 +79,7 @@ func main() {
 			}
 			
 			waitTime := rand.Intn(MaxWaitTime-MinWaitTime) + MinWaitTime
-			misc.Wait(waitTime)
+			clock.Wait(waitTime)
 
 			// Target stimulus
 			if err := target.Present(exp.Screen, true, true); err != nil {
@@ -87,18 +87,18 @@ func main() {
 			}
 
 			// Wait for response
-			startTime := misc.GetTime()
+			startTime := clock.GetTime()
 			key, err := exp.Keyboard.Wait()
 			if err != nil {
 				return err
 			}
-			rt := misc.GetTime() - startTime
+			rt := clock.GetTime() - startTime
 			
 			exp.Data.Add([]interface{}{i, waitTime, key, rt})
 			fmt.Printf("Trial %d: Wait=%d ms, Key=%d, RT=%d ms\n", i, waitTime, key, rt)
 			
 			// Small pause between trials
-			misc.Wait(500)
+			clock.Wait(500)
 		}
 
 		return sdl.EndLoop // Graceful exit

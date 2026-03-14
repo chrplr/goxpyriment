@@ -8,7 +8,7 @@ import (
 	"github.com/Zyko0/go-sdl3/sdl"
 )
 
-// Canvas represents a visual container stimulus that can be drawn upon.
+// Canvas is an offscreen render target of the given size and background color; stimuli can be drawn to it, then the canvas is drawn to the screen.
 type Canvas struct {
 	Size     sdl.FPoint
 	Position sdl.FPoint
@@ -16,7 +16,7 @@ type Canvas struct {
 	Texture  *sdl.Texture
 }
 
-// NewCanvas creates a new Canvas.
+// NewCanvas creates a canvas with the given width, height, and background color (center at 0,0).
 func NewCanvas(width, height float32, color sdl.Color) *Canvas {
 	return &Canvas{
 		Size:     sdl.FPoint{X: width, Y: height},

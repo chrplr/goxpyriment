@@ -13,7 +13,7 @@ import (
 	"syscall"
 
 	"github.com/chrplr/goxpyriment/control"
-	"github.com/chrplr/goxpyriment/misc"
+	"github.com/chrplr/goxpyriment/clock"
 	"github.com/chrplr/goxpyriment/stimuli"
 
 	"github.com/Zyko0/go-sdl3/sdl"
@@ -34,7 +34,7 @@ func main() {
 	if *develop {
 		width, height, fullscreen = 1024, 1024, false
 	}
-	exp := control.NewExperiment("Video Player Example", width, height, fullscreen)
+	exp := control.NewExperiment("Video Player Example", width, height, fullscreen, control.Black, control.White, 32)
 	exp.SubjectID = *subject
 	if err := exp.Initialize(); err != nil {
 		log.Fatalf("failed to initialize experiment: %v", err)
@@ -156,8 +156,8 @@ func main() {
 			exp.Screen.Clear()
 			exp.Screen.Update()
 			
-			gapStartTime := misc.GetTime()
-			for misc.GetTime()-gapStartTime < 4000 {
+			gapStartTime := clock.GetTime()
+			for clock.GetTime()-gapStartTime < 4000 {
 				// Poll events to keep window responsive and check for ESC/Quit
 				key, _, err := exp.HandleEvents()
 				if err == sdl.EndLoop {

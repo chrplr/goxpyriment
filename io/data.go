@@ -13,13 +13,11 @@ import (
 )
 
 // Default settings for OutputFile and DataFile.
-// DataFileDirectory is the default folder used when no explicit output
-// directory is provided by the calling code.
 const (
-	OutputFileCommentChar = "#"
-	OutputFileEOL         = "\n"
-	DataFileDirectory     = "xpd_results"
-	DataFileDelimiter     = ","
+	OutputFileCommentChar = "#"           // Character used for comment lines in output files.
+	OutputFileEOL         = "\n"          // Line ending written by WriteLine.
+	DataFileDirectory     = "xpd_results" // Default directory for data files when none is set.
+	DataFileDelimiter     = ","          // Default CSV delimiter for DataFile.
 )
 
 // OutputFile represents a generic buffered text file on disk.
@@ -109,8 +107,8 @@ type DataFile struct {
 }
 
 // NewDataFile creates a new DataFile in the given directory (or in the
-// default `data` directory if empty). The filename is derived from the
-// experiment name, subject id and a timestamp.
+// default directory from DataFileDirectory, e.g. "xpd_results", if empty).
+// The filename is derived from the experiment name, subject ID, and a timestamp.
 func NewDataFile(directory string, subjectID int, expName string) (*DataFile, error) {
 	if directory == "" {
 		directory = DataFileDirectory

@@ -9,7 +9,7 @@ import (
 	"github.com/Zyko0/go-sdl3/sdl"
 )
 
-// Tone represents a procedural audio stimulus.
+// Tone is a procedural sine-wave tone with configurable frequency (Hz), duration (ms), and amplitude.
 type Tone struct {
 	Frequency float64
 	Duration  int // ms
@@ -18,7 +18,7 @@ type Tone struct {
 	Data      []byte
 }
 
-// NewTone creates a new sine wave tone.
+// NewTone creates a sine wave tone with the given frequency in Hz, duration in milliseconds, and amplitude (0–1).
 func NewTone(frequency float64, duration int, amplitude float32) *Tone {
 	return &Tone{
 		Frequency: frequency,

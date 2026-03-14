@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"github.com/chrplr/goxpyriment/control"
 	"github.com/chrplr/goxpyriment/design"
-	"github.com/chrplr/goxpyriment/misc"
+	"github.com/chrplr/goxpyriment/clock"
 	"github.com/chrplr/goxpyriment/stimuli"
 	"log"
 
@@ -28,7 +28,7 @@ func main() {
 	if *develop {
 		width, height, fullscreen = 1024, 1024, false
 	}
-	exp := control.NewExperiment("My First Go Experiment", width, height, fullscreen)
+	exp := control.NewExperiment("My First Go Experiment", width, height, fullscreen, control.Black, control.White, 32)
 	exp.SubjectID = *subject
 	if err := exp.Initialize(); err != nil {
 		log.Fatalf("failed to initialize experiment: %v", err)
@@ -78,7 +78,7 @@ func main() {
 			if err := fixation.Present(exp.Screen, true, true); err != nil {
 				return err
 			}
-			misc.Wait(500)
+			clock.Wait(500)
 
 			// Target stimulus
 			if err := rect.Present(exp.Screen, true, true); err != nil {
@@ -86,12 +86,12 @@ func main() {
 			}
 
 			// Wait for response
-			startTime := misc.GetTime()
+			startTime := clock.GetTime()
 			_, err := exp.Keyboard.Wait()
 			if err != nil {
 				return err
 			}
-			rt := misc.GetTime() - startTime
+			rt := clock.GetTime() - startTime
 			fmt.Printf("Reaction Time: %d ms\n", rt)
 			
 			// Clear screen between trials
@@ -101,7 +101,7 @@ func main() {
 			if err := exp.Screen.Update(); err != nil {
 				return err
 			}
-			misc.Wait(500)
+			clock.Wait(500)
 		}
 
 		// Finish

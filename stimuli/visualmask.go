@@ -12,7 +12,7 @@ import (
 	"github.com/Zyko0/go-sdl3/sdl"
 )
 
-// VisualMask represents a visual mask stimulus.
+// VisualMask is a pattern mask of random dots over a background (e.g. for masking stimuli); DotPercentage controls fill (0–100).
 type VisualMask struct {
 	Size             sdl.FPoint
 	Position         sdl.FPoint
@@ -23,7 +23,7 @@ type VisualMask struct {
 	Texture          *sdl.Texture
 }
 
-// NewVisualMask creates a new VisualMask stimulus.
+// NewVisualMask creates a mask of the given size, dot size, background and dot colors, and dot percentage (0–100).
 func NewVisualMask(width, height float32, dotWidth, dotHeight float32, bgColor, dotColor sdl.Color, dotPercentage int) *VisualMask {
 	return &VisualMask{
 		Size:            sdl.FPoint{X: width, Y: height},

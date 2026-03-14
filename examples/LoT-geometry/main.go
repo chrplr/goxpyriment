@@ -9,7 +9,7 @@ import (
 	"github.com/Zyko0/go-sdl3/sdl"
 	"github.com/chrplr/goxpyriment/control"
 	"github.com/chrplr/goxpyriment/design"
-	"github.com/chrplr/goxpyriment/misc"
+	"github.com/chrplr/goxpyriment/clock"
 	"github.com/chrplr/goxpyriment/stimuli"
 	"log"
 	"math"
@@ -77,17 +77,17 @@ func flashSequence(exp *control.Experiment, dots []*stimuli.Circle, fixation *st
 		if err := drawEnvironment(exp, dots, fixation, target, idx); err != nil {
 			return err
 		}
-		misc.Wait(500)
+		clock.Wait(500)
 		if err := drawEnvironment(exp, dots, fixation, target, -1); err != nil {
 			return err
 		}
-		misc.Wait(100)
+		clock.Wait(100)
 	}
 	return nil
 }
 
 func getGuess(exp *control.Experiment, dots []*stimuli.Circle, fixation *stimuli.FixCross, octagonPoints []sdl.FPoint) (int, int64, error) {
-	startTime := misc.GetTime()
+	startTime := clock.GetTime()
 	// Ensure screen is updated with dots and fixation
 	if err := drawEnvironment(exp, dots, fixation, nil, -1); err != nil {
 		return -1, 0, err
@@ -109,11 +109,11 @@ func getGuess(exp *control.Experiment, dots []*stimuli.Circle, fixation *stimuli
 				dx := mx - sx
 				dy := my - sy
 				if dx*dx+dy*dy < 40*40 { // 40px radius click zone
-					return i, misc.GetTime() - startTime, nil
+					return i, clock.GetTime() - startTime, nil
 				}
 			}
 		}
-		misc.Wait(10)
+		clock.Wait(10)
 	}
 }
 
@@ -153,9 +153,8 @@ func main() {
 		width, height, fullscreen = 800, 800, false
 	}
 
-	exp := control.NewExperiment("LoT-Geometry-Task", width, height, fullscreen)
+	exp := control.NewExperiment("LoT-Geometry-Task", width, height, fullscreen, control.Black, control.White, 32)
 	exp.SubjectID = *subjectID
-	exp.BackgroundColor = control.Black
 
 	if err := exp.Initialize(); err != nil {
 		log.Fatalf("failed to initialize experiment: %v", err)
@@ -254,7 +253,7 @@ func main() {
 				if err := drawEnvironment(exp, dots, fixation, target, targetIdx); err != nil {
 					log.Fatal(err)
 				}
-				misc.Wait(300)
+				clock.Wait(300)
 				currentKnownCount++
 			} else {
 				// Play "Buzzer" for incorrect answer
@@ -270,12 +269,12 @@ func main() {
 			if err := drawEnvironment(exp, dots, fixation, target, -1); err != nil {
 				log.Fatal(err)
 			}
-			misc.Wait(500)
+			clock.Wait(500)
 		}
 		
 		// Inter-trial interval
 		if err := exp.Screen.Clear(); err != nil { log.Fatal(err) }
 		exp.Screen.Update()
-		misc.Wait(1000)
+		clock.Wait(1000)
 	}
 }

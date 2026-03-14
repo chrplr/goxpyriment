@@ -9,7 +9,7 @@ import (
 	"github.com/Zyko0/go-sdl3/ttf"
 )
 
-// TextLine represents a line of text.
+// TextLine is a single line of text rendered with an optional font (or the screen default).
 type TextLine struct {
 	Text     string
 	Position sdl.FPoint
@@ -20,6 +20,7 @@ type TextLine struct {
 	Height   float32
 }
 
+// NewTextLine creates a text line at (x, y) in center-based coordinates with the given color.
 func NewTextLine(text string, x, y float32, color sdl.Color) *TextLine {
 	return &TextLine{
 		Text:     text,

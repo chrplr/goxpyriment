@@ -165,8 +165,7 @@ func main() {
 		width, height, fullscreen = 800, 600, false
 	}
 
-	exp := control.NewExperiment("Random Dot Stereogram", width, height, fullscreen)
-	exp.BackgroundColor = control.Gray
+	exp := control.NewExperiment("Random Dot Stereogram", width, height, fullscreen, control.Gray, control.White, 32)
 
 	if err := exp.Initialize(); err != nil {
 		log.Fatalf("failed to initialize experiment: %v", err)

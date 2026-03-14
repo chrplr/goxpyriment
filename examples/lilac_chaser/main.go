@@ -5,25 +5,32 @@ package main
 
 import (
 	"flag"
-	"github.com/chrplr/goxpyriment/control"
-	"github.com/chrplr/goxpyriment/misc"
-	"github.com/chrplr/goxpyriment/stimuli"
-	"github.com/Zyko0/go-sdl3/sdl"
 	"log"
 	"math"
+
+	"github.com/chrplr/goxpyriment/clock"
+	"github.com/chrplr/goxpyriment/control"
+	"github.com/chrplr/goxpyriment/stimuli"
+	"github.com/Zyko0/go-sdl3/sdl"
 )
 
 func main() {
 	develop := flag.Bool("d", false, "Developer mode (windowed 800x800)")
+	radiusFlag := flag.Float64("r", 40.0, "Radius of the lilac circles (pixels)")
+	rFlag := flag.Int("R", 250, "Red component of circle color (0-255)")
+	gFlag := flag.Int("G", 217, "Green component of circle color (0-255)")
+	bFlag := flag.Int("B", 248, "Blue component of circle color (0-255)")
 	flag.Parse()
+
+	radius := float32(*radiusFlag)
+	rose := sdl.Color{R: uint8(*rFlag), G: uint8(*gFlag), B: uint8(*bFlag), A: 255}
 
 	// 1. Create and initialize the experiment
 	width, height, fullscreen := 0, 0, true
 	if *develop {
 		width, height, fullscreen = 800, 800, false
 	}
-	exp := control.NewExperiment("Lilac Chaser", width, height, fullscreen)
-	exp.BackgroundColor = control.White // background is white
+	exp := control.NewExperiment("Lilac Chaser", width, height, fullscreen, control.White, control.Black, 32)
 
 	if err := exp.Initialize(); err != nil {
 		log.Fatalf("failed to initialize experiment: %v", err)
@@ -32,9 +39,7 @@ func main() {
 
 	// 2. Constants for the Lilac Chaser
 	n := 12
-	radius := float32(40)
 	distance := float32(300)
-	rose := sdl.Color{R: 250, G: 217, B: 248, A: 255}
 
 	// 3. Prepare stimuli
 	fixation := stimuli.NewFixCross(40, 5, control.Black)
@@ -87,7 +92,7 @@ func main() {
 		currentPos = (currentPos + 1) % n
 
 		// Frame timing (approx 100ms per step)
-		misc.Wait(100)
+		clock.Wait(100)
 
 		return nil
 	})

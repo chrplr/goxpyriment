@@ -8,7 +8,7 @@ import (
 	"github.com/Zyko0/go-sdl3/sdl"
 	"github.com/chrplr/goxpyriment/control"
 	"github.com/chrplr/goxpyriment/design"
-	"github.com/chrplr/goxpyriment/misc"
+	"github.com/chrplr/goxpyriment/clock"
 	"github.com/chrplr/goxpyriment/stimuli"
 	"log"
 )
@@ -80,9 +80,8 @@ func main() {
 		width, height, fullscreen = 800, 600, false
 	}
 
-	exp := control.NewExperiment("Attentional-Blink", width, height, fullscreen)
+	exp := control.NewExperiment("Attentional-Blink", width, height, fullscreen, control.Gray, control.White, 32)
 	exp.SubjectID = *subjectID
-	exp.BackgroundColor = control.Gray
 
 	if err := exp.Initialize(); err != nil {
 		log.Fatalf("failed to initialize experiment: %v", err)
@@ -118,37 +117,46 @@ func main() {
 	}
 	design.ShuffleList(trialConfigs)
 
+	// 8 training trials (not logged) with the same response/feedback logic.
+	var trainingConfigs []TrialConfig
+	for i := 0; i < 8; i++ {
+		trainingConfigs = append(trainingConfigs, TrialConfig{
+			HasJ: design.CoinFlip(0.5),
+			HasK: design.CoinFlip(0.5),
+			Lag:  design.RandInt(1, 8),
+		})
+	}
+	design.ShuffleList(trainingConfigs)
+
 	fixation := stimuli.NewFixCross(20, 2, control.Black)
 
-	// 2. Trial Loop
-	for i, config := range trialConfigs {
+	runOne := func(config TrialConfig) (string, bool, int64, error) {
 		items := generateLetters(config)
 
 		// A. Fixation
-		if err := fixation.Present(exp.Screen, true, true); err != nil { log.Fatal(err) }
-		misc.Wait(FixationDuration)
+		if err := fixation.Present(exp.Screen, true, true); err != nil { return "", false, 0, err }
+		clock.Wait(FixationDuration)
 
 		// B. RSVP Stream
 		for _, char := range items {
 			txt := stimuli.NewTextLine(char, 0, 0, control.Black)
-			if err := txt.Present(exp.Screen, true, true); err != nil { log.Fatal(err) }
-			misc.Wait(ItemDuration)
+			if err := txt.Present(exp.Screen, true, true); err != nil { return "", false, 0, err }
+			clock.Wait(ItemDuration)
 		}
 
 		// C. Response Screen
 		prompt := stimuli.NewTextLine("What did you see? (J, K, B=Both, N=Neither)", 0, 0, control.Black)
-		if err := prompt.Present(exp.Screen, true, true); err != nil { log.Fatal(err) }
+		if err := prompt.Present(exp.Screen, true, true); err != nil { return "", false, 0, err }
 
-		startTime := misc.GetTime()
+		startTime := clock.GetTime()
 		key, err := exp.Keyboard.WaitKeys([]sdl.Keycode{sdl.K_J, sdl.K_K, sdl.K_B, sdl.K_N, sdl.K_ESCAPE}, -1)
 		if err != nil {
-			if err == sdl.EndLoop { return }
-			log.Fatalf("input error: %v", err)
+			return "", false, 0, err
 		}
-		rt := misc.GetTime() - startTime
+		rt := clock.GetTime() - startTime
 
 		if key == sdl.K_ESCAPE {
-			return
+			return "", false, rt, sdl.EndLoop
 		}
 
 		// Evaluate response
@@ -171,17 +179,52 @@ func main() {
 
 		// Feedback
 		if !isCorrect {
-			stimuli.PlayBuzzer(exp.AudioDevice)
+			_ = stimuli.PlayBuzzer(exp.AudioDevice)
+		}
+
+		// ITI
+		if err := exp.Screen.Clear(); err != nil { return response, isCorrect, rt, err }
+		exp.Screen.Update()
+		clock.Wait(1000)
+
+		return response, isCorrect, rt, nil
+	}
+
+	// 2. Training Loop (8 trials, feedback, not logged).
+	for _, config := range trainingConfigs {
+		if _, _, _, err := runOne(config); err != nil {
+			if err == sdl.EndLoop {
+				return
+			}
+			log.Fatalf("training trial error: %v", err)
+		}
+	}
+
+	// Training finished screen.
+	trainDone := stimuli.NewTextBox(
+		"Training finished.\n\nPress a key to go on to the main experiment.",
+		650,
+		sdl.FPoint{X: 0, Y: 0},
+		control.White,
+	)
+	if err := trainDone.Present(exp.Screen, true, true); err != nil {
+		log.Fatalf("training-finished screen error: %v", err)
+	}
+	if _, err := exp.Keyboard.Wait(); err != nil && err != sdl.EndLoop {
+		log.Fatalf("training-finished wait error: %v", err)
+	}
+
+	// 3. Main Trial Loop (logged).
+	for i, config := range trialConfigs {
+		response, isCorrect, rt, err := runOne(config)
+		if err != nil {
+			if err == sdl.EndLoop { return }
+			log.Fatalf("trial error: %v", err)
 		}
 
 		// Log data
 		exp.Data.Add([]interface{}{
 			i + 1, config.HasJ, config.HasK, config.Lag, response, isCorrect, rt,
 		})
-
-		// ITI
-		if err := exp.Screen.Clear(); err != nil { log.Fatal(err) }
-		exp.Screen.Update()
-		misc.Wait(1000)
 	}
 }

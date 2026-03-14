@@ -131,6 +131,15 @@ func (s *Screen) Clear() error {
 	return s.Renderer.Clear()
 }
 
+// ClearAndUpdate clears the screen with the background color and presents the buffer.
+// It is a convenience for the common pattern Clear() then Update().
+func (s *Screen) ClearAndUpdate() error {
+	if err := s.Clear(); err != nil {
+		return err
+	}
+	return s.Update()
+}
+
 // Update presents the rendered buffer.
 func (s *Screen) Update() error {
 	// Ensure we are presenting the window, not a texture

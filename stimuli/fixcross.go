@@ -8,7 +8,8 @@ import (
 	"github.com/Zyko0/go-sdl3/sdl"
 )
 
-// FixCross represents a fixation cross.
+// FixCross is a centered fixation cross (horizontal and vertical lines).
+// Position is in center-based coordinates; Size and LineWidth are in the same units.
 type FixCross struct {
 	Size      float32
 	LineWidth float32
@@ -16,6 +17,7 @@ type FixCross struct {
 	Position  sdl.FPoint
 }
 
+// NewFixCross creates a fixation cross with the given size, line width, and color (center at 0,0).
 func NewFixCross(size float32, lineWidth float32, color sdl.Color) *FixCross {
 	return &FixCross{
 		Size:      size,

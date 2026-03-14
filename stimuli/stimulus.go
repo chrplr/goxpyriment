@@ -1,6 +1,9 @@
 // Copyright (2026) Christophe Pallier <christophe@pallier.org>
 // Distributed under the GNU General Public License v3.
 
+// Package stimuli provides visual and auditory stimulus types (fixation cross,
+// text, pictures, video, shapes, sound, etc.) that implement the Stimulus and
+// VisualStimulus interfaces for use with the experiment Screen.
 package stimuli
 
 import (

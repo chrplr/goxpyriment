@@ -11,7 +11,7 @@ import (
 
 	"github.com/chrplr/goxpyriment/control"
 	"github.com/chrplr/goxpyriment/design"
-	"github.com/chrplr/goxpyriment/misc"
+	"github.com/chrplr/goxpyriment/clock"
 	"github.com/chrplr/goxpyriment/stimuli"
 
 	"github.com/Zyko0/go-sdl3/sdl"
@@ -80,6 +80,7 @@ func main() {
 	develop := flag.Bool("d", false, "Developer mode (windowed 1024x1024)")
 	scaling := flag.Float64("scaling", 1.0, "Scaling factor for stimuli")
 	fullscreenFlag := flag.Bool("F", false, "Force Fullscreen")
+	subject := flag.Int("s", 0, "Subject ID")
 	flag.Parse()
 
 	// Scaled dimensions
@@ -96,7 +97,8 @@ func main() {
 	if *fullscreenFlag {
 		fullscreen = true
 	}
-	exp := control.NewExperiment("Mental Logic Card Game", width, height, fullscreen)
+	exp := control.NewExperiment("Mental Logic Card Game", width, height, fullscreen, control.Black, control.White, 32)
+	exp.SubjectID = *subject
 	if err := exp.Initialize(); err != nil {
 		log.Fatalf("failed to initialize experiment: %v", err)
 	}
@@ -118,7 +120,7 @@ func main() {
 
 	// Wait for fullscreen transition to stabilize
 	// if fullscreen {
-	//	misc.Wait(2000)
+	//	clock.Wait(2000)
 	// }
 
 	exp.AddDataVariableNames([]string{"condition", "response", "rt", "correct"})
@@ -160,14 +162,14 @@ func main() {
 	err := exp.Run(func() error {
 		// Wait for fullscreen transition to stabilize before showing instructions
 		if fullscreen {
-			misc.Wait(2000)
+			clock.Wait(2000)
 		}
 
 		// Instructions - Initialize here to ensure correct centering after fullscreen transition
 		instr := stimuli.NewTextBox(Instructions, 1000, sdl.FPoint{X: 0, Y: 0}, control.DefaultTextColor)
 		
 		// Small extra wait to ensure renderer is ready
-		misc.Wait(100)
+		clock.Wait(100)
 		
 		if err := instr.Present(exp.Screen, true, true); err != nil {
 			return err
@@ -180,7 +182,7 @@ func main() {
 			if key == sdl.K_SPACE {
 				break
 			}
-			misc.Wait(10)
+			clock.Wait(10)
 		}
 
 		for _, ct := range trials {
@@ -243,33 +245,33 @@ func main() {
 }
 
 func waitInterruption(exp *control.Experiment, timeout int) error {
-	start := misc.GetTime()
+	start := clock.GetTime()
 	for {
 		_, _, err := exp.HandleEvents()
 		if err != nil {
 			return err
 		}
-		if int(misc.GetTime()-start) >= timeout {
+		if int(clock.GetTime()-start) >= timeout {
 			return nil
 		}
-		misc.Wait(1)
+		clock.Wait(1)
 	}
 }
 
 func waitResponse(exp *control.Experiment, timeout int) (sdl.Keycode, int64, error) {
-	start := misc.GetTime()
+	start := clock.GetTime()
 	for {
 		key, _, err := exp.HandleEvents()
 		if err != nil {
-			return 0, misc.GetTime() - start, err
+			return 0, clock.GetTime() - start, err
 		}
 		if key == sdl.K_Q || key == sdl.K_S || key == sdl.K_D || key == sdl.K_N {
-			return key, misc.GetTime() - start, nil
+			return key, clock.GetTime() - start, nil
 		}
-		if timeout > 0 && int(misc.GetTime()-start) >= timeout {
+		if timeout > 0 && int(clock.GetTime()-start) >= timeout {
 			return 0, int64(timeout), nil
 		}
-		misc.Wait(1)
+		clock.Wait(1)
 	}
 }
 

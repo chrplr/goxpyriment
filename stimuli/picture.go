@@ -9,7 +9,7 @@ import (
 	"github.com/Zyko0/go-sdl3/img"
 )
 
-// Picture represents an image stimulus.
+// Picture is an image stimulus loaded from a file path or from memory (e.g. embedded data).
 type Picture struct {
 	FilePath string
 	Memory   []byte
@@ -19,6 +19,7 @@ type Picture struct {
 	Height   float32
 }
 
+// NewPicture creates a picture stimulus from a file path, with center position (x, y).
 func NewPicture(filePath string, x, y float32) *Picture {
 	return &Picture{
 		FilePath: filePath,

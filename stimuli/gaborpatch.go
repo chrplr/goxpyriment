@@ -11,7 +11,7 @@ import (
 	"github.com/Zyko0/go-sdl3/sdl"
 )
 
-// GaborPatch represents a Gabor patch stimulus.
+// GaborPatch is a Gabor patch (sinusoidal grating windowed by a Gaussian) with orientation, spatial frequency, phase, and size parameters.
 type GaborPatch struct {
 	Sigma           float64
 	Theta           float64 // orientation in degrees
@@ -25,7 +25,7 @@ type GaborPatch struct {
 	Texture         *sdl.Texture
 }
 
-// NewGaborPatch creates a new GaborPatch.
+// NewGaborPatch creates a Gabor patch with the given sigma, theta (degrees), lambda, phase, psi, gamma, background color, and size in pixels.
 func NewGaborPatch(sigma, theta, lambda, phase, psi, gamma float64, bgColor sdl.Color, size float32) *GaborPatch {
 	return &GaborPatch{
 		Sigma:           sigma,

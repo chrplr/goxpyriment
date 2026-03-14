@@ -139,7 +139,7 @@ func (s *SerialPort) Clear() error {
 	return s.port.ResetInputBuffer()
 }
 
-// GetAvailablePorts returns a list of available serial ports.
+// GetAvailablePorts returns a list of available serial port names (e.g. /dev/ttyUSB0, COM3).
 func GetAvailablePorts() ([]string, error) {
 	return serial.GetPortsList()
 }
@@ -212,7 +212,7 @@ func GetAvailableParallelPorts() []string {
 	return nil
 }
 
-// Helper to determine if a string represents a parallel port name.
+// IsParallelPort reports whether the given name looks like a parallel port (e.g. LPT1, /dev/parport0).
 func IsParallelPort(name string) bool {
 	n := strings.ToLower(name)
 	return strings.HasPrefix(n, "lpt") || strings.HasPrefix(n, "/dev/parport")

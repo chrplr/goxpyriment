@@ -18,7 +18,7 @@ import (
 	"strconv"
 
 	"github.com/chrplr/goxpyriment/control"
-	"github.com/chrplr/goxpyriment/misc"
+	"github.com/chrplr/goxpyriment/clock"
 	"github.com/chrplr/goxpyriment/stimuli"
 
 	"github.com/Zyko0/go-sdl3/sdl"
@@ -355,7 +355,7 @@ func (r *Retinotopy) Instructions() error {
 		if key != 0 || btn != 0 {
 			break
 		}
-		misc.Wait(10)
+		clock.Wait(10)
 	}
 	return nil
 }
@@ -372,7 +372,7 @@ func (r *Retinotopy) Run() error {
 		H: stimSize,
 	}
 
-	startTime := misc.GetTime()
+	startTime := clock.GetTime()
 	
 	r.Exp.Data.AddVariableNames([]string{
 		"run_label", "trial_id", "target_time", "start_time", "end_time", 
@@ -383,7 +383,7 @@ func (r *Retinotopy) Run() error {
 	if len(r.PatternOrder) < numFrames { numFrames = len(r.PatternOrder) }
 	
 	for i := 0; i < numFrames; i++ {
-		frameStartTime := misc.GetTime()
+		frameStartTime := clock.GetTime()
 		targetTime := startTime + int64(i * FrameDuration)
 		
 		maskID := r.MaskOrder[i]
@@ -411,7 +411,7 @@ func (r *Retinotopy) Run() error {
 		r.Exp.Screen.Update()
 		
 		// 6. Data Logging
-		endTime := misc.GetTime()
+		endTime := clock.GetTime()
 		isLate := endTime > targetTime + FrameDuration
 		r.Exp.Data.Add([]interface{}{
 			r.RunLabel, i, targetTime - startTime, frameStartTime - startTime, endTime - startTime,
@@ -426,21 +426,21 @@ func (r *Retinotopy) Run() error {
 		}
 		if key != 0 {
 			r.Exp.Data.Add([]interface{}{
-				r.RunLabel, "keypress", targetTime - startTime, misc.GetTime() - startTime, 0,
+				r.RunLabel, "keypress", targetTime - startTime, clock.GetTime() - startTime, 0,
 				0, false, 0, 0, key,
 			})
 		}
 		if btn != 0 {
 			r.Exp.Data.Add([]interface{}{
-				r.RunLabel, "mousepress", targetTime - startTime, misc.GetTime() - startTime, 0,
+				r.RunLabel, "mousepress", targetTime - startTime, clock.GetTime() - startTime, 0,
 				0, false, 0, 0, btn,
 			})
 		}
 		
 		// 8. Wait for next frame
-		waitDur := targetTime + int64(FrameDuration) - misc.GetTime()
+		waitDur := targetTime + int64(FrameDuration) - clock.GetTime()
 		if waitDur > 0 {
-			misc.Wait(int(waitDur))
+			clock.Wait(int(waitDur))
 		}
 	}
 	
@@ -514,8 +514,7 @@ func main() {
 		log.Fatalf("Invalid run ID: %d", *runID)
 	}
 
-	exp := control.NewExperiment("Retinotopy", width, height, fullscreen)
-	exp.BackgroundColor = BackgroundColor
+	exp := control.NewExperiment("Retinotopy", width, height, fullscreen, BackgroundColor, control.White, 32)
 	exp.SubjectID = *subjID
 	if err := exp.Initialize(); err != nil {
 		log.Fatal(err)
@@ -525,7 +524,7 @@ func main() {
 
 	// Wait for fullscreen transition to stabilize
 	// if fullscreen {
-	//	misc.Wait(2000)
+	//	clock.Wait(2000)
 	//}
 
 	// Hide the mouse cursor

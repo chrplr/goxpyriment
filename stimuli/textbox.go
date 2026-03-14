@@ -22,7 +22,7 @@ type TextBox struct {
 	Height    float32
 }
 
-// NewTextBox creates a new TextBox stimulus.
+// NewTextBox creates a multi-line text box with the given maximum width (in pixels), center position, and color.
 func NewTextBox(text string, boxWidth int32, position sdl.FPoint, color sdl.Color) *TextBox {
 	return &TextBox{
 		Text:      text,

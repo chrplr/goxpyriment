@@ -9,7 +9,7 @@ import (
 	"github.com/Zyko0/go-sdl3/sdl"
 	"github.com/chrplr/goxpyriment/control"
 	"github.com/chrplr/goxpyriment/design"
-	"github.com/chrplr/goxpyriment/misc"
+	"github.com/chrplr/goxpyriment/clock"
 	"github.com/chrplr/goxpyriment/stimuli"
 	"log"
 	"strings"
@@ -86,9 +86,8 @@ func main() {
 		width, height, fullscreen = 800, 600, false
 	}
 
-	exp := control.NewExperiment("Sperling-Partial-Report", width, height, fullscreen)
+	exp := control.NewExperiment("Sperling-Partial-Report", width, height, fullscreen, control.Black, control.White, 32)
 	exp.SubjectID = *subjectID
-	exp.BackgroundColor = control.Black
 
 	if err := exp.Initialize(); err != nil {
 		log.Fatalf("failed to initialize experiment: %v", err)
@@ -130,25 +129,37 @@ func main() {
 	}
 	design.ShuffleList(trials)
 
+	// 8 training trials (mix of whole and partial report, not logged).
+	var trainingTrials []TrialConfig
+	for i := 0; i < 4; i++ {
+		trainingTrials = append(trainingTrials, TrialConfig{Condition: "whole", CuedRow: -1})
+	}
+	for i := 0; i < 4; i++ {
+		row := design.RandInt(0, 2)
+		trainingTrials = append(trainingTrials, TrialConfig{Condition: "partial", CuedRow: row})
+	}
+	design.ShuffleList(trainingTrials)
+
 	fixation := stimuli.NewFixCross(20, 2, control.White)
 
-	for i, config := range trials {
+	// Helper to run a single trial and optionally provide error feedback.
+	runOne := func(trialIdx int, config TrialConfig, giveFeedback bool, logData bool) error {
 		grid := generateGrid()
 		
 		// 1. Fixation
-		if err := fixation.Present(exp.Screen, true, true); err != nil { log.Fatal(err) }
-		misc.Wait(FixationDuration)
+		if err := fixation.Present(exp.Screen, true, true); err != nil { return err }
+		clock.Wait(FixationDuration)
 
 		// 2. Stimulus flash (50ms)
-		if err := exp.Screen.Clear(); err != nil { log.Fatal(err) }
-		if err := drawGrid(exp, grid); err != nil { log.Fatal(err) }
-		if err := exp.Screen.Update(); err != nil { log.Fatal(err) }
-		misc.Wait(StimulusDuration)
+		if err := exp.Screen.Clear(); err != nil { return err }
+		if err := drawGrid(exp, grid); err != nil { return err }
+		if err := exp.Screen.Update(); err != nil { return err }
+		clock.Wait(StimulusDuration)
 
 		// 3. Offset (ISI) - can be varied, here 0ms
-		if err := exp.Screen.Clear(); err != nil { log.Fatal(err) }
-		if err := exp.Screen.Update(); err != nil { log.Fatal(err) }
-		// misc.Wait(offset)
+		if err := exp.Screen.Clear(); err != nil { return err }
+		if err := exp.Screen.Update(); err != nil { return err }
+		// clock.Wait(offset)
 
 		// 4. Cue
 		var targetLetters string
@@ -173,8 +184,7 @@ func main() {
 		ti := stimuli.NewTextInput(prompt, sdl.FPoint{X: 0, Y: 0}, 300, control.Black, control.White, control.White)
 		response, err := ti.Get(exp.Screen, exp.Keyboard)
 		if err != nil {
-			if err == sdl.EndLoop { return }
-			log.Fatalf("input error: %v", err)
+			return err
 		}
 		
 		response = strings.ToUpper(strings.TrimSpace(response))
@@ -187,13 +197,59 @@ func main() {
 			}
 		}
 
-		exp.Data.Add([]interface{}{
-			i + 1, config.Condition, config.CuedRow, targetLetters, response, acc,
-		})
+		if giveFeedback {
+			// Treat a trial as correct only if the full target row (or whole grid)
+			// is exactly reproduced (order-sensitive). Otherwise, play an error buzzer.
+			if response != strings.ToUpper(targetLetters) {
+				_ = stimuli.PlayBuzzer(exp.AudioDevice)
+			}
+		}
+
+		if logData {
+			exp.Data.Add([]interface{}{
+				trialIdx, config.Condition, config.CuedRow, targetLetters, response, acc,
+			})
+		}
 
 		// ITI
-		if err := exp.Screen.Clear(); err != nil { log.Fatal(err) }
+		if err := exp.Screen.Clear(); err != nil { return err }
 		exp.Screen.Update()
-		misc.Wait(1000)
+		clock.Wait(1000)
+
+		return nil
+	}
+
+	// Training block (8 trials, feedback with buzzer on incorrect, no logging).
+	for i, config := range trainingTrials {
+		if err := runOne(i+1, config, true, false); err != nil {
+			if err == sdl.EndLoop {
+				return
+			}
+			log.Fatalf("training trial error: %v", err)
+		}
+	}
+
+	// Training finished screen.
+	trainDone := stimuli.NewTextBox(
+		"Training finished.\n\nPress a key to go on to the main experiment.",
+		650,
+		sdl.FPoint{X: 0, Y: 0},
+		control.White,
+	)
+	if err := trainDone.Present(exp.Screen, true, true); err != nil {
+		log.Fatalf("training-finished screen error: %v", err)
+	}
+	if _, err := exp.Keyboard.Wait(); err != nil && err != sdl.EndLoop {
+		log.Fatalf("training-finished wait error: %v", err)
+	}
+
+	// Main experimental trials (logged, no additional buzzer feedback).
+	for i, config := range trials {
+		if err := runOne(i+1, config, false, true); err != nil {
+			if err == sdl.EndLoop {
+				return
+			}
+			log.Fatalf("trial error: %v", err)
+		}
 	}
 }

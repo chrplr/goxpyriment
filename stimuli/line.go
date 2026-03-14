@@ -8,7 +8,7 @@ import (
 	"github.com/Zyko0/go-sdl3/sdl"
 )
 
-// Line represents a line stimulus.
+// Line is a line segment from Start to End in center-based coordinates, with the given color and line width.
 type Line struct {
 	Start     sdl.FPoint
 	End       sdl.FPoint

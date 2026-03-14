@@ -10,12 +10,13 @@ import (
 	"go.bug.st/serial"
 )
 
-// DLPIO8 represents a connection to a DLP-IO8-G device.
+// DLPIO8 represents a serial connection to a DLP-IO8-G digital I/O device (8 lines in/out).
 type DLPIO8 struct {
 	port serial.Port
 }
 
-// NewDLPIO8 creates a new connection to a DLP-IO8-G device.
+// NewDLPIO8 opens the given serial device at the specified baud rate, pings the device,
+// and sets binary mode. Returns an error if the device does not respond correctly.
 func NewDLPIO8(device string, baudrate int) (*DLPIO8, error) {
 	mode := &serial.Mode{
 		BaudRate: baudrate,

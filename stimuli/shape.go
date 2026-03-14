@@ -8,7 +8,7 @@ import (
 	"github.com/Zyko0/go-sdl3/sdl"
 )
 
-// Shape represents a polygon stimulus.
+// Shape is a filled polygon defined by Points (relative to the shape center) and a single color.
 type Shape struct {
 	Points   []sdl.FPoint
 	Position sdl.FPoint

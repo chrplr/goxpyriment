@@ -12,7 +12,7 @@
 ## Architecture
 
 ### Core Modules
-- **`control/`**: Contains the `Experiment` manager, which handles the lifecycle of an experiment (initialization, the main run loop, and cleanup).
+- **`control/`**: Contains the `Experiment` manager, which handles the lifecycle of an experiment (initialization, the main run loop when needed, and cleanup).
 - **`design/`**: Provides structures for experimental logic:
   - `Experiment`: Top-level structure holding blocks and factors.
   - `Block`: A collection of trials.
@@ -24,7 +24,9 @@
 - **`stimuli/`**: A library of reusable components for presentation:
   - Visual: `TextLine`, `TextBox`, `Rectangle`, `Circle`, `Picture`, `FixCross`, `GaborPatch`, etc.
   - Audio: `Sound`, `Tone`.
-- **`misc/`**: Utility functions for high-precision timing (`Wait`, `GetTime`) and geometric calculations.
+<!-- legacy note: timing/geometry helpers used to live in misc/ -->
+- **`clock/`**: High-precision timing helpers (`Wait`, `GetTime`, `Clock`) for stimulus durations and RTs.
+- **`geometry/`**: Geometric helpers (distances, polar/Cartesian transforms) used across the library.
 
 
 ### examples
@@ -57,10 +59,20 @@ Examples are provided in the examples folder which has its own go.mod (we use th
 
 ### Experiment Lifecycle
 All experiments should follow this general pattern:
-1.  **Creation:** `exp := control.NewExperiment("Name", width, height, fullscreen)`
+1.  **Creation:**  
+    ```go
+    exp := control.NewExperiment(
+        "Name",
+        width, height, fullscreen,
+        control.Black,       // background color
+        control.White,       // foreground (default text) color
+        32,                  // default font size in points
+    )
+    ```
 2.  **Initialization:** `err := exp.Initialize()` (handles SDL and subsystem setup).
 3.  **Setup:** Define blocks, trials, and stimuli.
-4.  **Execution:** `err := exp.Run(func() error { ... })`
+4.  **Execution (when you need a loop):** `err := exp.Run(func() error { ... })`  
+   For single-screen demos (like the Kanizsa square), you can also draw once, call `exp.Screen.Update()`, `exp.Keyboard.Wait()`, and return without using `Run`.
 5.  **Cleanup:** `defer exp.End()`
 
 ### Stimuli Presentation
@@ -74,4 +86,4 @@ Use `exp.Data.Add([]interface{}{...})` to log trial data. Headers should be defi
 ### Coding Style
 - Follow standard Go idioms and `gofmt`.
 - Prefer hardware-accelerated rendering via the `io.Screen` renderer.
-- Use `misc.Wait()` and `misc.GetTime()` for experiment-critical timing to ensure consistency across platforms.
+- Use `clock.Wait()` and `clock.GetTime()` for experiment-critical timing to ensure consistency across platforms.

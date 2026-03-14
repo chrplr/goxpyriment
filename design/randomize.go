@@ -12,7 +12,7 @@ func init() {
 	rand.Seed(time.Now().UnixNano())
 }
 
-// RandIntSequence returns a randomised sequence of integers in given range.
+// RandIntSequence returns a shuffled sequence of integers in [first, last] (inclusive).
 func RandIntSequence(first, last int) []int {
 	if first > last {
 		return []int{}
@@ -44,12 +44,12 @@ func RandElement[T any](list []T) T {
 	return list[rand.Intn(len(list))]
 }
 
-// CoinFlip returns randomly true (head) or false (tail).
+// CoinFlip returns true with probability headBias (0–1), false otherwise.
 func CoinFlip(headBias float64) bool {
 	return rand.Float64() <= headBias
 }
 
-// RandNorm returns a normally distributed random number in given range [a, b].
+// RandNorm returns a normally distributed random number in [a, b], truncated to that range.
 func RandNorm(a, b float64) float64 {
 	mu := a + (b-a)/2.0
 	sigma := (b - a) / 6.0
@@ -68,7 +68,7 @@ func ShuffleList[T any](list []T) {
 	})
 }
 
-// MakeMultipliedShuffledList manifolds the list 'xtimes' and shuffles each copy.
+// MakeMultipliedShuffledList concatenates xtimes copies of the list, each copy shuffled independently.
 func MakeMultipliedShuffledList[T any](list []T, xtimes int) []T {
 	newlist := make([]T, 0, len(list)*xtimes)
 	for i := 0; i < xtimes; i++ {
