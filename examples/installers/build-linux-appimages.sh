@@ -50,19 +50,37 @@ for dir in */; do
   mkdir -p "${appdir}/usr/bin" "${appdir}/usr/share/applications"
 
   # Binary: reuse the one built by build.sh if present, otherwise build just this example.
-  if [[ -f "${dir%/}/${name}" ]]; then
-    cp "${dir%/}/${name}" "${appdir}/usr/bin/${name}"
+  BINARY_SOURCE_PATH="${dir%/}/${name}"
+  TARGET_BINARY_PATH="${appdir}/usr/bin/${name}"
+
+  if [[ -f "$BINARY_SOURCE_PATH" ]]; then
+    cp "$BINARY_SOURCE_PATH" "$TARGET_BINARY_PATH"
   else
     echo "    (rebuilding ${name})"
-    (cd "${dir}" && go build -o "../${appdir}/usr/bin/${name}" .)
+    (cd "${dir}" && go build -o "$TARGET_BINARY_PATH" .)
   fi
 
-  # --- FIXED AppRun ---
-  # Using $APPDIR ensures the path is absolute relative to the mount point.
+  # Check if binary was created and is executable
+  if [[ ! -f "$TARGET_BINARY_PATH" ]]; then
+    echo "Error: Binary ${TARGET_BINARY_PATH} was not created for ${name}. Skipping."
+    continue # Skip this example
+  fi
+  if [[ ! -x "$TARGET_BINARY_PATH" ]]; then
+    echo "Warning: Binary ${TARGET_BINARY_PATH} is not executable for ${name}. Attempting to make it executable."
+    chmod +x "$TARGET_BINARY_PATH"
+    if [[ ! -x "$TARGET_BINARY_PATH" ]]; then
+      echo "Error: Failed to make binary ${TARGET_BINARY_PATH} executable for ${name}. Skipping."
+      continue # Skip this example
+    fi
+  fi
+
+  # Generate AppRun script
   cat <<EOF > "${appdir}/AppRun"
 #!/bin/sh
-# \$APPDIR is the path where the AppImage is mounted.
-exec "\${APPDIR}/usr/bin/${name}" "\$@"
+# APPDIR is the path where the AppImage is mounted.
+EXECUTABLE="\${APPDIR}/usr/bin/${name}"
+echo "Attempting to execute: \$EXECUTABLE" # Debugging line
+exec "\$EXECUTABLE" "\$@"
 EOF
   chmod +x "${appdir}/AppRun"
 
