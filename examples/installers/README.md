@@ -53,3 +53,32 @@ Steps:
 
 3. Distribute the DMG to users. They can mount it and drag the example apps to `/Applications` or run them directly.
 
+## Linux (AppImages)
+
+Requirements:
+
+- Linux (x86_64)
+- A working Go toolchain
+- FUSE available (to run `appimagetool` itself)
+
+Steps:
+
+1. From the `examples/installers` directory, run:
+
+   ```bash
+   cd examples/installers
+   bash build-linux-appimages.sh
+   ```
+
+2. The script will:
+
+   - Build all examples (via `examples/build.sh`).
+   - Download `appimagetool-x86_64.AppImage` if not already present.
+   - For each example directory under `examples/` that contains a `main.go` (excluding `assets/`, `installers/`, `xpd_results/`), create an AppDir and corresponding `<ExampleName>.AppImage` under:
+
+     ```text
+     examples/installers/AppImages/
+     ```
+
+3. The resulting AppImages can be distributed directly; on most Linux distributions users will just mark them executable and run them.
+
