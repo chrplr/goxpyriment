@@ -1,0 +1,108 @@
+name: Build example installers
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch: {}
+
+jobs:
+  build-windows-installers:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.x"
+
+      - name: Build all examples
+        run: |
+          cd examples
+          bash build.sh
+
+      - name: Install Inno Setup
+        run: |
+          choco install innosetup -y
+
+      - name: Build Windows installer (Inno Setup)
+        run: |
+          cd examples/installers
+          ISCC windows-goxpyriment-examples.iss
+
+      - name: Upload Windows installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-installer
+          path: examples/installers/goxpyriment-examples-setup.exe
+
+  build-macos-dmg:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.x"
+
+      - name: Build macOS DMG
+        run: |
+          cd examples/installers
+          bash build-macos-dmg.sh
+
+      - name: Upload macOS DMG artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-dmg
+          path: examples/installers/goxpyriment-examples.dmg
+
+  create-release:
+    runs-on: ubuntu-latest
+    needs:
+      - build-windows-installers
+      - build-macos-dmg
+    if: startsWith(github.ref, 'refs/tags/')
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download installers
+        uses: actions/download-artifact@v4
+        with:
+          path: installers
+
+      - name: Create GitHub Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref_name }}
+          release_name: "Goxpyriment examples ${github.ref_name}"
+          draft: false
+          prerelease: false
+
+      - name: Upload Windows installer to release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: installers/windows-installer/goxpyriment-examples-setup.exe
+          asset_name: goxpyriment-examples-setup-${{ github.ref_name }}.exe
+          asset_content_type: application/vnd.microsoft.portable-executable
+
+      - name: Upload macOS DMG to release
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: installers/macos-dmg/goxpyriment-examples.dmg
+          asset_name: goxpyriment-examples-${{ github.ref_name }}.dmg
+          asset_content_type: application/x-apple-diskimage
+
