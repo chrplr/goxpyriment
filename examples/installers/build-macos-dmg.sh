@@ -12,13 +12,16 @@ EXAMPLES_DIR="${SCRIPT_DIR%/installers}"
 APPS_DIR="${SCRIPT_DIR}/GoxpyrimentExamples-apps"
 DMG_NAME="goxpyriment-examples.dmg"
 
+# Clean up previous builds
 rm -rf "${APPS_DIR}"
+rm -f "${SCRIPT_DIR}/${DMG_NAME}"
 mkdir -p "${APPS_DIR}"
 
 echo "Building .app bundles into ${APPS_DIR} ..."
 
 for dir in "${EXAMPLES_DIR}"/*/; do
   name="$(basename "${dir}")"
+  
   # Skip non-example directories
   if [[ "${name}" == "assets" ]] || [[ "${name}" == "installers" ]] || [[ "${name}" == "xpd_results" ]]; then
     continue
@@ -58,20 +61,20 @@ EOF
   # Add icon
   cp "${EXAMPLES_DIR}/../assets/icon.icns" "${app}/Contents/Resources/icon.icns"
 
-  # Build the binary into the app bundle
-  (cd "${dir}" && go build -o "${app}/Contents/MacOS/${name}" .)
+  # OPTIMIZATION: Build with -ldflags="-s -w" to strip debug symbols and reduce size
+  (cd "${dir}" && go build -ldflags="-s -w" -o "${app}/Contents/MacOS/${name}" .)
 
-  # Copy assets (if any) into Resources
+  # Copy local assets (if any) into Resources
   if [[ -d "${dir}/assets" ]]; then
     cp -R "${dir}/assets" "${app}/Contents/Resources/"
   fi
 done
 
-echo "Creating DMG ${DMG_NAME} ..."
-rm -f "${SCRIPT_DIR}/${DMG_NAME}"
+echo "Creating highly compressed DMG ${DMG_NAME} ..."
+
+# OPTIMIZATION: Changed format to ULFO (LZMA compression) for maximum space saving
 hdiutil create -volname "Goxpyriment Examples" \
   -srcfolder "${APPS_DIR}" \
-  -ov -format UDZO "${SCRIPT_DIR}/${DMG_NAME}"
+  -ov -format ULFO "${SCRIPT_DIR}/${DMG_NAME}"
 
 echo "Done. DMG created at: ${SCRIPT_DIR}/${DMG_NAME}"
-

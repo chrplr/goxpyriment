@@ -2,8 +2,11 @@
 AppId={{9A02C8E1-8D6C-4F2E-B7E3-EXAMPLES-GOXPYRIMENT}}
 AppName=Goxpyriment Examples
 AppVersion=0.1.0
-DefaultDirName={pf}\Goxpyriment Examples
+; Use {localappdata} instead of {pf} (Program Files) to ensure write permissions [cite: 48]
+DefaultDirName={localappdata}\Goxpyriment Examples
 DefaultGroupName=Goxpyriment Examples
+; Ensures the installer doesn't ask for Admin privileges 
+PrivilegesRequired=lowest 
 DisableDirPage=no
 DisableProgramGroupPage=yes
 OutputDir=.
@@ -16,16 +19,12 @@ SetupIconFile=..\\..\\assets\\icon.ico
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Files]
-; 1. Recurse through the examples directory (..) to find all .exe files.
-; We use '..\*.exe' with 'recursesubdirs' to find all binaries in subfolders.
-; We exclude the 'installers' folder itself to prevent the setup from packaging itself.
+; Source binaries with stripping already handled in build step [cite: 50]
 Source: "..\*.exe"; DestDir: "{app}\bin"; Flags: recursesubdirs ignoreversion; Excludes: "installers\*"
-
-; 2. Install the assets folder from the root directory
+; Source assets [cite: 51]
 Source: "..\..\assets\*"; DestDir: "{app}\assets"; Flags: ignoreversion recursesubdirs
 
 [Icons]
-; Create a shortcut to the folder containing the binaries
-Name: "{group}\Browse Example Binaries"; Filename: "{app}\bin"
-; Shortcut for uninstallation
+; Shortcut to the bin folder so users can find the .exe files [cite: 52]
+Name: "{group}\Browse Examples"; Filename: "{app}\bin"
 Name: "{group}\Uninstall Goxpyriment Examples"; Filename: "{uninstallexe}"

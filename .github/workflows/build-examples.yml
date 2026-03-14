@@ -51,6 +51,17 @@ jobs:
           name: windows-installer
           path: examples/installers/goxpyriment-examples-setup.exe
 
+      - name: Create Portable Zip
+        shell: pwsh
+        run: |
+          # Create a staging directory for the zip
+          mkdir dist
+          # Copy binaries and assets
+          cp -Recurse examples\*\*.exe dist\
+          cp -Recurse assets dist\assets
+          # Zip it up
+          Compress-Archive -Path dist\* -DestinationPath artifacts\goxpyriment-examples-windows.zip
+
   build-macos-dmg:
     runs-on: macos-latest
     env:
