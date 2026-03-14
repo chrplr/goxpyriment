@@ -80,6 +80,11 @@ jobs:
           cd examples
           bash build.sh
 
+      - name: Install FUSE
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libfuse2
+
       - name: Download appimagetool
         run: |
           mkdir -p examples/installers/AppImages
@@ -127,7 +132,7 @@ jobs:
               echo "Categories=Education;"
             } > "${desktop}"
             cp "${desktop}" "${appdir}/${name}.desktop"
-            touch "${appdir}/${name}.png"
+            cp ../assets/icon_256.png "${appdir}/${name}.png"
             "${TOOL}" "${appdir}" "${APPDIR_ROOT}/${name}.AppImage"
           done
 

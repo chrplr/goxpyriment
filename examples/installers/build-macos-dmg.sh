@@ -54,9 +54,14 @@ for dir in "${EXAMPLES_DIR}"/*/; do
   <string>${name}</string>
   <key>CFBundlePackageType</key>
   <string>APPL</string>
+  <key>CFBundleIconFile</key>
+  <string>icon.icns</string>
 </dict>
 </plist>
 EOF
+
+  # Add icon
+  cp "${EXAMPLES_DIR}/../assets/icon.icns" "${app}/Contents/Resources/icon.icns"
 
   # Build the binary into the app bundle
   (cd "${dir}" && go build -o "${app}/Contents/MacOS/${name}" .)

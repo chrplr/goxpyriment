@@ -85,7 +85,7 @@ EOF
   cp "${desktop}" "${appdir}/${name}.desktop"
 
   # Provide a dummy icon and name it after the app so the 'Icon=' entry works.
-  touch "${appdir}/${name}.png"
+  cp ../assets/icon_256.png "${appdir}/${name}.png"
 
   # Build the AppImage
   "${APPIMAGETOOL}" "${appdir}" "${APPIMAGES_ROOT}/${name}.AppImage"

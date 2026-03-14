@@ -14,6 +14,7 @@ OutputDir=.
 OutputBaseFilename=goxpyriment-examples-setup
 Compression=lzma
 SolidCompression=yes
+SetupIconFile=..\\..\\assets\\icon.ico
 
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
