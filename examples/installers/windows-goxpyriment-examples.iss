@@ -1,7 +1,3 @@
-; Inno Setup script for packaging goxpyriment examples on Windows.
-; Build this on Windows with Inno Setup; the installer EXE will be written
-; next to this script (in examples\installers).
-
 [Setup]
 AppId={{9A02C8E1-8D6C-4F2E-B7E3-EXAMPLES-GOXPYRIMENT}}
 AppName=Goxpyriment Examples
@@ -19,16 +15,16 @@ SetupIconFile=..\\..\\assets\\icon.ico
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
-
 [Files]
-; Grab only the compiled .exe files from each example folder 
-Source: "..\*\*.exe"; DestDir: "{app}\bin"; Flags: recursesubdirs ignoreversion
+; 1. Install ONLY the compiled .exe files. 
+; The 'skipifsourcedoesntexist' flag ensures that excluded video examples 
+; (which weren't built) don't cause the installer creation to fail. [cite: 3]
+Source: "..\*\*.exe"; DestDir: "{app}\bin"; Flags: recursesubdirs ignoreversion skipifsourcedoesntexist
 
-; Include assets needed by the examples 
-Source: "..\..\assets\*"; DestDir: "{app}\assets"; Flags: ignoreversion 
+; 2. Install the assets folder from the root directory [cite: 4]
+Source: "..\..\assets\*"; DestDir: "{app}\assets"; Flags: ignoreversion recursesubdirs
 
 [Icons]
-; Create a shortcut to the binaries folder
-Name: "{group}\Goxpyriment Examples"; Filename: "{app}\bin" 
-
-
+; Create a shortcut to the binaries folder [cite: 5]
+Name: "{group}\Browse Example Binaries"; Filename: "{app}\bin"
+Name: "{group}\Uninstall Goxpyriment Examples"; Filename: "{unsellexe}"

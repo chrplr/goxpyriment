@@ -22,10 +22,22 @@ jobs:
         shell: pwsh
         run: |
           cd examples
-          # Loop through directories and compile each main.go into an .exe
+          # List of examples to exclude due to FFmpeg/go-astiav dependencies on Windows
+          $excludeList = @("play_videos", "play_two_videos", "retinotopy")
+          
           Get-ChildItem -Directory | ForEach-Object {
+            $dirName = $_.Name
+            
+            # Skip non-example directories and FFmpeg-dependent ones
+            if ($dirName -in @("assets", "installers", "xpd_results")) { return }
+            if ($dirName -in $excludeList) { 
+              Write-Host "Skipping $dirName (FFmpeg dependency)..."
+              return 
+            }
+
             if (Test-Path "$($_.FullName)\main.go") {
-              Write-Host "Building $($_.Name)..."
+              Write-Host "Building $dirName..."
+              # Output the .exe inside its respective folder so Inno Setup can find it
               go build -o "$($_.FullName)\$($_.Name).exe" "$($_.FullName)\main.go"
             }
           }
@@ -141,8 +153,7 @@ jobs:
 
             cp "${desktop}" "${appdir}/${name}.desktop"
 
-            # --- FIXED ICON PATH ---
-            # ROOT_DIR is /examples, so we go up one level to find /assets
+            # Copy icon from assets root
             cp "${ROOT_DIR}/../assets/icon_256.png" "${appdir}/${name}.png"
 
             "${TOOL}" "${appdir}" "${ROOT_DIR}/${APPDIR_ROOT}/${name}.AppImage"
