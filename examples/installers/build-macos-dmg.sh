@@ -23,6 +23,11 @@ for dir in "${EXAMPLES_DIR}"/*/; do
   if [[ "${name}" == "assets" ]] || [[ "${name}" == "installers" ]] || [[ "${name}" == "xpd_results" ]]; then
     continue
   fi
+  # Temporary CI workaround: skip FFmpeg-dependent video examples on macOS
+  # to avoid go-astiav / FFmpeg dev library issues on GitHub runners.
+  if [[ "${name}" == "play_videos" ]] || [[ "${name}" == "play_two_videos" ]] || [[ "${name}" == "retinotopy" ]]; then
+    continue
+  fi
   if [[ ! -f "${dir}/main.go" ]]; then
     continue
   fi

@@ -130,7 +130,7 @@ jobs:
               echo "Icon=application-default-icon"
               echo "Categories=Education;"
             } > "${desktop}"
-            "${TOOL}" "${appdir}" "${APPDIR_ROOT}/${name}.AppImage"
+            APPIMAGE_EXTRACT_AND_RUN=1 "${TOOL}" "${appdir}" "${APPDIR_ROOT}/${name}.AppImage"
           done
 
       - name: Archive AppImages
