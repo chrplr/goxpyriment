@@ -93,22 +93,29 @@ jobs:
       - name: Build AppImages for each example
         run: |
           cd examples
+          ROOT_DIR=$(pwd)
           APPDIR_ROOT="installers/AppImages"
           TOOL="./installers/appimagetool"
           
           for dir in */; do
             name="${dir%/}"
+            # Skip non-example directories
             if [[ "${name}" == "assets" || "${name}" == "installers" || "${name}" == "xpd_results" ]]; then continue; fi
             if [[ "${name}" == "play_two_videos" || "${name}" == "play_videos" ]]; then continue; fi
             if [[ ! -f "${dir}/main.go" ]]; then continue; fi
 
-            appdir="${APPDIR_ROOT}/${name}.AppDir"
+            echo "Packaging ${name}..."
+            appdir="${ROOT_DIR}/${APPDIR_ROOT}/${name}.AppDir"
             mkdir -p "${appdir}/usr/bin" "${appdir}/usr/share/applications"
             
+            # Use absolute path for target binary
             TARGET_BINARY_PATH="${appdir}/usr/bin/${name}"
-            (cd "${dir}" && go build -o "../../${TARGET_BINARY_PATH}" .)
-            chmod +x "../../${TARGET_BINARY_PATH}"
+            
+            # Build using absolute path to avoid cd nesting issues
+            (cd "${dir}" && go build -o "${TARGET_BINARY_PATH}" .)
+            chmod +x "${TARGET_BINARY_PATH}"
 
+            # Generate AppRun
             {
               echo '#!/bin/sh'
               echo 'EXECUTABLE="${APPDIR}/usr/bin/'"${name}"'"'
@@ -116,6 +123,7 @@ jobs:
             } > "${appdir}/AppRun"
             chmod +x "${appdir}/AppRun"
 
+            # Generate Desktop file
             desktop="${appdir}/usr/share/applications/${name}.desktop"
             {
               echo "[Desktop Entry]"
@@ -127,13 +135,16 @@ jobs:
             } > "${desktop}"
             
             cp "${desktop}" "${appdir}/${name}.desktop"
-            cp ../assets/icon_256.png "${appdir}/${name}.png"
-            "${TOOL}" "${appdir}" "${APPDIR_ROOT}/${name}.AppImage"
+            cp "${ROOT_DIR}/assets/icon_256.png" "${appdir}/${name}.png"
+            
+            # Create the AppImage
+            "${TOOL}" "${appdir}" "${ROOT_DIR}/${APPDIR_ROOT}/${name}.AppImage"
           done
 
       - name: Archive AppImages
         run: |
           cd examples/installers/AppImages
+          # Specifically archive only the .AppImage files
           tar czf ../goxpyriment-examples-appimages.tar.gz *.AppImage
 
       - name: Upload Linux AppImages artifact
