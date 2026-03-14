@@ -117,21 +117,19 @@ jobs:
               (cd "${dir}" && go build -o "../${appdir}/usr/bin/${name}" .)
             fi
             # AppRun
-            cat > "${appdir}/AppRun" <<EOF
-#!/bin/sh
-HERE="\$(dirname "\$(readlink -f "\$0")")"
-exec "\$HERE/usr/bin/${name}" "\$@"
-EOF
+            echo '#!/bin/sh' > "${appdir}/AppRun"
+            echo "exec ./usr/bin/${name} \"\$@\"" >> "${appdir}/AppRun"
             chmod +x "${appdir}/AppRun"
             # .desktop
-            cat > "${appdir}/usr/share/applications/${name}.desktop" <<EOF
-[Desktop Entry]
-Type=Application
-Name=${name}
-Exec=${name}
-Icon=application-default-icon
-Categories=Education;
-EOF
+            desktop="${appdir}/usr/share/applications/${name}.desktop"
+            {
+              echo "[Desktop Entry]"
+              echo "Type=Application"
+              echo "Name=${name}"
+              echo "Exec=${name}"
+              echo "Icon=application-default-icon"
+              echo "Categories=Education;"
+            } > "${desktop}"
             "${TOOL}" "${appdir}" "${APPDIR_ROOT}/${name}.AppImage"
           done
 
