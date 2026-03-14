@@ -62,7 +62,7 @@ jobs:
           name: macos-dmg
           path: examples/installers/goxpyriment-examples.dmg
 
-build-linux-appimages:
+  build-linux-appimages:
     runs-on: ubuntu-latest
     env:
       CGO_ENABLED: 0
@@ -132,7 +132,6 @@ build-linux-appimages:
             chmod +x "$TARGET_BINARY_PATH"
 
             # --- Refactored AppRun Generation ---
-            # Using curly braces avoids the EOF indentation issue entirely.
             {
               echo '#!/bin/sh'
               echo '# APPDIR is the path where the AppImage is mounted.'
@@ -178,7 +177,7 @@ build-linux-appimages:
       - build-linux-appimages
     if: startsWith(github.ref, 'refs/tags/')
     permissions:
-      contents: write # Crucial for creating releases
+      contents: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
