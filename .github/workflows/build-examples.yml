@@ -145,6 +145,8 @@ jobs:
           path: examples/installers/goxpyriment-examples-appimages.tar.gz
 
   create-release:
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
     needs:
       - build-windows-installers
