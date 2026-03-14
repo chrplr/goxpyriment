@@ -94,7 +94,7 @@ jobs:
               continue
             fi
             # Skip video/FFmpeg-dependent examples for now (go-astiav / cgo disabled)
-            if [[ "${name}" == "play_two_videos" ]]; then
+            if [[ "${name}" == "play_two_videos" || "${name}" == "play_videos" ]]; then
               continue
             fi
             if [[ ! -f "${dir}/main.go" ]]; then
