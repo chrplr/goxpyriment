@@ -75,19 +75,22 @@ jobs:
         with:
           go-version: "1.25.x"
 
-      - name: Download appimagetool
+      - name: Build all examples
         run: |
           cd examples
-          mkdir -p installers/AppImages
-          wget -q https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage -O installers/appimagetool
-          chmod +x installers/appimagetool
+          bash build.sh
+
+      - name: Download appimagetool
+        run: |
+          mkdir -p examples/installers/AppImages
+          wget -q https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage -O examples/installers/appimagetool
+          chmod +x examples/installers/appimagetool
 
       - name: Build AppImages for each example
         run: |
           cd examples
           APPDIR_ROOT="installers/AppImages"
           TOOL="./installers/appimagetool"
-          mkdir -p "${APPDIR_ROOT}"
           for dir in */; do
             name="${dir%/}"
             if [[ "${name}" == "assets" || "${name}" == "installers" || "${name}" == "xpd_results" ]]; then
@@ -107,8 +110,10 @@ jobs:
             else
               (cd "${dir}" && go build -o "../${appdir}/usr/bin/${name}" .)
             fi
-            echo '#!/bin/sh' > "${appdir}/AppRun"
-            echo "exec ./usr/bin/${name} \"\$@\"" >> "${appdir}/AppRun"
+            cat <<'EOF' > "${appdir}/AppRun"
+          #!/bin/sh
+          exec "${APPDIR}/usr/bin/${name}" "$@"
+          EOF
             chmod +x "${appdir}/AppRun"
             desktop_dir="${appdir}/usr/share/applications"
             desktop="${desktop_dir}/${name}.desktop"
@@ -118,12 +123,12 @@ jobs:
               echo "Type=Application"
               echo "Name=${name}"
               echo "Exec=${name}"
-              echo "Icon=application-default-icon"
+              echo "Icon=${name}"
               echo "Categories=Education;"
             } > "${desktop}"
             cp "${desktop}" "${appdir}/${name}.desktop"
-            touch "${appdir}/application-default-icon.png"
-            APPIMAGE_EXTRACT_AND_RUN=1 "${TOOL}" "${appdir}" "${APPDIR_ROOT}/${name}.AppImage"
+            touch "${appdir}/${name}.png"
+            "${TOOL}" "${appdir}" "${APPDIR_ROOT}/${name}.AppImage"
           done
 
       - name: Archive AppImages

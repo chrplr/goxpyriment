@@ -57,12 +57,16 @@ for dir in */; do
     (cd "${dir}" && go build -o "../${appdir}/usr/bin/${name}" .)
   fi
 
-  # AppRun
-  echo '#!/bin/sh' > "${appdir}/AppRun"
-  echo "exec ./usr/bin/${name} \"\$@\"" >> "${appdir}/AppRun"
+  # --- FIXED AppRun ---
+  # Using $APPDIR ensures the path is absolute relative to the mount point.
+  cat <<EOF > "${appdir}/AppRun"
+#!/bin/sh
+# \$APPDIR is the path where the AppImage is mounted.
+exec "\${APPDIR}/usr/bin/${name}" "\$@"
+EOF
   chmod +x "${appdir}/AppRun"
 
-  # .desktop file
+  # --- FIXED .desktop file ---
   desktop_dir="${appdir}/usr/share/applications"
   desktop="${desktop_dir}/${name}.desktop"
   mkdir -p "${desktop_dir}"
@@ -70,19 +74,21 @@ for dir in */; do
     echo "[Desktop Entry]"
     echo "Type=Application"
     echo "Name=${name}"
+    # Exec should just be the name of the executable for desktop integration
     echo "Exec=${name}"
-    echo "Icon=application-default-icon"
+    # This refers to the icon filename without the extension
+    echo "Icon=${name}"
     echo "Categories=Education;"
   } > "${desktop}"
-  # AppImageKit expects a .desktop file at the root of the AppDir as well.
+  
+  # AppImageKit expects a .desktop file and an icon at the root of the AppDir.
   cp "${desktop}" "${appdir}/${name}.desktop"
 
-  # Provide a dummy icon so appimagetool is satisfied.
-  touch "${appdir}/application-default-icon.png"
+  # Provide a dummy icon and name it after the app so the 'Icon=' entry works.
+  touch "${appdir}/${name}.png"
 
   # Build the AppImage
   "${APPIMAGETOOL}" "${appdir}" "${APPIMAGES_ROOT}/${name}.AppImage"
 done
 
 echo "Done. AppImages are in: ${APPIMAGES_ROOT}"
-
