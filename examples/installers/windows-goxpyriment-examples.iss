@@ -19,12 +19,16 @@ SetupIconFile=..\\..\\assets\\icon.ico
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
+
 [Files]
-; Install the whole examples tree except installers themselves.
-; Assumes you've already built the example binaries with build.sh.
-Source: "..\*"; DestDir: "{app}\examples"; Flags: recursesubdirs createallsubdirs; Excludes: "..\installers\*"
+; Grab only the compiled .exe files from each example folder 
+Source: "..\*\*.exe"; DestDir: "{app}\bin"; Flags: recursesubdirs ignoreversion
+
+; Include assets needed by the examples 
+Source: "..\..\assets\*"; DestDir: "{app}\assets"; Flags: ignoreversion 
 
 [Icons]
-; Start Menu shortcut to the examples folder in Explorer
-Name: "{group}\Open Examples Folder"; Filename: "{cmd}"; Parameters: "/C start """" ""{app}\examples"""
+; Create a shortcut to the binaries folder
+Name: "{group}\Goxpyriment Examples"; Filename: "{app}\bin" 
+
 

@@ -19,9 +19,16 @@ jobs:
           go-version: "1.25.x"
 
       - name: Build all examples
+        shell: pwsh
         run: |
           cd examples
-          bash build.sh
+          # Loop through directories and compile each main.go into an .exe
+          Get-ChildItem -Directory | ForEach-Object {
+            if (Test-Path "$($_.FullName)\main.go") {
+              Write-Host "Building $($_.Name)..."
+              go build -o "$($_.FullName)\$($_.Name).exe" "$($_.FullName)\main.go"
+            }
+          }
 
       - name: Install Inno Setup
         run: choco install innosetup -y
@@ -96,7 +103,7 @@ jobs:
           ROOT_DIR=$(pwd)
           APPDIR_ROOT="installers/AppImages"
           TOOL="./installers/appimagetool"
-          
+
           for dir in */; do
             name="${dir%/}"
             if [[ "${name}" == "assets" || "${name}" == "installers" || "${name}" == "xpd_results" ]]; then continue; fi
@@ -106,9 +113,9 @@ jobs:
             echo "Packaging ${name}..."
             appdir="${ROOT_DIR}/${APPDIR_ROOT}/${name}.AppDir"
             mkdir -p "${appdir}/usr/bin" "${appdir}/usr/share/applications"
-            
+
             TARGET_BINARY_PATH="${appdir}/usr/bin/${name}"
-            
+
             # Build using absolute path
             (cd "${dir}" && go build -o "${TARGET_BINARY_PATH}" .)
             chmod +x "${TARGET_BINARY_PATH}"
@@ -131,13 +138,13 @@ jobs:
               echo "Icon=${name}"
               echo "Categories=Education;"
             } > "${desktop}"
-            
+
             cp "${desktop}" "${appdir}/${name}.desktop"
-            
+
             # --- FIXED ICON PATH ---
             # ROOT_DIR is /examples, so we go up one level to find /assets
             cp "${ROOT_DIR}/../assets/icon_256.png" "${appdir}/${name}.png"
-            
+
             "${TOOL}" "${appdir}" "${ROOT_DIR}/${APPDIR_ROOT}/${name}.AppImage"
           done
 
