@@ -21,12 +21,12 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 
 [Files]
 ; 1. Install the compiled .exe files into the \bin folder [cite: 49]
-Source: "..\*.exe"; DestDir: "{app}\bin"; Flags: recursesubdirs ignoreversion; Excludes: "installers\*"
+Source: "..\*.exe"; DestDir: "{app}\bin"; Flags: recursesubdirs ignoreversion skipifsourcedoesntexist; Excludes: "installers\*"
 
 ; 2. NEW: Install the 'assets' subfolders found within each individual example [cite: 50]
 ; This looks for any folder named 'assets' inside the example directories and 
 ; places them into the \bin folder alongside the .exe files to maintain the relative paths.
-Source: "..\*\assets\*"; DestDir: "{app}\bin"; Flags: recursesubdirs ignoreversion
+Source: "..\*\assets\*"; DestDir: "{app}\bin"; Flags: recursesubdirs ignoreversion skipifsourcedoesntexist
 
 ; 3. Install the global assets folder from the root directory [cite: 51]
 Source: "..\..\assets\*"; DestDir: "{app}\assets"; Flags: ignoreversion recursesubdirs
