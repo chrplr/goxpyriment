@@ -47,15 +47,14 @@ func main() {
 		fmt.Printf("User entered: %s\n", name)
 		
 		// Show result
-		result := fmt.Sprintf("Hello, %s!", name)
-		msg := stimuli.NewTextInput(result + "\nPress any key to exit.", 
-			control.FPoint{X: 0, Y: 0}, 
-			400, 
-			control.Color{R: 50, G: 50, B: 50, A: 255}, 
-			control.Color{R: 50, G: 50, B: 50, A: 255}, // Hide frame
-			control.White)
+		result := fmt.Sprintf("Hello, %s!\n\nPress any key to exit.", name)
+		msg := stimuli.NewTextBox(result, 600, control.FPoint{X: 0, Y: 0}, control.White)
 		
-		if _, err := msg.Get(exp.Screen, exp.Keyboard); err != nil {
+		if err := msg.Present(exp.Screen, true, true); err != nil {
+			return err
+		}
+		
+		if _, err := exp.Keyboard.Wait(); err != nil {
 			return err
 		}
 

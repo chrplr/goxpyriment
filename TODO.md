@@ -1,1 +1,2 @@
+* Add a function to randomize a table with constraints, based on the function of (s *Shuffler) ShuffleConstructive() from https://github.com/chrplr/shuffle-go/blob/main/shuffle.go
 * write documentation for users who want to distribute their experiment as binary executables packaged in installers for different plateforms and architecture (setup.Exe, .dmg, deb or appimage) (see  the example for retinotopy program: example_retinotopy_build.yml)

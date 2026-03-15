@@ -8,7 +8,9 @@ import (
 )
 
 // Mouse provides methods for handling mouse input.
-type Mouse struct{}
+type Mouse struct {
+	Screen *Screen
+}
 
 // ShowCursor shows or hides the mouse cursor.
 func (m *Mouse) ShowCursor(show bool) error {
@@ -19,8 +21,13 @@ func (m *Mouse) ShowCursor(show bool) error {
 }
 
 // Position returns the current (x, y) coordinates of the mouse.
+// If a screen is associated with the mouse, it returns coordinates in render space.
 func (m *Mouse) Position() (float32, float32) {
 	_, x, y := sdl.GetMouseState()
+	if m.Screen != nil && m.Screen.Renderer != nil {
+		rx, ry, _ := m.Screen.Renderer.RenderCoordinatesFromWindow(x, y)
+		return rx, ry
+	}
 	return x, y
 }
 

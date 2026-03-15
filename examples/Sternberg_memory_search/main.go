@@ -156,8 +156,7 @@ func main() {
 		if err := txt.Present(exp.Screen, true, true); err != nil {
 			return err
 		}
-		clock.Wait(FeedbackDuration)
-		return nil
+		return waitInterruption(exp, FeedbackDuration)
 	}
 
 	exp.Data.AddVariableNames([]string{"experiment", "block", "set_size", "trial", "probe", "positive", "key", "rt", "correct"})
@@ -169,10 +168,12 @@ func main() {
 			"Sternberg Experiment 1: Varied Set",
 			"You will see a series of digits (1 to 6 digits), one at a time. Memorize them.\n\nAfter a short delay, a single test digit will appear. Press F if it was IN the set you saw, J if it was NOT in the set. Respond as quickly and accurately as you can.\n\nPress SPACE to start.",
 		); err != nil {
+			if control.IsEndLoop(err) { return }
 			log.Fatal(err)
 		}
 		// Training block (10 trials, no data logging).
-		if err := runExp1(exp, trainingExp1, digitStim, fixation, blank, waitYesNo, showFeedback, false); err != nil && !control.IsEndLoop(err) {
+		if err := runExp1(exp, trainingExp1, digitStim, fixation, blank, waitYesNo, showFeedback, false); err != nil {
+			if control.IsEndLoop(err) { return }
 			log.Fatal(err)
 		}
 		// Training finished screen.
@@ -187,7 +188,8 @@ func main() {
 		}
 		for {
 			key, _, err := exp.HandleEvents()
-			if err != nil && !control.IsEndLoop(err) {
+			if err != nil {
+				if control.IsEndLoop(err) { return }
 				log.Fatal(err)
 			}
 			if key != 0 {
@@ -197,11 +199,13 @@ func main() {
 		}
 
 		// Main experimental block (data logged).
-		if err := runExp1(exp, trialsExp1, digitStim, fixation, blank, waitYesNo, showFeedback, true); err != nil && !control.IsEndLoop(err) {
+		if err := runExp1(exp, trialsExp1, digitStim, fixation, blank, waitYesNo, showFeedback, true); err != nil {
+			if control.IsEndLoop(err) { return }
 			log.Fatal(err)
 		}
 		if *expNum == 0 {
 			if err := runInstructions("Break", "End of Experiment 1.\n\nPress SPACE to continue to Experiment 2."); err != nil {
+				if control.IsEndLoop(err) { return }
 				log.Fatal(err)
 			}
 		}
@@ -214,10 +218,12 @@ func main() {
 			"Sternberg Experiment 2: Fixed Set",
 			"In each block you will be told a small set of digits to remember. Then you will see a series of test digits. Press F if the digit is IN your memorized set, J if it is NOT. The set stays the same for the whole block.\n\nPress SPACE to start.",
 		); err != nil {
+			if control.IsEndLoop(err) { return }
 			log.Fatal(err)
 		}
 		// Training block (10 trials, no data logging).
-		if err := runExp2(exp, [][]trialExp2{trainingExp2}, digitStim, fixation, blank, waitYesNo, showFeedback, false); err != nil && !control.IsEndLoop(err) {
+		if err := runExp2(exp, [][]trialExp2{trainingExp2}, digitStim, fixation, blank, waitYesNo, showFeedback, false); err != nil {
+			if control.IsEndLoop(err) { return }
 			log.Fatal(err)
 		}
 		// Training finished screen.
@@ -232,7 +238,8 @@ func main() {
 		}
 		for {
 			key, _, err := exp.HandleEvents()
-			if err != nil && !control.IsEndLoop(err) {
+			if err != nil {
+				if control.IsEndLoop(err) { return }
 				log.Fatal(err)
 			}
 			if key != 0 {
@@ -242,7 +249,8 @@ func main() {
 		}
 
 		// Main experimental blocks (data logged).
-		if err := runExp2(exp, blocksExp2, digitStim, fixation, blank, waitYesNo, showFeedback, true); err != nil && !control.IsEndLoop(err) {
+		if err := runExp2(exp, blocksExp2, digitStim, fixation, blank, waitYesNo, showFeedback, true); err != nil {
+			if control.IsEndLoop(err) { return }
 			log.Fatal(err)
 		}
 	}
@@ -379,6 +387,23 @@ func buildTrainingTrialsExp2() []trialExp2 {
 	return trials
 }
 
+func waitInterruption(exp *control.Experiment, timeout int) error {
+	start := clock.GetTime()
+	for {
+		key, _, err := exp.HandleEvents()
+		if err != nil {
+			return err
+		}
+		if key == control.K_ESCAPE {
+			return control.EndLoop
+		}
+		if int(clock.GetTime()-start) >= timeout {
+			return nil
+		}
+		clock.Wait(1)
+	}
+}
+
 func runExp1(exp *control.Experiment, trials []trialExp1, digitStim map[int]*stimuli.TextLine, fixation *stimuli.FixCross, blank *stimuli.BlankScreen, waitYesNo func() (control.Keycode, int64, error), showFeedback func(bool) error, logData bool) error {
 	return exp.Run(func() error {
 		for i, t := range trials {
@@ -386,25 +411,33 @@ func runExp1(exp *control.Experiment, trials []trialExp1, digitStim map[int]*sti
 			if err := blank.Present(exp.Screen, true, true); err != nil {
 				return err
 			}
-			clock.Wait(ITIExp1)
+			if err := waitInterruption(exp, ITIExp1); err != nil {
+				return err
+			}
 
 			// Present memory set: one digit at a time, 1.2 s each
 			for _, d := range t.MemorySet {
 				if err := digitStim[d].Present(exp.Screen, true, true); err != nil {
 					return err
 				}
-				clock.Wait(DigitDurationMs)
+				if err := waitInterruption(exp, DigitDurationMs); err != nil {
+					return err
+				}
 			}
 
 			// Delay 2 s then warning
 			if err := blank.Present(exp.Screen, true, true); err != nil {
 				return err
 			}
-			clock.Wait(DelayBeforeProbe)
+			if err := waitInterruption(exp, DelayBeforeProbe); err != nil {
+				return err
+			}
 			if err := fixation.Present(exp.Screen, true, true); err != nil {
 				return err
 			}
-			clock.Wait(WarningDuration)
+			if err := waitInterruption(exp, WarningDuration); err != nil {
+				return err
+			}
 
 			// Probe
 			if err := digitStim[t.Probe].Present(exp.Screen, true, true); err != nil {
@@ -461,7 +494,9 @@ func runExp2(exp *control.Experiment, blocks [][]trialExp2, digitStim map[int]*s
 				if err := fixation.Present(exp.Screen, true, true); err != nil {
 					return err
 				}
-				clock.Wait(WarningDuration)
+				if err := waitInterruption(exp, WarningDuration); err != nil {
+					return err
+				}
 
 				// Test digit
 				if err := digitStim[t.Probe].Present(exp.Screen, true, true); err != nil {
@@ -481,7 +516,9 @@ func runExp2(exp *control.Experiment, blocks [][]trialExp2, digitStim map[int]*s
 				}
 
 				// 3.7 s until next trial (paper)
-				clock.Wait(ISIExp2)
+				if err := waitInterruption(exp, ISIExp2); err != nil {
+					return err
+				}
 			}
 		}
 		return control.EndLoop

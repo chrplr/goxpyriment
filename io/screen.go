@@ -94,7 +94,7 @@ func NewScreen(title string, width, height int, bgColor sdl.Color, fullscreen bo
 	}
 
 	// Windowed path: create a hidden window+renderer pair and show it.
-	window, renderer, err := sdl.CreateWindowAndRenderer(title, width, height, sdl.WINDOW_HIDDEN)
+	window, renderer, err := sdl.CreateWindowAndRenderer(title, width, height, sdl.WINDOW_HIDDEN|sdl.WINDOW_HIGH_PIXEL_DENSITY)
 	if err != nil {
 		return nil, err
 	}
@@ -105,6 +105,11 @@ func NewScreen(title string, width, height int, bgColor sdl.Color, fullscreen bo
 		BgColor:  bgColor,
 		Width:    width,
 		Height:   height,
+	}
+
+	// If logical width/height were provided, ensure they are used for the renderer
+	if width > 0 && height > 0 {
+		_ = s.SetLogicalSize(int32(width), int32(height))
 	}
 
 	if err := window.Show(); err != nil {

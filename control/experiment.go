@@ -137,7 +137,7 @@ func (e *Experiment) Initialize() error {
 	}
 	e.Screen = screen
 	e.Keyboard = &io.Keyboard{}
-	e.Mouse = &io.Mouse{}
+	e.Mouse = &io.Mouse{Screen: screen}
 
 	// Load default font if not already set
 	if e.DefaultFont == nil {

@@ -175,9 +175,10 @@ func (r *Retinotopy) LoadStimuli(subjID int, runID int, assetsDir string) error 
 	
 	// Stimuli should be (768*scaling)x(768*scaling) and centered
 	stimSize := float32(768 * r.Scaling)
+	x, y := r.Exp.Screen.CenterToSDL(-stimSize/2, stimSize/2)
 	r.StimulusRect = &control.FRect{
-		X: (float32(r.Exp.WindowWidth) - stimSize) / 2,
-		Y: (float32(r.Exp.WindowHeight) - stimSize) / 2,
+		X: x,
+		Y: y,
 		W: stimSize,
 		H: stimSize,
 	}
@@ -359,9 +360,10 @@ func (r *Retinotopy) Run() error {
 	
 	// Recalculate StimulusRect using logical dimensions
 	stimSize := float32(768 * r.Scaling)
+	x, y := r.Exp.Screen.CenterToSDL(-stimSize/2, stimSize/2)
 	r.StimulusRect = &control.FRect{
-		X: (float32(r.Exp.WindowWidth) - stimSize) / 2,
-		Y: (float32(r.Exp.WindowHeight) - stimSize) / 2,
+		X: x,
+		Y: y,
 		W: stimSize,
 		H: stimSize,
 	}
