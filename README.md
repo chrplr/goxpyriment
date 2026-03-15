@@ -4,13 +4,13 @@
 
 `goxpyriment` is a high-level Go framework for building behavioral and psychological experiments.
 
-It relies on the [libsdl](http://libsdl.org) library through the [go-sdl3](https://github.com/Zyko0/go-sdl3) bindings. Its API is largely inspired from [expyriment.org](http://expyriment.org) ; see Krause, F., & Lindemann, O. (2014). Expyriment: A Python library for cognitive and neuroscientific experiments. Behavior Research Methods, 46(2), 416-428. <https://doi.org/10.3758/s13428-013-0390-6>.
+Check out a few [examples of experiments](https://github.com/chrplr/goxpyriment/releases)
 
-**It can be used to "vibe-code" psychology experiments.** 
+**Goxpyriment can be used to "vibe-code" psychology experiments.** 
 
 Here is how to proceed: 
 
-1. Install Go on your machine (see <https://go.dev/doc/install>)
+1. Install Go on your machine (see <https://go.dev/doc/install>). 
 2. Clone this repository  (`git clone https://github.com/chrplr/goxpyriment.git` or [download ZIP](https://github.com/chrplr/goxpyriment/archive/refs/heads/main.zip))
 3. Fire your favorite AI coding agent (gemini-cli, claude, cursor...) inside goxpyriment folder, then ask it to program your experiment, describing the stimuli, the desing, ... in plain language, in Go using the current library. 
 4. Once the code is created, say in myexp/main.go, you can test it by running the following command in the terminal:
@@ -20,6 +20,7 @@ Here is how to proceed:
 
 5. Lastly, if you want, you can distribute an executable to your colleagues, creating installers for Windows, MacOS and Linux (see an example at <https://github.com/chrplr/retinotopy-go>)
 
+It relies on the [libsdl](http://libsdl.org) library through the [go-sdl3](https://github.com/Zyko0/go-sdl3) bindings. Its API is largely inspired from [expyriment.org](http://expyriment.org) ; see Krause, F., & Lindemann, O. (2014). Expyriment: A Python library for cognitive and neuroscientific experiments. Behavior Research Methods, 46(2), 416-428. <https://doi.org/10.3758/s13428-013-0390-6>.
 
 **NOTE: This software in an alpha version, a proof of concept that without any doubt has some bugs. If you want to try and use it, I recommand you to clone this repository. Check out [expe3000-go](http://github.com/chrplr/expe3000-go) for a less ambitious but efficient, no-code, experiment generator ** 
 
@@ -163,4 +164,5 @@ cd examples
 This project is licensed under the GNU Public License v3 - see the [LICENSE](LICENSE.txt) file for details.
 
 Christophe Pallier, 2026
+
 
