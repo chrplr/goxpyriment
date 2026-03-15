@@ -4,14 +4,15 @@
 
 `goxpyriment` is a high-level Go framework for building behavioral and psychological experiments.
 
-It can be used to "vibe-code" psychology experiment: 
-1. Install Go on your machine
-1. clone this repository 
-2. fire your AI coding agent (gemini-cli, claude, cursor...)
-3. Ask it to create your experiment, using plain English, instructing the agent to use the goxpyriment library and the provided examples.
-4. Once the code is created, say in examples/myexp/main.go, you can run it with:
+It can be used to "vibe-code" psychology experiments ! Here is how to proceed: 
 
-       go run myexp/main.go
+1. Install Go on your machine (see <https://go.dev/doc/install>)
+2. Clone this repository  (`git clone https://github.com/chrplr/goxpyriment.git` or [download ZIP](https://github.com/chrplr/goxpyriment/archive/refs/heads/main.zip))
+3. Fire your favorite AI coding agent (gemini-cli, claude, cursor...) inside goxpyriment folder, then ask it to create Go code using this library to program your experiment, explinging in plain language the stimuli, the design, etc.
+4. Once the code is created, say in examples/myexp/main.go, you can test it by running the following command in the terminal:
+
+       cd myexperiment_folder
+       go run main.go
 
 5. Lastly, if you want, you can distribute an executable to your colleagues, creating installers for Windows, MacOS and Linux (see an example at <https://github.com/chrplr/retinotopy-go>)
 
