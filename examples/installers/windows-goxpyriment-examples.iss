@@ -23,10 +23,20 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 ; 1. Install the compiled .exe files into the \bin folder [cite: 49]
 Source: "..\*.exe"; DestDir: "{app}\bin"; Flags: recursesubdirs ignoreversion skipifsourcedoesntexist; Excludes: "installers\*"
 
-; 2. NEW: Install the 'assets' subfolders found within each individual example [cite: 50]
-; This looks for any folder named 'assets' inside the example directories and 
-; places them into the \bin folder alongside the .exe files to maintain the relative paths.
-Source: "..\*\assets\*"; DestDir: "{app}\bin"; Flags: recursesubdirs ignoreversion skipifsourcedoesntexist
+; 2. Install the 'assets' subfolders for each individual example.
+; Inno Setup does not support wildcards in intermediate path components, so each
+; example with assets must be listed explicitly. DestDir mirrors the subdirectory
+; structure so that when an .exe runs from its own folder it can find "assets\" via
+; a relative path (which is how all examples locate their media files).
+Source: "..\Posner_task_simple\assets\*";  DestDir: "{app}\bin\Posner_task_simple\assets";  Flags: recursesubdirs ignoreversion skipifsourcedoesntexist
+Source: "..\card_game\assets\*";           DestDir: "{app}\bin\card_game\assets";           Flags: recursesubdirs ignoreversion skipifsourcedoesntexist
+Source: "..\hello_world\assets\*";         DestDir: "{app}\bin\hello_world\assets";         Flags: recursesubdirs ignoreversion skipifsourcedoesntexist
+Source: "..\play_gvideo\assets\*";         DestDir: "{app}\bin\play_gvideo\assets";         Flags: recursesubdirs ignoreversion skipifsourcedoesntexist
+Source: "..\play_two_videos\assets\*";     DestDir: "{app}\bin\play_two_videos\assets";     Flags: recursesubdirs ignoreversion skipifsourcedoesntexist
+Source: "..\play_videos\assets\*";         DestDir: "{app}\bin\play_videos\assets";         Flags: recursesubdirs ignoreversion skipifsourcedoesntexist
+Source: "..\retinotopy\assets\*";          DestDir: "{app}\bin\retinotopy\assets";          Flags: recursesubdirs ignoreversion skipifsourcedoesntexist
+Source: "..\simple_example\assets\*";      DestDir: "{app}\bin\simple_example\assets";      Flags: recursesubdirs ignoreversion skipifsourcedoesntexist
+Source: "..\test_stream_images\assets\*";  DestDir: "{app}\bin\test_stream_images\assets";  Flags: recursesubdirs ignoreversion skipifsourcedoesntexist
 
 ; 3. Install the global assets folder from the root directory [cite: 51]
 Source: "..\..\assets\*"; DestDir: "{app}\assets"; Flags: ignoreversion recursesubdirs
