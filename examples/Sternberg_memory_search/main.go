@@ -25,13 +25,12 @@ import (
 	"github.com/chrplr/goxpyriment/design"
 	"github.com/chrplr/goxpyriment/stimuli"
 
-	"github.com/Zyko0/go-sdl3/sdl"
 	"github.com/Zyko0/go-sdl3/ttf"
 )
 
 const (
-	YesKey = sdl.K_F // F = digit was in the memorized set
-	NoKey  = sdl.K_J // J = digit was not in the set
+	YesKey = control.K_F // F = digit was in the memorized set
+	NoKey  = control.K_J // J = digit was not in the set
 
 	// Experiment 1 timing (Sternberg 1966)
 	DigitDurationMs = 1200  // each digit in memory set
@@ -107,7 +106,7 @@ func main() {
 	}
 
 	runInstructions := func(title, body string) error {
-		txt := stimuli.NewTextBox(title+"\n\n"+body, 900, sdl.FPoint{X: 0, Y: 0}, control.DefaultTextColor)
+		txt := stimuli.NewTextBox(title+"\n\n"+body, 900, control.FPoint{X: 0, Y: 0}, control.DefaultTextColor)
 		if err := txt.Present(exp.Screen, true, true); err != nil {
 			return err
 		}
@@ -116,7 +115,7 @@ func main() {
 			if err != nil {
 				return err
 			}
-			if key == sdl.K_SPACE {
+			if key == control.K_SPACE {
 				break
 			}
 			clock.Wait(10)
@@ -142,7 +141,7 @@ func main() {
 
 	showFeedback := func(correct bool) error {
 		var msg string
-		var c sdl.Color
+		var c control.Color
 		if correct {
 			msg = "Correct"
 			c = control.Green
@@ -182,7 +181,7 @@ func main() {
 		trainDone := stimuli.NewTextBox(
 			"Training finished.\n\nPress a key to go on to the main experiment.",
 			900,
-			sdl.FPoint{X: 0, Y: 0},
+			control.FPoint{X: 0, Y: 0},
 			control.DefaultTextColor,
 		)
 		if err := trainDone.Present(exp.Screen, true, true); err != nil {
@@ -227,7 +226,7 @@ func main() {
 		trainDone := stimuli.NewTextBox(
 			"Training finished.\n\nPress a key to go on to the main experiment.",
 			900,
-			sdl.FPoint{X: 0, Y: 0},
+			control.FPoint{X: 0, Y: 0},
 			control.DefaultTextColor,
 		)
 		if err := trainDone.Present(exp.Screen, true, true); err != nil {
@@ -426,7 +425,7 @@ func runExp1(exp *control.Experiment, trials []trialExp1, digitStim map[int]*sti
 				exp.Data.Add([]interface{}{1, 0, t.SetSize, i, t.Probe, t.Positive, key, rt, correct})
 			}
 		}
-		return sdl.EndLoop
+		return control.EndLoop
 	})
 }
 
@@ -444,7 +443,7 @@ func runExp2(exp *control.Experiment, blocks [][]trialExp2, digitStim map[int]*s
 				announce += fmt.Sprintf("%d", d)
 			}
 			announce += "\n\nYou will see test digits. Press F if in set, J if not.\n\nPress SPACE to start this block."
-			announceBox := stimuli.NewTextBox(announce, 700, sdl.FPoint{X: 0, Y: 0}, control.DefaultTextColor)
+			announceBox := stimuli.NewTextBox(announce, 700, control.FPoint{X: 0, Y: 0}, control.DefaultTextColor)
 			if err := announceBox.Present(exp.Screen, true, true); err != nil {
 				return err
 			}
@@ -453,7 +452,7 @@ func runExp2(exp *control.Experiment, blocks [][]trialExp2, digitStim map[int]*s
 				if err != nil {
 					return err
 				}
-				if key == sdl.K_SPACE {
+				if key == control.K_SPACE {
 					break
 				}
 				clock.Wait(10)
@@ -487,6 +486,6 @@ func runExp2(exp *control.Experiment, blocks [][]trialExp2, digitStim map[int]*s
 				clock.Wait(ISIExp2)
 			}
 		}
-		return sdl.EndLoop
+		return control.EndLoop
 	})
 }

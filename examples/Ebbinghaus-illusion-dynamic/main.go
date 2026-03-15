@@ -8,7 +8,6 @@ import (
 	"log"
 	"math"
 
-	"github.com/Zyko0/go-sdl3/sdl"
 	"github.com/chrplr/goxpyriment/clock"
 	"github.com/chrplr/goxpyriment/control"
 	"github.com/chrplr/goxpyriment/io"
@@ -16,10 +15,10 @@ import (
 )
 
 // DrawEbbinghaus draws an Ebbinghaus illusion figure.
-func DrawEbbinghaus(screen *io.Screen, n int, d float32, r1 float32, r2 float32, col1 sdl.Color, col2 sdl.Color, x float32, y float32) error {
+func DrawEbbinghaus(screen *io.Screen, n int, d float32, r1 float32, r2 float32, col1 control.Color, col2 control.Color, x float32, y float32) error {
 	// draw inner circle
 	inner := stimuli.NewCircle(r1, col1)
-	inner.SetPosition(sdl.FPoint{X: x, Y: y})
+	inner.SetPosition(control.FPoint{X: x, Y: y})
 	if err := inner.Draw(screen); err != nil {
 		return err
 	}
@@ -30,7 +29,7 @@ func DrawEbbinghaus(screen *io.Screen, n int, d float32, r1 float32, r2 float32,
 		x1 := x + d*float32(math.Cos(angle))
 		y1 := y + d*float32(math.Sin(angle))
 		outer := stimuli.NewCircle(r2, col2)
-		outer.SetPosition(sdl.FPoint{X: x1, Y: y1})
+		outer.SetPosition(control.FPoint{X: x1, Y: y1})
 		if err := outer.Draw(screen); err != nil {
 			return err
 		}
@@ -67,7 +66,7 @@ func main() {
 	err := exp.Run(func() error {
 		// Handle events (checking if ESC or QUIT is requested)
 		if _, _, err := exp.HandleEvents(); err != nil {
-			return err // returns sdl.EndLoop if ESC or QUIT
+			return err // returns control.EndLoop if ESC or QUIT
 		}
 
 		// Clear screen
@@ -107,7 +106,7 @@ func main() {
 		return nil
 	})
 
-	if err != nil && err != sdl.EndLoop {
+	if err != nil && err != control.EndLoop {
 		log.Fatalf("experiment error: %v", err)
 	}
 }

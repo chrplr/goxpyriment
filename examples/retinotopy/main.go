@@ -21,7 +21,6 @@ import (
 	"github.com/chrplr/goxpyriment/clock"
 	"github.com/chrplr/goxpyriment/stimuli"
 
-	"github.com/Zyko0/go-sdl3/sdl"
 )
 
 //go:embed assets/stimuli_png/fixationGrid.png
@@ -41,7 +40,7 @@ const (
 
 var (
 	BackgroundColor = control.Gray
-	FixationColors  = []sdl.Color{
+	FixationColors  = []control.Color{
 		control.White,
 		control.Black,
 		control.Red,
@@ -62,7 +61,7 @@ type Retinotopy struct {
 	DotOrder        []int
 	
 	RunLabel        string
-	StimulusRect    *sdl.FRect // Calculated centered rect
+	StimulusRect    *control.FRect // Calculated centered rect
 	Scaling         float64    // Scaling factor
 }
 
@@ -86,10 +85,10 @@ func (r *Retinotopy) showStatus(msg string) error {
 	var event sdl.Event
 	for sdl.PollEvent(&event) {
 		if event.Type == sdl.EVENT_QUIT {
-			return sdl.EndLoop
+			return control.EndLoop
 		}
-		if event.Type == sdl.EVENT_KEY_DOWN && event.KeyboardEvent().Key == sdl.K_ESCAPE {
-			return sdl.EndLoop
+		if event.Type == sdl.EVENT_KEY_DOWN && event.KeyboardEvent().Key == control.K_ESCAPE {
+			return control.EndLoop
 		}
 	}
 	return nil
@@ -181,7 +180,7 @@ func (r *Retinotopy) LoadStimuli(subjID int, runID int, assetsDir string) error 
 	
 	// Stimuli should be (768*scaling)x(768*scaling) and centered
 	stimSize := float32(768 * r.Scaling)
-	r.StimulusRect = &sdl.FRect{
+	r.StimulusRect = &control.FRect{
 		X: (float32(r.Exp.WindowWidth) - stimSize) / 2,
 		Y: (float32(r.Exp.WindowHeight) - stimSize) / 2,
 		W: stimSize,
@@ -344,7 +343,7 @@ func loadRawGray(path string) ([]byte, error) {
 
 func (r *Retinotopy) Instructions() error {
 	msg := "Press the response button as soon as the color of the dot changes\n\nPress any key to start"
-	instr := stimuli.NewTextBox(msg, 600, sdl.FPoint{X: 0, Y: 0}, control.White)
+	instr := stimuli.NewTextBox(msg, 600, control.FPoint{X: 0, Y: 0}, control.White)
 	instr.Present(r.Exp.Screen, true, true)
 
 	for {
@@ -365,7 +364,7 @@ func (r *Retinotopy) Run() error {
 	
 	// Recalculate StimulusRect using logical dimensions
 	stimSize := float32(768 * r.Scaling)
-	r.StimulusRect = &sdl.FRect{
+	r.StimulusRect = &control.FRect{
 		X: (float32(r.Exp.WindowWidth) - stimSize) / 2,
 		Y: (float32(r.Exp.WindowHeight) - stimSize) / 2,
 		W: stimSize,
@@ -401,7 +400,7 @@ func (r *Retinotopy) Run() error {
 		
 		// 3. Draw Fixation Dot
 		dot := r.FixationDots[dotColorID]
-		dot.Position = sdl.FPoint{X: 0, Y: 0}
+		dot.Position = control.FPoint{X: 0, Y: 0}
 		dot.Draw(r.Exp.Screen)
 		
 		// 4. Draw Fixation Grid
@@ -421,8 +420,8 @@ func (r *Retinotopy) Run() error {
 		// 7. Handle Inputs (Fixation Task)
 		// Subject should press a key or mouse button when dot color changes.
 		key, btn, err := r.Exp.HandleEvents()
-		if err == sdl.EndLoop {
-			return sdl.EndLoop
+		if err == control.EndLoop {
+			return control.EndLoop
 		}
 		if key != 0 {
 			r.Exp.Data.Add([]interface{}{
@@ -542,10 +541,10 @@ func main() {
 		if err := retino.Run(); err != nil {
 			return err
 		}
-		return sdl.EndLoop
+		return control.EndLoop
 	})
 
-	if err != nil && err != sdl.EndLoop {
+	if err != nil && err != control.EndLoop {
 		log.Fatal(err)
 	}
 }

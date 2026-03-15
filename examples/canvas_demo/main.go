@@ -8,8 +8,6 @@ import (
 
 	"github.com/chrplr/goxpyriment/control"
 	"github.com/chrplr/goxpyriment/stimuli"
-
-	"github.com/Zyko0/go-sdl3/sdl"
 )
 
 func main() {
@@ -30,11 +28,11 @@ func main() {
 	defer exp.End()
 
 	// 2. Prepare Canvas
-	canvas := stimuli.NewCanvas(400, 400, sdl.Color{R: 50, G: 50, B: 50, A: 255})
+	canvas := stimuli.NewCanvas(400, 400, control.Color{R: 50, G: 50, B: 50, A: 255})
 	
 	// Prepare sub-stimuli to draw on canvas
 	// Coordinates are relative to canvas center (0,0)
-	rect := stimuli.NewRectangle(0, 0, 100, 100, sdl.Color{R: 200, G: 0, B: 0, A: 255})
+	rect := stimuli.NewRectangle(0, 0, 100, 100, control.Color{R: 200, G: 0, B: 0, A: 255})
 	text := stimuli.NewTextLine("Inside Canvas", 0, -80, control.White)
 	
 	// Title
@@ -69,10 +67,10 @@ func main() {
 			return err
 		}
 
-		return sdl.EndLoop
+		return control.EndLoop
 	})
 
-	if err != nil && err != sdl.EndLoop {
+	if err != nil && err != control.EndLoop {
 		log.Fatalf("experiment error: %v", err)
 	}
 }

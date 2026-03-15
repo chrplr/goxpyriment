@@ -6,7 +6,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/Zyko0/go-sdl3/sdl"
 	"github.com/chrplr/goxpyriment/control"
 	"github.com/chrplr/goxpyriment/design"
 	"github.com/chrplr/goxpyriment/clock"
@@ -68,7 +67,7 @@ func showInstructions(exp *control.Experiment) error {
 		"Recall as many letters as you can.\n\n" +
 		"Press any key to begin."
 
-	instrBox := stimuli.NewTextBox(text, 650, sdl.FPoint{X: 0, Y: 0}, control.White)
+	instrBox := stimuli.NewTextBox(text, 650, control.FPoint{X: 0, Y: 0}, control.White)
 	if err := instrBox.Present(exp.Screen, true, true); err != nil {
 		return err
 	}
@@ -97,7 +96,7 @@ func main() {
 	exp.Data.AddVariableNames([]string{"trial_idx", "condition", "cued_row", "target_letters", "response", "accuracy"})
 
 	if err := showInstructions(exp); err != nil {
-		if err == sdl.EndLoop { return }
+		if err == control.EndLoop { return }
 		log.Fatalf("instruction error: %v", err)
 	}
 
@@ -181,7 +180,7 @@ func main() {
 			prompt = fmt.Sprintf("Recall the %s row:", rowNames[config.CuedRow])
 		}
 		
-		ti := stimuli.NewTextInput(prompt, sdl.FPoint{X: 0, Y: 0}, 300, control.Black, control.White, control.White)
+		ti := stimuli.NewTextInput(prompt, control.FPoint{X: 0, Y: 0}, 300, control.Black, control.White, control.White)
 		response, err := ti.Get(exp.Screen, exp.Keyboard)
 		if err != nil {
 			return err
@@ -222,7 +221,7 @@ func main() {
 	// Training block (8 trials, feedback with buzzer on incorrect, no logging).
 	for i, config := range trainingTrials {
 		if err := runOne(i+1, config, true, false); err != nil {
-			if err == sdl.EndLoop {
+			if err == control.EndLoop {
 				return
 			}
 			log.Fatalf("training trial error: %v", err)
@@ -233,20 +232,20 @@ func main() {
 	trainDone := stimuli.NewTextBox(
 		"Training finished.\n\nPress a key to go on to the main experiment.",
 		650,
-		sdl.FPoint{X: 0, Y: 0},
+		control.FPoint{X: 0, Y: 0},
 		control.White,
 	)
 	if err := trainDone.Present(exp.Screen, true, true); err != nil {
 		log.Fatalf("training-finished screen error: %v", err)
 	}
-	if _, err := exp.Keyboard.Wait(); err != nil && err != sdl.EndLoop {
+	if _, err := exp.Keyboard.Wait(); err != nil && err != control.EndLoop {
 		log.Fatalf("training-finished wait error: %v", err)
 	}
 
 	// Main experimental trials (logged, no additional buzzer feedback).
 	for i, config := range trials {
 		if err := runOne(i+1, config, false, true); err != nil {
-			if err == sdl.EndLoop {
+			if err == control.EndLoop {
 				return
 			}
 			log.Fatalf("trial error: %v", err)

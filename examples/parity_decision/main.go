@@ -15,14 +15,13 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/Zyko0/go-sdl3/sdl"
 	"github.com/Zyko0/go-sdl3/ttf"
 )
 
 const (
 	NTrialsPerTarget = 1
-	EvenResponse     = sdl.K_F
-	OddResponse      = sdl.K_J
+	EvenResponse     = control.K_F
+	OddResponse      = control.K_J
 )
 
 var Targets = []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}
@@ -88,7 +87,7 @@ func main() {
 
 	instrText := fmt.Sprintf("When you'll see a number, your task to decide, as quickly as possible, whether it is even or odd.\n\nif it is even, press 'F'\n\nif it is odd, press 'J'\n\nThere will be %d trials in total.\n\nPress the spacebar to start.", len(trials))
 	// Use 1000px width for instructions to ensure they fit well
-	instructions := stimuli.NewTextBox(instrText, 1000, sdl.FPoint{X: 0, Y: 0}, control.DefaultTextColor)
+	instructions := stimuli.NewTextBox(instrText, 1000, control.FPoint{X: 0, Y: 0}, control.DefaultTextColor)
 
 	// 3. Run the experiment logic
 	err = exp.Run(func() error {
@@ -103,7 +102,7 @@ func main() {
 			if subErr != nil {
 				return subErr
 			}
-			if key == sdl.K_SPACE {
+			if key == control.K_SPACE {
 				break
 			}
 			clock.Wait(10)
@@ -159,10 +158,10 @@ func main() {
 			clock.Wait(500)
 		}
 
-		return sdl.EndLoop // Graceful exit
+		return control.EndLoop // Graceful exit
 	})
 
-	if err != nil && err != sdl.EndLoop {
+	if err != nil && err != control.EndLoop {
 		log.Fatalf("experiment error: %v", err)
 	}
 }

@@ -13,8 +13,6 @@ import (
 	"github.com/chrplr/goxpyriment/design"
 	"github.com/chrplr/goxpyriment/clock"
 	"github.com/chrplr/goxpyriment/stimuli"
-
-	"github.com/Zyko0/go-sdl3/sdl"
 )
 
 // Assets embedded in the binary
@@ -78,7 +76,7 @@ type cardTrial struct {
 
 func main() {
 	develop := flag.Bool("d", false, "Developer mode (windowed 1024x1024)")
-	scaling := flag.Float64("scaling", 1.0, "Scaling factor for stimuli")
+	scaling := flag.Float64("scaling", 0.6, "Scaling factor for stimuli")
 	fullscreenFlag := flag.Bool("F", false, "Force Fullscreen")
 	subject := flag.Int("s", 0, "Subject ID")
 	flag.Parse()
@@ -97,7 +95,7 @@ func main() {
 	if *fullscreenFlag {
 		fullscreen = true
 	}
-	exp := control.NewExperiment("Mental Logic Card Game", width, height, fullscreen, control.Black, control.White, 32)
+	exp := control.NewExperiment("Mental Logic Card Game", width, height, fullscreen, control.Black, control.White, 22)
 	exp.SubjectID = *subject
 	if err := exp.Initialize(); err != nil {
 		log.Fatalf("failed to initialize experiment: %v", err)
@@ -155,8 +153,8 @@ func main() {
 	design.ShuffleList(trials)
 
 	// Prepare reusable canvases
-	canvas1 := stimuli.NewCanvas(3*cardW+2*gap, cardH, sdl.Color{A: 0})
-	canvas2 := stimuli.NewCanvas(3*cardW+2*gap, cardH, sdl.Color{A: 0})
+	canvas1 := stimuli.NewCanvas(3*cardW+2*gap, cardH, control.Color{A: 0})
+	canvas2 := stimuli.NewCanvas(3*cardW+2*gap, cardH, control.Color{A: 0})
 
 	// 4. Run Experiment
 	err := exp.Run(func() error {
@@ -166,7 +164,7 @@ func main() {
 		}
 
 		// Instructions - Initialize here to ensure correct centering after fullscreen transition
-		instr := stimuli.NewTextBox(Instructions, 1000, sdl.FPoint{X: 0, Y: 0}, control.DefaultTextColor)
+		instr := stimuli.NewTextBox(Instructions, 1000, control.FPoint{X: 0, Y: 0}, control.DefaultTextColor)
 		
 		// Small extra wait to ensure renderer is ready
 		clock.Wait(100)
@@ -179,7 +177,7 @@ func main() {
 			if err != nil {
 				return err
 			}
-			if key == sdl.K_SPACE {
+			if key == control.K_SPACE {
 				break
 			}
 			clock.Wait(10)
@@ -190,7 +188,7 @@ func main() {
 			canvas1.Clear(exp.Screen)
 			for i := 0; i < 3; i++ {
 				p := pics[ct.Backs[i]]
-				p.SetPosition(sdl.FPoint{X: -shift + float32(i)*shift, Y: 0})
+				p.SetPosition(control.FPoint{X: -shift + float32(i)*shift, Y: 0})
 				canvas1.Blit(p, exp.Screen)
 			}
 
@@ -202,7 +200,7 @@ func main() {
 				} else {
 					p = pics[ct.Backs[i]]
 				}
-				p.SetPosition(sdl.FPoint{X: -shift + float32(i)*shift, Y: 0})
+				p.SetPosition(control.FPoint{X: -shift + float32(i)*shift, Y: 0})
 				canvas2.Blit(p, exp.Screen)
 			}
 
@@ -214,14 +212,14 @@ func main() {
 			if err := canvas1.Present(exp.Screen, true, true); err != nil { return err }
 			
 			resp, rt, err := waitResponse(exp, BackDisplayDuration)
-			if err != nil && err != sdl.EndLoop { return err }
+			if err != nil && err != control.EndLoop { return err }
 
 			// Show Turned Card
 			if err := canvas2.Present(exp.Screen, true, true); err != nil { return err }
 			
 			if resp == 0 {
 				resp, rt, err = waitResponse(exp, MaxResponseTime)
-				if err != nil && err != sdl.EndLoop { return err }
+				if err != nil && err != control.EndLoop { return err }
 				rt += int64(BackDisplayDuration)
 			}
 
@@ -236,10 +234,10 @@ func main() {
 			if err := waitInterruption(exp, InterTrialTime); err != nil { return err }
 		}
 
-		return sdl.EndLoop
+		return control.EndLoop
 	})
 
-	if err != nil && err != sdl.EndLoop {
+	if err != nil && err != control.EndLoop {
 		log.Fatalf("experiment error: %v", err)
 	}
 }
@@ -258,14 +256,14 @@ func waitInterruption(exp *control.Experiment, timeout int) error {
 	}
 }
 
-func waitResponse(exp *control.Experiment, timeout int) (sdl.Keycode, int64, error) {
+func waitResponse(exp *control.Experiment, timeout int) (control.Keycode, int64, error) {
 	start := clock.GetTime()
 	for {
 		key, _, err := exp.HandleEvents()
 		if err != nil {
 			return 0, clock.GetTime() - start, err
 		}
-		if key == sdl.K_Q || key == sdl.K_S || key == sdl.K_D || key == sdl.K_N {
+		if key == control.K_Q || key == control.K_S || key == control.K_D || key == control.K_N {
 			return key, clock.GetTime() - start, nil
 		}
 		if timeout > 0 && int(clock.GetTime()-start) >= timeout {
@@ -275,12 +273,12 @@ func waitResponse(exp *control.Experiment, timeout int) (sdl.Keycode, int64, err
 	}
 }
 
-func checkCorrect(key sdl.Keycode, expected int) bool {
-	mapping := map[sdl.Keycode]int{
-		sdl.K_Q: 0,
-		sdl.K_S: 1,
-		sdl.K_D: 2,
-		sdl.K_N: -1,
+func checkCorrect(key control.Keycode, expected int) bool {
+	mapping := map[control.Keycode]int{
+		control.K_Q: 0,
+		control.K_S: 1,
+		control.K_D: 2,
+		control.K_N: -1,
 	}
 	val, ok := mapping[key]
 	if !ok { return false }

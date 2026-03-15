@@ -5,7 +5,6 @@ package main
 
 import (
 	"flag"
-	"github.com/Zyko0/go-sdl3/sdl"
 	"github.com/chrplr/goxpyriment/control"
 	"github.com/chrplr/goxpyriment/design"
 	"github.com/chrplr/goxpyriment/clock"
@@ -62,7 +61,7 @@ func showInstructions(exp *control.Experiment) error {
 		" - Press 'N' if you saw NEITHER\n\n" +
 		"Press any key to begin."
 
-	instrBox := stimuli.NewTextBox(text, 650, sdl.FPoint{X: 0, Y: 0}, control.White)
+	instrBox := stimuli.NewTextBox(text, 650, control.FPoint{X: 0, Y: 0}, control.White)
 	if err := instrBox.Present(exp.Screen, true, true); err != nil {
 		return err
 	}
@@ -91,7 +90,7 @@ func main() {
 	exp.Data.AddVariableNames([]string{"trial_idx", "has_j", "has_k", "lag", "response", "is_correct", "rt"})
 
 	if err := showInstructions(exp); err != nil {
-		if err == sdl.EndLoop { return }
+		if err == control.EndLoop { return }
 		log.Fatalf("instruction error: %v", err)
 	}
 
@@ -149,30 +148,30 @@ func main() {
 		if err := prompt.Present(exp.Screen, true, true); err != nil { return "", false, 0, err }
 
 		startTime := clock.GetTime()
-		key, err := exp.Keyboard.WaitKeys([]sdl.Keycode{sdl.K_J, sdl.K_K, sdl.K_B, sdl.K_N, sdl.K_ESCAPE}, -1)
+		key, err := exp.Keyboard.WaitKeys([]control.Keycode{control.K_J, control.K_K, control.K_B, control.K_N, control.K_ESCAPE}, -1)
 		if err != nil {
 			return "", false, 0, err
 		}
 		rt := clock.GetTime() - startTime
 
-		if key == sdl.K_ESCAPE {
-			return "", false, rt, sdl.EndLoop
+		if key == control.K_ESCAPE {
+			return "", false, rt, control.EndLoop
 		}
 
 		// Evaluate response
 		response := ""
 		isCorrect := false
 		switch key {
-		case sdl.K_J:
+		case control.K_J:
 			response = "j"
 			isCorrect = config.HasJ && !config.HasK
-		case sdl.K_K:
+		case control.K_K:
 			response = "k"
 			isCorrect = !config.HasJ && config.HasK
-		case sdl.K_B:
+		case control.K_B:
 			response = "both"
 			isCorrect = config.HasJ && config.HasK
-		case sdl.K_N:
+		case control.K_N:
 			response = "neither"
 			isCorrect = !config.HasJ && !config.HasK
 		}
@@ -193,7 +192,7 @@ func main() {
 	// 2. Training Loop (8 trials, feedback, not logged).
 	for _, config := range trainingConfigs {
 		if _, _, _, err := runOne(config); err != nil {
-			if err == sdl.EndLoop {
+			if err == control.EndLoop {
 				return
 			}
 			log.Fatalf("training trial error: %v", err)
@@ -204,13 +203,13 @@ func main() {
 	trainDone := stimuli.NewTextBox(
 		"Training finished.\n\nPress a key to go on to the main experiment.",
 		650,
-		sdl.FPoint{X: 0, Y: 0},
+		control.FPoint{X: 0, Y: 0},
 		control.White,
 	)
 	if err := trainDone.Present(exp.Screen, true, true); err != nil {
 		log.Fatalf("training-finished screen error: %v", err)
 	}
-	if _, err := exp.Keyboard.Wait(); err != nil && err != sdl.EndLoop {
+	if _, err := exp.Keyboard.Wait(); err != nil && err != control.EndLoop {
 		log.Fatalf("training-finished wait error: %v", err)
 	}
 
@@ -218,7 +217,7 @@ func main() {
 	for i, config := range trialConfigs {
 		response, isCorrect, rt, err := runOne(config)
 		if err != nil {
-			if err == sdl.EndLoop { return }
+			if err == control.EndLoop { return }
 			log.Fatalf("trial error: %v", err)
 		}
 

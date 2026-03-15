@@ -10,7 +10,6 @@ import (
 	"github.com/chrplr/goxpyriment/stimuli"
 	"log"
 
-	"github.com/Zyko0/go-sdl3/sdl"
 )
 
 func main() {
@@ -43,7 +42,7 @@ func main() {
 	
 	// DotCloud
 	cloud := stimuli.NewDotCloud(200, 
-		sdl.Color{R: 50, G: 50, B: 50, A: 255}, 
+		control.Color{R: 50, G: 50, B: 50, A: 255}, 
 		control.White)
 	cloud.Make(50, 5, 2)
 	
@@ -56,7 +55,7 @@ func main() {
 	circle.Make(true, true)
 	
 	// ThermometerDisplay
-	therm := stimuli.NewThermometerDisplay(sdl.FPoint{X: 50, Y: 300}, 10, 65, 80)
+	therm := stimuli.NewThermometerDisplay(control.FPoint{X: 50, Y: 300}, 10, 65, 80)
 
 	// Titles
 	titleMask := stimuli.NewTextLine("Visual Mask (Press Space)", 0, 250, control.DefaultTextColor)
@@ -82,10 +81,10 @@ func main() {
 		if err := show(titleCircle, circle); err != nil { return err }
 		if err := show(titleTherm, therm); err != nil { return err }
 
-		return sdl.EndLoop
+		return control.EndLoop
 	})
 
-	if err != nil && err != sdl.EndLoop {
+	if err != nil && err != control.EndLoop {
 		log.Fatalf("experiment error: %v", err)
 	}
 }

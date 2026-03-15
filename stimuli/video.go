@@ -8,8 +8,10 @@ import (
 
 	"github.com/gen2brain/mpeg"
 	"github.com/Zyko0/go-sdl3/sdl"
+	xio "github.com/chrplr/goxpyriment/io"
 )
 
+// Video represents a playable video stimulus using MPEG decoding.
 type Video struct {
 	mpg          *mpeg.MPEG
 	file         *os.File
@@ -27,7 +29,9 @@ type Video struct {
 	currentFrame int
 }
 
-func NewVideo(renderer *sdl.Renderer, path string) (*Video, error) {
+// NewVideo creates a new Video stimulus from the given file path.
+// It initializes the MPEG decoder and creates an SDL texture for rendering.
+func NewVideo(screen *xio.Screen, path string) (*Video, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open video: %w", err)
@@ -41,7 +45,7 @@ func NewVideo(renderer *sdl.Renderer, path string) (*Video, error) {
 
 	w, h := int32(m.Width()), int32(m.Height())
 	// Create texture with streaming access for frame updates
-	tex, err := renderer.CreateTexture(sdl.PIXELFORMAT_RGBA32, sdl.TEXTUREACCESS_STREAMING, int(w), int(h))
+	tex, err := screen.Renderer.CreateTexture(sdl.PIXELFORMAT_RGBA32, sdl.TEXTUREACCESS_STREAMING, int(w), int(h))
 	if err != nil {
 		f.Close()
 		return nil, err
@@ -57,7 +61,9 @@ func NewVideo(renderer *sdl.Renderer, path string) (*Video, error) {
 	}, nil
 }
 
-func (v *Video) Update(renderer *sdl.Renderer) error {
+// Update decodes and updates the video frame based on elapsed time.
+// It should be called regularly (e.g., in each frame of the main loop) to ensure smooth playback.
+func (v *Video) Update() error {
 	if !v.playing || v.paused {
 		return nil
 	}
@@ -83,7 +89,7 @@ func (v *Video) Update(renderer *sdl.Renderer) error {
 	return nil
 }
 
-// Rewind resets the video state so it can be played again
+// Rewind resets the video state to the beginning so it can be played again.
 func (v *Video) Rewind() {
 	v.mpg.Rewind()
 	v.currentFrame = 0
@@ -93,15 +99,18 @@ func (v *Video) Rewind() {
 	v.paused = false
 }
 
-func (v *Video) Draw(renderer *sdl.Renderer, x, y int32) error {
+// Draw renders the current video frame at the specified (x, y) coordinates.
+func (v *Video) Draw(screen *xio.Screen, x, y int32) error {
 	dest := sdl.FRect{X: float32(x), Y: float32(y), W: float32(v.Width), H: float32(v.Height)}
-	return v.DrawAt(renderer, &dest)
+	return v.DrawAt(screen, &dest)
 }
 
-func (v *Video) DrawAt(renderer *sdl.Renderer, dest *sdl.FRect) error {
-	return renderer.RenderTexture(v.texture, nil, dest)
+// DrawAt renders the current video frame into the specified destination rectangle.
+func (v *Video) DrawAt(screen *xio.Screen, dest *sdl.FRect) error {
+	return screen.Renderer.RenderTexture(v.texture, nil, dest)
 }
 
+// Play starts or resumes video playback.
 func (v *Video) Play() {
 	if !v.playing {
 		v.startTime = time.Now()
@@ -115,6 +124,7 @@ func (v *Video) Play() {
 	}
 }
 
+// Pause pauses video playback.
 func (v *Video) Pause() {
 	if v.playing && !v.paused {
 		v.paused = true
@@ -122,9 +132,13 @@ func (v *Video) Pause() {
 	}
 }
 
+// IsPlaying returns true if the video is currently playing (and not paused).
 func (v *Video) IsPlaying() bool { return v.playing }
+
+// IsPaused returns true if the video is currently paused.
 func (v *Video) IsPaused() bool  { return v.paused }
 
+// Close releases resources associated with the video, including the file handle and SDL texture.
 func (v *Video) Close() {
 	if v.file != nil { v.file.Close() }
 	if v.texture != nil { v.texture.Destroy() }

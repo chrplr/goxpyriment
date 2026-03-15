@@ -42,27 +42,43 @@ var (
 // Keycode re-exports SDL key codes so callers can use control.K_SPACE etc. without importing go-sdl3.
 type Keycode = sdl.Keycode
 
+// Color re-exports SDL color struct so callers can use control.Color{R:..., G:..., B:..., A:...} without importing go-sdl3.
+type Color = sdl.Color
+
+// FPoint re-exports SDL FPoint struct so callers can use control.FPoint{X:..., Y:...} without importing go-sdl3.
+type FPoint = sdl.FPoint
+
+// FRect re-exports SDL FRect struct so callers can use control.FRect{X:..., Y:..., W:..., H:...} without importing go-sdl3.
+type FRect = sdl.FRect
+
 // Common key codes (re-exported from SDL for convenience).
 const (
-	K_SPACE = sdl.K_SPACE
-	K_ESCAPE = sdl.K_ESCAPE
-	K_S     = sdl.K_S
-	K_F     = sdl.K_F
-	K_J     = sdl.K_J
-	K_Q     = sdl.K_Q
-	K_R     = sdl.K_R
-	K_G     = sdl.K_G
-	K_B     = sdl.K_B
-	K_Y     = sdl.K_Y
-	K_N     = sdl.K_N
-	K_1     = sdl.K_1
-	K_2     = sdl.K_2
-	K_3     = sdl.K_3
-	K_4     = sdl.K_4
-	K_KP_1  = sdl.K_KP_1
-	K_KP_2  = sdl.K_KP_2
-	K_KP_3  = sdl.K_KP_3
-	K_KP_4  = sdl.K_KP_4
+	K_SPACE     = sdl.K_SPACE
+	K_ESCAPE    = sdl.K_ESCAPE
+	K_RETURN    = sdl.K_RETURN
+	K_BACKSPACE = sdl.K_BACKSPACE
+	K_UP        = sdl.K_UP
+	K_DOWN      = sdl.K_DOWN
+	K_LEFT      = sdl.K_LEFT
+	K_RIGHT     = sdl.K_RIGHT
+	K_S         = sdl.K_S
+	K_F         = sdl.K_F
+	K_J         = sdl.K_J
+	K_Q         = sdl.K_Q
+	K_R         = sdl.K_R
+	K_G         = sdl.K_G
+	K_B         = sdl.K_B
+	K_Y         = sdl.K_Y
+	K_N         = sdl.K_N
+	K_P         = sdl.K_P
+	K_1         = sdl.K_1
+	K_2         = sdl.K_2
+	K_3         = sdl.K_3
+	K_4         = sdl.K_4
+	K_KP_1      = sdl.K_KP_1
+	K_KP_2      = sdl.K_KP_2
+	K_KP_3      = sdl.K_KP_3
+	K_KP_4      = sdl.K_KP_4
 )
 
 // Mouse button constants (re-exported from SDL).

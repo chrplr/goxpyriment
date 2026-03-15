@@ -5,7 +5,6 @@ package main
 
 import (
 	"flag"
-	"github.com/Zyko0/go-sdl3/sdl"
 	"github.com/chrplr/goxpyriment/control"
 	"github.com/chrplr/goxpyriment/design"
 	"github.com/chrplr/goxpyriment/clock"
@@ -21,11 +20,11 @@ const (
 	MaskGap      = 2.0
 )
 
-func getCirclePoints(num int, radius float32) []sdl.FPoint {
-	points := make([]sdl.FPoint, num)
+func getCirclePoints(num int, radius float32) []control.FPoint {
+	points := make([]control.FPoint, num)
 	for i := 0; i < num; i++ {
 		angle := float64(i) * 2.0 * math.Pi / float64(num)
-		points[i] = sdl.FPoint{
+		points[i] = control.FPoint{
 			X: radius * float32(math.Cos(angle)),
 			Y: radius * float32(math.Sin(angle)),
 		}
@@ -40,8 +39,8 @@ type TrialConfig struct {
 	DistractorPosIdx int
 }
 
-func runTrial(exp *control.Experiment, config TrialConfig, points []sdl.FPoint, fixation *stimuli.FixCross) (string, int, error) {
-	targetColor := sdl.Color{R: 89, G: 89, B: 89, A: 255}
+func runTrial(exp *control.Experiment, config TrialConfig, points []control.FPoint, fixation *stimuli.FixCross) (string, int, error) {
+	targetColor := control.Color{R: 89, G: 89, B: 89, A: 255}
 	
 	// 1. Fixation (500ms)
 	if err := fixation.Present(exp.Screen, true, true); err != nil { return "", 0, err }
@@ -132,15 +131,15 @@ func runTrial(exp *control.Experiment, config TrialConfig, points []sdl.FPoint, 
 	vuText := stimuli.NewTextLine("Seen?", 0, 0, control.White)
 	if err := vuText.Present(exp.Screen, true, true); err != nil { return "", 0, err }
 	
-	ratingKey, err := exp.Keyboard.WaitKeys([]sdl.Keycode{sdl.K_1, sdl.K_2, sdl.K_3, sdl.K_4, sdl.K_KP_1, sdl.K_KP_2, sdl.K_KP_3, sdl.K_KP_4}, 2500)
+	ratingKey, err := exp.Keyboard.WaitKeys([]sdl.Keycode{control.K_1, control.K_2, control.K_3, control.K_4, control.K_KP_1, control.K_KP_2, control.K_KP_3, control.K_KP_4}, 2500)
 	if err != nil { return "", 0, err }
 	
 	rating := 0
 	switch ratingKey {
-	case sdl.K_1, sdl.K_KP_1: rating = 1
-	case sdl.K_2, sdl.K_KP_2: rating = 2
-	case sdl.K_3, sdl.K_KP_3: rating = 3
-	case sdl.K_4, sdl.K_KP_4: rating = 4
+	case control.K_1, control.K_KP_1: rating = 1
+	case control.K_2, control.K_KP_2: rating = 2
+	case control.K_3, control.K_KP_3: rating = 3
+	case control.K_4, control.K_KP_4: rating = 4
 	}
 
 	// ITI (1s)
@@ -164,7 +163,7 @@ func showInstructions(exp *control.Experiment) error {
 		"   4: Clear experience\n\n" +
 		"Press any key to begin."
 
-	instrBox := stimuli.NewTextBox(text, 650, sdl.FPoint{X: 0, Y: 0}, control.White)
+	instrBox := stimuli.NewTextBox(text, 650, control.FPoint{X: 0, Y: 0}, control.White)
 	if err := instrBox.Present(exp.Screen, true, true); err != nil {
 		return err
 	}
@@ -192,7 +191,7 @@ func main() {
 
 	// Show instructions
 	if err := showInstructions(exp); err != nil {
-		if err == sdl.EndLoop { return }
+		if err == control.EndLoop { return }
 		log.Fatalf("instruction error: %v", err)
 	}
 
@@ -241,7 +240,7 @@ func main() {
 	for _, config := range trainingConfigs {
 		_, rating, err := runTrial(exp, config, points, fixation)
 		if err != nil {
-			if err == sdl.EndLoop { return }
+			if err == control.EndLoop { return }
 			log.Fatalf("training trial error: %v", err)
 		}
 
@@ -262,13 +261,13 @@ func main() {
 	trainDone := stimuli.NewTextBox(
 		"Training finished.\n\nPress a key to go on to the main experiment.",
 		650,
-		sdl.FPoint{X: 0, Y: 0},
+		control.FPoint{X: 0, Y: 0},
 		control.White,
 	)
 	if err := trainDone.Present(exp.Screen, true, true); err != nil {
 		log.Fatalf("training-finished screen error: %v", err)
 	}
-	if _, err := exp.Keyboard.Wait(); err != nil && err != sdl.EndLoop {
+	if _, err := exp.Keyboard.Wait(); err != nil && err != control.EndLoop {
 		log.Fatalf("training-finished wait error: %v", err)
 	}
 
@@ -276,7 +275,7 @@ func main() {
 	for i, config := range trialConfigs {
 		_, rating, err := runTrial(exp, config, points, fixation)
 		if err != nil {
-			if err == sdl.EndLoop { break }
+			if err == control.EndLoop { break }
 			log.Fatalf("trial error: %v", err)
 		}
 		

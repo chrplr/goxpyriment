@@ -17,12 +17,11 @@ import (
 	"github.com/chrplr/goxpyriment/clock"
 	"github.com/chrplr/goxpyriment/stimuli"
 
-	"github.com/Zyko0/go-sdl3/sdl"
 )
 
 const (
-	WordResponseKey   = sdl.K_F
-	NonWordResponseKey = sdl.K_J
+	WordResponseKey   = control.K_F
+	NonWordResponseKey = control.K_J
 	MaxResponseDelay  = 2000
 )
 
@@ -107,7 +106,7 @@ func main() {
 	cue := stimuli.NewFixCross(50, 4, control.DefaultTextColor)
 	
 	instrText := fmt.Sprintf("When you'll see a stimulus, your task to decide, as quickly as possible, whether it is a word or not.\n\nif it is a word, press 'F'\n\nif it is a non-word, press 'J'\n\nPress the SPACE bar to start.")
-	instructions := stimuli.NewTextBox(instrText, 600, sdl.FPoint{X: 0, Y: 100}, control.DefaultTextColor)
+	instructions := stimuli.NewTextBox(instrText, 600, control.FPoint{X: 0, Y: 100}, control.DefaultTextColor)
 
 	// 6. Run the experiment logic
 	err = exp.Run(func() error {
@@ -115,7 +114,7 @@ func main() {
 		if err := instructions.Present(exp.Screen, true, true); err != nil {
 			return err
 		}
-		if _, err := exp.Keyboard.WaitKeys([]sdl.Keycode{sdl.K_SPACE}, -1); err != nil {
+		if _, err := exp.Keyboard.WaitKeys([]sdl.Keycode{control.K_SPACE}, -1); err != nil {
 			return err
 		}
 
@@ -160,10 +159,10 @@ func main() {
 			clock.Wait(500)
 		}
 
-		return sdl.EndLoop
+		return control.EndLoop
 	})
 
-	if err != nil && err != sdl.EndLoop {
+	if err != nil && err != control.EndLoop {
 		log.Fatalf("experiment error: %v", err)
 	}
 }

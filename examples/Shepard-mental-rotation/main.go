@@ -8,7 +8,6 @@ import (
 	"log"
 	"math"
 
-	"github.com/Zyko0/go-sdl3/sdl"
 	"github.com/chrplr/goxpyriment/clock"
 	"github.com/chrplr/goxpyriment/control"
 	"github.com/chrplr/goxpyriment/design"
@@ -16,8 +15,8 @@ import (
 )
 
 // getAsymmetricShape returns points for an asymmetric "L-like" shape.
-func getAsymmetricShape() []sdl.FPoint {
-	return []sdl.FPoint{
+func getAsymmetricShape() []control.FPoint {
+	return []control.FPoint{
 		{X: -40, Y: -60},
 		{X: 40, Y: -60},
 		{X: 40, Y: -20},
@@ -28,13 +27,13 @@ func getAsymmetricShape() []sdl.FPoint {
 }
 
 // rotatePoints rotates a set of points by an angle in degrees.
-func rotatePoints(points []sdl.FPoint, angle float64) []sdl.FPoint {
+func rotatePoints(points []control.FPoint, angle float64) []control.FPoint {
 	rad := angle * math.Pi / 180.0
-	res := make([]sdl.FPoint, len(points))
+	res := make([]control.FPoint, len(points))
 	cosA := float32(math.Cos(rad))
 	sinA := float32(math.Sin(rad))
 	for i, p := range points {
-		res[i] = sdl.FPoint{
+		res[i] = control.FPoint{
 			X: p.X*cosA - p.Y*sinA,
 			Y: p.X*sinA + p.Y*cosA,
 		}
@@ -43,10 +42,10 @@ func rotatePoints(points []sdl.FPoint, angle float64) []sdl.FPoint {
 }
 
 // mirrorPoints mirrors a set of points across the Y axis.
-func mirrorPoints(points []sdl.FPoint) []sdl.FPoint {
-	res := make([]sdl.FPoint, len(points))
+func mirrorPoints(points []control.FPoint) []control.FPoint {
+	res := make([]control.FPoint, len(points))
 	for i, p := range points {
-		res[i] = sdl.FPoint{X: -p.X, Y: p.Y}
+		res[i] = control.FPoint{X: -p.X, Y: p.Y}
 	}
 	return res
 }
@@ -61,7 +60,7 @@ func showInstructions(exp *control.Experiment) error {
 		"Try to be as fast and accurate as possible.\n\n" +
 		"Press any key to begin."
 
-	instrBox := stimuli.NewTextBox(text, 600, sdl.FPoint{X: 0, Y: 0}, control.White)
+	instrBox := stimuli.NewTextBox(text, 600, control.FPoint{X: 0, Y: 0}, control.White)
 	if err := instrBox.Present(exp.Screen, true, true); err != nil {
 		return err
 	}
@@ -91,7 +90,7 @@ func main() {
 
 	// Show instructions
 	if err := showInstructions(exp); err != nil {
-		if err == sdl.EndLoop { return }
+		if err == control.EndLoop { return }
 		log.Fatalf("instruction error: %v", err)
 	}
 
@@ -120,16 +119,16 @@ func main() {
 
 		// Prepare stimuli
 		leftShape := stimuli.NewShape(basePoints, control.White)
-		leftShape.SetPosition(sdl.FPoint{X: -150, Y: 0})
+		leftShape.SetPosition(control.FPoint{X: -150, Y: 0})
 
-		var rightPoints []sdl.FPoint
+		var rightPoints []control.FPoint
 		if condition == "same" {
 			rightPoints = rotatePoints(basePoints, angle)
 		} else {
 			rightPoints = rotatePoints(mirrorPoints(basePoints), angle)
 		}
 		rightShape := stimuli.NewShape(rightPoints, control.White)
-		rightShape.SetPosition(sdl.FPoint{X: 150, Y: 0})
+		rightShape.SetPosition(control.FPoint{X: 150, Y: 0})
 
 		// Fixation period
 		if err := exp.Screen.Clear(); err != nil { log.Fatal(err) }
@@ -150,9 +149,9 @@ func main() {
 		var key sdl.Keycode
 		var err error
 		for {
-			key, err = exp.Keyboard.WaitKeys([]sdl.Keycode{sdl.K_S, sdl.K_D, sdl.K_ESCAPE}, -1)
+			key, err = exp.Keyboard.WaitKeys([]sdl.Keycode{control.K_S, control.K_D, control.K_ESCAPE}, -1)
 			if err != nil {
-				if err == sdl.EndLoop { return }
+				if err == control.EndLoop { return }
 				log.Fatalf("keyboard error: %v", err)
 			}
 			if key != 0 { break }
@@ -162,13 +161,13 @@ func main() {
 		
 		response := ""
 		isCorrect := false
-		if key == sdl.K_S {
+		if key == control.K_S {
 			response = "same"
 			isCorrect = (condition == "same")
-		} else if key == sdl.K_D {
+		} else if key == control.K_D {
 			response = "mirrored"
 			isCorrect = (condition == "mirrored")
-		} else if key == sdl.K_ESCAPE {
+		} else if key == control.K_ESCAPE {
 			return
 		}
 

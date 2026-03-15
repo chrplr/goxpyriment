@@ -6,7 +6,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/Zyko0/go-sdl3/sdl"
 	"github.com/chrplr/goxpyriment/control"
 	"github.com/chrplr/goxpyriment/design"
 	"github.com/chrplr/goxpyriment/clock"
@@ -16,12 +15,12 @@ import (
 )
 
 // Octagon locations (centered)
-func getOctagonPoints(radius float32) []sdl.FPoint {
-	points := make([]sdl.FPoint, 8)
+func getOctagonPoints(radius float32) []control.FPoint {
+	points := make([]control.FPoint, 8)
 	for i := 0; i < 8; i++ {
 		// 0 is top, clockwise. Indices in study are 1-8, we use 0-7.
 		angle := math.Pi/2 - float64(i)*(2*math.Pi/8)
-		points[i] = sdl.FPoint{
+		points[i] = control.FPoint{
 			X: radius * float32(math.Cos(angle)),
 			Y: radius * float32(math.Sin(angle)),
 		}
@@ -86,7 +85,7 @@ func flashSequence(exp *control.Experiment, dots []*stimuli.Circle, fixation *st
 	return nil
 }
 
-func getGuess(exp *control.Experiment, dots []*stimuli.Circle, fixation *stimuli.FixCross, octagonPoints []sdl.FPoint) (int, int64, error) {
+func getGuess(exp *control.Experiment, dots []*stimuli.Circle, fixation *stimuli.FixCross, octagonPoints []control.FPoint) (int, int64, error) {
 	startTime := clock.GetTime()
 	// Ensure screen is updated with dots and fixation
 	if err := drawEnvironment(exp, dots, fixation, nil, -1); err != nil {
@@ -98,8 +97,8 @@ func getGuess(exp *control.Experiment, dots []*stimuli.Circle, fixation *stimuli
 		if err != nil {
 			return -1, 0, err
 		}
-		if key == sdl.K_ESCAPE {
-			return -1, 0, sdl.EndLoop
+		if key == control.K_ESCAPE {
+			return -1, 0, control.EndLoop
 		}
 
 		if button == 1 { // Left click
@@ -127,7 +126,7 @@ func showInstructions(exp *control.Experiment) error {
 		"beginning to show you the correct locations.\n\n" +
 		"Press any key to begin."
 
-	instrBox := stimuli.NewTextBox(text, 600, sdl.FPoint{X: 0, Y: 0}, control.White)
+	instrBox := stimuli.NewTextBox(text, 600, control.FPoint{X: 0, Y: 0}, control.White)
 	
 	if err := exp.Screen.Clear(); err != nil {
 		return err
@@ -163,7 +162,7 @@ func main() {
 
 	// Show instructions before starting
 	if err := showInstructions(exp); err != nil {
-		if err == sdl.EndLoop { return }
+		if err == control.EndLoop { return }
 		log.Fatalf("instruction error: %v", err)
 	}
 
@@ -172,7 +171,7 @@ func main() {
 	octagonPoints := getOctagonPoints(300)
 	dots := make([]*stimuli.Circle, 8)
 	for i := 0; i < 8; i++ {
-		dots[i] = stimuli.NewCircle(15, sdl.Color{R: 80, G: 80, B: 80, A: 255})
+		dots[i] = stimuli.NewCircle(15, control.Color{R: 80, G: 80, B: 80, A: 255})
 		dots[i].SetPosition(octagonPoints[i])
 	}
 	target := stimuli.NewCircle(25, control.White)
@@ -224,7 +223,7 @@ func main() {
 		for step := 2; step < 16; step++ {
 			// A. Flash sequence up to currentKnownCount
 			if err := flashSequence(exp, dots, fixation, target, indices[:currentKnownCount]); err != nil {
-				if err == sdl.EndLoop { return }
+				if err == control.EndLoop { return }
 				log.Fatalf("flash error: %v", err)
 			}
 
@@ -232,7 +231,7 @@ func main() {
 			targetIdx := indices[step]
 			clickIdx, rt, err := getGuess(exp, dots, fixation, octagonPoints)
 			if err != nil {
-				if err == sdl.EndLoop { return }
+				if err == control.EndLoop { return }
 				log.Fatalf("guess error: %v", err)
 			}
 

@@ -18,13 +18,19 @@ SetupIconFile=..\\..\\assets\\icon.ico
 [Languages]
 Name: "english"; MessagesFile: "compiler:Default.isl"
 
+
 [Files]
-; Source binaries with stripping already handled in build step [cite: 50]
+; 1. Install the compiled .exe files into the \bin folder [cite: 49]
 Source: "..\*.exe"; DestDir: "{app}\bin"; Flags: recursesubdirs ignoreversion; Excludes: "installers\*"
-; Source assets [cite: 51]
+
+; 2. NEW: Install the 'assets' subfolders found within each individual example [cite: 50]
+; This looks for any folder named 'assets' inside the example directories and 
+; places them into the \bin folder alongside the .exe files to maintain the relative paths.
+Source: "..\*\assets\*"; DestDir: "{app}\bin"; Flags: recursesubdirs ignoreversion
+
+; 3. Install the global assets folder from the root directory [cite: 51]
 Source: "..\..\assets\*"; DestDir: "{app}\assets"; Flags: ignoreversion recursesubdirs
 
 [Icons]
-; Shortcut to the bin folder so users can find the .exe files [cite: 52]
-Name: "{group}\Browse Examples"; Filename: "{app}\bin"
+Name: "{group}\Browse Example Binaries"; Filename: "{app}\bin"
 Name: "{group}\Uninstall Goxpyriment Examples"; Filename: "{uninstallexe}"

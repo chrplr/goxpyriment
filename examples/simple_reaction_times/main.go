@@ -14,7 +14,6 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/Zyko0/go-sdl3/sdl"
 )
 
 const (
@@ -50,7 +49,7 @@ func main() {
 	target := stimuli.NewTextLine("+", 0, 0, control.DefaultTextColor)
 	
 	instrText := fmt.Sprintf("From time to time, a cross will appear at the center of screen.\n\nYour task is to press the SPACEBAR as quickly as possible when you see it (We measure your reaction-time).\n\nThere will be %d trials in total.\n\nPress the spacebar to start.", NTrials)
-	instructions := stimuli.NewTextBox(instrText, 600, sdl.FPoint{X: 0, Y: 100}, control.DefaultTextColor)
+	instructions := stimuli.NewTextBox(instrText, 600, control.FPoint{X: 0, Y: 100}, control.DefaultTextColor)
 
 	// 3. Run the experiment logic
 	err := exp.Run(func() error {
@@ -63,7 +62,7 @@ func main() {
 			if err != nil {
 				return err
 			}
-			if key == sdl.K_SPACE {
+			if key == control.K_SPACE {
 				break
 			}
 		}
@@ -101,10 +100,10 @@ func main() {
 			clock.Wait(500)
 		}
 
-		return sdl.EndLoop // Graceful exit
+		return control.EndLoop // Graceful exit
 	})
 
-	if err != nil && err != sdl.EndLoop {
+	if err != nil && err != control.EndLoop {
 		log.Fatalf("experiment error: %v", err)
 	}
 }

@@ -17,7 +17,6 @@ import (
 	"github.com/chrplr/goxpyriment/clock"
 	"github.com/chrplr/goxpyriment/stimuli"
 
-	"github.com/Zyko0/go-sdl3/sdl"
 )
 
 func main() {
@@ -65,10 +64,10 @@ func main() {
 	// 4. Setup Stimuli
 	fix := stimuli.NewFixCross(40, 4, control.White)
 	
-	leftVid, err := stimuli.NewVideo(exp.Screen.Renderer, leftPath)
+	leftVid, err := stimuli.NewVideo(exp.Screen, leftPath)
 	if err != nil { log.Fatalf("Left video error: %v", err) }
 	
-	rightVid, err := stimuli.NewVideo(exp.Screen.Renderer, rightPath)
+	rightVid, err := stimuli.NewVideo(exp.Screen, rightPath)
 	if err != nil { log.Fatalf("Right video error: %v", err) }
 
 	fmt.Println("Controls: [SPACE] Pause/Resume, [R] Sync Rewind, [S] Skip, [ESC] Quit")
@@ -81,54 +80,54 @@ func main() {
 	// FIX: We now actually USE the 'terminate' variable to break sequences
 	err = exp.Run(func() error {
 		if terminate {
-			return sdl.EndLoop
+			return control.EndLoop
 		}
 
 		select {
 		case <-sigChan:
 			terminate = true
-			return sdl.EndLoop
+			return control.EndLoop
 		default:
 		}
 
-		errL := leftVid.Update(exp.Screen.Renderer)
-		errR := rightVid.Update(exp.Screen.Renderer)
+		errL := leftVid.Update()
+		errR := rightVid.Update()
 
 		exp.Screen.Clear()
 
-		w, h, _ := exp.Screen.Renderer.RenderOutputSize()
+		w, h, _ := exp.Screen.Size()
 		screenW, screenH := float32(w), float32(h)
 
 		leftDest := calculateDestRect(leftVid, screenW*0.25, screenH*0.5, screenW/2, screenH)
 		rightDest := calculateDestRect(rightVid, screenW*0.75, screenH*0.5, screenW/2, screenH)
 
-		leftVid.DrawAt(exp.Screen.Renderer, &leftDest)
-		rightVid.DrawAt(exp.Screen.Renderer, &rightDest)
+		leftVid.DrawAt(exp.Screen, &leftDest)
+		rightVid.DrawAt(exp.Screen, &rightDest)
 		fix.Present(exp.Screen, false, false)
 		
 		exp.Screen.Update()
 
 		if errL == io.EOF && errR == io.EOF {
-			return sdl.EndLoop
+			return control.EndLoop
 		}
 
 		key, _, err := exp.HandleEvents()
-		if err == sdl.EndLoop {
+		if err == control.EndLoop {
 			terminate = true
-			return sdl.EndLoop
+			return control.EndLoop
 		}
 		
 		if key != 0 {
 			exp.Data.Add([]interface{}{1, filepath.Base(leftPath), filepath.Base(rightPath), key, clock.GetTime() - videoStart})
 		}
 
-		if key == sdl.K_R {
+		if key == control.K_R {
 			leftVid.Rewind()
 			rightVid.Rewind()
 			videoStart = clock.GetTime()
 		}
 
-		if key == sdl.K_SPACE {
+		if key == control.K_SPACE {
 			if leftVid.IsPaused() || rightVid.IsPaused() {
 				leftVid.Play()
 				rightVid.Play()
@@ -138,12 +137,12 @@ func main() {
 			}
 		}
 
-		if key == sdl.K_S { return sdl.EndLoop }
+		if key == control.K_S { return control.EndLoop }
 
 		return nil
 	})
 
-	if err != nil && err != sdl.EndLoop {
+	if err != nil && err != control.EndLoop {
 		log.Printf("Playback error: %v", err)
 	}
 
@@ -152,7 +151,7 @@ func main() {
 	fmt.Println("Finished playback.")
 }
 
-func calculateDestRect(v *stimuli.Video, centerX, centerY, maxW, maxH float32) sdl.FRect {
+func calculateDestRect(v *stimuli.Video, centerX, centerY, maxW, maxH float32) control.FRect {
 	scaleW := maxW / float32(v.Width)
 	scaleH := maxH / float32(v.Height)
 	scale := scaleW
@@ -161,5 +160,5 @@ func calculateDestRect(v *stimuli.Video, centerX, centerY, maxW, maxH float32) s
 	}
 	w := float32(v.Width) * scale
 	h := float32(v.Height) * scale
-	return sdl.FRect{X: centerX - w/2, Y: centerY - h/2, W: w, H: h}
+	return control.FRect{X: centerX - w/2, Y: centerY - h/2, W: w, H: h}
 }

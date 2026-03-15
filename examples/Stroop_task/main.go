@@ -15,12 +15,11 @@ import (
 	"github.com/chrplr/goxpyriment/control"
 	"github.com/chrplr/goxpyriment/stimuli"
 
-	"github.com/Zyko0/go-sdl3/sdl"
 )
 
 type stroopTrial struct {
 	word  string
-	color sdl.Color
+	color control.Color
 	name  string
 }
 
@@ -64,7 +63,7 @@ func main() {
 
 	// 2. Prepare design and stimuli
 	words := []string{"RED", "GREEN", "BLUE", "YELLOW"}
-	colors := []sdl.Color{control.Red, control.Green, control.Blue, control.Yellow}
+	colors := []control.Color{control.Red, control.Green, control.Blue, control.Yellow}
 	colorNames := []string{"RED", "GREEN", "BLUE", "YELLOW"}
 
 	var trials []stroopTrial
@@ -83,7 +82,7 @@ func main() {
 	// 3. Run the experiment logic
 	err := exp.Run(func() error {
 		// Instructions
-		instructions := stimuli.NewTextBox(instrText, 800, sdl.FPoint{X: 0, Y: 0}, control.DefaultTextColor)
+		instructions := stimuli.NewTextBox(instrText, 800, control.FPoint{X: 0, Y: 0}, control.DefaultTextColor)
 		if err := instructions.Present(exp.Screen, true, true); err != nil {
 			return err
 		}
@@ -94,7 +93,7 @@ func main() {
 			if subErr != nil {
 				return subErr
 			}
-			if key == sdl.K_SPACE {
+			if key == control.K_SPACE {
 				break
 			}
 			clock.Wait(10)
@@ -127,13 +126,13 @@ func main() {
 
 				var resp string
 				switch key {
-				case sdl.K_R:
+				case control.K_R:
 					resp = "RED"
-				case sdl.K_G:
+				case control.K_G:
 					resp = "GREEN"
-				case sdl.K_B:
+				case control.K_B:
 					resp = "BLUE"
-				case sdl.K_Y:
+				case control.K_Y:
 					resp = "YELLOW"
 				}
 
@@ -163,10 +162,10 @@ func main() {
 			clock.Wait(500)
 		}
 
-		return sdl.EndLoop // Graceful exit
+		return control.EndLoop // Graceful exit
 	})
 
-	if err != nil && err != sdl.EndLoop {
+	if err != nil && err != control.EndLoop {
 		log.Fatalf("experiment error: %v", err)
 	}
 }

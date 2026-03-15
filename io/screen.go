@@ -9,6 +9,11 @@ import (
 	"github.com/Zyko0/go-sdl3/ttf"
 )
 
+// Re-export SDL types for convenience and to avoid direct SDL dependencies in user code.
+type FRect = sdl.FRect
+type FPoint = sdl.FPoint
+type Color = sdl.Color
+
 // Screen wraps the SDL window and hardware‑accelerated renderer.
 // It is responsible for:
 //   - managing the backbuffer / presenting frames (Clear, Update, Flip),

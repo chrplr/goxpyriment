@@ -30,7 +30,6 @@ import (
 	"github.com/chrplr/goxpyriment/control"
 	"github.com/chrplr/goxpyriment/stimuli"
 
-	"github.com/Zyko0/go-sdl3/sdl"
 )
 
 const (
@@ -42,8 +41,8 @@ const (
 
 	OffsetDegX = 200.0 // horizontal offset in pixels for LVF/RVF words
 
-	OldKey = sdl.K_F // "old"/seen
-	NewKey = sdl.K_J // "new"/unseen
+	OldKey = control.K_F // "old"/seen
+	NewKey = control.K_J // "new"/unseen
 )
 
 type StudyTestPair struct {
@@ -152,7 +151,7 @@ func main() {
 		"Try to respond as quickly and accurately as you can.\n\n" +
 		"Press SPACE to start."
 
-	instructions := stimuli.NewTextBox(instrText, 900, sdl.FPoint{X: 0, Y: 0}, control.DefaultTextColor)
+	instructions := stimuli.NewTextBox(instrText, 900, control.FPoint{X: 0, Y: 0}, control.DefaultTextColor)
 	if err := instructions.Present(exp.Screen, true, true); err != nil {
 		log.Fatal(err)
 	}
@@ -161,7 +160,7 @@ func main() {
 		if err != nil && !control.IsEndLoop(err) {
 			log.Fatal(err)
 		}
-		if key == sdl.K_SPACE || control.IsEndLoop(err) {
+		if key == control.K_SPACE || control.IsEndLoop(err) {
 			break
 		}
 	}
@@ -304,14 +303,14 @@ func runTest(exp *control.Experiment, word string, isOld bool) (sdl.Keycode, int
 	}
 
 	start := clock.GetTime()
-	key, err := exp.Keyboard.WaitKeys([]sdl.Keycode{OldKey, NewKey, sdl.K_ESCAPE}, -1)
+	key, err := exp.Keyboard.WaitKeys([]sdl.Keycode{OldKey, NewKey, control.K_ESCAPE}, -1)
 	if err != nil {
 		return 0, 0, false, err
 	}
 	rt := clock.GetTime() - start
 
-	if key == sdl.K_ESCAPE {
-		return key, rt, false, sdl.EndLoop
+	if key == control.K_ESCAPE {
+		return key, rt, false, control.EndLoop
 	}
 
 	var correct bool

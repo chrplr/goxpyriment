@@ -7,9 +7,9 @@ import (
 	"log"
 
 	"github.com/chrplr/goxpyriment/control"
+	"github.com/chrplr/goxpyriment/clock"
 	"github.com/chrplr/goxpyriment/stimuli"
 
-	"github.com/Zyko0/go-sdl3/sdl"
 )
 
 func main() {
@@ -48,31 +48,31 @@ func main() {
 		// Handle events
 		key, btn, err := exp.HandleEvents()
 		if err != nil {
-			return err // Likely sdl.EndLoop for ESC or Quit
+			return err // Likely control.EndLoop for ESC or Quit
 		}
 
-		if key == sdl.K_ESCAPE {
-			return sdl.EndLoop
+		if key == control.K_ESCAPE {
+			return control.EndLoop
 		}
 
-		if btn == uint32(sdl.BUTTON_LEFT) {
+		if btn == uint32(control.BUTTON_LEFT) {
 			feedbackText.Text = "Left button pressed! Playing ping sound."
 			if err := stimuli.PlayPing(exp.AudioDevice); err != nil {
 				log.Printf("Error playing ping sound: %v", err)
 			}
-		} else if btn == uint32(sdl.BUTTON_RIGHT) {
+		} else if btn == uint32(control.BUTTON_RIGHT) {
 			feedbackText.Text = "Right button pressed! Playing buzzer sound."
 			if err := stimuli.PlayBuzzer(exp.AudioDevice); err != nil {
 				log.Printf("Error playing buzzer sound: %v", err)
 			}
 		}
 
-		sdl.Delay(10) // Small delay to prevent busy-waiting
+		clock.Wait(10) // Small delay to prevent busy-waiting
 
 		return nil
 	})
 
-	if err != nil && err != sdl.EndLoop {
+	if err != nil && err != control.EndLoop {
 		log.Fatalf("experiment error: %v", err)
 	}
 }

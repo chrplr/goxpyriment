@@ -3,12 +3,13 @@
 
 `goxpyriment` is a high-level Go framework for building behavioral and psychological experiments.
 
-It is directly inspired from [expyriment.org](http://expyriment.org) ; see Krause, F., & Lindemann, O. (2014). Expyriment: A Python library for cognitive and neuroscientific experiments. Behavior Research Methods, 46(2), 416-428. <https://doi.org/10.3758/s13428-013-0390-6>.
+![](goxpy.png)
 
-Actually, as a starting point, I gave Gemini 3 the URL of [expyriment's API documentation](https://docs.expyriment.org/expyriment.html) and asked it to try and implement it in Go using the [go-sdl3](https://github.com/Zyko0/go-sdl3) bindings. A few more days of work later (human & machine), we have this proof of concept. 
+It is inspired from [expyriment.org](http://expyriment.org) ; see Krause, F., & Lindemann, O. (2014). Expyriment: A Python library for cognitive and neuroscientific experiments. Behavior Research Methods, 46(2), 416-428. <https://doi.org/10.3758/s13428-013-0390-6>.
 
+Actually, as a starting point, I gave Gemini 3 the URL of [expyriment's API documentation](https://docs.expyriment.org/expyriment.html) and asked it to try and implement it in Go using the [go-sdl3](https://github.com/Zyko0/go-sdl3) bindings. A few more days of work later (by human & machine), we have this proof of concept. 
 
-**NOTE: This software in an alpha version, a proof of concept that without any doubt has some bugs. It need thourough tessting and robustification. Also, future versions may not be compatible at the API level! So if you want to try and use it, I recommand you to clone this repository. Check out [expe3000-go](http://github.com/chrplr/expe3000-go) for a less ambitious but efficient, no-code, experiment generator ** 
+**NOTE: This software in an alpha version, a proof of concept that without any doubt has some bugs. If you want to try and use it, I recommand you to clone this repository. Check out [expe3000-go](http://github.com/chrplr/expe3000-go) for a less ambitious but efficient, no-code, experiment generator ** 
 
 
 ## Features
@@ -49,8 +50,6 @@ import (
 
 	"github.com/chrplr/goxpyriment/control"
 	"github.com/chrplr/goxpyriment/stimuli"
-
-	"github.com/Zyko0/go-sdl3/sdl"
 )
 
 //go:embed assets/bonjour.wav
@@ -81,21 +80,17 @@ func main() {
 		log.Printf("Warning: failed to load sound: %v", err)
 	}
 
-	exp.Run(func() error {
-		_ = stimuli.PlayPing(exp.AudioDevice)
+	 stimuli.PlayPing(exp.AudioDevice)
 
-		_ = instr.Present(exp.Screen, true, true)
-		_, _ = exp.Keyboard.Wait()
+	 instr.Present(exp.Screen, true, true)
+	 exp.Keyboard.Wait()
 
-		_ = sound.Play()
-		_ = greetings.Present(exp.Screen, true, true)
-		_, _ = exp.Keyboard.Wait()
+	 sound.Play()
+	 greetings.Present(exp.Screen, true, true)
+	 exp.Keyboard.Wait()
 
-		_ = finish.Present(exp.Screen, true, true)
-		_, _ = exp.Keyboard.Wait()
-
-		return sdl.EndLoop
-	})
+	 finish.Present(exp.Screen, true, true)
+	 exp.Keyboard.Wait()
 }
 ```
 
@@ -126,18 +121,10 @@ Moreover, as cross-compiling is [trivial](https://golangcookbook.com/chapters/ru
 
 ## Building and Running Examples
 
-You can build all examples at once using the provided script:
+To run a specific example, just execute `go run` on its `main.go` source file:
 
 ```bash
-cd examples
-./build.sh
-```
-
-To run a specific example, navigate to its directory and use `go run`:
-
-```bash
-cd examples/parity_decision
-go run .
+go run examples/parity_decision/main.go
 ```
 
 Alternatively, you can build and run the binary:
@@ -148,30 +135,16 @@ go build .
 ./parity_decision
 ```
 
-### Example Highlights
-
-The repository includes several experimental paradigms in the `examples/` directory:
-
-#### Retinotopy Mapping
-A high-performance implementation of Retinotopic Mapping stimuli (wedges, rings, and bars) using 15 Hz dynamic alpha-masking.
-```bash
-# Run a specific run (1-6) for a subject
-go run examples/retinotopy/main.go -s 0 -r 1
-```
-
-#### Stroop Task
-A classic Stroop interference task defaulting to 1920x1080 resolution.
-```bash
-go run examples/stroop_task/main.go
-```
-
-#### Mental Logic Card Game
-An experiment testing mental logic and inference through card presentation and manipulation.
-```bash
-go run examples/card_game/main.go
-```
-
 *Note: Most examples support a `-d` flag for windowed development mode.*
+
+
+You can build all examples at once using the provided script:
+
+```bash
+cd examples
+./build.sh
+```
+
 
 ## License
 

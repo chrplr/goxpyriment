@@ -11,7 +11,6 @@ import (
 	"github.com/chrplr/goxpyriment/clock"
 	"github.com/chrplr/goxpyriment/control"
 	"github.com/chrplr/goxpyriment/stimuli"
-	"github.com/Zyko0/go-sdl3/sdl"
 )
 
 func main() {
@@ -23,7 +22,7 @@ func main() {
 	flag.Parse()
 
 	radius := float32(*radiusFlag)
-	rose := sdl.Color{R: uint8(*rFlag), G: uint8(*gFlag), B: uint8(*bFlag), A: 255}
+	rose := control.Color{R: uint8(*rFlag), G: uint8(*gFlag), B: uint8(*bFlag), A: 255}
 
 	// 1. Create and initialize the experiment
 	width, height, fullscreen := 0, 0, true
@@ -51,7 +50,7 @@ func main() {
 		angle := 2 * math.Pi * float64(i) / float64(n)
 		x := float32(distance * float32(math.Cos(angle)))
 		y := float32(distance * float32(math.Sin(angle)))
-		circles[i].SetPosition(sdl.FPoint{X: x, Y: y})
+		circles[i].SetPosition(control.FPoint{X: x, Y: y})
 	}
 
 	currentPos := 0
@@ -60,7 +59,7 @@ func main() {
 	err := exp.Run(func() error {
 		// Handle events (checking if ESC or QUIT is requested)
 		if _, _, err := exp.HandleEvents(); err != nil {
-			return err // returns sdl.EndLoop if ESC or QUIT
+			return err // returns control.EndLoop if ESC or QUIT
 		}
 
 		// Clear screen
@@ -97,7 +96,7 @@ func main() {
 		return nil
 	})
 
-	if err != nil && err != sdl.EndLoop {
+	if err != nil && err != control.EndLoop {
 		log.Fatalf("experiment error: %v", err)
 	}
 }

@@ -10,7 +10,6 @@ import (
 	"github.com/chrplr/goxpyriment/stimuli"
 	"log"
 
-	"github.com/Zyko0/go-sdl3/sdl"
 )
 
 func main() {
@@ -32,10 +31,10 @@ func main() {
 
 	// 2. Prepare TextInput
 	ti := stimuli.NewTextInput("Please enter your name:", 
-		sdl.FPoint{X: 100, Y: 10}, 
+		control.FPoint{X: 100, Y: 10}, 
 		400, 
-		sdl.Color{R: 50, G: 50, B: 50, A: 255}, 
-		sdl.Color{R: 200, G: 200, B: 200, A: 255}, 
+		control.Color{R: 50, G: 50, B: 50, A: 255}, 
+		control.Color{R: 200, G: 200, B: 200, A: 255}, 
 		control.White)
 
 	// 3. Run the experiment logic
@@ -50,20 +49,20 @@ func main() {
 		// Show result
 		result := fmt.Sprintf("Hello, %s!", name)
 		msg := stimuli.NewTextInput(result + "\nPress any key to exit.", 
-			sdl.FPoint{X: 0, Y: 0}, 
+			control.FPoint{X: 0, Y: 0}, 
 			400, 
-			sdl.Color{R: 50, G: 50, B: 50, A: 255}, 
-			sdl.Color{R: 50, G: 50, B: 50, A: 255}, // Hide frame
+			control.Color{R: 50, G: 50, B: 50, A: 255}, 
+			control.Color{R: 50, G: 50, B: 50, A: 255}, // Hide frame
 			control.White)
 		
 		if _, err := msg.Get(exp.Screen, exp.Keyboard); err != nil {
 			return err
 		}
 
-		return sdl.EndLoop
+		return control.EndLoop
 	})
 
-	if err != nil && err != sdl.EndLoop {
+	if err != nil && err != control.EndLoop {
 		log.Fatalf("experiment error: %v", err)
 	}
 }

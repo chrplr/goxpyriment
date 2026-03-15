@@ -8,7 +8,6 @@ import (
 	"log"
 
 	"github.com/Zyko0/go-sdl3/bin/binsdl"
-	"github.com/Zyko0/go-sdl3/sdl"
 )
 
 func main() {
@@ -66,7 +65,7 @@ func main() {
 			case sdl.EVENT_QUIT:
 				running = false
 			case sdl.EVENT_KEY_DOWN:
-				if event.KeyboardEvent().Key == sdl.K_ESCAPE {
+				if event.KeyboardEvent().Key == control.K_ESCAPE {
 					running = false
 				}
 			}
@@ -97,7 +96,7 @@ func main() {
 		renderer.RenderLine(centerX, centerY-crossSize, centerX, centerY+crossSize) // Vertical
 
 		// Draw a small square at the physical mouse position
-		mouseRect := sdl.FRect{
+		mouseRect := control.FRect{
 			X: physMouseX - 5,
 			Y: physMouseY - 5,
 			W: 10,
@@ -106,7 +105,7 @@ func main() {
 		renderer.RenderFillRect(&mouseRect)
 
 		// Also draw a border around the physical edge
-		screenRect := sdl.FRect{
+		screenRect := control.FRect{
 			X: 0,
 			Y: 0,
 			W: float32(physW),

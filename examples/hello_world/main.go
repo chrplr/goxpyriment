@@ -10,8 +10,6 @@ import (
 
 	"github.com/chrplr/goxpyriment/control"
 	"github.com/chrplr/goxpyriment/stimuli"
-
-	"github.com/Zyko0/go-sdl3/sdl"
 )
 
 //go:embed assets/bonjour.wav
@@ -34,9 +32,9 @@ func main() {
 	defer exp.End()
 
 
-	greetings := stimuli.NewTextBox("Hello World !", 600, sdl.FPoint{X: 0, Y: 100}, control.DefaultTextColor)
-	instr := stimuli.NewTextBox("Press any key to start the experiment", 600, sdl.FPoint{X: 0, Y: 100}, control.DefaultTextColor)
-	finish := stimuli.NewTextBox("Experiment Finished!\n Press any key to exit.", 600, sdl.FPoint{X: 0, Y: 100}, control.DefaultTextColor)
+	greetings := stimuli.NewTextBox("Hello World !", 600, control.FPoint{X: 0, Y: 100}, control.DefaultTextColor)
+	instr := stimuli.NewTextBox("Press any key to start the experiment", 600, control.FPoint{X: 0, Y: 100}, control.DefaultTextColor)
+	finish := stimuli.NewTextBox("Experiment Finished!\n Press any key to exit.", 600, control.FPoint{X: 0, Y: 100}, control.DefaultTextColor)
 
 	sound := stimuli.NewSoundFromMemory(bonjourWav)
 	if err := sound.PreloadDevice(exp.AudioDevice); err != nil {
@@ -58,7 +56,7 @@ func main() {
 		finish.Present(exp.Screen, true, true)
 		exp.Keyboard.Wait()
 
-		return sdl.EndLoop
+		return control.EndLoop
 	})
 
 }

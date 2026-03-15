@@ -17,7 +17,6 @@ import (
 	"github.com/chrplr/goxpyriment/clock"
 	"github.com/chrplr/goxpyriment/stimuli"
 
-	"github.com/Zyko0/go-sdl3/sdl"
 )
 
 func main() {
@@ -64,7 +63,7 @@ func main() {
 
 		fmt.Printf("Playing video %d/%d: %s\n", i+1, len(videoFiles), videoPath)
 
-		vid, err := stimuli.NewVideo(exp.Screen.Renderer, videoPath)
+		vid, err := stimuli.NewVideo(exp.Screen, videoPath)
 		if err != nil {
 			log.Printf("failed to load video %s: %v", videoPath, err)
 			continue
@@ -76,28 +75,28 @@ func main() {
 			select {
 			case <-sigChan:
 				terminate = true
-				return sdl.EndLoop
+				return control.EndLoop
 			default:
 			}
 
-			if err := vid.Update(exp.Screen.Renderer); err != nil {
-				if err == io.EOF { return sdl.EndLoop }
+			if err := vid.Update(); err != nil {
+				if err == io.EOF { return control.EndLoop }
 				return err
 			}
 
 			exp.Screen.Clear()
-			vid.Draw(exp.Screen.Renderer, 0, 0)
+			vid.Draw(exp.Screen, 0, 0)
 			exp.Screen.Update()
 
-			if !vid.IsPlaying() { return sdl.EndLoop }
+			if !vid.IsPlaying() { return control.EndLoop }
 
 			key, _, err := exp.HandleEvents()
-			if err == sdl.EndLoop {
+			if err == control.EndLoop {
 				terminate = true
-				return sdl.EndLoop
+				return control.EndLoop
 			}
 			
-			if key == sdl.K_SPACE {
+			if key == control.K_SPACE {
 				if vid.IsPaused() {
 					vid.Play()
 				} else {
@@ -105,7 +104,7 @@ func main() {
 				}
 			}
 			
-			if key == sdl.K_S { return sdl.EndLoop }
+			if key == control.K_S { return control.EndLoop }
 
 			return nil
 		})
@@ -118,8 +117,8 @@ func main() {
 			gapStartTime := clock.GetTime()
 			for clock.GetTime()-gapStartTime < 4000 {
 				key, _, err := exp.HandleEvents()
-				if err == sdl.EndLoop || key != 0 {
-					if err == sdl.EndLoop { terminate = true }
+				if err == control.EndLoop || key != 0 {
+					if err == control.EndLoop { terminate = true }
 					break
 				}
 				select {
@@ -129,7 +128,7 @@ func main() {
 				default:
 				}
 				if terminate { break }
-				sdl.Delay(10)
+				clock.Wait(10)
 			}
 		}
 	}

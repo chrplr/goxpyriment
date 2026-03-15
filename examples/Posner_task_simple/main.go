@@ -14,7 +14,6 @@ import (
 	"math/rand"
 	"time"
 
-	"github.com/Zyko0/go-sdl3/sdl"
 )
 
 //go:embed assets/star.png
@@ -77,7 +76,7 @@ func main() {
 	cueRight := stimuli.NewPictureFromMemory(rightArrowImg, 0, 0)
 
 	instrText := "Keep your eyes fixated on the central cross.\n\nA cue will appear followed by a star.\nPress the spacebar as quickly as possible when you see the *STAR*.\n\nNote that the cue indicates the most probable location of the star.\n\nPress space to start."
-	instructions := stimuli.NewTextBox(instrText, 600, sdl.FPoint{X: 0, Y: 100}, control.Black)
+	instructions := stimuli.NewTextBox(instrText, 600, control.FPoint{X: 0, Y: 100}, control.Black)
 
 	// 4. Run the experiment logic
 	err := exp.Run(func() error {
@@ -90,7 +89,7 @@ func main() {
 			if err != nil {
 				return err
 			}
-			if key == sdl.K_SPACE {
+			if key == control.K_SPACE {
 				break
 			}
 		}
@@ -151,10 +150,10 @@ func main() {
 			}
 		}
 
-		return sdl.EndLoop
+		return control.EndLoop
 	})
 
-	if err != nil && err != sdl.EndLoop {
+	if err != nil && err != control.EndLoop {
 		log.Fatalf("experiment error: %v", err)
 	}
 }
