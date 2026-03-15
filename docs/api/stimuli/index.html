@@ -1,0 +1,3111 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#375EAB">
+
+  <title>stimuli - Go Documentation Server</title>
+
+<link type="text/css" rel="stylesheet" href="/lib/godoc/style.css">
+
+<script>window.initFuncs = [];</script>
+<script src="/lib/godoc/jquery.js" defer></script>
+
+
+
+<script>var goVersion = "go1.21.1";</script>
+<script src="/lib/godoc/godocs.js" defer></script>
+</head>
+<body>
+
+<div id='lowframe' style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="/pkg/">Go Documentation Server</a></div>
+<div class="top-heading" id="heading-narrow"><a href="/pkg/">GoDoc</a></div>
+<a href="#" id="menu-button"><span id="menu-button-arrow">&#9661;</span></a>
+<form method="GET" action="/search">
+<div id="menu">
+
+<span class="search-box"><input type="search" id="search" name="q" placeholder="Search" aria-label="Search" required><button type="submit"><span><!-- magnifying glass: --><svg width="24" height="24" viewBox="0 0 24 24"><title>submit search</title><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/><path d="M0 0h24v24H0z" fill="none"/></svg></span></button></span>
+</div>
+</form>
+
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Package stimuli
+    <span class="text-muted"></span>
+  </h1>
+
+
+
+
+
+
+
+<div id="nav"></div>
+
+
+<!--
+	Copyright 2009 The Go Authors. All rights reserved.
+	Use of this source code is governed by a BSD-style
+	license that can be found in the LICENSE file.
+-->
+<!--
+	Note: Static (i.e., not template-generated) href and id
+	attributes start with "pkg-" to make it impossible for
+	them to conflict with generated attributes (some of which
+	correspond to Go identifiers).
+-->
+
+	<script>
+	document.ANALYSIS_DATA = null;
+	document.CALLGRAPH = null;
+	</script>
+
+	
+		
+		<div id="short-nav">
+			<dl>
+			<dd><code>import "goxpyriment/stimuli"</code></dd>
+			</dl>
+			<dl>
+			<dd><a href="#pkg-overview" class="overviewLink">Overview</a></dd>
+			<dd><a href="#pkg-index" class="indexLink">Index</a></dd>
+			
+			
+			</dl>
+		</div>
+		<!-- The package's Name is printed as title by the top-level template -->
+		<div id="pkg-overview" class="toggleVisible">
+			<div class="collapsed">
+				<h2 class="toggleButton" title="Click to show Overview section">Overview ▹</h2>
+			</div>
+			<div class="expanded">
+				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
+				
+				
+			</div>
+		</div>
+
+		<div id="pkg-index" class="toggleVisible">
+		<div class="collapsed">
+			<h2 class="toggleButton" title="Click to show Index section">Index ▹</h2>
+		</div>
+		<div class="expanded">
+			<h2 class="toggleButton" title="Click to hide Index section">Index ▾</h2>
+
+		<!-- Table of contents for API; must be named manual-nav to turn off auto nav. -->
+			<div id="manual-nav">
+			<dl>
+			
+			
+			
+			
+				
+				<dd><a href="#BlankScreen">type BlankScreen</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#NewBlankScreen">func NewBlankScreen(color sdl.Color) *BlankScreen</a></dd>
+				
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#BlankScreen.Draw">func (b *BlankScreen) Draw(screen *io.Screen) error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#BlankScreen.GetPosition">func (b *BlankScreen) GetPosition() sdl.FPoint</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#BlankScreen.Preload">func (b *BlankScreen) Preload() error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#BlankScreen.Present">func (b *BlankScreen) Present(screen *io.Screen, clear, update bool) error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#BlankScreen.SetPosition">func (b *BlankScreen) SetPosition(pos sdl.FPoint)</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#BlankScreen.Unload">func (b *BlankScreen) Unload() error</a></dd>
+				
+			
+				
+				<dd><a href="#Canvas">type Canvas</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#NewCanvas">func NewCanvas(width, height float32, color sdl.Color) *Canvas</a></dd>
+				
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Canvas.Blit">func (c *Canvas) Blit(stim VisualStimulus, screen *io.Screen) error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Canvas.Clear">func (c *Canvas) Clear(screen *io.Screen) error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Canvas.Draw">func (c *Canvas) Draw(screen *io.Screen) error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Canvas.GetPosition">func (c *Canvas) GetPosition() sdl.FPoint</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Canvas.Preload">func (c *Canvas) Preload() error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Canvas.Present">func (c *Canvas) Present(screen *io.Screen, clear, update bool) error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Canvas.SetPosition">func (c *Canvas) SetPosition(pos sdl.FPoint)</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Canvas.Unload">func (c *Canvas) Unload() error</a></dd>
+				
+			
+				
+				<dd><a href="#Circle">type Circle</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#NewCircle">func NewCircle(radius float32, color sdl.Color) *Circle</a></dd>
+				
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Circle.Draw">func (c *Circle) Draw(screen *io.Screen) error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Circle.GetPosition">func (c *Circle) GetPosition() sdl.FPoint</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Circle.InsideCircle">func (c *Circle) InsideCircle(areaRadius float32, areaPos sdl.FPoint) bool</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Circle.Preload">func (c *Circle) Preload() error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Circle.Present">func (c *Circle) Present(screen *io.Screen, clear, update bool) error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Circle.SetPosition">func (c *Circle) SetPosition(pos sdl.FPoint)</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Circle.Unload">func (c *Circle) Unload() error</a></dd>
+				
+			
+				
+				<dd><a href="#DotCloud">type DotCloud</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#NewDotCloud">func NewDotCloud(radius float32, bgColor, dotColor sdl.Color) *DotCloud</a></dd>
+				
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#DotCloud.Draw">func (dc *DotCloud) Draw(screen *io.Screen) error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#DotCloud.GetPosition">func (dc *DotCloud) GetPosition() sdl.FPoint</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#DotCloud.Make">func (dc *DotCloud) Make(nDots int, dotRadius float32, gap float32) bool</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#DotCloud.Preload">func (dc *DotCloud) Preload() error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#DotCloud.Present">func (dc *DotCloud) Present(screen *io.Screen, clear, update bool) error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#DotCloud.SetPosition">func (dc *DotCloud) SetPosition(pos sdl.FPoint)</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#DotCloud.Unload">func (dc *DotCloud) Unload() error</a></dd>
+				
+			
+				
+				<dd><a href="#FixCross">type FixCross</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#NewFixCross">func NewFixCross(size float32, lineWidth float32, color sdl.Color) *FixCross</a></dd>
+				
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#FixCross.Draw">func (f *FixCross) Draw(screen *io.Screen) error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#FixCross.GetPosition">func (f *FixCross) GetPosition() sdl.FPoint</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#FixCross.Preload">func (f *FixCross) Preload() error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#FixCross.Present">func (f *FixCross) Present(screen *io.Screen, clear, update bool) error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#FixCross.SetPosition">func (f *FixCross) SetPosition(pos sdl.FPoint)</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#FixCross.Unload">func (f *FixCross) Unload() error</a></dd>
+				
+			
+				
+				<dd><a href="#GaborPatch">type GaborPatch</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#NewGaborPatch">func NewGaborPatch(sigma, theta, lambda, phase, psi, gamma float64, bgColor sdl.Color, size float32) *GaborPatch</a></dd>
+				
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#GaborPatch.Draw">func (gp *GaborPatch) Draw(screen *io.Screen) error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#GaborPatch.GetPosition">func (gp *GaborPatch) GetPosition() sdl.FPoint</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#GaborPatch.Preload">func (gp *GaborPatch) Preload() error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#GaborPatch.Present">func (gp *GaborPatch) Present(screen *io.Screen, clear, update bool) error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#GaborPatch.SetPosition">func (gp *GaborPatch) SetPosition(pos sdl.FPoint)</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#GaborPatch.Unload">func (gp *GaborPatch) Unload() error</a></dd>
+				
+			
+				
+				<dd><a href="#Line">type Line</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#NewLine">func NewLine(start, end sdl.FPoint, color sdl.Color, lineWidth float32) *Line</a></dd>
+				
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Line.Draw">func (l *Line) Draw(screen *io.Screen) error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Line.GetPosition">func (l *Line) GetPosition() sdl.FPoint</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Line.Preload">func (l *Line) Preload() error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Line.Present">func (l *Line) Present(screen *io.Screen, clear, update bool) error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Line.SetPosition">func (l *Line) SetPosition(pos sdl.FPoint)</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Line.Unload">func (l *Line) Unload() error</a></dd>
+				
+			
+				
+				<dd><a href="#Picture">type Picture</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#NewPicture">func NewPicture(filePath string, x, y float32) *Picture</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#NewPictureFromMemory">func NewPictureFromMemory(data []byte, x, y float32) *Picture</a></dd>
+				
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Picture.Draw">func (p *Picture) Draw(screen *io.Screen) error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Picture.GetPosition">func (p *Picture) GetPosition() sdl.FPoint</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Picture.Preload">func (p *Picture) Preload() error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Picture.Present">func (p *Picture) Present(screen *io.Screen, clear, update bool) error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Picture.SetPosition">func (p *Picture) SetPosition(pos sdl.FPoint)</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Picture.Unload">func (p *Picture) Unload() error</a></dd>
+				
+			
+				
+				<dd><a href="#Rectangle">type Rectangle</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#NewRectangle">func NewRectangle(x, y, w, h float32, color sdl.Color) *Rectangle</a></dd>
+				
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Rectangle.Draw">func (r *Rectangle) Draw(screen *io.Screen) error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Rectangle.GetPosition">func (r *Rectangle) GetPosition() sdl.FPoint</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Rectangle.Preload">func (r *Rectangle) Preload() error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Rectangle.Present">func (r *Rectangle) Present(screen *io.Screen, clear, update bool) error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Rectangle.SetPosition">func (r *Rectangle) SetPosition(pos sdl.FPoint)</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Rectangle.Unload">func (r *Rectangle) Unload() error</a></dd>
+				
+			
+				
+				<dd><a href="#Shape">type Shape</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#NewShape">func NewShape(points []sdl.FPoint, color sdl.Color) *Shape</a></dd>
+				
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Shape.Draw">func (s *Shape) Draw(screen *io.Screen) error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Shape.GetPosition">func (s *Shape) GetPosition() sdl.FPoint</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Shape.Preload">func (s *Shape) Preload() error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Shape.Present">func (s *Shape) Present(screen *io.Screen, clear, update bool) error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Shape.SetPosition">func (s *Shape) SetPosition(pos sdl.FPoint)</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Shape.Unload">func (s *Shape) Unload() error</a></dd>
+				
+			
+				
+				<dd><a href="#Sound">type Sound</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#NewSound">func NewSound(filePath string) *Sound</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#NewSoundFromMemory">func NewSoundFromMemory(data []byte) *Sound</a></dd>
+				
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Sound.Play">func (s *Sound) Play() error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Sound.Preload">func (s *Sound) Preload() error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Sound.PreloadDevice">func (s *Sound) PreloadDevice(audioDevice sdl.AudioDeviceID) error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Sound.Present">func (s *Sound) Present(screen *io.Screen, clear, update bool) error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Sound.Unload">func (s *Sound) Unload() error</a></dd>
+				
+			
+				
+				<dd><a href="#Stimulus">type Stimulus</a></dd>
+				
+				
+			
+				
+				<dd><a href="#StimulusCircle">type StimulusCircle</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#NewStimulusCircle">func NewStimulusCircle(radius float32, stimuli []VisualStimulus) *StimulusCircle</a></dd>
+				
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#StimulusCircle.Draw">func (sc *StimulusCircle) Draw(screen *io.Screen) error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#StimulusCircle.GetPosition">func (sc *StimulusCircle) GetPosition() sdl.FPoint</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#StimulusCircle.Make">func (sc *StimulusCircle) Make(shuffle bool, jitter bool)</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#StimulusCircle.Preload">func (sc *StimulusCircle) Preload() error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#StimulusCircle.Present">func (sc *StimulusCircle) Present(screen *io.Screen, clear, update bool) error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#StimulusCircle.SetPosition">func (sc *StimulusCircle) SetPosition(pos sdl.FPoint)</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#StimulusCircle.Unload">func (sc *StimulusCircle) Unload() error</a></dd>
+				
+			
+				
+				<dd><a href="#TextBox">type TextBox</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#NewTextBox">func NewTextBox(text string, boxWidth int32, position sdl.FPoint, color sdl.Color) *TextBox</a></dd>
+				
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#TextBox.Draw">func (t *TextBox) Draw(screen *io.Screen) error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#TextBox.GetPosition">func (t *TextBox) GetPosition() sdl.FPoint</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#TextBox.Preload">func (t *TextBox) Preload() error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#TextBox.Present">func (t *TextBox) Present(screen *io.Screen, clear, update bool) error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#TextBox.SetPosition">func (t *TextBox) SetPosition(pos sdl.FPoint)</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#TextBox.Unload">func (t *TextBox) Unload() error</a></dd>
+				
+			
+				
+				<dd><a href="#TextInput">type TextInput</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#NewTextInput">func NewTextInput(message string, position sdl.FPoint, boxWidth float32, bgColor, frameColor, textColor sdl.Color) *TextInput</a></dd>
+				
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#TextInput.Draw">func (ti *TextInput) Draw(screen *io.Screen) error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#TextInput.Get">func (ti *TextInput) Get(screen *io.Screen, keyboard *io.Keyboard) (string, error)</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#TextInput.GetPosition">func (ti *TextInput) GetPosition() sdl.FPoint</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#TextInput.Preload">func (ti *TextInput) Preload() error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#TextInput.Present">func (ti *TextInput) Present(screen *io.Screen, clear, update bool) error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#TextInput.SetPosition">func (ti *TextInput) SetPosition(pos sdl.FPoint)</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#TextInput.Unload">func (ti *TextInput) Unload() error</a></dd>
+				
+			
+				
+				<dd><a href="#TextLine">type TextLine</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#NewTextLine">func NewTextLine(text string, x, y float32, color sdl.Color) *TextLine</a></dd>
+				
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#TextLine.Draw">func (t *TextLine) Draw(screen *io.Screen) error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#TextLine.GetPosition">func (t *TextLine) GetPosition() sdl.FPoint</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#TextLine.Preload">func (t *TextLine) Preload() error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#TextLine.Present">func (t *TextLine) Present(screen *io.Screen, clear, update bool) error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#TextLine.SetPosition">func (t *TextLine) SetPosition(pos sdl.FPoint)</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#TextLine.Unload">func (t *TextLine) Unload() error</a></dd>
+				
+			
+				
+				<dd><a href="#ThermometerDisplay">type ThermometerDisplay</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#NewThermometerDisplay">func NewThermometerDisplay(size sdl.FPoint, nrSegments int, state, goal float32) *ThermometerDisplay</a></dd>
+				
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#ThermometerDisplay.Draw">func (td *ThermometerDisplay) Draw(screen *io.Screen) error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#ThermometerDisplay.GetPosition">func (td *ThermometerDisplay) GetPosition() sdl.FPoint</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#ThermometerDisplay.Preload">func (td *ThermometerDisplay) Preload() error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#ThermometerDisplay.Present">func (td *ThermometerDisplay) Present(screen *io.Screen, clear, update bool) error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#ThermometerDisplay.SetPosition">func (td *ThermometerDisplay) SetPosition(pos sdl.FPoint)</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#ThermometerDisplay.Unload">func (td *ThermometerDisplay) Unload() error</a></dd>
+				
+			
+				
+				<dd><a href="#Tone">type Tone</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#NewTone">func NewTone(frequency float64, duration int, amplitude float32) *Tone</a></dd>
+				
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Tone.Play">func (t *Tone) Play() error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Tone.Preload">func (t *Tone) Preload() error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Tone.PreloadDevice">func (t *Tone) PreloadDevice(audioDevice sdl.AudioDeviceID) error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Tone.Present">func (t *Tone) Present(screen *io.Screen, clear, update bool) error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Tone.Unload">func (t *Tone) Unload() error</a></dd>
+				
+			
+				
+				<dd><a href="#Video">type Video</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#NewVideo">func NewVideo(filePath string) *Video</a></dd>
+				
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Video.Draw">func (v *Video) Draw(screen *io.Screen) error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Video.Pause">func (v *Video) Pause()</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Video.Play">func (v *Video) Play() error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Video.Preload">func (v *Video) Preload() error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Video.PreloadDevice">func (v *Video) PreloadDevice(screen *io.Screen, audioDevice sdl.AudioDeviceID) error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Video.Present">func (v *Video) Present(screen *io.Screen, clear, update bool) error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Video.Seek">func (v *Video) Seek(t time.Duration) error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Video.Stop">func (v *Video) Stop()</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Video.Unload">func (v *Video) Unload() error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Video.Update">func (v *Video) Update() error</a></dd>
+				
+			
+				
+				<dd><a href="#VisualMask">type VisualMask</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#NewVisualMask">func NewVisualMask(width, height float32, dotWidth, dotHeight float32, bgColor, dotColor sdl.Color, dotPercentage int) *VisualMask</a></dd>
+				
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#VisualMask.Draw">func (vm *VisualMask) Draw(screen *io.Screen) error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#VisualMask.GetPosition">func (vm *VisualMask) GetPosition() sdl.FPoint</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#VisualMask.Preload">func (vm *VisualMask) Preload() error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#VisualMask.Present">func (vm *VisualMask) Present(screen *io.Screen, clear, update bool) error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#VisualMask.SetPosition">func (vm *VisualMask) SetPosition(pos sdl.FPoint)</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#VisualMask.Unload">func (vm *VisualMask) Unload() error</a></dd>
+				
+			
+				
+				<dd><a href="#VisualStimulus">type VisualStimulus</a></dd>
+				
+				
+			
+			
+			</dl>
+			</div><!-- #manual-nav -->
+
+		
+
+		
+			<h3>Package files</h3>
+			<p>
+			<span style="font-size:90%">
+			
+				<a href="/src/goxpyriment/stimuli/audio.go">audio.go</a>
+			
+				<a href="/src/goxpyriment/stimuli/blankscreen.go">blankscreen.go</a>
+			
+				<a href="/src/goxpyriment/stimuli/canvas.go">canvas.go</a>
+			
+				<a href="/src/goxpyriment/stimuli/circle.go">circle.go</a>
+			
+				<a href="/src/goxpyriment/stimuli/dotcloud.go">dotcloud.go</a>
+			
+				<a href="/src/goxpyriment/stimuli/fixcross.go">fixcross.go</a>
+			
+				<a href="/src/goxpyriment/stimuli/gaborpatch.go">gaborpatch.go</a>
+			
+				<a href="/src/goxpyriment/stimuli/line.go">line.go</a>
+			
+				<a href="/src/goxpyriment/stimuli/picture.go">picture.go</a>
+			
+				<a href="/src/goxpyriment/stimuli/rectangle.go">rectangle.go</a>
+			
+				<a href="/src/goxpyriment/stimuli/shape.go">shape.go</a>
+			
+				<a href="/src/goxpyriment/stimuli/stimulus.go">stimulus.go</a>
+			
+				<a href="/src/goxpyriment/stimuli/stimuluscircle.go">stimuluscircle.go</a>
+			
+				<a href="/src/goxpyriment/stimuli/text.go">text.go</a>
+			
+				<a href="/src/goxpyriment/stimuli/textbox.go">textbox.go</a>
+			
+				<a href="/src/goxpyriment/stimuli/textinput.go">textinput.go</a>
+			
+				<a href="/src/goxpyriment/stimuli/thermometerdisplay.go">thermometerdisplay.go</a>
+			
+				<a href="/src/goxpyriment/stimuli/tone.go">tone.go</a>
+			
+				<a href="/src/goxpyriment/stimuli/video.go">video.go</a>
+			
+				<a href="/src/goxpyriment/stimuli/visualmask.go">visualmask.go</a>
+			
+			</span>
+			</p>
+		
+		</div><!-- .expanded -->
+		</div><!-- #pkg-index -->
+
+		
+
+		
+		
+		
+		
+			
+			
+			<h2 id="BlankScreen">type <a href="/src/goxpyriment/stimuli/blankscreen.go?s=252:296#L2">BlankScreen</a>
+				<a class="permalink" href="#BlankScreen">&#xb6;</a>
+				
+				
+			</h2>
+			<p>BlankScreen represents an empty visual stimulus.
+
+			<pre>type BlankScreen struct {
+<span id="BlankScreen.Color"></span>    Color <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#Color">Color</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewBlankScreen">func <a href="/src/goxpyriment/stimuli/blankscreen.go?s=352:401#L7">NewBlankScreen</a>
+					<a class="permalink" href="#NewBlankScreen">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func NewBlankScreen(color <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#Color">Color</a>) *<a href="#BlankScreen">BlankScreen</a></pre>
+				<p>NewBlankScreen creates a new BlankScreen stimulus.
+
+				
+				
+			
+
+			
+				
+				<h3 id="BlankScreen.Draw">func (*BlankScreen) <a href="/src/goxpyriment/stimuli/blankscreen.go?s=442:493#L11">Draw</a>
+					<a class="permalink" href="#BlankScreen.Draw">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (b *<a href="#BlankScreen">BlankScreen</a>) Draw(screen *<a href="/pkg/goxpyriment/io/">io</a>.<a href="/pkg/goxpyriment/io/#Screen">Screen</a>) <a href="/pkg/builtin/#error">error</a></pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="BlankScreen.GetPosition">func (*BlankScreen) <a href="/src/goxpyriment/stimuli/blankscreen.go?s=1174:1220#L35">GetPosition</a>
+					<a class="permalink" href="#BlankScreen.GetPosition">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (b *<a href="#BlankScreen">BlankScreen</a>) GetPosition() <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#FPoint">FPoint</a></pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="BlankScreen.Preload">func (*BlankScreen) <a href="/src/goxpyriment/stimuli/blankscreen.go?s=1067:1104#L32">Preload</a>
+					<a class="permalink" href="#BlankScreen.Preload">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (b *<a href="#BlankScreen">BlankScreen</a>) Preload() <a href="/pkg/builtin/#error">error</a></pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="BlankScreen.Present">func (*BlankScreen) <a href="/src/goxpyriment/stimuli/blankscreen.go?s=822:896#L21">Present</a>
+					<a class="permalink" href="#BlankScreen.Present">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (b *<a href="#BlankScreen">BlankScreen</a>) Present(screen *<a href="/pkg/goxpyriment/io/">io</a>.<a href="/pkg/goxpyriment/io/#Screen">Screen</a>, clear, update <a href="/pkg/builtin/#bool">bool</a>) <a href="/pkg/builtin/#error">error</a></pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="BlankScreen.SetPosition">func (*BlankScreen) <a href="/src/goxpyriment/stimuli/blankscreen.go?s=1255:1304#L36">SetPosition</a>
+					<a class="permalink" href="#BlankScreen.SetPosition">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (b *<a href="#BlankScreen">BlankScreen</a>) SetPosition(pos <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#FPoint">FPoint</a>)</pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="BlankScreen.Unload">func (*BlankScreen) <a href="/src/goxpyriment/stimuli/blankscreen.go?s=1120:1156#L33">Unload</a>
+					<a class="permalink" href="#BlankScreen.Unload">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (b *<a href="#BlankScreen">BlankScreen</a>) Unload() <a href="/pkg/builtin/#error">error</a></pre>
+				
+				
+				
+				
+			
+		
+			
+			
+			<h2 id="Canvas">type <a href="/src/goxpyriment/stimuli/canvas.go?s=273:380#L2">Canvas</a>
+				<a class="permalink" href="#Canvas">&#xb6;</a>
+				
+				
+			</h2>
+			<p>Canvas represents a visual container stimulus that can be drawn upon.
+
+			<pre>type Canvas struct {
+<span id="Canvas.Size"></span>    Size     <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#FPoint">FPoint</a>
+<span id="Canvas.Position"></span>    Position <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#FPoint">FPoint</a>
+<span id="Canvas.Color"></span>    Color    <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#Color">Color</a>
+<span id="Canvas.Texture"></span>    Texture  *<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#Texture">Texture</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewCanvas">func <a href="/src/goxpyriment/stimuli/canvas.go?s=417:479#L10">NewCanvas</a>
+					<a class="permalink" href="#NewCanvas">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func NewCanvas(width, height <a href="/pkg/builtin/#float32">float32</a>, color <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#Color">Color</a>) *<a href="#Canvas">Canvas</a></pre>
+				<p>NewCanvas creates a new Canvas.
+
+				
+				
+			
+
+			
+				
+				<h3 id="Canvas.Blit">func (*Canvas) <a href="/src/goxpyriment/stimuli/canvas.go?s=1590:1657#L59">Blit</a>
+					<a class="permalink" href="#Canvas.Blit">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (c *<a href="#Canvas">Canvas</a>) Blit(stim <a href="#VisualStimulus">VisualStimulus</a>, screen *<a href="/pkg/goxpyriment/io/">io</a>.<a href="/pkg/goxpyriment/io/#Screen">Screen</a>) <a href="/pkg/builtin/#error">error</a></pre>
+				<p>Blit draws a stimulus onto the canvas.
+
+				
+				
+				
+			
+				
+				<h3 id="Canvas.Clear">func (*Canvas) <a href="/src/goxpyriment/stimuli/canvas.go?s=1078:1125#L39">Clear</a>
+					<a class="permalink" href="#Canvas.Clear">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (c *<a href="#Canvas">Canvas</a>) Clear(screen *<a href="/pkg/goxpyriment/io/">io</a>.<a href="/pkg/goxpyriment/io/#Screen">Screen</a>) <a href="/pkg/builtin/#error">error</a></pre>
+				<p>Clear clears the canvas with its background color.
+
+				
+				
+				
+			
+				
+				<h3 id="Canvas.Draw">func (*Canvas) <a href="/src/goxpyriment/stimuli/canvas.go?s=2279:2325#L86">Draw</a>
+					<a class="permalink" href="#Canvas.Draw">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (c *<a href="#Canvas">Canvas</a>) Draw(screen *<a href="/pkg/goxpyriment/io/">io</a>.<a href="/pkg/goxpyriment/io/#Screen">Screen</a>) <a href="/pkg/builtin/#error">error</a></pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Canvas.GetPosition">func (*Canvas) <a href="/src/goxpyriment/stimuli/canvas.go?s=2917:2958#L119">GetPosition</a>
+					<a class="permalink" href="#Canvas.GetPosition">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (c *<a href="#Canvas">Canvas</a>) GetPosition() <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#FPoint">FPoint</a></pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Canvas.Preload">func (*Canvas) <a href="/src/goxpyriment/stimuli/canvas.go?s=974:1006#L34">Preload</a>
+					<a class="permalink" href="#Canvas.Preload">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (c *<a href="#Canvas">Canvas</a>) Preload() <a href="/pkg/builtin/#error">error</a></pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Canvas.Present">func (*Canvas) <a href="/src/goxpyriment/stimuli/canvas.go?s=2659:2728#L104">Present</a>
+					<a class="permalink" href="#Canvas.Present">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (c *<a href="#Canvas">Canvas</a>) Present(screen *<a href="/pkg/goxpyriment/io/">io</a>.<a href="/pkg/goxpyriment/io/#Screen">Screen</a>, clear, update <a href="/pkg/builtin/#bool">bool</a>) <a href="/pkg/builtin/#error">error</a></pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Canvas.SetPosition">func (*Canvas) <a href="/src/goxpyriment/stimuli/canvas.go?s=2983:3027#L123">SetPosition</a>
+					<a class="permalink" href="#Canvas.SetPosition">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (c *<a href="#Canvas">Canvas</a>) SetPosition(pos <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#FPoint">FPoint</a>)</pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Canvas.Unload">func (*Canvas) <a href="/src/goxpyriment/stimuli/canvas.go?s=3051:3082#L127">Unload</a>
+					<a class="permalink" href="#Canvas.Unload">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (c *<a href="#Canvas">Canvas</a>) Unload() <a href="/pkg/builtin/#error">error</a></pre>
+				
+				
+				
+				
+			
+		
+			
+			
+			<h2 id="Circle">type <a href="/src/goxpyriment/stimuli/circle.go?s=248:352#L3">Circle</a>
+				<a class="permalink" href="#Circle">&#xb6;</a>
+				
+				
+			</h2>
+			<p>Circle represents a circle stimulus.
+
+			<pre>type Circle struct {
+<span id="Circle.Radius"></span>    Radius   <a href="/pkg/builtin/#float32">float32</a>
+<span id="Circle.Position"></span>    Position <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#FPoint">FPoint</a>
+<span id="Circle.Color"></span>    Color    <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#Color">Color</a>
+<span id="Circle.Texture"></span>    Texture  *<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#Texture">Texture</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewCircle">func <a href="/src/goxpyriment/stimuli/circle.go?s=398:453#L11">NewCircle</a>
+					<a class="permalink" href="#NewCircle">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func NewCircle(radius <a href="/pkg/builtin/#float32">float32</a>, color <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#Color">Color</a>) *<a href="#Circle">Circle</a></pre>
+				<p>NewCircle creates a new Circle stimulus.
+
+				
+				
+			
+
+			
+				
+				<h3 id="Circle.Draw">func (*Circle) <a href="/src/goxpyriment/stimuli/circle.go?s=658:704#L21">Draw</a>
+					<a class="permalink" href="#Circle.Draw">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (c *<a href="#Circle">Circle</a>) Draw(screen *<a href="/pkg/goxpyriment/io/">io</a>.<a href="/pkg/goxpyriment/io/#Screen">Screen</a>) <a href="/pkg/builtin/#error">error</a></pre>
+				<p>Draw draws the circle using multiple lines or points.
+For better performance, we could use a texture.
+
+				
+				
+				
+			
+				
+				<h3 id="Circle.GetPosition">func (*Circle) <a href="/src/goxpyriment/stimuli/circle.go?s=1495:1536#L57">GetPosition</a>
+					<a class="permalink" href="#Circle.GetPosition">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (c *<a href="#Circle">Circle</a>) GetPosition() <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#FPoint">FPoint</a></pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Circle.InsideCircle">func (*Circle) <a href="/src/goxpyriment/stimuli/circle.go?s=1699:1773#L66">InsideCircle</a>
+					<a class="permalink" href="#Circle.InsideCircle">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (c *<a href="#Circle">Circle</a>) InsideCircle(areaRadius <a href="/pkg/builtin/#float32">float32</a>, areaPos <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#FPoint">FPoint</a>) <a href="/pkg/builtin/#bool">bool</a></pre>
+				<p>InsideCircle checks if the circle is inside another circle (area).
+
+				
+				
+				
+			
+				
+				<h3 id="Circle.Preload">func (*Circle) <a href="/src/goxpyriment/stimuli/circle.go?s=1398:1430#L54">Preload</a>
+					<a class="permalink" href="#Circle.Preload">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (c *<a href="#Circle">Circle</a>) Preload() <a href="/pkg/builtin/#error">error</a></pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Circle.Present">func (*Circle) <a href="/src/goxpyriment/stimuli/circle.go?s=1140:1209#L39">Present</a>
+					<a class="permalink" href="#Circle.Present">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (c *<a href="#Circle">Circle</a>) Present(screen *<a href="/pkg/goxpyriment/io/">io</a>.<a href="/pkg/goxpyriment/io/#Screen">Screen</a>, clear, update <a href="/pkg/builtin/#bool">bool</a>) <a href="/pkg/builtin/#error">error</a></pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Circle.SetPosition">func (*Circle) <a href="/src/goxpyriment/stimuli/circle.go?s=1561:1605#L61">SetPosition</a>
+					<a class="permalink" href="#Circle.SetPosition">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (c *<a href="#Circle">Circle</a>) SetPosition(pos <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#FPoint">FPoint</a>)</pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Circle.Unload">func (*Circle) <a href="/src/goxpyriment/stimuli/circle.go?s=1446:1477#L55">Unload</a>
+					<a class="permalink" href="#Circle.Unload">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (c *<a href="#Circle">Circle</a>) Unload() <a href="/pkg/builtin/#error">error</a></pre>
+				
+				
+				
+				
+			
+		
+			
+			
+			<h2 id="DotCloud">type <a href="/src/goxpyriment/stimuli/dotcloud.go?s=270:428#L4">DotCloud</a>
+				<a class="permalink" href="#DotCloud">&#xb6;</a>
+				
+				
+			</h2>
+			<p>DotCloud represents a circular cloud of dots.
+
+			<pre>type DotCloud struct {
+<span id="DotCloud.Radius"></span>    Radius          <a href="/pkg/builtin/#float32">float32</a>
+<span id="DotCloud.Position"></span>    Position        <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#FPoint">FPoint</a>
+<span id="DotCloud.BackgroundColor"></span>    BackgroundColor <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#Color">Color</a>
+<span id="DotCloud.DotColor"></span>    DotColor        <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#Color">Color</a>
+<span id="DotCloud.Dots"></span>    Dots            []*<a href="#Circle">Circle</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewDotCloud">func <a href="/src/goxpyriment/stimuli/dotcloud.go?s=469:540#L13">NewDotCloud</a>
+					<a class="permalink" href="#NewDotCloud">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func NewDotCloud(radius <a href="/pkg/builtin/#float32">float32</a>, bgColor, dotColor <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#Color">Color</a>) *<a href="#DotCloud">DotCloud</a></pre>
+				<p>NewDotCloud creates a new DotCloud.
+
+				
+				
+			
+
+			
+				
+				<h3 id="DotCloud.Draw">func (*DotCloud) <a href="/src/goxpyriment/stimuli/dotcloud.go?s=1941:1990#L67">Draw</a>
+					<a class="permalink" href="#DotCloud.Draw">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (dc *<a href="#DotCloud">DotCloud</a>) Draw(screen *<a href="/pkg/goxpyriment/io/">io</a>.<a href="/pkg/goxpyriment/io/#Screen">Screen</a>) <a href="/pkg/builtin/#error">error</a></pre>
+				<p>Draw draws all the dots and the background if specified.
+
+				
+				
+				
+			
+				
+				<h3 id="DotCloud.GetPosition">func (*DotCloud) <a href="/src/goxpyriment/stimuli/dotcloud.go?s=2655:2699#L101">GetPosition</a>
+					<a class="permalink" href="#DotCloud.GetPosition">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (dc *<a href="#DotCloud">DotCloud</a>) GetPosition() <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#FPoint">FPoint</a></pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="DotCloud.Make">func (*DotCloud) <a href="/src/goxpyriment/stimuli/dotcloud.go?s=788:860#L24">Make</a>
+					<a class="permalink" href="#DotCloud.Make">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (dc *<a href="#DotCloud">DotCloud</a>) Make(nDots <a href="/pkg/builtin/#int">int</a>, dotRadius <a href="/pkg/builtin/#float32">float32</a>, gap <a href="/pkg/builtin/#float32">float32</a>) <a href="/pkg/builtin/#bool">bool</a></pre>
+				<p>Make generates the dots randomly within the cloud.
+
+				
+				
+				
+			
+				
+				<h3 id="DotCloud.Preload">func (*DotCloud) <a href="/src/goxpyriment/stimuli/dotcloud.go?s=2970:3005#L115">Preload</a>
+					<a class="permalink" href="#DotCloud.Preload">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (dc *<a href="#DotCloud">DotCloud</a>) Preload() <a href="/pkg/builtin/#error">error</a></pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="DotCloud.Present">func (*DotCloud) <a href="/src/goxpyriment/stimuli/dotcloud.go?s=2393:2465#L86">Present</a>
+					<a class="permalink" href="#DotCloud.Present">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (dc *<a href="#DotCloud">DotCloud</a>) Present(screen *<a href="/pkg/goxpyriment/io/">io</a>.<a href="/pkg/goxpyriment/io/#Screen">Screen</a>, clear, update <a href="/pkg/builtin/#bool">bool</a>) <a href="/pkg/builtin/#error">error</a></pre>
+				<p>Present clears and draws the cloud.
+
+				
+				
+				
+			
+				
+				<h3 id="DotCloud.SetPosition">func (*DotCloud) <a href="/src/goxpyriment/stimuli/dotcloud.go?s=2725:2772#L105">SetPosition</a>
+					<a class="permalink" href="#DotCloud.SetPosition">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (dc *<a href="#DotCloud">DotCloud</a>) SetPosition(pos <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#FPoint">FPoint</a>)</pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="DotCloud.Unload">func (*DotCloud) <a href="/src/goxpyriment/stimuli/dotcloud.go?s=3021:3055#L116">Unload</a>
+					<a class="permalink" href="#DotCloud.Unload">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (dc *<a href="#DotCloud">DotCloud</a>) Unload() <a href="/pkg/builtin/#error">error</a></pre>
+				
+				
+				
+				
+			
+		
+			
+			
+			<h2 id="FixCross">type <a href="/src/goxpyriment/stimuli/fixcross.go?s=241:346#L2">FixCross</a>
+				<a class="permalink" href="#FixCross">&#xb6;</a>
+				
+				
+			</h2>
+			<p>FixCross represents a fixation cross.
+
+			<pre>type FixCross struct {
+<span id="FixCross.Size"></span>    Size      <a href="/pkg/builtin/#float32">float32</a>
+<span id="FixCross.LineWidth"></span>    LineWidth <a href="/pkg/builtin/#float32">float32</a>
+<span id="FixCross.Color"></span>    Color     <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#Color">Color</a>
+<span id="FixCross.Position"></span>    Position  <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#FPoint">FPoint</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewFixCross">func <a href="/src/goxpyriment/stimuli/fixcross.go?s=348:424#L9">NewFixCross</a>
+					<a class="permalink" href="#NewFixCross">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func NewFixCross(size <a href="/pkg/builtin/#float32">float32</a>, lineWidth <a href="/pkg/builtin/#float32">float32</a>, color <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#Color">Color</a>) *<a href="#FixCross">FixCross</a></pre>
+				
+				
+				
+			
+
+			
+				
+				<h3 id="FixCross.Draw">func (*FixCross) <a href="/src/goxpyriment/stimuli/fixcross.go?s=552:600#L18">Draw</a>
+					<a class="permalink" href="#FixCross.Draw">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (f *<a href="#FixCross">FixCross</a>) Draw(screen *<a href="/pkg/goxpyriment/io/">io</a>.<a href="/pkg/goxpyriment/io/#Screen">Screen</a>) <a href="/pkg/builtin/#error">error</a></pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="FixCross.GetPosition">func (*FixCross) <a href="/src/goxpyriment/stimuli/fixcross.go?s=1534:1577#L65">GetPosition</a>
+					<a class="permalink" href="#FixCross.GetPosition">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (f *<a href="#FixCross">FixCross</a>) GetPosition() <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#FPoint">FPoint</a></pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="FixCross.Preload">func (*FixCross) <a href="/src/goxpyriment/stimuli/fixcross.go?s=1433:1467#L62">Preload</a>
+					<a class="permalink" href="#FixCross.Preload">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (f *<a href="#FixCross">FixCross</a>) Preload() <a href="/pkg/builtin/#error">error</a></pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="FixCross.Present">func (*FixCross) <a href="/src/goxpyriment/stimuli/fixcross.go?s=1173:1244#L47">Present</a>
+					<a class="permalink" href="#FixCross.Present">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (f *<a href="#FixCross">FixCross</a>) Present(screen *<a href="/pkg/goxpyriment/io/">io</a>.<a href="/pkg/goxpyriment/io/#Screen">Screen</a>, clear, update <a href="/pkg/builtin/#bool">bool</a>) <a href="/pkg/builtin/#error">error</a></pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="FixCross.SetPosition">func (*FixCross) <a href="/src/goxpyriment/stimuli/fixcross.go?s=1602:1648#L69">SetPosition</a>
+					<a class="permalink" href="#FixCross.SetPosition">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (f *<a href="#FixCross">FixCross</a>) SetPosition(pos <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#FPoint">FPoint</a>)</pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="FixCross.Unload">func (*FixCross) <a href="/src/goxpyriment/stimuli/fixcross.go?s=1483:1516#L63">Unload</a>
+					<a class="permalink" href="#FixCross.Unload">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (f *<a href="#FixCross">FixCross</a>) Unload() <a href="/pkg/builtin/#error">error</a></pre>
+				
+				
+				
+				
+			
+		
+			
+			
+			<h2 id="GaborPatch">type <a href="/src/goxpyriment/stimuli/gaborpatch.go?s=281:614#L5">GaborPatch</a>
+				<a class="permalink" href="#GaborPatch">&#xb6;</a>
+				
+				
+			</h2>
+			<p>GaborPatch represents a Gabor patch stimulus.
+
+			<pre>type GaborPatch struct {
+<span id="GaborPatch.Sigma"></span>    Sigma           <a href="/pkg/builtin/#float64">float64</a>
+<span id="GaborPatch.Theta"></span>    Theta           <a href="/pkg/builtin/#float64">float64</a> <span class="comment">// orientation in degrees</span>
+<span id="GaborPatch.Lambda"></span>    Lambda          <a href="/pkg/builtin/#float64">float64</a> <span class="comment">// spatial frequency</span>
+<span id="GaborPatch.Phase"></span>    Phase           <a href="/pkg/builtin/#float64">float64</a>
+<span id="GaborPatch.Psi"></span>    Psi             <a href="/pkg/builtin/#float64">float64</a>
+<span id="GaborPatch.Gamma"></span>    Gamma           <a href="/pkg/builtin/#float64">float64</a>
+<span id="GaborPatch.BackgroundColor"></span>    BackgroundColor <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#Color">Color</a>
+<span id="GaborPatch.Position"></span>    Position        <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#FPoint">FPoint</a>
+<span id="GaborPatch.Size"></span>    Size            <a href="/pkg/builtin/#float32">float32</a>
+<span id="GaborPatch.Texture"></span>    Texture         *<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#Texture">Texture</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewGaborPatch">func <a href="/src/goxpyriment/stimuli/gaborpatch.go?s=659:771#L19">NewGaborPatch</a>
+					<a class="permalink" href="#NewGaborPatch">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func NewGaborPatch(sigma, theta, lambda, phase, psi, gamma <a href="/pkg/builtin/#float64">float64</a>, bgColor <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#Color">Color</a>, size <a href="/pkg/builtin/#float32">float32</a>) *<a href="#GaborPatch">GaborPatch</a></pre>
+				<p>NewGaborPatch creates a new GaborPatch.
+
+				
+				
+			
+
+			
+				
+				<h3 id="GaborPatch.Draw">func (*GaborPatch) <a href="/src/goxpyriment/stimuli/gaborpatch.go?s=2576:2627#L90">Draw</a>
+					<a class="permalink" href="#GaborPatch.Draw">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (gp *<a href="#GaborPatch">GaborPatch</a>) Draw(screen *<a href="/pkg/goxpyriment/io/">io</a>.<a href="/pkg/goxpyriment/io/#Screen">Screen</a>) <a href="/pkg/builtin/#error">error</a></pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="GaborPatch.GetPosition">func (*GaborPatch) <a href="/src/goxpyriment/stimuli/gaborpatch.go?s=3226:3272#L123">GetPosition</a>
+					<a class="permalink" href="#GaborPatch.GetPosition">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (gp *<a href="#GaborPatch">GaborPatch</a>) GetPosition() <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#FPoint">FPoint</a></pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="GaborPatch.Preload">func (*GaborPatch) <a href="/src/goxpyriment/stimuli/gaborpatch.go?s=2521:2558#L86">Preload</a>
+					<a class="permalink" href="#GaborPatch.Preload">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (gp *<a href="#GaborPatch">GaborPatch</a>) Preload() <a href="/pkg/builtin/#error">error</a></pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="GaborPatch.Present">func (*GaborPatch) <a href="/src/goxpyriment/stimuli/gaborpatch.go?s=2962:3036#L108">Present</a>
+					<a class="permalink" href="#GaborPatch.Present">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (gp *<a href="#GaborPatch">GaborPatch</a>) Present(screen *<a href="/pkg/goxpyriment/io/">io</a>.<a href="/pkg/goxpyriment/io/#Screen">Screen</a>, clear, update <a href="/pkg/builtin/#bool">bool</a>) <a href="/pkg/builtin/#error">error</a></pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="GaborPatch.SetPosition">func (*GaborPatch) <a href="/src/goxpyriment/stimuli/gaborpatch.go?s=3298:3347#L127">SetPosition</a>
+					<a class="permalink" href="#GaborPatch.SetPosition">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (gp *<a href="#GaborPatch">GaborPatch</a>) SetPosition(pos <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#FPoint">FPoint</a>)</pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="GaborPatch.Unload">func (*GaborPatch) <a href="/src/goxpyriment/stimuli/gaborpatch.go?s=3372:3408#L131">Unload</a>
+					<a class="permalink" href="#GaborPatch.Unload">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (gp *<a href="#GaborPatch">GaborPatch</a>) Unload() <a href="/pkg/builtin/#error">error</a></pre>
+				
+				
+				
+				
+			
+		
+			
+			
+			<h2 id="Line">type <a href="/src/goxpyriment/stimuli/line.go?s=236:340#L2">Line</a>
+				<a class="permalink" href="#Line">&#xb6;</a>
+				
+				
+			</h2>
+			<p>Line represents a line stimulus.
+
+			<pre>type Line struct {
+<span id="Line.Start"></span>    Start     <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#FPoint">FPoint</a>
+<span id="Line.End"></span>    End       <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#FPoint">FPoint</a>
+<span id="Line.Color"></span>    Color     <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#Color">Color</a>
+<span id="Line.LineWidth"></span>    LineWidth <a href="/pkg/builtin/#float32">float32</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewLine">func <a href="/src/goxpyriment/stimuli/line.go?s=401:478#L10">NewLine</a>
+					<a class="permalink" href="#NewLine">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func NewLine(start, end <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#FPoint">FPoint</a>, color <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#Color">Color</a>, lineWidth <a href="/pkg/builtin/#float32">float32</a>) *<a href="#Line">Line</a></pre>
+				<p>NewLine creates a new Line stimulus relative to center.
+
+				
+				
+			
+
+			
+				
+				<h3 id="Line.Draw">func (*Line) <a href="/src/goxpyriment/stimuli/line.go?s=584:628#L19">Draw</a>
+					<a class="permalink" href="#Line.Draw">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (l *<a href="#Line">Line</a>) Draw(screen *<a href="/pkg/goxpyriment/io/">io</a>.<a href="/pkg/goxpyriment/io/#Screen">Screen</a>) <a href="/pkg/builtin/#error">error</a></pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Line.GetPosition">func (*Line) <a href="/src/goxpyriment/stimuli/line.go?s=1263:1302#L47">GetPosition</a>
+					<a class="permalink" href="#Line.GetPosition">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (l *<a href="#Line">Line</a>) GetPosition() <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#FPoint">FPoint</a></pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Line.Preload">func (*Line) <a href="/src/goxpyriment/stimuli/line.go?s=1625:1655#L62">Preload</a>
+					<a class="permalink" href="#Line.Preload">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (l *<a href="#Line">Line</a>) Preload() <a href="/pkg/builtin/#error">error</a></pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Line.Present">func (*Line) <a href="/src/goxpyriment/stimuli/line.go?s=1007:1074#L32">Present</a>
+					<a class="permalink" href="#Line.Present">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (l *<a href="#Line">Line</a>) Present(screen *<a href="/pkg/goxpyriment/io/">io</a>.<a href="/pkg/goxpyriment/io/#Screen">Screen</a>, clear, update <a href="/pkg/builtin/#bool">bool</a>) <a href="/pkg/builtin/#error">error</a></pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Line.SetPosition">func (*Line) <a href="/src/goxpyriment/stimuli/line.go?s=1435:1477#L52">SetPosition</a>
+					<a class="permalink" href="#Line.SetPosition">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (l *<a href="#Line">Line</a>) SetPosition(pos <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#FPoint">FPoint</a>)</pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Line.Unload">func (*Line) <a href="/src/goxpyriment/stimuli/line.go?s=1671:1700#L63">Unload</a>
+					<a class="permalink" href="#Line.Unload">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (l *<a href="#Line">Line</a>) Unload() <a href="/pkg/builtin/#error">error</a></pre>
+				
+				
+				
+				
+			
+		
+			
+			
+			<h2 id="Picture">type <a href="/src/goxpyriment/stimuli/picture.go?s=273:410#L3">Picture</a>
+				<a class="permalink" href="#Picture">&#xb6;</a>
+				
+				
+			</h2>
+			<p>Picture represents an image stimulus.
+
+			<pre>type Picture struct {
+<span id="Picture.FilePath"></span>    FilePath <a href="/pkg/builtin/#string">string</a>
+<span id="Picture.Memory"></span>    Memory   []<a href="/pkg/builtin/#byte">byte</a>
+<span id="Picture.Position"></span>    Position <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#FPoint">FPoint</a>
+<span id="Picture.Texture"></span>    Texture  *<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#Texture">Texture</a>
+<span id="Picture.Width"></span>    Width    <a href="/pkg/builtin/#float32">float32</a>
+<span id="Picture.Height"></span>    Height   <a href="/pkg/builtin/#float32">float32</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewPicture">func <a href="/src/goxpyriment/stimuli/picture.go?s=412:467#L12">NewPicture</a>
+					<a class="permalink" href="#NewPicture">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func NewPicture(filePath <a href="/pkg/builtin/#string">string</a>, x, y <a href="/pkg/builtin/#float32">float32</a>) *<a href="#Picture">Picture</a></pre>
+				
+				
+				
+			
+				
+				<h3 id="NewPictureFromMemory">func <a href="/src/goxpyriment/stimuli/picture.go?s=627:688#L20">NewPictureFromMemory</a>
+					<a class="permalink" href="#NewPictureFromMemory">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func NewPictureFromMemory(data []<a href="/pkg/builtin/#byte">byte</a>, x, y <a href="/pkg/builtin/#float32">float32</a>) *<a href="#Picture">Picture</a></pre>
+				<p>NewPictureFromMemory creates a new Picture stimulus from embedded data.
+
+				
+				
+			
+
+			
+				
+				<h3 id="Picture.Draw">func (*Picture) <a href="/src/goxpyriment/stimuli/picture.go?s=1513:1560#L68">Draw</a>
+					<a class="permalink" href="#Picture.Draw">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (p *<a href="#Picture">Picture</a>) Draw(screen *<a href="/pkg/goxpyriment/io/">io</a>.<a href="/pkg/goxpyriment/io/#Screen">Screen</a>) <a href="/pkg/builtin/#error">error</a></pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Picture.GetPosition">func (*Picture) <a href="/src/goxpyriment/stimuli/picture.go?s=2314:2356#L110">GetPosition</a>
+					<a class="permalink" href="#Picture.GetPosition">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (p *<a href="#Picture">Picture</a>) GetPosition() <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#FPoint">FPoint</a></pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Picture.Preload">func (*Picture) <a href="/src/goxpyriment/stimuli/picture.go?s=1462:1495#L64">Preload</a>
+					<a class="permalink" href="#Picture.Preload">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (p *<a href="#Picture">Picture</a>) Preload() <a href="/pkg/builtin/#error">error</a></pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Picture.Present">func (*Picture) <a href="/src/goxpyriment/stimuli/picture.go?s=1939:2009#L87">Present</a>
+					<a class="permalink" href="#Picture.Present">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (p *<a href="#Picture">Picture</a>) Present(screen *<a href="/pkg/goxpyriment/io/">io</a>.<a href="/pkg/goxpyriment/io/#Screen">Screen</a>, clear, update <a href="/pkg/builtin/#bool">bool</a>) <a href="/pkg/builtin/#error">error</a></pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Picture.SetPosition">func (*Picture) <a href="/src/goxpyriment/stimuli/picture.go?s=2381:2426#L114">SetPosition</a>
+					<a class="permalink" href="#Picture.SetPosition">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (p *<a href="#Picture">Picture</a>) SetPosition(pos <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#FPoint">FPoint</a>)</pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Picture.Unload">func (*Picture) <a href="/src/goxpyriment/stimuli/picture.go?s=2198:2230#L102">Unload</a>
+					<a class="permalink" href="#Picture.Unload">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (p *<a href="#Picture">Picture</a>) Unload() <a href="/pkg/builtin/#error">error</a></pre>
+				
+				
+				
+				
+			
+		
+			
+			
+			<h2 id="Rectangle">type <a href="/src/goxpyriment/stimuli/rectangle.go?s=246:332#L2">Rectangle</a>
+				<a class="permalink" href="#Rectangle">&#xb6;</a>
+				
+				
+			</h2>
+			<p>Rectangle represents a rectangle stimulus.
+
+			<pre>type Rectangle struct {
+<span id="Rectangle.Position"></span>    Position <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#FPoint">FPoint</a>
+<span id="Rectangle.Rect"></span>    Rect     <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#FRect">FRect</a>
+<span id="Rectangle.Color"></span>    Color    <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#Color">Color</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewRectangle">func <a href="/src/goxpyriment/stimuli/rectangle.go?s=334:399#L8">NewRectangle</a>
+					<a class="permalink" href="#NewRectangle">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func NewRectangle(x, y, w, h <a href="/pkg/builtin/#float32">float32</a>, color <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#Color">Color</a>) *<a href="#Rectangle">Rectangle</a></pre>
+				
+				
+				
+			
+
+			
+				
+				<h3 id="Rectangle.Draw">func (*Rectangle) <a href="/src/goxpyriment/stimuli/rectangle.go?s=518:567#L16">Draw</a>
+					<a class="permalink" href="#Rectangle.Draw">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (r *<a href="#Rectangle">Rectangle</a>) Draw(screen *<a href="/pkg/goxpyriment/io/">io</a>.<a href="/pkg/goxpyriment/io/#Screen">Screen</a>) <a href="/pkg/builtin/#error">error</a></pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Rectangle.GetPosition">func (*Rectangle) <a href="/src/goxpyriment/stimuli/rectangle.go?s=1327:1371#L51">GetPosition</a>
+					<a class="permalink" href="#Rectangle.GetPosition">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (r *<a href="#Rectangle">Rectangle</a>) GetPosition() <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#FPoint">FPoint</a></pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Rectangle.Preload">func (*Rectangle) <a href="/src/goxpyriment/stimuli/rectangle.go?s=1224:1259#L48">Preload</a>
+					<a class="permalink" href="#Rectangle.Preload">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (r *<a href="#Rectangle">Rectangle</a>) Preload() <a href="/pkg/builtin/#error">error</a></pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Rectangle.Present">func (*Rectangle) <a href="/src/goxpyriment/stimuli/rectangle.go?s=963:1035#L33">Present</a>
+					<a class="permalink" href="#Rectangle.Present">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (r *<a href="#Rectangle">Rectangle</a>) Present(screen *<a href="/pkg/goxpyriment/io/">io</a>.<a href="/pkg/goxpyriment/io/#Screen">Screen</a>, clear, update <a href="/pkg/builtin/#bool">bool</a>) <a href="/pkg/builtin/#error">error</a></pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Rectangle.SetPosition">func (*Rectangle) <a href="/src/goxpyriment/stimuli/rectangle.go?s=1396:1443#L55">SetPosition</a>
+					<a class="permalink" href="#Rectangle.SetPosition">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (r *<a href="#Rectangle">Rectangle</a>) SetPosition(pos <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#FPoint">FPoint</a>)</pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Rectangle.Unload">func (*Rectangle) <a href="/src/goxpyriment/stimuli/rectangle.go?s=1275:1309#L49">Unload</a>
+					<a class="permalink" href="#Rectangle.Unload">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (r *<a href="#Rectangle">Rectangle</a>) Unload() <a href="/pkg/builtin/#error">error</a></pre>
+				
+				
+				
+				
+			
+		
+			
+			
+			<h2 id="Shape">type <a href="/src/goxpyriment/stimuli/shape.go?s=240:325#L2">Shape</a>
+				<a class="permalink" href="#Shape">&#xb6;</a>
+				
+				
+			</h2>
+			<p>Shape represents a polygon stimulus.
+
+			<pre>type Shape struct {
+<span id="Shape.Points"></span>    Points   []<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#FPoint">FPoint</a>
+<span id="Shape.Position"></span>    Position <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#FPoint">FPoint</a>
+<span id="Shape.Color"></span>    Color    <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#Color">Color</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewShape">func <a href="/src/goxpyriment/stimuli/shape.go?s=411:469#L9">NewShape</a>
+					<a class="permalink" href="#NewShape">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func NewShape(points []<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#FPoint">FPoint</a>, color <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#Color">Color</a>) *<a href="#Shape">Shape</a></pre>
+				<p>NewShape creates a new polygon shape. Points are relative to the shape&apos;s center.
+
+				
+				
+			
+
+			
+				
+				<h3 id="Shape.Draw">func (*Shape) <a href="/src/goxpyriment/stimuli/shape.go?s=569:614#L17">Draw</a>
+					<a class="permalink" href="#Shape.Draw">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (s *<a href="#Shape">Shape</a>) Draw(screen *<a href="/pkg/goxpyriment/io/">io</a>.<a href="/pkg/goxpyriment/io/#Screen">Screen</a>) <a href="/pkg/builtin/#error">error</a></pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Shape.GetPosition">func (*Shape) <a href="/src/goxpyriment/stimuli/shape.go?s=1859:1899#L64">GetPosition</a>
+					<a class="permalink" href="#Shape.GetPosition">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (s *<a href="#Shape">Shape</a>) GetPosition() <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#FPoint">FPoint</a></pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Shape.Preload">func (*Shape) <a href="/src/goxpyriment/stimuli/shape.go?s=1764:1795#L61">Preload</a>
+					<a class="permalink" href="#Shape.Preload">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (s *<a href="#Shape">Shape</a>) Preload() <a href="/pkg/builtin/#error">error</a></pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Shape.Present">func (*Shape) <a href="/src/goxpyriment/stimuli/shape.go?s=1507:1575#L46">Present</a>
+					<a class="permalink" href="#Shape.Present">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (s *<a href="#Shape">Shape</a>) Present(screen *<a href="/pkg/goxpyriment/io/">io</a>.<a href="/pkg/goxpyriment/io/#Screen">Screen</a>, clear, update <a href="/pkg/builtin/#bool">bool</a>) <a href="/pkg/builtin/#error">error</a></pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Shape.SetPosition">func (*Shape) <a href="/src/goxpyriment/stimuli/shape.go?s=1922:1965#L65">SetPosition</a>
+					<a class="permalink" href="#Shape.SetPosition">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (s *<a href="#Shape">Shape</a>) SetPosition(pos <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#FPoint">FPoint</a>)</pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Shape.Unload">func (*Shape) <a href="/src/goxpyriment/stimuli/shape.go?s=1811:1841#L62">Unload</a>
+					<a class="permalink" href="#Shape.Unload">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (s *<a href="#Shape">Shape</a>) Unload() <a href="/pkg/builtin/#error">error</a></pre>
+				
+				
+				
+				
+			
+		
+			
+			
+			<h2 id="Sound">type <a href="/src/goxpyriment/stimuli/audio.go?s=245:368#L2">Sound</a>
+				<a class="permalink" href="#Sound">&#xb6;</a>
+				
+				
+			</h2>
+			<p>Sound represents an audio stimulus (WAV).
+
+			<pre>type Sound struct {
+<span id="Sound.FilePath"></span>    FilePath <a href="/pkg/builtin/#string">string</a>
+<span id="Sound.Memory"></span>    Memory   []<a href="/pkg/builtin/#byte">byte</a>
+<span id="Sound.Data"></span>    Data     []<a href="/pkg/builtin/#byte">byte</a>
+<span id="Sound.Spec"></span>    Spec     <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#AudioSpec">AudioSpec</a>
+<span id="Sound.Stream"></span>    Stream   *<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#AudioStream">AudioStream</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewSound">func <a href="/src/goxpyriment/stimuli/audio.go?s=428:465#L11">NewSound</a>
+					<a class="permalink" href="#NewSound">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func NewSound(filePath <a href="/pkg/builtin/#string">string</a>) *<a href="#Sound">Sound</a></pre>
+				<p>NewSound creates a new Sound stimulus from a WAV file.
+
+				
+				
+			
+				
+				<h3 id="NewSoundFromMemory">func <a href="/src/goxpyriment/stimuli/audio.go?s=583:626#L18">NewSoundFromMemory</a>
+					<a class="permalink" href="#NewSoundFromMemory">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func NewSoundFromMemory(data []<a href="/pkg/builtin/#byte">byte</a>) *<a href="#Sound">Sound</a></pre>
+				<p>NewSoundFromMemory creates a new Sound stimulus from embedded data.
+
+				
+				
+			
+
+			
+				
+				<h3 id="Sound.Play">func (*Sound) <a href="/src/goxpyriment/stimuli/audio.go?s=1482:1510#L60">Play</a>
+					<a class="permalink" href="#Sound.Play">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (s *<a href="#Sound">Sound</a>) Play() <a href="/pkg/builtin/#error">error</a></pre>
+				<p>Play plays the sound.
+
+				
+				
+				
+			
+				
+				<h3 id="Sound.Preload">func (*Sound) <a href="/src/goxpyriment/stimuli/audio.go?s=1835:1866#L74">Preload</a>
+					<a class="permalink" href="#Sound.Preload">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (s *<a href="#Sound">Sound</a>) Preload() <a href="/pkg/builtin/#error">error</a></pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Sound.PreloadDevice">func (*Sound) <a href="/src/goxpyriment/stimuli/audio.go?s=734:800#L25">PreloadDevice</a>
+					<a class="permalink" href="#Sound.PreloadDevice">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (s *<a href="#Sound">Sound</a>) PreloadDevice(audioDevice <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#AudioDeviceID">AudioDeviceID</a>) <a href="/pkg/builtin/#error">error</a></pre>
+				<p>PreloadDevice loads the WAV file and prepares the audio stream.
+
+				
+				
+				
+			
+				
+				<h3 id="Sound.Present">func (*Sound) <a href="/src/goxpyriment/stimuli/audio.go?s=1744:1812#L70">Present</a>
+					<a class="permalink" href="#Sound.Present">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (s *<a href="#Sound">Sound</a>) Present(screen *<a href="/pkg/goxpyriment/io/">io</a>.<a href="/pkg/goxpyriment/io/#Screen">Screen</a>, clear, update <a href="/pkg/builtin/#bool">bool</a>) <a href="/pkg/builtin/#error">error</a></pre>
+				<p>Present plays the sound (implements Stimulus interface).
+
+				
+				
+				
+			
+				
+				<h3 id="Sound.Unload">func (*Sound) <a href="/src/goxpyriment/stimuli/audio.go?s=1883:1913#L76">Unload</a>
+					<a class="permalink" href="#Sound.Unload">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (s *<a href="#Sound">Sound</a>) Unload() <a href="/pkg/builtin/#error">error</a></pre>
+				
+				
+				
+				
+			
+		
+			
+			
+			<h2 id="Stimulus">type <a href="/src/goxpyriment/stimuli/stimulus.go?s=266:380#L2">Stimulus</a>
+				<a class="permalink" href="#Stimulus">&#xb6;</a>
+				
+				
+			</h2>
+			<p>Stimulus is the interface for all visual and auditory stimuli.
+
+			<pre>type Stimulus interface {
+    Present(screen *<a href="/pkg/goxpyriment/io/">io</a>.<a href="/pkg/goxpyriment/io/#Screen">Screen</a>, clear, update <a href="/pkg/builtin/#bool">bool</a>) <a href="/pkg/builtin/#error">error</a>
+    Preload() <a href="/pkg/builtin/#error">error</a>
+    Unload() <a href="/pkg/builtin/#error">error</a>
+}</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+			
+			
+			<h2 id="StimulusCircle">type <a href="/src/goxpyriment/stimuli/stimuluscircle.go?s=296:392#L4">StimulusCircle</a>
+				<a class="permalink" href="#StimulusCircle">&#xb6;</a>
+				
+				
+			</h2>
+			<p>StimulusCircle represents a collection of stimuli arranged in a circle.
+
+			<pre>type StimulusCircle struct {
+<span id="StimulusCircle.Radius"></span>    Radius   <a href="/pkg/builtin/#float32">float32</a>
+<span id="StimulusCircle.Stimuli"></span>    Stimuli  []<a href="#VisualStimulus">VisualStimulus</a>
+<span id="StimulusCircle.Position"></span>    Position <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#FPoint">FPoint</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewStimulusCircle">func <a href="/src/goxpyriment/stimuli/stimuluscircle.go?s=445:525#L11">NewStimulusCircle</a>
+					<a class="permalink" href="#NewStimulusCircle">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func NewStimulusCircle(radius <a href="/pkg/builtin/#float32">float32</a>, stimuli []<a href="#VisualStimulus">VisualStimulus</a>) *<a href="#StimulusCircle">StimulusCircle</a></pre>
+				<p>NewStimulusCircle creates a new StimulusCircle.
+
+				
+				
+			
+
+			
+				
+				<h3 id="StimulusCircle.Draw">func (*StimulusCircle) <a href="/src/goxpyriment/stimuli/stimuluscircle.go?s=1373:1428#L53">Draw</a>
+					<a class="permalink" href="#StimulusCircle.Draw">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (sc *<a href="#StimulusCircle">StimulusCircle</a>) Draw(screen *<a href="/pkg/goxpyriment/io/">io</a>.<a href="/pkg/goxpyriment/io/#Screen">Screen</a>) <a href="/pkg/builtin/#error">error</a></pre>
+				<p>Draw draws all stimuli in the circle.
+
+				
+				
+				
+			
+				
+				<h3 id="StimulusCircle.GetPosition">func (*StimulusCircle) <a href="/src/goxpyriment/stimuli/stimuluscircle.go?s=1854:1904#L78">GetPosition</a>
+					<a class="permalink" href="#StimulusCircle.GetPosition">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (sc *<a href="#StimulusCircle">StimulusCircle</a>) GetPosition() <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#FPoint">FPoint</a></pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="StimulusCircle.Make">func (*StimulusCircle) <a href="/src/goxpyriment/stimuli/stimuluscircle.go?s=676:733#L20">Make</a>
+					<a class="permalink" href="#StimulusCircle.Make">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (sc *<a href="#StimulusCircle">StimulusCircle</a>) Make(shuffle <a href="/pkg/builtin/#bool">bool</a>, jitter <a href="/pkg/builtin/#bool">bool</a>)</pre>
+				<p>Make arranges the stimuli in a circle.
+
+				
+				
+				
+			
+				
+				<h3 id="StimulusCircle.Preload">func (*StimulusCircle) <a href="/src/goxpyriment/stimuli/stimuluscircle.go?s=2251:2292#L93">Preload</a>
+					<a class="permalink" href="#StimulusCircle.Preload">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (sc *<a href="#StimulusCircle">StimulusCircle</a>) Preload() <a href="/pkg/builtin/#error">error</a></pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="StimulusCircle.Present">func (*StimulusCircle) <a href="/src/goxpyriment/stimuli/stimuluscircle.go?s=1586:1664#L63">Present</a>
+					<a class="permalink" href="#StimulusCircle.Present">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (sc *<a href="#StimulusCircle">StimulusCircle</a>) Present(screen *<a href="/pkg/goxpyriment/io/">io</a>.<a href="/pkg/goxpyriment/io/#Screen">Screen</a>, clear, update <a href="/pkg/builtin/#bool">bool</a>) <a href="/pkg/builtin/#error">error</a></pre>
+				<p>Present clears and draws the circle.
+
+				
+				
+				
+			
+				
+				<h3 id="StimulusCircle.SetPosition">func (*StimulusCircle) <a href="/src/goxpyriment/stimuli/stimuluscircle.go?s=1930:1983#L82">SetPosition</a>
+					<a class="permalink" href="#StimulusCircle.SetPosition">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (sc *<a href="#StimulusCircle">StimulusCircle</a>) SetPosition(pos <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#FPoint">FPoint</a>)</pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="StimulusCircle.Unload">func (*StimulusCircle) <a href="/src/goxpyriment/stimuli/stimuluscircle.go?s=2308:2348#L94">Unload</a>
+					<a class="permalink" href="#StimulusCircle.Unload">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (sc *<a href="#StimulusCircle">StimulusCircle</a>) Unload() <a href="/pkg/builtin/#error">error</a></pre>
+				
+				
+				
+				
+			
+		
+			
+			
+			<h2 id="TextBox">type <a href="/src/goxpyriment/stimuli/textbox.go?s=305:524#L3">TextBox</a>
+				<a class="permalink" href="#TextBox">&#xb6;</a>
+				
+				
+			</h2>
+			<p>TextBox represents a multi-line text box with wrapping and alignment.
+
+			<pre>type TextBox struct {
+<span id="TextBox.Text"></span>    Text      <a href="/pkg/builtin/#string">string</a>
+<span id="TextBox.BoxWidth"></span>    BoxWidth  <a href="/pkg/builtin/#int32">int32</a>
+<span id="TextBox.Position"></span>    Position  <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#FPoint">FPoint</a>
+<span id="TextBox.Color"></span>    Color     <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#Color">Color</a>
+<span id="TextBox.Alignment"></span>    Alignment <a href="/pkg/github.com/Zyko0/go-sdl3/ttf/">ttf</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/ttf/#HorizontalAlignment">HorizontalAlignment</a>
+<span id="TextBox.Font"></span>    Font      *<a href="/pkg/github.com/Zyko0/go-sdl3/ttf/">ttf</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/ttf/#Font">Font</a>
+<span id="TextBox.Texture"></span>    Texture   *<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#Texture">Texture</a>
+<span id="TextBox.Width"></span>    Width     <a href="/pkg/builtin/#float32">float32</a>
+<span id="TextBox.Height"></span>    Height    <a href="/pkg/builtin/#float32">float32</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewTextBox">func <a href="/src/goxpyriment/stimuli/textbox.go?s=572:663#L16">NewTextBox</a>
+					<a class="permalink" href="#NewTextBox">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func NewTextBox(text <a href="/pkg/builtin/#string">string</a>, boxWidth <a href="/pkg/builtin/#int32">int32</a>, position <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#FPoint">FPoint</a>, color <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#Color">Color</a>) *<a href="#TextBox">TextBox</a></pre>
+				<p>NewTextBox creates a new TextBox stimulus.
+
+				
+				
+			
+
+			
+				
+				<h3 id="TextBox.Draw">func (*TextBox) <a href="/src/goxpyriment/stimuli/textbox.go?s=1422:1469#L57">Draw</a>
+					<a class="permalink" href="#TextBox.Draw">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (t *<a href="#TextBox">TextBox</a>) Draw(screen *<a href="/pkg/goxpyriment/io/">io</a>.<a href="/pkg/goxpyriment/io/#Screen">Screen</a>) <a href="/pkg/builtin/#error">error</a></pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="TextBox.GetPosition">func (*TextBox) <a href="/src/goxpyriment/stimuli/textbox.go?s=2526:2568#L112">GetPosition</a>
+					<a class="permalink" href="#TextBox.GetPosition">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (t *<a href="#TextBox">TextBox</a>) GetPosition() <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#FPoint">FPoint</a></pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="TextBox.Preload">func (*TextBox) <a href="/src/goxpyriment/stimuli/textbox.go?s=1371:1404#L53">Preload</a>
+					<a class="permalink" href="#TextBox.Preload">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (t *<a href="#TextBox">TextBox</a>) Preload() <a href="/pkg/builtin/#error">error</a></pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="TextBox.Present">func (*TextBox) <a href="/src/goxpyriment/stimuli/textbox.go?s=2151:2221#L89">Present</a>
+					<a class="permalink" href="#TextBox.Present">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (t *<a href="#TextBox">TextBox</a>) Present(screen *<a href="/pkg/goxpyriment/io/">io</a>.<a href="/pkg/goxpyriment/io/#Screen">Screen</a>, clear, update <a href="/pkg/builtin/#bool">bool</a>) <a href="/pkg/builtin/#error">error</a></pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="TextBox.SetPosition">func (*TextBox) <a href="/src/goxpyriment/stimuli/textbox.go?s=2593:2638#L116">SetPosition</a>
+					<a class="permalink" href="#TextBox.SetPosition">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (t *<a href="#TextBox">TextBox</a>) SetPosition(pos <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#FPoint">FPoint</a>)</pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="TextBox.Unload">func (*TextBox) <a href="/src/goxpyriment/stimuli/textbox.go?s=2410:2442#L104">Unload</a>
+					<a class="permalink" href="#TextBox.Unload">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (t *<a href="#TextBox">TextBox</a>) Unload() <a href="/pkg/builtin/#error">error</a></pre>
+				
+				
+				
+				
+			
+		
+			
+			
+			<h2 id="TextInput">type <a href="/src/goxpyriment/stimuli/textinput.go?s=257:464#L2">TextInput</a>
+				<a class="permalink" href="#TextInput">&#xb6;</a>
+				
+				
+			</h2>
+			<p>TextInput represents a text input box for user input.
+
+			<pre>type TextInput struct {
+<span id="TextInput.Message"></span>    Message         <a href="/pkg/builtin/#string">string</a>
+<span id="TextInput.Position"></span>    Position        <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#FPoint">FPoint</a>
+<span id="TextInput.BoxWidth"></span>    BoxWidth        <a href="/pkg/builtin/#float32">float32</a>
+<span id="TextInput.BackgroundColor"></span>    BackgroundColor <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#Color">Color</a>
+<span id="TextInput.FrameColor"></span>    FrameColor      <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#Color">Color</a>
+<span id="TextInput.TextColor"></span>    TextColor       <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#Color">Color</a>
+<span id="TextInput.UserText"></span>    UserText        <a href="/pkg/builtin/#string">string</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewTextInput">func <a href="/src/goxpyriment/stimuli/textinput.go?s=507:632#L13">NewTextInput</a>
+					<a class="permalink" href="#NewTextInput">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func NewTextInput(message <a href="/pkg/builtin/#string">string</a>, position <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#FPoint">FPoint</a>, boxWidth <a href="/pkg/builtin/#float32">float32</a>, bgColor, frameColor, textColor <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#Color">Color</a>) *<a href="#TextInput">TextInput</a></pre>
+				<p>NewTextInput creates a new TextInput.
+
+				
+				
+			
+
+			
+				
+				<h3 id="TextInput.Draw">func (*TextInput) <a href="/src/goxpyriment/stimuli/textinput.go?s=1855:1905#L66">Draw</a>
+					<a class="permalink" href="#TextInput.Draw">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (ti *<a href="#TextInput">TextInput</a>) Draw(screen *<a href="/pkg/goxpyriment/io/">io</a>.<a href="/pkg/goxpyriment/io/#Screen">Screen</a>) <a href="/pkg/builtin/#error">error</a></pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="TextInput.Get">func (*TextInput) <a href="/src/goxpyriment/stimuli/textinput.go?s=892:974#L25">Get</a>
+					<a class="permalink" href="#TextInput.Get">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (ti *<a href="#TextInput">TextInput</a>) Get(screen *<a href="/pkg/goxpyriment/io/">io</a>.<a href="/pkg/goxpyriment/io/#Screen">Screen</a>, keyboard *<a href="/pkg/goxpyriment/io/">io</a>.<a href="/pkg/goxpyriment/io/#Keyboard">Keyboard</a>) (<a href="/pkg/builtin/#string">string</a>, <a href="/pkg/builtin/#error">error</a>)</pre>
+				<p>Get displays the input box and waits for user input.
+
+				
+				
+				
+			
+				
+				<h3 id="TextInput.GetPosition">func (*TextInput) <a href="/src/goxpyriment/stimuli/textinput.go?s=2990:3035#L112">GetPosition</a>
+					<a class="permalink" href="#TextInput.GetPosition">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (ti *<a href="#TextInput">TextInput</a>) GetPosition() <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#FPoint">FPoint</a></pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="TextInput.Preload">func (*TextInput) <a href="/src/goxpyriment/stimuli/textinput.go?s=2885:2921#L109">Preload</a>
+					<a class="permalink" href="#TextInput.Preload">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (ti *<a href="#TextInput">TextInput</a>) Preload() <a href="/pkg/builtin/#error">error</a></pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="TextInput.Present">func (*TextInput) <a href="/src/goxpyriment/stimuli/textinput.go?s=2622:2695#L94">Present</a>
+					<a class="permalink" href="#TextInput.Present">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (ti *<a href="#TextInput">TextInput</a>) Present(screen *<a href="/pkg/goxpyriment/io/">io</a>.<a href="/pkg/goxpyriment/io/#Screen">Screen</a>, clear, update <a href="/pkg/builtin/#bool">bool</a>) <a href="/pkg/builtin/#error">error</a></pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="TextInput.SetPosition">func (*TextInput) <a href="/src/goxpyriment/stimuli/textinput.go?s=3061:3109#L116">SetPosition</a>
+					<a class="permalink" href="#TextInput.SetPosition">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (ti *<a href="#TextInput">TextInput</a>) SetPosition(pos <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#FPoint">FPoint</a>)</pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="TextInput.Unload">func (*TextInput) <a href="/src/goxpyriment/stimuli/textinput.go?s=2937:2972#L110">Unload</a>
+					<a class="permalink" href="#TextInput.Unload">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (ti *<a href="#TextInput">TextInput</a>) Unload() <a href="/pkg/builtin/#error">error</a></pre>
+				
+				
+				
+				
+			
+		
+			
+			
+			<h2 id="TextLine">type <a href="/src/goxpyriment/stimuli/text.go?s=271:432#L3">TextLine</a>
+				<a class="permalink" href="#TextLine">&#xb6;</a>
+				
+				
+			</h2>
+			<p>TextLine represents a line of text.
+
+			<pre>type TextLine struct {
+<span id="TextLine.Text"></span>    Text     <a href="/pkg/builtin/#string">string</a>
+<span id="TextLine.Position"></span>    Position <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#FPoint">FPoint</a>
+<span id="TextLine.Color"></span>    Color    <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#Color">Color</a>
+<span id="TextLine.Font"></span>    Font     *<a href="/pkg/github.com/Zyko0/go-sdl3/ttf/">ttf</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/ttf/#Font">Font</a>
+<span id="TextLine.Texture"></span>    Texture  *<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#Texture">Texture</a>
+<span id="TextLine.Width"></span>    Width    <a href="/pkg/builtin/#float32">float32</a>
+<span id="TextLine.Height"></span>    Height   <a href="/pkg/builtin/#float32">float32</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewTextLine">func <a href="/src/goxpyriment/stimuli/text.go?s=434:504#L13">NewTextLine</a>
+					<a class="permalink" href="#NewTextLine">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func NewTextLine(text <a href="/pkg/builtin/#string">string</a>, x, y <a href="/pkg/builtin/#float32">float32</a>, color <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#Color">Color</a>) *<a href="#TextLine">TextLine</a></pre>
+				
+				
+				
+			
+
+			
+				
+				<h3 id="TextLine.Draw">func (*TextLine) <a href="/src/goxpyriment/stimuli/text.go?s=1184:1232#L49">Draw</a>
+					<a class="permalink" href="#TextLine.Draw">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (t *<a href="#TextLine">TextLine</a>) Draw(screen *<a href="/pkg/goxpyriment/io/">io</a>.<a href="/pkg/goxpyriment/io/#Screen">Screen</a>) <a href="/pkg/builtin/#error">error</a></pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="TextLine.GetPosition">func (*TextLine) <a href="/src/goxpyriment/stimuli/text.go?s=2367:2410#L105">GetPosition</a>
+					<a class="permalink" href="#TextLine.GetPosition">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (t *<a href="#TextLine">TextLine</a>) GetPosition() <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#FPoint">FPoint</a></pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="TextLine.Preload">func (*TextLine) <a href="/src/goxpyriment/stimuli/text.go?s=1132:1166#L45">Preload</a>
+					<a class="permalink" href="#TextLine.Preload">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (t *<a href="#TextLine">TextLine</a>) Preload() <a href="/pkg/builtin/#error">error</a></pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="TextLine.Present">func (*TextLine) <a href="/src/goxpyriment/stimuli/text.go?s=1990:2061#L82">Present</a>
+					<a class="permalink" href="#TextLine.Present">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (t *<a href="#TextLine">TextLine</a>) Present(screen *<a href="/pkg/goxpyriment/io/">io</a>.<a href="/pkg/goxpyriment/io/#Screen">Screen</a>, clear, update <a href="/pkg/builtin/#bool">bool</a>) <a href="/pkg/builtin/#error">error</a></pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="TextLine.SetPosition">func (*TextLine) <a href="/src/goxpyriment/stimuli/text.go?s=2435:2481#L109">SetPosition</a>
+					<a class="permalink" href="#TextLine.SetPosition">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (t *<a href="#TextLine">TextLine</a>) SetPosition(pos <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#FPoint">FPoint</a>)</pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="TextLine.Unload">func (*TextLine) <a href="/src/goxpyriment/stimuli/text.go?s=2250:2283#L97">Unload</a>
+					<a class="permalink" href="#TextLine.Unload">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (t *<a href="#TextLine">TextLine</a>) Unload() <a href="/pkg/builtin/#error">error</a></pre>
+				
+				
+				
+				
+			
+		
+			
+			
+			<h2 id="ThermometerDisplay">type <a href="/src/goxpyriment/stimuli/thermometerdisplay.go?s=281:626#L2">ThermometerDisplay</a>
+				<a class="permalink" href="#ThermometerDisplay">&#xb6;</a>
+				
+				
+			</h2>
+			<p>ThermometerDisplay represents a segmented progress bar with an optional goal.
+
+			<pre>type ThermometerDisplay struct {
+<span id="ThermometerDisplay.State"></span>    State         <a href="/pkg/builtin/#float32">float32</a> <span class="comment">// 0 to 100</span>
+<span id="ThermometerDisplay.Goal"></span>    Goal          <a href="/pkg/builtin/#float32">float32</a> <span class="comment">// 0 to 100</span>
+<span id="ThermometerDisplay.Size"></span>    Size          <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#FPoint">FPoint</a>
+<span id="ThermometerDisplay.NrSegments"></span>    NrSegments    <a href="/pkg/builtin/#int">int</a>
+<span id="ThermometerDisplay.Position"></span>    Position      <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#FPoint">FPoint</a>
+<span id="ThermometerDisplay.FrameColor"></span>    FrameColor    <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#Color">Color</a>
+<span id="ThermometerDisplay.ActiveColor"></span>    ActiveColor   <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#Color">Color</a>
+<span id="ThermometerDisplay.InactiveColor"></span>    InactiveColor <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#Color">Color</a>
+<span id="ThermometerDisplay.GapColor"></span>    GapColor      <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#Color">Color</a>
+<span id="ThermometerDisplay.GoalColor"></span>    GoalColor     <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#Color">Color</a>
+<span id="ThermometerDisplay.SegmentGap"></span>    SegmentGap    <a href="/pkg/builtin/#float32">float32</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewThermometerDisplay">func <a href="/src/goxpyriment/stimuli/thermometerdisplay.go?s=687:787#L17">NewThermometerDisplay</a>
+					<a class="permalink" href="#NewThermometerDisplay">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func NewThermometerDisplay(size <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#FPoint">FPoint</a>, nrSegments <a href="/pkg/builtin/#int">int</a>, state, goal <a href="/pkg/builtin/#float32">float32</a>) *<a href="#ThermometerDisplay">ThermometerDisplay</a></pre>
+				<p>NewThermometerDisplay creates a new ThermometerDisplay.
+
+				
+				
+			
+
+			
+				
+				<h3 id="ThermometerDisplay.Draw">func (*ThermometerDisplay) <a href="/src/goxpyriment/stimuli/thermometerdisplay.go?s=1273:1332#L33">Draw</a>
+					<a class="permalink" href="#ThermometerDisplay.Draw">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (td *<a href="#ThermometerDisplay">ThermometerDisplay</a>) Draw(screen *<a href="/pkg/goxpyriment/io/">io</a>.<a href="/pkg/goxpyriment/io/#Screen">Screen</a>) <a href="/pkg/builtin/#error">error</a></pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="ThermometerDisplay.GetPosition">func (*ThermometerDisplay) <a href="/src/goxpyriment/stimuli/thermometerdisplay.go?s=4032:4086#L132">GetPosition</a>
+					<a class="permalink" href="#ThermometerDisplay.GetPosition">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (td *<a href="#ThermometerDisplay">ThermometerDisplay</a>) GetPosition() <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#FPoint">FPoint</a></pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="ThermometerDisplay.Preload">func (*ThermometerDisplay) <a href="/src/goxpyriment/stimuli/thermometerdisplay.go?s=4194:4239#L140">Preload</a>
+					<a class="permalink" href="#ThermometerDisplay.Preload">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (td *<a href="#ThermometerDisplay">ThermometerDisplay</a>) Preload() <a href="/pkg/builtin/#error">error</a></pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="ThermometerDisplay.Present">func (*ThermometerDisplay) <a href="/src/goxpyriment/stimuli/thermometerdisplay.go?s=3760:3842#L117">Present</a>
+					<a class="permalink" href="#ThermometerDisplay.Present">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (td *<a href="#ThermometerDisplay">ThermometerDisplay</a>) Present(screen *<a href="/pkg/goxpyriment/io/">io</a>.<a href="/pkg/goxpyriment/io/#Screen">Screen</a>, clear, update <a href="/pkg/builtin/#bool">bool</a>) <a href="/pkg/builtin/#error">error</a></pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="ThermometerDisplay.SetPosition">func (*ThermometerDisplay) <a href="/src/goxpyriment/stimuli/thermometerdisplay.go?s=4112:4169#L136">SetPosition</a>
+					<a class="permalink" href="#ThermometerDisplay.SetPosition">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (td *<a href="#ThermometerDisplay">ThermometerDisplay</a>) SetPosition(pos <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#FPoint">FPoint</a>)</pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="ThermometerDisplay.Unload">func (*ThermometerDisplay) <a href="/src/goxpyriment/stimuli/thermometerdisplay.go?s=4255:4299#L141">Unload</a>
+					<a class="permalink" href="#ThermometerDisplay.Unload">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (td *<a href="#ThermometerDisplay">ThermometerDisplay</a>) Unload() <a href="/pkg/builtin/#error">error</a></pre>
+				
+				
+				
+				
+			
+		
+			
+			
+			<h2 id="Tone">type <a href="/src/goxpyriment/stimuli/tone.go?s=256:381#L3">Tone</a>
+				<a class="permalink" href="#Tone">&#xb6;</a>
+				
+				
+			</h2>
+			<p>Tone represents a procedural audio stimulus.
+
+			<pre>type Tone struct {
+<span id="Tone.Frequency"></span>    Frequency <a href="/pkg/builtin/#float64">float64</a>
+<span id="Tone.Duration"></span>    Duration  <a href="/pkg/builtin/#int">int</a> <span class="comment">// ms</span>
+<span id="Tone.Amplitude"></span>    Amplitude <a href="/pkg/builtin/#float32">float32</a>
+<span id="Tone.Stream"></span>    Stream    *<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#AudioStream">AudioStream</a>
+<span id="Tone.Data"></span>    Data      []<a href="/pkg/builtin/#byte">byte</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewTone">func <a href="/src/goxpyriment/stimuli/tone.go?s=424:494#L12">NewTone</a>
+					<a class="permalink" href="#NewTone">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func NewTone(frequency <a href="/pkg/builtin/#float64">float64</a>, duration <a href="/pkg/builtin/#int">int</a>, amplitude <a href="/pkg/builtin/#float32">float32</a>) *<a href="#Tone">Tone</a></pre>
+				<p>NewTone creates a new sine wave tone.
+
+				
+				
+			
+
+			
+				
+				<h3 id="Tone.Play">func (*Tone) <a href="/src/goxpyriment/stimuli/tone.go?s=1431:1458#L51">Play</a>
+					<a class="permalink" href="#Tone.Play">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (t *<a href="#Tone">Tone</a>) Play() <a href="/pkg/builtin/#error">error</a></pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Tone.Preload">func (*Tone) <a href="/src/goxpyriment/stimuli/tone.go?s=1644:1674#L63">Preload</a>
+					<a class="permalink" href="#Tone.Preload">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (t *<a href="#Tone">Tone</a>) Preload() <a href="/pkg/builtin/#error">error</a></pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Tone.PreloadDevice">func (*Tone) <a href="/src/goxpyriment/stimuli/tone.go?s=637:702#L21">PreloadDevice</a>
+					<a class="permalink" href="#Tone.PreloadDevice">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (t *<a href="#Tone">Tone</a>) PreloadDevice(audioDevice <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#AudioDeviceID">AudioDeviceID</a>) <a href="/pkg/builtin/#error">error</a></pre>
+				<p>PreloadDevice generates the tone&apos;s PCM data.
+
+				
+				
+				
+			
+				
+				<h3 id="Tone.Present">func (*Tone) <a href="/src/goxpyriment/stimuli/tone.go?s=1554:1621#L59">Present</a>
+					<a class="permalink" href="#Tone.Present">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (t *<a href="#Tone">Tone</a>) Present(screen *<a href="/pkg/goxpyriment/io/">io</a>.<a href="/pkg/goxpyriment/io/#Screen">Screen</a>, clear, update <a href="/pkg/builtin/#bool">bool</a>) <a href="/pkg/builtin/#error">error</a></pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Tone.Unload">func (*Tone) <a href="/src/goxpyriment/stimuli/tone.go?s=1691:1720#L65">Unload</a>
+					<a class="permalink" href="#Tone.Unload">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (t *<a href="#Tone">Tone</a>) Unload() <a href="/pkg/builtin/#error">error</a></pre>
+				
+				
+				
+				
+			
+		
+			
+			
+			<h2 id="Video">type <a href="/src/goxpyriment/stimuli/video.go?s=467:1093#L12">Video</a>
+				<a class="permalink" href="#Video">&#xb6;</a>
+				
+				
+			</h2>
+			<p>Video represents a video stimulus that can be played with audio.
+It uses FFmpeg via the go-astiav library for decoding and SDL3 for rendering and audio playback.
+
+			<pre>type Video struct {
+<span id="Video.FilePath"></span>    FilePath <a href="/pkg/builtin/#string">string</a>
+
+    <span class="comment">// Video properties</span>
+<span id="Video.Width"></span>    Width  <a href="/pkg/builtin/#int">int</a>
+<span id="Video.Height"></span>    Height <a href="/pkg/builtin/#int">int</a>
+<span id="Video.FPS"></span>    FPS    <a href="/pkg/builtin/#float64">float64</a>
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewVideo">func <a href="/src/goxpyriment/stimuli/video.go?s=1137:1174#L48">NewVideo</a>
+					<a class="permalink" href="#NewVideo">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func NewVideo(filePath <a href="/pkg/builtin/#string">string</a>) *<a href="#Video">Video</a></pre>
+				<p>NewVideo creates a new video stimulus.
+
+				
+				
+			
+
+			
+				
+				<h3 id="Video.Draw">func (*Video) <a href="/src/goxpyriment/stimuli/video.go?s=5977:6022#L265">Draw</a>
+					<a class="permalink" href="#Video.Draw">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (v *<a href="#Video">Video</a>) Draw(screen *<a href="/pkg/goxpyriment/io/">io</a>.<a href="/pkg/goxpyriment/io/#Screen">Screen</a>) <a href="/pkg/builtin/#error">error</a></pre>
+				<p>Draw renders the current video frame to the screen.
+
+				
+				
+				
+			
+				
+				<h3 id="Video.Pause">func (*Video) <a href="/src/goxpyriment/stimuli/video.go?s=6938:6961#L310">Pause</a>
+					<a class="permalink" href="#Video.Pause">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (v *<a href="#Video">Video</a>) Pause()</pre>
+				<p>Pause pauses the video playback.
+
+				
+				
+				
+			
+				
+				<h3 id="Video.Play">func (*Video) <a href="/src/goxpyriment/stimuli/video.go?s=2758:2786#L122">Play</a>
+					<a class="permalink" href="#Video.Play">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (v *<a href="#Video">Video</a>) Play() <a href="/pkg/builtin/#error">error</a></pre>
+				<p>Play starts video decoding and playback.
+
+				
+				
+				
+			
+				
+				<h3 id="Video.Preload">func (*Video) <a href="/src/goxpyriment/stimuli/video.go?s=1275:1306#L55">Preload</a>
+					<a class="permalink" href="#Video.Preload">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (v *<a href="#Video">Video</a>) Preload() <a href="/pkg/builtin/#error">error</a></pre>
+				<p>Preload opens the video file and prepares streams.
+
+				
+				
+				
+			
+				
+				<h3 id="Video.PreloadDevice">func (*Video) <a href="/src/goxpyriment/stimuli/video.go?s=1946:2031#L87">PreloadDevice</a>
+					<a class="permalink" href="#Video.PreloadDevice">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (v *<a href="#Video">Video</a>) PreloadDevice(screen *<a href="/pkg/goxpyriment/io/">io</a>.<a href="/pkg/goxpyriment/io/#Screen">Screen</a>, audioDevice <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#AudioDeviceID">AudioDeviceID</a>) <a href="/pkg/builtin/#error">error</a></pre>
+				<p>PreloadDevice prepares SDL-specific resources for the video.
+
+				
+				
+				
+			
+				
+				<h3 id="Video.Present">func (*Video) <a href="/src/goxpyriment/stimuli/video.go?s=6645:6713#L294">Present</a>
+					<a class="permalink" href="#Video.Present">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (v *<a href="#Video">Video</a>) Present(screen *<a href="/pkg/goxpyriment/io/">io</a>.<a href="/pkg/goxpyriment/io/#Screen">Screen</a>, clear, update <a href="/pkg/builtin/#bool">bool</a>) <a href="/pkg/builtin/#error">error</a></pre>
+				<p>Present implements the Stimulus interface.
+
+				
+				
+				
+			
+				
+				<h3 id="Video.Seek">func (*Video) <a href="/src/goxpyriment/stimuli/video.go?s=7444:7487#L331">Seek</a>
+					<a class="permalink" href="#Video.Seek">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (v *<a href="#Video">Video</a>) Seek(t <a href="/pkg/time/">time</a>.<a href="/pkg/time/#Duration">Duration</a>) <a href="/pkg/builtin/#error">error</a></pre>
+				<p>Seek moves the playback position to the specified time.
+Note: This stops the current playback and should be called before Play() or while the video is stopped.
+
+				
+				
+				
+			
+				
+				<h3 id="Video.Stop">func (*Video) <a href="/src/goxpyriment/stimuli/video.go?s=7137:7159#L319">Stop</a>
+					<a class="permalink" href="#Video.Stop">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (v *<a href="#Video">Video</a>) Stop()</pre>
+				<p>Stop stops the video playback and cleans up decoding resources.
+
+				
+				
+				
+			
+				
+				<h3 id="Video.Unload">func (*Video) <a href="/src/goxpyriment/stimuli/video.go?s=7699:7729#L342">Unload</a>
+					<a class="permalink" href="#Video.Unload">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (v *<a href="#Video">Video</a>) Unload() <a href="/pkg/builtin/#error">error</a></pre>
+				<p>Unload cleans up all resources associated with the video stimulus.
+
+				
+				
+				
+			
+				
+				<h3 id="Video.Update">func (*Video) <a href="/src/goxpyriment/stimuli/video.go?s=4799:4829#L209">Update</a>
+					<a class="permalink" href="#Video.Update">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (v *<a href="#Video">Video</a>) Update() <a href="/pkg/builtin/#error">error</a></pre>
+				<p>Update handles frame timing and audio streaming.
+Should be called frequently in the main loop.
+
+				
+				
+				
+			
+		
+			
+			
+			<h2 id="VisualMask">type <a href="/src/goxpyriment/stimuli/visualmask.go?s=300:522#L6">VisualMask</a>
+				<a class="permalink" href="#VisualMask">&#xb6;</a>
+				
+				
+			</h2>
+			<p>VisualMask represents a visual mask stimulus.
+
+			<pre>type VisualMask struct {
+<span id="VisualMask.Size"></span>    Size            <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#FPoint">FPoint</a>
+<span id="VisualMask.Position"></span>    Position        <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#FPoint">FPoint</a>
+<span id="VisualMask.DotSize"></span>    DotSize         <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#FPoint">FPoint</a>
+<span id="VisualMask.BackgroundColor"></span>    BackgroundColor <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#Color">Color</a>
+<span id="VisualMask.DotColor"></span>    DotColor        <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#Color">Color</a>
+<span id="VisualMask.DotPercentage"></span>    DotPercentage   <a href="/pkg/builtin/#int">int</a>
+<span id="VisualMask.Texture"></span>    Texture         *<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#Texture">Texture</a>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewVisualMask">func <a href="/src/goxpyriment/stimuli/visualmask.go?s=576:706#L17">NewVisualMask</a>
+					<a class="permalink" href="#NewVisualMask">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func NewVisualMask(width, height <a href="/pkg/builtin/#float32">float32</a>, dotWidth, dotHeight <a href="/pkg/builtin/#float32">float32</a>, bgColor, dotColor <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#Color">Color</a>, dotPercentage <a href="/pkg/builtin/#int">int</a>) *<a href="#VisualMask">VisualMask</a></pre>
+				<p>NewVisualMask creates a new VisualMask stimulus.
+
+				
+				
+			
+
+			
+				
+				<h3 id="VisualMask.Draw">func (*VisualMask) <a href="/src/goxpyriment/stimuli/visualmask.go?s=2116:2167#L66">Draw</a>
+					<a class="permalink" href="#VisualMask.Draw">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (vm *<a href="#VisualMask">VisualMask</a>) Draw(screen *<a href="/pkg/goxpyriment/io/">io</a>.<a href="/pkg/goxpyriment/io/#Screen">Screen</a>) <a href="/pkg/builtin/#error">error</a></pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="VisualMask.GetPosition">func (*VisualMask) <a href="/src/goxpyriment/stimuli/visualmask.go?s=2897:2943#L107">GetPosition</a>
+					<a class="permalink" href="#VisualMask.GetPosition">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (vm *<a href="#VisualMask">VisualMask</a>) GetPosition() <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#FPoint">FPoint</a></pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="VisualMask.Preload">func (*VisualMask) <a href="/src/goxpyriment/stimuli/visualmask.go?s=2061:2098#L62">Preload</a>
+					<a class="permalink" href="#VisualMask.Preload">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (vm *<a href="#VisualMask">VisualMask</a>) Preload() <a href="/pkg/builtin/#error">error</a></pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="VisualMask.Present">func (*VisualMask) <a href="/src/goxpyriment/stimuli/visualmask.go?s=2510:2584#L84">Present</a>
+					<a class="permalink" href="#VisualMask.Present">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (vm *<a href="#VisualMask">VisualMask</a>) Present(screen *<a href="/pkg/goxpyriment/io/">io</a>.<a href="/pkg/goxpyriment/io/#Screen">Screen</a>, clear, update <a href="/pkg/builtin/#bool">bool</a>) <a href="/pkg/builtin/#error">error</a></pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="VisualMask.SetPosition">func (*VisualMask) <a href="/src/goxpyriment/stimuli/visualmask.go?s=2969:3018#L111">SetPosition</a>
+					<a class="permalink" href="#VisualMask.SetPosition">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (vm *<a href="#VisualMask">VisualMask</a>) SetPosition(pos <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#FPoint">FPoint</a>)</pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="VisualMask.Unload">func (*VisualMask) <a href="/src/goxpyriment/stimuli/visualmask.go?s=2774:2810#L99">Unload</a>
+					<a class="permalink" href="#VisualMask.Unload">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (vm *<a href="#VisualMask">VisualMask</a>) Unload() <a href="/pkg/builtin/#error">error</a></pre>
+				
+				
+				
+				
+			
+		
+			
+			
+			<h2 id="VisualStimulus">type <a href="/src/goxpyriment/stimuli/stimulus.go?s=460:589#L9">VisualStimulus</a>
+				<a class="permalink" href="#VisualStimulus">&#xb6;</a>
+				
+				
+			</h2>
+			<p>VisualStimulus represents a visual stimulus that can be drawn on a Screen.
+
+			<pre>type VisualStimulus interface {
+    <a href="#Stimulus">Stimulus</a>
+    Draw(screen *<a href="/pkg/goxpyriment/io/">io</a>.<a href="/pkg/goxpyriment/io/#Screen">Screen</a>) <a href="/pkg/builtin/#error">error</a>
+    GetPosition() <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#FPoint">FPoint</a>
+    SetPosition(pos <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#FPoint">FPoint</a>)
+}</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+
+			
+		
+	
+
+	
+
+
+
+
+
+
+
+<div id="footer">
+Build version go1.21.1.<br>
+Except as <a href="https://developers.google.com/site-policies#restrictions">noted</a>,
+the content of this page is licensed under the
+Creative Commons Attribution 3.0 License,
+and code is licensed under a <a href="/LICENSE">BSD license</a>.<br>
+<a href="https://golang.org/doc/tos.html">Terms of Service</a> |
+<a href="https://www.google.com/intl/en/policies/privacy/">Privacy Policy</a>
+</div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+</body>
+</html>

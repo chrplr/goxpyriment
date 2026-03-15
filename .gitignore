@@ -1,0 +1,39 @@
+# Data files
+/data/
+xpd_results/
+
+# Go binaries
+/goxpyriment
+/main
+
+# Specific example binaries (these are named after the directory)
+/examples/canvas_demo/canvas_demo
+/examples/card_game/card_game
+/examples/lexical_decision/lexical_decision
+/examples/parity_decision/parity_decision
+/examples/play_videos/play_videos
+/examples/posner_task/posner_task
+/examples/retinotopy/retinotopy
+/examples/simple_example/simple_example
+/examples/simple_reaction_times/simple_reaction_times
+/examples/stimuli_extras/stimuli_extras
+/examples/stroop_task/stroop_task
+/examples/text_input/text_input
+
+# General binary patterns
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.prof
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
