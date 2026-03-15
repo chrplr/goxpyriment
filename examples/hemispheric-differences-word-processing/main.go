@@ -285,7 +285,7 @@ func runStudy(exp *control.Experiment, fixation *stimuli.FixCross, p StudyTestPa
 	return nil
 }
 
-func runTest(exp *control.Experiment, word string, isOld bool) (sdl.Keycode, int64, bool, error) {
+func runTest(exp *control.Experiment, word string, isOld bool) (control.Keycode, int64, bool, error) {
 	prompt := stimuli.NewTextLine(word, 0, -40, control.DefaultTextColor)
 	instr := stimuli.NewTextLine("F = OLD   J = NEW", 0, 40, control.DefaultTextColor)
 
@@ -303,7 +303,7 @@ func runTest(exp *control.Experiment, word string, isOld bool) (sdl.Keycode, int
 	}
 
 	start := clock.GetTime()
-	key, err := exp.Keyboard.WaitKeys([]sdl.Keycode{OldKey, NewKey, control.K_ESCAPE}, -1)
+	key, err := exp.Keyboard.WaitKeys([]control.Keycode{OldKey, NewKey, control.K_ESCAPE}, -1)
 	if err != nil {
 		return 0, 0, false, err
 	}

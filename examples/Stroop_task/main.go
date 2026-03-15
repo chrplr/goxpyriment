@@ -86,7 +86,7 @@ func main() {
 		if err := instructions.Present(exp.Screen, true, true); err != nil {
 			return err
 		}
-		var key sdl.Keycode
+		var key control.Keycode
 		var subErr error
 		for {
 			key, _, subErr = exp.HandleEvents()

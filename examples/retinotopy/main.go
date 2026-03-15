@@ -19,8 +19,8 @@ import (
 
 	"github.com/chrplr/goxpyriment/control"
 	"github.com/chrplr/goxpyriment/clock"
+	"github.com/chrplr/goxpyriment/io"
 	"github.com/chrplr/goxpyriment/stimuli"
-
 )
 
 //go:embed assets/stimuli_png/fixationGrid.png
@@ -51,9 +51,9 @@ type Retinotopy struct {
 	Exp             *control.Experiment
 	Patterns        [][]byte // RGB raw data (768x768x3)
 	Masks           [][]byte // Gray raw data (768x768x1)
-	FixationGrid    *sdl.Texture
+	FixationGrid    *io.Texture
 	FixationDots    []*stimuli.Circle
-	CombinedTexture *sdl.Texture
+	CombinedTexture *io.Texture
 	PixelBuffer     []byte // RGBA buffer for CombinedTexture (768x768x4)
 	
 	MaskOrder       []int
@@ -82,14 +82,9 @@ func (r *Retinotopy) showStatus(msg string) error {
 	}
 	
 	// Process events to keep OS happy and allow interruption during loading
-	var event sdl.Event
-	for sdl.PollEvent(&event) {
-		if event.Type == sdl.EVENT_QUIT {
-			return control.EndLoop
-		}
-		if event.Type == sdl.EVENT_KEY_DOWN && event.KeyboardEvent().Key == control.K_ESCAPE {
-			return control.EndLoop
-		}
+	state := r.Exp.PollEvents(nil)
+	if state.QuitRequested {
+		return control.EndLoop
 	}
 	return nil
 }
@@ -167,12 +162,12 @@ func (r *Retinotopy) LoadStimuli(subjID int, runID int, assetsDir string) error 
 	}
 
 	// 6. Initialize Combined Texture and Buffer
-	tex, err := r.Exp.Screen.Renderer.CreateTexture(sdl.PIXELFORMAT_RGBA32, sdl.TEXTUREACCESS_STREAMING, WindowWidth, WindowHeight)
+	tex, err := r.Exp.Screen.Renderer.CreateTexture(io.PIXELFORMAT_RGBA32, io.TEXTUREACCESS_STREAMING, WindowWidth, WindowHeight)
 	if err != nil {
 		return err
 	}
 	r.CombinedTexture = tex
-	r.CombinedTexture.SetBlendMode(sdl.BLENDMODE_BLEND)
+	r.CombinedTexture.SetBlendMode(io.BLENDMODE_BLEND)
 	r.PixelBuffer = make([]byte, WindowWidth*WindowHeight*4)
 
 	// 7. Calculate centered StimulusRect (768x768 * scaling)
@@ -255,7 +250,7 @@ func (r *Retinotopy) loadOrders(subjID int, runID int) error {
 	return nil
 }
 
-func (r *Retinotopy) loadTextureFromBytes(data []byte) (*sdl.Texture, error) {
+func (r *Retinotopy) loadTextureFromBytes(data []byte) (*io.Texture, error) {
 	img, _, err := image.Decode(bytes.NewReader(data))
 	if err != nil { return nil, err }
 	
@@ -271,7 +266,7 @@ func (r *Retinotopy) loadTextureFromBytes(data []byte) (*sdl.Texture, error) {
 		}
 	}
 	
-	surface, err := sdl.CreateSurfaceFrom(w, h, sdl.PIXELFORMAT_RGBA32, rgba.Pix, w*4)
+	surface, err := io.CreateSurfaceFrom(w, h, io.PIXELFORMAT_RGBA32, rgba.Pix, w*4)
 	if err != nil { return nil, err }
 	defer surface.Destroy()
 	

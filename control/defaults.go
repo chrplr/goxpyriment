@@ -8,6 +8,7 @@ import (
 	"errors"
 
 	"github.com/Zyko0/go-sdl3/sdl"
+	"github.com/Zyko0/go-sdl3/ttf"
 )
 
 // Default Experiment settings
@@ -62,8 +63,10 @@ const (
 	K_LEFT      = sdl.K_LEFT
 	K_RIGHT     = sdl.K_RIGHT
 	K_S         = sdl.K_S
+	K_D         = sdl.K_D
 	K_F         = sdl.K_F
 	K_J         = sdl.K_J
+	K_K         = sdl.K_K
 	K_Q         = sdl.K_Q
 	K_R         = sdl.K_R
 	K_G         = sdl.K_G
@@ -115,5 +118,15 @@ var EndLoop = sdl.EndLoop
 // Use it to avoid importing go-sdl3 just to check: if err != nil && !control.IsEndLoop(err) { log.Fatal(err) }.
 func IsEndLoop(err error) bool {
 	return err != nil && errors.Is(err, sdl.EndLoop)
+}
+
+// FontFromMemory opens a TTF font from embedded bytes at the given point size.
+// Use this instead of sdl.IOFromBytes + ttf.OpenFontIO to avoid a direct SDL dependency.
+func FontFromMemory(data []byte, size float32) (*ttf.Font, error) {
+	ioStream, err := sdl.IOFromBytes(data)
+	if err != nil {
+		return nil, err
+	}
+	return ttf.OpenFontIO(ioStream, true, size)
 }
 

@@ -14,8 +14,6 @@ import (
 	"log"
 	"math/rand"
 	"time"
-
-	"github.com/Zyko0/go-sdl3/ttf"
 )
 
 const (
@@ -52,8 +50,7 @@ func main() {
 	}
 
 	// Create a larger font specifically for the numbers (64pt)
-	fontIO, _ := sdl.IOFromBytes(assets_embed.InconsolataFont)
-	bigFont, err := ttf.OpenFontIO(fontIO, true, 64)
+	bigFont, err := control.FontFromMemory(assets_embed.InconsolataFont, 64)
 	if err != nil {
 		log.Printf("Warning: failed to load big font: %v", err)
 	} else {
@@ -95,7 +92,7 @@ func main() {
 		if err := instructions.Present(exp.Screen, true, true); err != nil {
 			return err
 		}
-		var key sdl.Keycode
+		var key control.Keycode
 		var subErr error
 		for {
 			key, _, subErr = exp.HandleEvents()
@@ -149,6 +146,11 @@ func main() {
 					correct := oddity == responseOddity
 					exp.Data.Add([]interface{}{t.number, key, rt, correct})
 					fmt.Printf("Trial %d: Num=%d, Key=%d, RT=%d ms, Correct=%v\n", i, t.number, key, rt, correct)
+					if !correct {
+						if err := exp.Audio.PlayBuzzer(); err != nil {
+							log.Printf("Warning: buzzer playback failed: %v", err)
+						}
+					}
 					break
 				}
 				clock.Wait(1)

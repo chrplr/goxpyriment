@@ -6,6 +6,7 @@ package control
 import (
 	"sync"
 
+	"github.com/chrplr/goxpyriment/assets_embed"
 	"github.com/chrplr/goxpyriment/stimuli"
 	"github.com/Zyko0/go-sdl3/sdl"
 )
@@ -97,6 +98,16 @@ func (a *AudioManager) PlayMemorySync(data []byte) error {
 func (a *AudioManager) PlayMemoryAsync(data []byte) error {
 	s := stimuli.NewSoundFromMemory(data)
 	return a.PlayAsync(s)
+}
+
+// PlayBuzzer plays the embedded buzzer sound asynchronously (negative feedback).
+func (a *AudioManager) PlayBuzzer() error {
+	return a.PlayMemoryAsync(assets_embed.BuzzerWav)
+}
+
+// PlayCorrect plays the embedded correct sound asynchronously (positive feedback).
+func (a *AudioManager) PlayCorrect() error {
+	return a.PlayMemoryAsync(assets_embed.CorrectWav)
 }
 
 // Shutdown waits for all asynchronous playbacks to finish and prevents any new

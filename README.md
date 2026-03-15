@@ -1,13 +1,21 @@
 # goxpyriment
 
+![](assets/icon_512.png)
 
 `goxpyriment` is a high-level Go framework for building behavioral and psychological experiments.
 
-![](goxpy.png)
+It can be used to "vibe-code" psychology experiment: 
+1. Install Go on your machine
+1. clone this repository 
+2. fire your AI coding agent (gemini-cli, claude, cursor...)
+3. Ask it to create your experiment, using plain English, instructing the agent to use the goxpyriment library and the provided examples.
+4. Once the code is created, say in examples/myexp/main.go, you can run it with:
 
-It is inspired from [expyriment.org](http://expyriment.org) ; see Krause, F., & Lindemann, O. (2014). Expyriment: A Python library for cognitive and neuroscientific experiments. Behavior Research Methods, 46(2), 416-428. <https://doi.org/10.3758/s13428-013-0390-6>.
+       go run myexp/main.go
 
-Actually, as a starting point, I gave Gemini 3 the URL of [expyriment's API documentation](https://docs.expyriment.org/expyriment.html) and asked it to try and implement it in Go using the [go-sdl3](https://github.com/Zyko0/go-sdl3) bindings. A few more days of work later (by human & machine), we have this proof of concept. 
+5. Lastly, if you want, you can distribute an executable to your colleagues, creating installers for Windows, MacOS and Linux (see an example at <https://github.com/chrplr/retinotopy-go>)
+
+Goxpy relies on the [libsdl](http://libsdl.org) library through the [go-sdl3](https://github.com/Zyko0/go-sdl3) bindings. Its API is largely inspired from [expyriment.org](http://expyriment.org) ; see Krause, F., & Lindemann, O. (2014). Expyriment: A Python library for cognitive and neuroscientific experiments. Behavior Research Methods, 46(2), 416-428. <https://doi.org/10.3758/s13428-013-0390-6>.
 
 **NOTE: This software in an alpha version, a proof of concept that without any doubt has some bugs. If you want to try and use it, I recommand you to clone this repository. Check out [expe3000-go](http://github.com/chrplr/expe3000-go) for a less ambitious but efficient, no-code, experiment generator ** 
 

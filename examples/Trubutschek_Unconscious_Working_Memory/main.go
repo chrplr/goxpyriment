@@ -131,7 +131,7 @@ func runTrial(exp *control.Experiment, config TrialConfig, points []control.FPoi
 	vuText := stimuli.NewTextLine("Seen?", 0, 0, control.White)
 	if err := vuText.Present(exp.Screen, true, true); err != nil { return "", 0, err }
 	
-	ratingKey, err := exp.Keyboard.WaitKeys([]sdl.Keycode{control.K_1, control.K_2, control.K_3, control.K_4, control.K_KP_1, control.K_KP_2, control.K_KP_3, control.K_KP_4}, 2500)
+	ratingKey, err := exp.Keyboard.WaitKeys([]control.Keycode{control.K_1, control.K_2, control.K_3, control.K_4, control.K_KP_1, control.K_KP_2, control.K_KP_3, control.K_KP_4}, 2500)
 	if err != nil { return "", 0, err }
 	
 	rating := 0

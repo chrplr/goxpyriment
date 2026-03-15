@@ -14,6 +14,26 @@ type FRect = sdl.FRect
 type FPoint = sdl.FPoint
 type Color = sdl.Color
 
+// Rendering type aliases — re-exported so callers need not import go-sdl3 directly.
+type Texture = sdl.Texture
+type Surface = sdl.Surface
+type PixelFormat = sdl.PixelFormat
+type TextureAccess = sdl.TextureAccess
+type BlendMode = sdl.BlendMode
+
+// Common pixel format / texture access / blend mode constants.
+const (
+	PIXELFORMAT_RGBA32      PixelFormat   = sdl.PIXELFORMAT_RGBA32
+	TEXTUREACCESS_STREAMING TextureAccess = sdl.TEXTUREACCESS_STREAMING
+	BLENDMODE_BLEND         BlendMode     = sdl.BLENDMODE_BLEND
+)
+
+// CreateSurfaceFrom allocates a Surface backed by existing pixel data.
+// This wraps sdl.CreateSurfaceFrom so callers can avoid importing go-sdl3 directly.
+func CreateSurfaceFrom(width, height int, format PixelFormat, pixels []byte, pitch int) (*Surface, error) {
+	return sdl.CreateSurfaceFrom(width, height, format, pixels, pitch)
+}
+
 // Screen wraps the SDL window and hardware‑accelerated renderer.
 // It is responsible for:
 //   - managing the backbuffer / presenting frames (Clear, Update, Flip),

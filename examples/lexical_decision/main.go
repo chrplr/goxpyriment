@@ -114,7 +114,7 @@ func main() {
 		if err := instructions.Present(exp.Screen, true, true); err != nil {
 			return err
 		}
-		if _, err := exp.Keyboard.WaitKeys([]sdl.Keycode{control.K_SPACE}, -1); err != nil {
+		if _, err := exp.Keyboard.WaitKeys([]control.Keycode{control.K_SPACE}, -1); err != nil {
 			return err
 		}
 
@@ -142,7 +142,7 @@ func main() {
 
 			// Wait for response
 			startTime := clock.GetTime()
-			key, err := exp.Keyboard.WaitKeys([]sdl.Keycode{WordResponseKey, NonWordResponseKey}, MaxResponseDelay)
+			key, err := exp.Keyboard.WaitKeys([]control.Keycode{WordResponseKey, NonWordResponseKey}, MaxResponseDelay)
 			if err != nil {
 				return err
 			}

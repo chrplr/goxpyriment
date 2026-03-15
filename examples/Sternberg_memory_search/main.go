@@ -85,11 +85,9 @@ func main() {
 
 	// Large font for digits (like parity_decision)
 	var bigFont *ttf.Font
-	if fontIO, err := sdl.IOFromBytes(assets_embed.InconsolataFont); err == nil {
-		bigFont, _ = ttf.OpenFontIO(fontIO, true, 64)
-		if bigFont != nil {
-			defer bigFont.Close()
-		}
+	if f, err := control.FontFromMemory(assets_embed.InconsolataFont, 64); err == nil {
+		bigFont = f
+		defer bigFont.Close()
 	}
 
 	fixation := stimuli.NewFixCross(50, 4, control.DefaultTextColor)
@@ -124,7 +122,7 @@ func main() {
 	}
 
 	// Wait for F or J; return key, rt (ms), error
-	waitYesNo := func() (sdl.Keycode, int64, error) {
+	waitYesNo := func() (control.Keycode, int64, error) {
 		exp.Keyboard.Clear()
 		start := clock.GetTime()
 		for {
@@ -381,7 +379,7 @@ func buildTrainingTrialsExp2() []trialExp2 {
 	return trials
 }
 
-func runExp1(exp *control.Experiment, trials []trialExp1, digitStim map[int]*stimuli.TextLine, fixation *stimuli.FixCross, blank *stimuli.BlankScreen, waitYesNo func() (sdl.Keycode, int64, error), showFeedback func(bool) error, logData bool) error {
+func runExp1(exp *control.Experiment, trials []trialExp1, digitStim map[int]*stimuli.TextLine, fixation *stimuli.FixCross, blank *stimuli.BlankScreen, waitYesNo func() (control.Keycode, int64, error), showFeedback func(bool) error, logData bool) error {
 	return exp.Run(func() error {
 		for i, t := range trials {
 			// Blank
@@ -429,7 +427,7 @@ func runExp1(exp *control.Experiment, trials []trialExp1, digitStim map[int]*sti
 	})
 }
 
-func runExp2(exp *control.Experiment, blocks [][]trialExp2, digitStim map[int]*stimuli.TextLine, fixation *stimuli.FixCross, blank *stimuli.BlankScreen, waitYesNo func() (sdl.Keycode, int64, error), showFeedback func(bool) error, logData bool) error {
+func runExp2(exp *control.Experiment, blocks [][]trialExp2, digitStim map[int]*stimuli.TextLine, fixation *stimuli.FixCross, blank *stimuli.BlankScreen, waitYesNo func() (control.Keycode, int64, error), showFeedback func(bool) error, logData bool) error {
 	return exp.Run(func() error {
 		for blockIdx, block := range blocks {
 			setSize := len(block[0].PositiveSet)

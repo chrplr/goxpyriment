@@ -146,10 +146,10 @@ func main() {
 		startTime := clock.GetTime()
 		
 		// Collect response
-		var key sdl.Keycode
+		var key control.Keycode
 		var err error
 		for {
-			key, err = exp.Keyboard.WaitKeys([]sdl.Keycode{control.K_S, control.K_D, control.K_ESCAPE}, -1)
+			key, err = exp.Keyboard.WaitKeys([]control.Keycode{control.K_S, control.K_D, control.K_ESCAPE}, -1)
 			if err != nil {
 				if err == control.EndLoop { return }
 				log.Fatalf("keyboard error: %v", err)
