@@ -1,0 +1,16 @@
+runtime/cgo
+github.com/ebitengine/purego/internal/cgo
+net
+github.com/asticode/go-astiav
+# github.com/asticode/go-astiav
+../../go/pkg/mod/github.com/asticode/go-astiav@v0.40.0/software_scale_context.go:110:41: ssc.c.flags undefined (type *_Ctype_struct_SwsContext has no field or method flags)
+../../go/pkg/mod/github.com/asticode/go-astiav@v0.40.0/software_scale_context.go:120:19: ssc.c.dst_w undefined (type *_Ctype_struct_SwsContext has no field or method dst_w)
+../../go/pkg/mod/github.com/asticode/go-astiav@v0.40.0/software_scale_context.go:130:19: ssc.c.dst_h undefined (type *_Ctype_struct_SwsContext has no field or method dst_h)
+../../go/pkg/mod/github.com/asticode/go-astiav@v0.40.0/software_scale_context.go:140:27: ssc.c.dst_format undefined (type *_Ctype_struct_SwsContext has no field or method dst_format)
+../../go/pkg/mod/github.com/asticode/go-astiav@v0.40.0/software_scale_context.go:149:19: ssc.c.dst_w undefined (type *_Ctype_struct_SwsContext has no field or method dst_w)
+../../go/pkg/mod/github.com/asticode/go-astiav@v0.40.0/software_scale_context.go:149:37: ssc.c.dst_h undefined (type *_Ctype_struct_SwsContext has no field or method dst_h)
+../../go/pkg/mod/github.com/asticode/go-astiav@v0.40.0/software_scale_context.go:161:19: ssc.c.src_w undefined (type *_Ctype_struct_SwsContext has no field or method src_w)
+../../go/pkg/mod/github.com/asticode/go-astiav@v0.40.0/software_scale_context.go:171:19: ssc.c.src_h undefined (type *_Ctype_struct_SwsContext has no field or method src_h)
+../../go/pkg/mod/github.com/asticode/go-astiav@v0.40.0/software_scale_context.go:181:27: ssc.c.src_format undefined (type *_Ctype_struct_SwsContext has no field or method src_format)
+../../go/pkg/mod/github.com/asticode/go-astiav@v0.40.0/software_scale_context.go:190:19: ssc.c.src_w undefined (type *_Ctype_struct_SwsContext has no field or method src_w)
+../../go/pkg/mod/github.com/asticode/go-astiav@v0.40.0/software_scale_context.go:190:19: too many errors

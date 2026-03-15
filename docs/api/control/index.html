@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#375EAB">
+
+  <title>control - Go Documentation Server</title>
+
+<link type="text/css" rel="stylesheet" href="/lib/godoc/style.css">
+
+<script>window.initFuncs = [];</script>
+<script src="/lib/godoc/jquery.js" defer></script>
+
+
+
+<script>var goVersion = "go1.21.1";</script>
+<script src="/lib/godoc/godocs.js" defer></script>
+</head>
+<body>
+
+<div id='lowframe' style="position: fixed; bottom: 0; left: 0; height: 0; width: 100%; border-top: thin solid grey; background-color: white; overflow: auto;">
+...
+</div><!-- #lowframe -->
+
+<div id="topbar" class="wide"><div class="container">
+<div class="top-heading" id="heading-wide"><a href="/pkg/">Go Documentation Server</a></div>
+<div class="top-heading" id="heading-narrow"><a href="/pkg/">GoDoc</a></div>
+<a href="#" id="menu-button"><span id="menu-button-arrow">&#9661;</span></a>
+<form method="GET" action="/search">
+<div id="menu">
+
+<span class="search-box"><input type="search" id="search" name="q" placeholder="Search" aria-label="Search" required><button type="submit"><span><!-- magnifying glass: --><svg width="24" height="24" viewBox="0 0 24 24"><title>submit search</title><path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/><path d="M0 0h24v24H0z" fill="none"/></svg></span></button></span>
+</div>
+</form>
+
+</div></div>
+
+
+
+<div id="page" class="wide">
+<div class="container">
+
+
+  <h1>
+    Package control
+    <span class="text-muted"></span>
+  </h1>
+
+
+
+
+
+
+
+<div id="nav"></div>
+
+
+<!--
+	Copyright 2009 The Go Authors. All rights reserved.
+	Use of this source code is governed by a BSD-style
+	license that can be found in the LICENSE file.
+-->
+<!--
+	Note: Static (i.e., not template-generated) href and id
+	attributes start with "pkg-" to make it impossible for
+	them to conflict with generated attributes (some of which
+	correspond to Go identifiers).
+-->
+
+	<script>
+	document.ANALYSIS_DATA = null;
+	document.CALLGRAPH = null;
+	</script>
+
+	
+		
+		<div id="short-nav">
+			<dl>
+			<dd><code>import "goxpyriment/control"</code></dd>
+			</dl>
+			<dl>
+			<dd><a href="#pkg-overview" class="overviewLink">Overview</a></dd>
+			<dd><a href="#pkg-index" class="indexLink">Index</a></dd>
+			
+			
+			</dl>
+		</div>
+		<!-- The package's Name is printed as title by the top-level template -->
+		<div id="pkg-overview" class="toggleVisible">
+			<div class="collapsed">
+				<h2 class="toggleButton" title="Click to show Overview section">Overview ▹</h2>
+			</div>
+			<div class="expanded">
+				<h2 class="toggleButton" title="Click to hide Overview section">Overview ▾</h2>
+				<p>Package control manages the overall state and initialization of an experiment.
+
+				
+			</div>
+		</div>
+
+		<div id="pkg-index" class="toggleVisible">
+		<div class="collapsed">
+			<h2 class="toggleButton" title="Click to show Index section">Index ▹</h2>
+		</div>
+		<div class="expanded">
+			<h2 class="toggleButton" title="Click to hide Index section">Index ▾</h2>
+
+		<!-- Table of contents for API; must be named manual-nav to turn off auto nav. -->
+			<div id="manual-nav">
+			<dl>
+			
+				<dd><a href="#pkg-constants">Constants</a></dd>
+			
+			
+				<dd><a href="#pkg-variables">Variables</a></dd>
+			
+			
+			
+				
+				<dd><a href="#Experiment">type Experiment</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#NewExperiment">func NewExperiment(name string, width, height int, fullscreen bool) *Experiment</a></dd>
+				
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Experiment.AddBWSFactor">func (e *Experiment) AddBWSFactor(name string, conditions []interface{})</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Experiment.AddBlock">func (e *Experiment) AddBlock(b *design.Block, copies int)</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Experiment.AddDataVariableNames">func (e *Experiment) AddDataVariableNames(names []string)</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Experiment.AddExperimentInfo">func (e *Experiment) AddExperimentInfo(text string)</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Experiment.End">func (e *Experiment) End()</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Experiment.GetPermutedBWSFactorCondition">func (e *Experiment) GetPermutedBWSFactorCondition(name string) interface{}</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Experiment.HandleEvents">func (e *Experiment) HandleEvents() (sdl.Keycode, uint32, error)</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Experiment.Initialize">func (e *Experiment) Initialize() error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Experiment.LoadFont">func (e *Experiment) LoadFont(path string, size float32) error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Experiment.LoadFontFromMemory">func (e *Experiment) LoadFontFromMemory(data []byte, size float32) error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Experiment.Run">func (e *Experiment) Run(logic func() error) error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Experiment.SetLogicalSize">func (e *Experiment) SetLogicalSize(width, height int32) error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Experiment.SetVSync">func (e *Experiment) SetVSync(vsync int) error</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Experiment.ShuffleBlocks">func (e *Experiment) ShuffleBlocks()</a></dd>
+				
+					
+					<dd>&nbsp; &nbsp; <a href="#Experiment.Summary">func (e *Experiment) Summary() string</a></dd>
+				
+			
+			
+			</dl>
+			</div><!-- #manual-nav -->
+
+		
+
+		
+			<h3>Package files</h3>
+			<p>
+			<span style="font-size:90%">
+			
+				<a href="/src/goxpyriment/control/defaults.go">defaults.go</a>
+			
+				<a href="/src/goxpyriment/control/experiment.go">experiment.go</a>
+			
+			</span>
+			</p>
+		
+		</div><!-- .expanded -->
+		</div><!-- #pkg-index -->
+
+		
+
+		
+			<h2 id="pkg-constants">Constants</h2>
+			
+				<p>Default Experiment settings
+
+				<pre>const (
+    <span id="DefaultWindowWidth">DefaultWindowWidth</span>  = 800          <span class="comment">// Default width of the experiment window in pixels.</span>
+    <span id="DefaultWindowHeight">DefaultWindowHeight</span> = 600          <span class="comment">// Default height of the experiment window in pixels.</span>
+    <span id="DefaultWindowTitle">DefaultWindowTitle</span>  = &#34;Expyriment&#34; <span class="comment">// Default title of the experiment window.</span>
+)</pre>
+			
+		
+		
+			<h2 id="pkg-variables">Variables</h2>
+			
+				
+				<pre>var (
+    <span class="comment">// DefaultBackgroundColor is the color used to clear the screen by default (Black).</span>
+    <span id="DefaultBackgroundColor">DefaultBackgroundColor</span> = <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#Color">Color</a>{<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#Color.R">R</a>: 0, <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#Color.G">G</a>: 0, <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#Color.B">B</a>: 0, <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#Color.A">A</a>: 255}
+    <span class="comment">// DefaultTextColor is the color used for text stimuli if not specified (White).</span>
+    <span id="DefaultTextColor">DefaultTextColor</span> = <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#Color">Color</a>{<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#Color.R">R</a>: 255, <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#Color.G">G</a>: 255, <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#Color.B">B</a>: 255, <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#Color.A">A</a>: 255}
+)</pre>
+			
+		
+		
+		
+			
+			
+			<h2 id="Experiment">type <a href="/src/goxpyriment/control/experiment.go?s=431:937#L7">Experiment</a>
+				<a class="permalink" href="#Experiment">&#xb6;</a>
+				
+				
+			</h2>
+			<p>Experiment manages the overall state and initialization.
+
+			<pre>type Experiment struct {
+<span id="Experiment.Name"></span>    Name            <a href="/pkg/builtin/#string">string</a>
+<span id="Experiment.Design"></span>    Design          *<a href="/pkg/goxpyriment/design/">design</a>.<a href="/pkg/goxpyriment/design/#Experiment">Experiment</a>
+<span id="Experiment.Screen"></span>    Screen          *<a href="/pkg/goxpyriment/io/">io</a>.<a href="/pkg/goxpyriment/io/#Screen">Screen</a>
+<span id="Experiment.Keyboard"></span>    Keyboard        *<a href="/pkg/goxpyriment/io/">io</a>.<a href="/pkg/goxpyriment/io/#Keyboard">Keyboard</a>
+<span id="Experiment.Mouse"></span>    Mouse           *<a href="/pkg/goxpyriment/io/">io</a>.<a href="/pkg/goxpyriment/io/#Mouse">Mouse</a>
+<span id="Experiment.Data"></span>    Data            *<a href="/pkg/goxpyriment/io/">io</a>.<a href="/pkg/goxpyriment/io/#DataFile">DataFile</a>
+<span id="Experiment.SubjectID"></span>    SubjectID       <a href="/pkg/builtin/#int">int</a>
+<span id="Experiment.BackgroundColor"></span>    BackgroundColor <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#Color">Color</a>
+<span id="Experiment.ForegroundColor"></span>    ForegroundColor <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#Color">Color</a>
+<span id="Experiment.DefaultFont"></span>    DefaultFont     *<a href="/pkg/github.com/Zyko0/go-sdl3/ttf/">ttf</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/ttf/#Font">Font</a>
+<span id="Experiment.AudioDevice"></span>    AudioDevice     <a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#AudioDeviceID">AudioDeviceID</a>
+<span id="Experiment.WindowWidth"></span>    WindowWidth     <a href="/pkg/builtin/#int">int</a>
+<span id="Experiment.WindowHeight"></span>    WindowHeight    <a href="/pkg/builtin/#int">int</a>
+<span id="Experiment.Fullscreen"></span>    Fullscreen      <a href="/pkg/builtin/#bool">bool</a>
+    <span class="comment">// contains filtered or unexported fields</span>
+}
+</pre>
+
+			
+
+			
+
+			
+			
+			
+
+			
+				
+				<h3 id="NewExperiment">func <a href="/src/goxpyriment/control/experiment.go?s=991:1070#L29">NewExperiment</a>
+					<a class="permalink" href="#NewExperiment">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func NewExperiment(name <a href="/pkg/builtin/#string">string</a>, width, height <a href="/pkg/builtin/#int">int</a>, fullscreen <a href="/pkg/builtin/#bool">bool</a>) *<a href="#Experiment">Experiment</a></pre>
+				<p>NewExperiment creates a new Experiment instance.
+
+				
+				
+			
+
+			
+				
+				<h3 id="Experiment.AddBWSFactor">func (*Experiment) <a href="/src/goxpyriment/control/experiment.go?s=3276:3348#L127">AddBWSFactor</a>
+					<a class="permalink" href="#Experiment.AddBWSFactor">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (e *<a href="#Experiment">Experiment</a>) AddBWSFactor(name <a href="/pkg/builtin/#string">string</a>, conditions []interface{})</pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Experiment.AddBlock">func (*Experiment) <a href="/src/goxpyriment/control/experiment.go?s=3023:3081#L115">AddBlock</a>
+					<a class="permalink" href="#Experiment.AddBlock">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (e *<a href="#Experiment">Experiment</a>) AddBlock(b *<a href="/pkg/goxpyriment/design/">design</a>.<a href="/pkg/goxpyriment/design/#Block">Block</a>, copies <a href="/pkg/builtin/#int">int</a>)</pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Experiment.AddDataVariableNames">func (*Experiment) <a href="/src/goxpyriment/control/experiment.go?s=2866:2923#L108">AddDataVariableNames</a>
+					<a class="permalink" href="#Experiment.AddDataVariableNames">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (e *<a href="#Experiment">Experiment</a>) AddDataVariableNames(names []<a href="/pkg/builtin/#string">string</a>)</pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Experiment.AddExperimentInfo">func (*Experiment) <a href="/src/goxpyriment/control/experiment.go?s=3117:3168#L119">AddExperimentInfo</a>
+					<a class="permalink" href="#Experiment.AddExperimentInfo">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (e *<a href="#Experiment">Experiment</a>) AddExperimentInfo(text <a href="/pkg/builtin/#string">string</a>)</pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Experiment.End">func (*Experiment) <a href="/src/goxpyriment/control/experiment.go?s=4882:4908#L188">End</a>
+					<a class="permalink" href="#Experiment.End">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (e *<a href="#Experiment">Experiment</a>) End()</pre>
+				<p>End cleans up resources.
+
+				
+				
+				
+			
+				
+				<h3 id="Experiment.GetPermutedBWSFactorCondition">func (*Experiment) <a href="/src/goxpyriment/control/experiment.go?s=3395:3470#L131">GetPermutedBWSFactorCondition</a>
+					<a class="permalink" href="#Experiment.GetPermutedBWSFactorCondition">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (e *<a href="#Experiment">Experiment</a>) GetPermutedBWSFactorCondition(name <a href="/pkg/builtin/#string">string</a>) interface{}</pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Experiment.HandleEvents">func (*Experiment) <a href="/src/goxpyriment/control/experiment.go?s=2343:2407#L82">HandleEvents</a>
+					<a class="permalink" href="#Experiment.HandleEvents">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (e *<a href="#Experiment">Experiment</a>) HandleEvents() (<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/">sdl</a>.<a href="/pkg/github.com/Zyko0/go-sdl3/sdl/#Keycode">Keycode</a>, <a href="/pkg/builtin/#uint32">uint32</a>, <a href="/pkg/builtin/#error">error</a>)</pre>
+				<p>HandleEvents processes pending SDL events and returns the first keyboard and mouse button pressed, and any termination signal.
+
+				
+				
+				
+			
+				
+				<h3 id="Experiment.Initialize">func (*Experiment) <a href="/src/goxpyriment/control/experiment.go?s=1422:1461#L43">Initialize</a>
+					<a class="permalink" href="#Experiment.Initialize">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (e *<a href="#Experiment">Experiment</a>) Initialize() <a href="/pkg/builtin/#error">error</a></pre>
+				<p>Initialize sets up SDL and the screen.
+
+				
+				
+				
+			
+				
+				<h3 id="Experiment.LoadFont">func (*Experiment) <a href="/src/goxpyriment/control/experiment.go?s=4153:4215#L157">LoadFont</a>
+					<a class="permalink" href="#Experiment.LoadFont">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (e *<a href="#Experiment">Experiment</a>) LoadFont(path <a href="/pkg/builtin/#string">string</a>, size <a href="/pkg/builtin/#float32">float32</a>) <a href="/pkg/builtin/#error">error</a></pre>
+				<p>LoadFont loads a TTF font from the specified path and sets it as the default for the experiment.
+
+				
+				
+				
+			
+				
+				<h3 id="Experiment.LoadFontFromMemory">func (*Experiment) <a href="/src/goxpyriment/control/experiment.go?s=4467:4539#L170">LoadFontFromMemory</a>
+					<a class="permalink" href="#Experiment.LoadFontFromMemory">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (e *<a href="#Experiment">Experiment</a>) LoadFontFromMemory(data []<a href="/pkg/builtin/#byte">byte</a>, size <a href="/pkg/builtin/#float32">float32</a>) <a href="/pkg/builtin/#error">error</a></pre>
+				<p>LoadFontFromMemory loads a TTF font from a byte slice and sets it as the default.
+
+				
+				
+				
+			
+				
+				<h3 id="Experiment.Run">func (*Experiment) <a href="/src/goxpyriment/control/experiment.go?s=5325:5375#L215">Run</a>
+					<a class="permalink" href="#Experiment.Run">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (e *<a href="#Experiment">Experiment</a>) Run(logic func() <a href="/pkg/builtin/#error">error</a>) <a href="/pkg/builtin/#error">error</a></pre>
+				<p>Run executes the main experiment logic.
+
+				
+				
+				
+			
+				
+				<h3 id="Experiment.SetLogicalSize">func (*Experiment) <a href="/src/goxpyriment/control/experiment.go?s=3900:3962#L149">SetLogicalSize</a>
+					<a class="permalink" href="#Experiment.SetLogicalSize">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (e *<a href="#Experiment">Experiment</a>) SetLogicalSize(width, height <a href="/pkg/builtin/#int32">int32</a>) <a href="/pkg/builtin/#error">error</a></pre>
+				<p>SetLogicalSize sets a device-independent resolution for the experiment.
+
+				
+				
+				
+			
+				
+				<h3 id="Experiment.SetVSync">func (*Experiment) <a href="/src/goxpyriment/control/experiment.go?s=3702:3748#L141">SetVSync</a>
+					<a class="permalink" href="#Experiment.SetVSync">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (e *<a href="#Experiment">Experiment</a>) SetVSync(vsync <a href="/pkg/builtin/#int">int</a>) <a href="/pkg/builtin/#error">error</a></pre>
+				<p>SetVSync toggles vertical synchronization on the screen.
+1 to enable, 0 to disable.
+
+				
+				
+				
+			
+				
+				<h3 id="Experiment.ShuffleBlocks">func (*Experiment) <a href="/src/goxpyriment/control/experiment.go?s=3208:3244#L123">ShuffleBlocks</a>
+					<a class="permalink" href="#Experiment.ShuffleBlocks">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (e *<a href="#Experiment">Experiment</a>) ShuffleBlocks()</pre>
+				
+				
+				
+				
+			
+				
+				<h3 id="Experiment.Summary">func (*Experiment) <a href="/src/goxpyriment/control/experiment.go?s=3542:3579#L135">Summary</a>
+					<a class="permalink" href="#Experiment.Summary">&#xb6;</a>
+					
+					
+				</h3>
+				<pre>func (e *<a href="#Experiment">Experiment</a>) Summary() <a href="/pkg/builtin/#string">string</a></pre>
+				
+				
+				
+				
+			
+		
+	
+
+	
+
+
+
+
+
+
+
+<div id="footer">
+Build version go1.21.1.<br>
+Except as <a href="https://developers.google.com/site-policies#restrictions">noted</a>,
+the content of this page is licensed under the
+Creative Commons Attribution 3.0 License,
+and code is licensed under a <a href="/LICENSE">BSD license</a>.<br>
+<a href="https://golang.org/doc/tos.html">Terms of Service</a> |
+<a href="https://www.google.com/intl/en/policies/privacy/">Privacy Policy</a>
+</div>
+
+</div><!-- .container -->
+</div><!-- #page -->
+</body>
+</html>

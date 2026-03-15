@@ -1,0 +1,30 @@
+# github.com/Zyko0/go-sdl3 v0.0.0-20260125144524-02de3d449cb1
+## explicit; go 1.24.0
+github.com/Zyko0/go-sdl3/bin/binimg
+github.com/Zyko0/go-sdl3/bin/binsdl
+github.com/Zyko0/go-sdl3/bin/binttf
+github.com/Zyko0/go-sdl3/img
+github.com/Zyko0/go-sdl3/internal
+github.com/Zyko0/go-sdl3/sdl
+github.com/Zyko0/go-sdl3/ttf
+# github.com/Zyko0/purego-gen v0.0.0-20250727121216-3bcd331a1e0c
+## explicit; go 1.23.0
+github.com/Zyko0/purego-gen
+# github.com/creack/goselect v0.1.2
+## explicit; go 1.13
+github.com/creack/goselect
+# github.com/ebitengine/purego v0.9.0-alpha.2.0.20250124174847-29f0104e3c2b
+## explicit; go 1.18
+github.com/ebitengine/purego
+github.com/ebitengine/purego/internal/cgo
+github.com/ebitengine/purego/internal/fakecgo
+github.com/ebitengine/purego/internal/strings
+# go.bug.st/serial v1.6.4
+## explicit; go 1.17
+go.bug.st/serial
+go.bug.st/serial/unixutils
+# golang.org/x/sys v0.19.0
+## explicit; go 1.18
+golang.org/x/sys/unix
+golang.org/x/sys/windows
+golang.org/x/sys/windows/registry

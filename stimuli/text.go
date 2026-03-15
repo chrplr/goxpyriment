@@ -1,0 +1,117 @@
+// Copyright (2026) Christophe Pallier <christophe@pallier.org>
+// Distributed under the GNU General Public License v3.
+
+package stimuli
+
+import (
+	"github.com/chrplr/goxpyriment/io"
+	"github.com/Zyko0/go-sdl3/sdl"
+	"github.com/Zyko0/go-sdl3/ttf"
+)
+
+// TextLine is a single line of text rendered with an optional font (or the screen default).
+//
+// Embeds BaseVisual for position management. Overrides Unload to destroy the
+// GPU texture; Preload is a no-op (lazy-loaded on first Draw via preload).
+type TextLine struct {
+	BaseVisual // Position, GetPosition, SetPosition, Preload, Unload (Unload overridden below)
+	Text       string
+	Color      sdl.Color
+	Font       *ttf.Font
+	Texture    *sdl.Texture
+	Width      float32
+	Height     float32
+}
+
+// NewTextLine creates a text line at (x, y) in center-based coordinates with the given color.
+func NewTextLine(text string, x, y float32, color sdl.Color) *TextLine {
+	return &TextLine{
+		BaseVisual: BaseVisual{Position: sdl.FPoint{X: x, Y: y}},
+		Text:       text,
+		Color:      color,
+	}
+}
+
+// preload prepares the texture from the font.
+func (t *TextLine) preload(screen *io.Screen, font *ttf.Font) error {
+	if font == nil {
+		return nil // Fallback to DebugText if no font provided
+	}
+
+	if t.Text == "" {
+		t.Width = 0
+		t.Height = float32(font.Height())
+		t.Texture = nil
+		t.Font = font
+		return nil
+	}
+
+	surface, err := font.RenderTextBlended(t.Text, t.Color)
+	if err != nil {
+		return err
+	}
+	defer surface.Destroy()
+
+	t.Width = float32(surface.W)
+	t.Height = float32(surface.H)
+
+	texture, err := screen.Renderer.CreateTextureFromSurface(surface)
+	if err != nil {
+		return err
+	}
+	t.Texture = texture
+	t.Font = font
+	return nil
+}
+
+// Preload is provided by BaseVisual (no-op; texture is lazy-loaded on first Draw).
+
+func (t *TextLine) Draw(screen *io.Screen) error {
+	f := t.Font
+	if f == nil {
+		f = screen.DefaultFont
+	}
+
+	if f != nil {
+		if t.Texture == nil || t.Font != f {
+			if err := t.preload(screen, f); err != nil {
+				return err
+			}
+		}
+		
+		if t.Texture != nil {
+			destX, destY := screen.CenterToSDL(t.Position.X, t.Position.Y)
+			destRect := &sdl.FRect{
+				X: destX - t.Width/2,
+				Y: destY - t.Height/2,
+				W: t.Width,
+				H: t.Height,
+			}
+			return screen.Renderer.RenderTexture(t.Texture, nil, destRect)
+		}
+	}
+
+	// Fallback to DebugText
+	if err := screen.Renderer.SetDrawColor(t.Color.R, t.Color.G, t.Color.B, t.Color.A); err != nil {
+		return err
+	}
+	// Note: DebugText doesn't support centering easily, just using Position
+	return screen.Renderer.DebugText(t.Position.X, t.Position.Y, t.Text)
+}
+
+// Present delegates to PresentDrawable — the standard clear → draw → update cycle.
+func (t *TextLine) Present(screen *io.Screen, clear, update bool) error {
+	return PresentDrawable(t, screen, clear, update)
+}
+
+// Unload overrides BaseVisual.Unload to destroy the GPU texture.
+func (t *TextLine) Unload() error {
+	if t.Texture != nil {
+		t.Texture.Destroy()
+		t.Texture = nil
+	}
+	return nil
+}
+
+// GetPosition, SetPosition are provided by BaseVisual.
+

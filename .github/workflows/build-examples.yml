@@ -1,0 +1,197 @@
+name: Build example installers
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch: {}
+
+jobs:
+  build-windows-installers:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.x"
+
+      - name: Build all examples
+        shell: pwsh
+        run: |
+          cd examples
+          # We no longer need an exclusion list because CGO is disabled
+          # and the new MPEG library is Pure Go.
+          $env:CGO_ENABLED = "0"
+          
+          Get-ChildItem -Directory | ForEach-Object {
+            $dirName = $_.Name
+            # Skip non-example directories
+            if ($dirName -in @("assets", "installers", "xpd_results")) { return }
+
+            if (Test-Path "$($_.FullName)\main.go") {
+              Write-Host "Building $dirName..."
+              go build -o "$($_.FullName)\$($_.Name).exe" "$($_.FullName)\main.go"
+            }
+          }
+
+      - name: Install Inno Setup
+        run: choco install innosetup -y
+
+      - name: Build Windows installer (Inno Setup)
+        run: |
+          cd examples/installers
+          ISCC windows-goxpyriment-examples.iss
+
+      - name: Upload Windows installer artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-installer
+          path: examples/installers/goxpyriment-examples-setup.exe
+
+  build-macos-dmg:
+    runs-on: macos-latest
+    env:
+      CGO_ENABLED: 0
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.x"
+
+      - name: Build macOS DMG
+        run: |
+          cd examples/installers
+          # Ensure build-macos-dmg.sh no longer excludes video examples
+          bash build-macos-dmg.sh
+
+      - name: Upload macOS DMG artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-dmg
+          path: examples/installers/goxpyriment-examples.dmg
+
+  build-linux-appimages:
+    runs-on: ubuntu-latest
+    env:
+      CGO_ENABLED: 0
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.x"
+
+      - name: Build all examples
+        run: |
+          cd examples
+          bash build.sh
+
+      - name: Install FUSE
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libfuse2
+
+      - name: Download appimagetool
+        run: |
+          mkdir -p examples/installers/AppImages
+          wget -q https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-x86_64.AppImage -O examples/installers/appimagetool
+          chmod +x examples/installers/appimagetool
+
+      - name: Build AppImages for each example
+        run: |
+          cd examples
+          ROOT_DIR=$(pwd)
+          APPDIR_ROOT="installers/AppImages"
+          TOOL="./installers/appimagetool"
+
+          for dir in */; do
+            name="${dir%/}"
+            if [[ "${name}" == "assets" || "${name}" == "installers" || "${name}" == "xpd_results" ]]; then continue; fi
+            if [[ ! -f "${dir}/main.go" ]]; then continue; fi
+
+            echo "Packaging ${name}..."
+            appdir="${ROOT_DIR}/${APPDIR_ROOT}/${name}.AppDir"
+            mkdir -p "${appdir}/usr/bin" "${appdir}/usr/share/applications"
+
+            TARGET_BINARY_PATH="${appdir}/usr/bin/${name}"
+
+            (cd "${dir}" && go build -o "${TARGET_BINARY_PATH}" .)
+            chmod +x "${TARGET_BINARY_PATH}"
+
+            {
+              echo '#!/bin/sh'
+              echo 'EXECUTABLE="${APPDIR}/usr/bin/'"${name}"'"'
+              echo 'exec "$EXECUTABLE" "$@"'
+            } > "${appdir}/AppRun"
+            chmod +x "${appdir}/AppRun"
+
+            desktop="${appdir}/usr/share/applications/${name}.desktop"
+            {
+              echo "[Desktop Entry]"
+              echo "Type=Application"
+              echo "Name=${name}"
+              echo "Exec=${name}"
+              echo "Icon=${name}"
+              echo "Categories=Education;"
+            } > "${desktop}"
+
+            cp "${desktop}" "${appdir}/${name}.desktop"
+            cp "${ROOT_DIR}/../assets/icon_256.png" "${appdir}/${name}.png"
+
+            "${TOOL}" "${appdir}" "${ROOT_DIR}/${APPDIR_ROOT}/${name}.AppImage"
+          done
+
+      - name: Archive AppImages
+        run: |
+          cd examples/installers/AppImages
+          tar czf ../goxpyriment-examples-appimages.tar.gz *.AppImage
+
+      - name: Upload Linux AppImages artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-appimages
+          path: examples/installers/goxpyriment-examples-appimages.tar.gz
+
+  create-release:
+    runs-on: ubuntu-latest
+    needs: [build-windows-installers, build-macos-dmg, build-linux-appimages]
+    if: startsWith(github.ref, 'refs/tags/')
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Generate Master Checksum
+        run: |
+          cd artifacts
+          sha256sum goxpyriment-examples-setup.exe > SHA256SUMS
+          sha256sum goxpyriment-examples.dmg >> SHA256SUMS
+          sha256sum goxpyriment-examples-appimages.tar.gz >> SHA256SUMS
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Goxpyriment examples ${{ github.ref_name }}
+          tag_name: ${{ github.ref_name }}
+          files: |
+            artifacts/goxpyriment-examples-setup.exe
+            artifacts/goxpyriment-examples.dmg
+            artifacts/goxpyriment-examples-appimages.tar.gz
+            artifacts/SHA256SUMS
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
