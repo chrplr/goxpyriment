@@ -68,6 +68,24 @@ GPU textures are **lazily allocated** on first `Draw` call. `PreloadVisualOnScre
 
 `PlayGv(screen, path, x, y)` plays a `.gv` (LZ4-compressed RGBA) video file once, frame-by-frame, VSYNC-locked.
 
+#### Animated / dynamic stimuli (VSYNC-locked loops)
+
+Three functions run self-contained VSYNC-locked animation loops and all return a `MotionResult{Key, Button, RTms}` plus an `error`:
+
+| Function | File | Description |
+|----------|------|-------------|
+| `PresentMovingDotCloud(screen, nDots, dotRadius, cloudRadius, center, speedPxPerSec, maxDurationMs, interruptKeys, catchMouse, dotColor, bgColor)` | `moving_dotcloud.go` | Animated random-dot cloud; each dot moves at a fixed speed in a random direction and is respawned when it exits the cloud boundary. |
+| `PresentMovingGrating(screen, width, height, center, orientation, spatialFreq, temporalFreq, contrast, bgLuminance, maxDurationMs, interruptKeys, catchMouse)` | `moving_grating.go` | Drifting sinusoidal grating in a rectangular aperture. All spatial parameters are precomputed; only the phase advances per frame. |
+| `PresentMovingGabor(screen, size, sigma, center, orientation, spatialFreq, temporalFreq, contrast, bgLuminance, maxDurationMs, interruptKeys, catchMouse)` | `moving_grating.go` | Drifting Gabor patch (grating × isotropic Gaussian envelope); rendered with per-pixel alpha so the edges fade into the experiment background. |
+
+All three loops: disable GC (`debug.SetGCPercent(-1)`), drain the SDL event queue before the first frame, poll events after each VSYNC, and return `sdl.EndLoop` on ESC / window-close.
+
+`spatialFreq` is in **cycles per pixel** (e.g. `0.05` = one cycle every 20 px). `temporalFreq` is in **Hz**. `orientation` is in **degrees from horizontal** (0° = vertical bars drifting right).
+
+#### Audio segment playback
+
+`Sound.PlaySegment(onset, offset, rampSec float64) error` plays only the portion of a loaded WAV between `onset` and `offset` (both in seconds). `rampSec` applies a linear fade-in at the onset and a symmetric fade-out at the offset; pass `0` for no ramp. The format-aware ramp handles AUDIO_F32*, AUDIO_S16*, and AUDIO_U8 natively; unknown formats are played without ramping. The original `Data` is never modified.
+
 ### io/
 `Screen` wraps `sdl.Window` + `sdl.Renderer`. All stimulus positions use a **center-origin coordinate system** (0,0 = screen center); `screen.CenterToSDL(x, y)` converts to SDL's top-left origin. `screen.Clear()` + `screen.Update()` map to SDL clear + present (VSYNC blocks in `Update`).
 
@@ -75,6 +93,15 @@ Data is written to `.xpd` files (CSV with metadata header) via `io.DataFile`.
 
 ### design/
 `design.Experiment` → `[]Block` → `[]Trial`, each with `map[string]string` factors. `AddBWSFactor` + `GetPermutedBWSFactorCondition` implement Latin-square between-subject counterbalancing.
+
+#### Copyright header
+
+Every `.go` file in the repository (outside `vendor/`) carries:
+```go
+// Copyright (2026) Christophe Pallier <christophe@pallier.org>
+// Distributed under the GNU General Public License v3.
+```
+New files must include this header.
 
 ## Key conventions
 

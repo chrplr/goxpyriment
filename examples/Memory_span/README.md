@@ -1,0 +1,50 @@
+# Memory Span
+
+Measures immediate serial-recall capacity (memory span) for digits, letters, or words using an **adaptive staircase**: the sequence length starts short and increases or decreases based on the participant's accuracy, converging on the longest sequence they can reliably recall.
+
+---
+
+## Task
+
+A sequence of items is presented one at a time on screen. After the last item, the participant uses on-screen buttons (mouse clicks) to reproduce the sequence in order. The sequence length adapts trial by trial.
+
+---
+
+## Prerequisites
+
+- Go 1.25+
+- SDL3 development libraries (`sudo apt install libsdl3-dev` on Ubuntu/Debian)
+
+---
+
+## Running
+
+```bash
+# Fullscreen, participant 1
+go run main.go -s 1
+
+# Windowed (development / testing)
+go run main.go -s 1 -d
+```
+
+### Flags
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `-s` | `0` | Participant ID (integer) |
+| `-d` | off | Development mode: windowed 1024×768 |
+
+---
+
+## Output
+
+Data are saved to `xpd_results/` as a `.xpd` file (CSV with a metadata header). One row per trial:
+
+| Column | Description |
+|--------|-------------|
+| `trial` | Trial number |
+| `type` | Item type (digit / letter / word) |
+| `length` | Sequence length on this trial |
+| `sequence` | The presented sequence |
+| `response` | The participant's reproduced sequence |
+| `correct` | Whether the sequence was reproduced correctly |

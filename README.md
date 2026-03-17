@@ -4,25 +4,23 @@
 
 `goxpyriment` is a high-level Go framework for building behavioral and psychological experiments.
 
-Check out a few [examples of experiments](https://github.com/chrplr/goxpyriment/releases)
+Download ready-to-run [examples of experiments](https://github.com/chrplr/goxpyriment/releases) implemented with it (and their [source code](examples)).
 
-**Goxpyriment can be used to "vibe-code" psychology experiments.** 
+**Goxpyriment is strongly suited to "vibe-code" psychology experiments.** 
 
 Here is how to proceed: 
 
 1. Install Go on your machine (see <https://go.dev/doc/install>). 
 2. Clone this repository  (`git clone https://github.com/chrplr/goxpyriment.git` or [download ZIP](https://github.com/chrplr/goxpyriment/archive/refs/heads/main.zip))
-3. Fire your favorite AI coding agent (gemini-cli, claude, cursor...) inside goxpyriment folder, then ask it to program your experiment, describing the stimuli, the design, ... in plain language, in Go using the current library.
-4. Once the code is created, say in myexp/main.go, you can test it by running the following command in the terminal:
+3. Fire your favorite AI coding agent (gemini-cli, claude, cursor...) inside goxpyriment folder and ask it to review the provided examples; then prompt it to program your experiment, describing it in plain language (stimuli, design, etc.)
+4. Once the code is created, say in `my_crazy_exp`, you can test it, typically running  `go run my_crazy_exp/main.go` in the terminal.
+5. Optionaly, you can create an executable and installers for Windows, MacOS and Linux to disribute to your colleagues. They will not need to install anything beyond your executable on their machine: no need to install Python and whatever libraries, things should work out of the box (see an example at <https://github.com/chrplr/retinotopy-go>)
 
-       cd myexp
-       go run main.go
+Goxpy relies on the [libsdl](http://libsdl.org) library through the [go-sdl3](https://github.com/Zyko0/go-sdl3) bindings. Its API is largely inspired from [expyriment.org](http://expyriment.org) ; see Krause, F., & Lindemann, O. (2014). Expyriment: A Python library for cognitive and neuroscientific experiments. Behavior Research Methods, 46(2), 416-428. <https://doi.org/10.3758/s13428-013-0390-6>.
 
-5. Lastly, if you want, you can distribute an executable to your colleagues, creating installers for Windows, MacOS and Linux (see an example at <https://github.com/chrplr/retinotopy-go>)
+**NOTE: This software is a beta version. Please report bugs and suggestions for improvement at <https://github.com/chrplr/goxpyriment/issues>.**
 
-It relies on the [libsdl](http://libsdl.org) library through the [go-sdl3](https://github.com/Zyko0/go-sdl3) bindings. Its API is largely inspired from [expyriment.org](http://expyriment.org) ; see Krause, F., & Lindemann, O. (2014). Expyriment: A Python library for cognitive and neuroscientific experiments. Behavior Research Methods, 46(2), 416-428. <https://doi.org/10.3758/s13428-013-0390-6>.
-
-**NOTE: This software is an alpha version, a proof of concept that without any doubt has some bugs. If you want to try and use it, clone this repository. Check out [expe3000-go](http://github.com/chrplr/expe3000-go) for a less ambitious but efficient, no-code, experiment generator.**
+**Check out [gostim2](http://github.com/chrplr/gostim2) for a less flexible but very simple (no-code!) experiment generator.**
 
 
 ## Features

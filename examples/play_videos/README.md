@@ -1,0 +1,38 @@
+# Play Videos
+
+Plays all `.mpg` video files found in an `assets/` subfolder sequentially. A keypress advances to the next video.
+
+This example demonstrates video playback using the goxpyriment framework and can serve as a template for video-based tasks.
+
+---
+
+## Prerequisites
+
+- Go 1.25+
+- SDL3 development libraries (`sudo apt install libsdl3-dev` on Ubuntu/Debian)
+- Video files placed in `assets/*.mpg`
+
+---
+
+## Running
+
+```bash
+# Fullscreen, participant 1
+go run main.go -s 1
+
+# Windowed (development / testing)
+go run main.go -s 1 -d
+```
+
+### Flags
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `-s` | `0` | Participant ID (integer) |
+| `-d` | off | Development mode: windowed 1024×768 |
+
+---
+
+## Controls
+
+Press any key to advance to the next video. Press **Escape** or **Q** to quit.
