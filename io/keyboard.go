@@ -93,6 +93,30 @@ func (k *Keyboard) Check() (sdl.Keycode, error) {
 	return 0, nil
 }
 
+// WaitKey blocks until the given key is pressed and returns an error only on
+// ESC / window close. It is a convenience wrapper around WaitKeys for the
+// common "wait for SPACE to continue" pattern.
+func (k *Keyboard) WaitKey(key sdl.Keycode) error {
+	_, err := k.WaitKeys([]sdl.Keycode{key}, -1)
+	return err
+}
+
+// WaitKeysRT blocks until one of the specified keys is pressed (or a timeout
+// occurs) and also returns the reaction time in milliseconds measured from
+// the moment WaitKeysRT was called.
+//
+// This bundles the common three-line pattern:
+//
+//	startTime := clock.GetTime()
+//	key, err := kb.WaitKeys(keys, timeout)
+//	rt := clock.GetTime() - startTime
+func (k *Keyboard) WaitKeysRT(keys []sdl.Keycode, timeoutMS int) (sdl.Keycode, int64, error) {
+	start := sdl.Ticks()
+	key, err := k.WaitKeys(keys, timeoutMS)
+	rt := int64(sdl.Ticks() - start)
+	return key, rt, err
+}
+
 // Clear drains all pending keyboard (and other) events from SDL's event queue.
 // This is useful between trials to avoid processing stale key presses.
 func (k *Keyboard) Clear() {

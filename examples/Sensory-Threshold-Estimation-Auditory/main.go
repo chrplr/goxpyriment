@@ -263,7 +263,7 @@ func showFeedback(exp *control.Experiment, correct bool) error {
 		color = control.Green
 	}
 	fb := stimuli.NewRectangle(0, 0, 500, 140, color)
-	if err := fb.Present(exp.Screen, true, true); err != nil {
+	if err := exp.Show(fb); err != nil {
 		return err
 	}
 	clock.Wait(300)
@@ -373,36 +373,21 @@ func parseFreqs(s string) ([]float64, error) {
 // ─── main ────────────────────────────────────────────────────────────────────
 
 func main() {
-	subject := flag.Int("s", 0, "Subject ID")
+	// register custom flags first (before NewExperimentFromFlags which calls flag.Parse)
 	freqsFlag := flag.String("freqs", "50,250,500,1000,2000,4000,8000",
 		"Comma-separated list of frequencies in Hz")
 	startDB := flag.Float64("start", -20.0, "Starting intensity in dBFS (e.g. -20)")
-	develop := flag.Bool("d", false, "Development mode: windowed 1024×768")
-	flag.Parse()
 
-	freqs, err := parseFreqs(*freqsFlag)
-	if err != nil {
-		log.Fatalf("bad -freqs: %v", err)
-	}
-
-	w, h, fs := 0, 0, true
-	if *develop {
-		w, h, fs = 1024, 768, false
-	}
-
-	bg := control.RGB(128, 128, 128)
-	exp := control.NewExperiment(
-		"Auditory Threshold Estimation",
-		w, h, fs,
-		bg, control.Black, 24)
-	exp.SubjectID = *subject
-	if err := exp.Initialize(); err != nil {
-		log.Fatalf("initialize: %v", err)
-	}
+	exp := control.NewExperimentFromFlags("Auditory Threshold Estimation", control.RGB(128, 128, 128), control.Black, 24)
 	defer exp.End()
 
 	if err := exp.SetLogicalSize(1024, 768); err != nil {
 		log.Printf("warning: set logical size: %v", err)
+	}
+
+	freqs, err := parseFreqs(*freqsFlag)
+	if err != nil {
+		log.Fatalf("bad -freqs: %v", err)
 	}
 
 	exp.AddDataVariableNames([]string{
@@ -428,18 +413,11 @@ func main() {
 				"Press SPACE to begin.", strings.Join(freqStrs, ", "))
 
 		instr := stimuli.NewTextBox(instrText, 900, control.Point(0, 0), control.Black)
-		if err := instr.Present(exp.Screen, true, true); err != nil {
+		if err := exp.Show(instr); err != nil {
 			return err
 		}
-		for {
-			k, _, err := exp.HandleEvents()
-			if err != nil {
-				return err
-			}
-			if k == control.K_SPACE {
-				break
-			}
-			clock.Wait(10)
+		if err := exp.Keyboard.WaitKey(control.K_SPACE); err != nil {
+			return err
 		}
 		if err := instr.Unload(); err != nil {
 			return err
@@ -509,14 +487,14 @@ func main() {
 					thr = fmt.Sprintf("%.2f", thresholds[r.freqHz])
 				}
 			}
-			exp.Data.Add([]interface{}{
+			exp.Data.Add(
 				r.freqHz,
 				r.trialNum,
 				r.levelDB,
 				r.correct,
 				r.reversal,
 				thr,
-			})
+			)
 		}
 
 		// ── Results summary ──────────────────────────────────────────────────
@@ -529,18 +507,11 @@ func main() {
 
 		summary := stimuli.NewTextBox(
 			strings.Join(lines, "\n"), 700, control.Point(0, 0), control.Black)
-		if err := summary.Present(exp.Screen, true, true); err != nil {
+		if err := exp.Show(summary); err != nil {
 			return err
 		}
-		for {
-			k, _, err := exp.HandleEvents()
-			if err != nil {
-				return err
-			}
-			if k == control.K_SPACE {
-				break
-			}
-			clock.Wait(10)
+		if err := exp.Keyboard.WaitKey(control.K_SPACE); err != nil {
+			return err
 		}
 		return control.EndLoop
 	})

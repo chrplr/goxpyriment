@@ -35,7 +35,7 @@ go run main.go -s 1 -d
 
 ## Output
 
-Data are saved to `xpd_results/` as a `.xpd` file (CSV with a metadata header). One row per video pair:
+Data are saved to `goxpy_data/` as a `.xpd` file (CSV with a metadata header). One row per video pair:
 
 | Column | Description |
 |--------|-------------|

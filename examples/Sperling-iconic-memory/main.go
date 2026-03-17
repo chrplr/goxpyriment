@@ -4,7 +4,6 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"github.com/chrplr/goxpyriment/control"
 	"github.com/chrplr/goxpyriment/design"
@@ -68,7 +67,7 @@ func showInstructions(exp *control.Experiment) error {
 		"Press any key to begin."
 
 	instrBox := stimuli.NewTextBox(text, 650, control.FPoint{X: 0, Y: 0}, control.White)
-	if err := instrBox.Present(exp.Screen, true, true); err != nil {
+	if err := exp.Show(instrBox); err != nil {
 		return err
 	}
 	_, err := exp.Keyboard.Wait()
@@ -76,27 +75,13 @@ func showInstructions(exp *control.Experiment) error {
 }
 
 func main() {
-	develop := flag.Bool("d", false, "Developer mode (windowed 800x600)")
-	subjectID := flag.Int("s", 1, "Subject ID")
-	flag.Parse()
-
-	width, height, fullscreen := 0, 0, true
-	if *develop {
-		width, height, fullscreen = 800, 600, false
-	}
-
-	exp := control.NewExperiment("Sperling-Partial-Report", width, height, fullscreen, control.Black, control.White, 32)
-	exp.SubjectID = *subjectID
-
-	if err := exp.Initialize(); err != nil {
-		log.Fatalf("failed to initialize experiment: %v", err)
-	}
+	exp := control.NewExperimentFromFlags("Sperling-Partial-Report", control.Black, control.White, 32)
 	defer exp.End()
 
 	exp.Data.AddVariableNames([]string{"trial_idx", "condition", "cued_row", "target_letters", "response", "accuracy"})
 
 	if err := showInstructions(exp); err != nil {
-		if err == control.EndLoop { return }
+		if control.IsEndLoop(err) { return }
 		log.Fatalf("instruction error: %v", err)
 	}
 
@@ -104,7 +89,7 @@ func main() {
 	highTone := stimuli.NewTone(1000, CueDuration, 0.5)
 	medTone := stimuli.NewTone(500, CueDuration, 0.5)
 	lowTone := stimuli.NewTone(250, CueDuration, 0.5)
-	
+
 	highTone.PreloadDevice(exp.AudioDevice)
 	medTone.PreloadDevice(exp.AudioDevice)
 	lowTone.PreloadDevice(exp.AudioDevice)
@@ -144,9 +129,9 @@ func main() {
 	// Helper to run a single trial and optionally provide error feedback.
 	runOne := func(trialIdx int, config TrialConfig, giveFeedback bool, logData bool) error {
 		grid := generateGrid()
-		
+
 		// 1. Fixation
-		if err := fixation.Present(exp.Screen, true, true); err != nil { return err }
+		if err := exp.Show(fixation); err != nil { return err }
 		clock.Wait(FixationDuration)
 
 		// 2. Stimulus flash (50ms)
@@ -179,15 +164,15 @@ func main() {
 			rowNames := []string{"TOP", "MIDDLE", "BOTTOM"}
 			prompt = fmt.Sprintf("Recall the %s row:", rowNames[config.CuedRow])
 		}
-		
+
 		ti := stimuli.NewTextInput(prompt, control.FPoint{X: 0, Y: 0}, 300, control.Black, control.White, control.White)
 		response, err := ti.Get(exp.Screen, exp.Keyboard)
 		if err != nil {
 			return err
 		}
-		
+
 		response = strings.ToUpper(strings.TrimSpace(response))
-		
+
 		// Calculate accuracy (count how many target letters are in response)
 		acc := 0
 		for _, char := range targetLetters {
@@ -205,15 +190,13 @@ func main() {
 		}
 
 		if logData {
-			exp.Data.Add([]interface{}{
+			exp.Data.Add(
 				trialIdx, config.Condition, config.CuedRow, targetLetters, response, acc,
-			})
+			)
 		}
 
 		// ITI
-		if err := exp.Screen.Clear(); err != nil { return err }
-		exp.Screen.Update()
-		clock.Wait(1000)
+		if err := exp.Blank(1000); err != nil { return err }
 
 		return nil
 	}
@@ -221,7 +204,7 @@ func main() {
 	// Training block (8 trials, feedback with buzzer on incorrect, no logging).
 	for i, config := range trainingTrials {
 		if err := runOne(i+1, config, true, false); err != nil {
-			if err == control.EndLoop {
+			if control.IsEndLoop(err) {
 				return
 			}
 			log.Fatalf("training trial error: %v", err)
@@ -235,17 +218,17 @@ func main() {
 		control.FPoint{X: 0, Y: 0},
 		control.White,
 	)
-	if err := trainDone.Present(exp.Screen, true, true); err != nil {
+	if err := exp.Show(trainDone); err != nil {
 		log.Fatalf("training-finished screen error: %v", err)
 	}
-	if _, err := exp.Keyboard.Wait(); err != nil && err != control.EndLoop {
+	if _, err := exp.Keyboard.Wait(); err != nil && !control.IsEndLoop(err) {
 		log.Fatalf("training-finished wait error: %v", err)
 	}
 
 	// Main experimental trials (logged, no additional buzzer feedback).
 	for i, config := range trials {
 		if err := runOne(i+1, config, false, true); err != nil {
-			if err == control.EndLoop {
+			if control.IsEndLoop(err) {
 				return
 			}
 			log.Fatalf("trial error: %v", err)

@@ -67,6 +67,7 @@ const (
 	K_F         = sdl.K_F
 	K_J         = sdl.K_J
 	K_K         = sdl.K_K
+	K_L         = sdl.K_L
 	K_Q         = sdl.K_Q
 	K_R         = sdl.K_R
 	K_G         = sdl.K_G

@@ -1,5 +1,6 @@
 # Data files
 /data/
+goxpy_data/
 xpd_results/
 
 # Go binaries

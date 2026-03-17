@@ -4,25 +4,22 @@
 package main
 
 import (
-	_ "embed"
 	"encoding/csv"
 	"flag"
 	"fmt"
 	"log"
 	"math/rand"
 	"os"
-	"time"
 
 	"github.com/chrplr/goxpyriment/control"
 	"github.com/chrplr/goxpyriment/clock"
 	"github.com/chrplr/goxpyriment/stimuli"
-
 )
 
 const (
-	WordResponseKey   = control.K_F
+	WordResponseKey    = control.K_F
 	NonWordResponseKey = control.K_J
-	MaxResponseDelay  = 2000
+	MaxResponseDelay   = 2000
 )
 
 type lexicalTrial struct {
@@ -32,11 +29,8 @@ type lexicalTrial struct {
 }
 
 func main() {
-	rand.Seed(time.Now().UnixNano())
-
-	develop := flag.Bool("d", false, "Developer mode (windowed 1024x1024)")
-	subject := flag.Int("s", 0, "Subject ID")
-	flag.Parse()
+	exp := control.NewExperimentFromFlags("Lexical Decision", control.Black, control.White, 32)
+	defer exp.End()
 
 	// 1. Get CSV file from command line
 	args := flag.Args()
@@ -75,18 +69,6 @@ func main() {
 		trials = append(trials, lexicalTrial{item: item, category: category, stim: stim})
 	}
 
-	// 3. Create and initialize the experiment
-	width, height, fullscreen := 0, 0, true
-	if *develop {
-		width, height, fullscreen = 1024, 1024, false
-	}
-	exp := control.NewExperiment("Lexical Decision", width, height, fullscreen, control.Black, control.White, 32)
-	exp.SubjectID = *subject
-	if err := exp.Initialize(); err != nil {
-		log.Fatalf("failed to initialize experiment: %v", err)
-	}
-	defer exp.End()
-
 	// Prepare event log header and write it as comments in the data file
 	evLog := exp.CollectEventLog()
 	evLog.SetSubjectID(fmt.Sprintf("%d", exp.SubjectID))
@@ -104,55 +86,49 @@ func main() {
 
 	// 5. Prepare common stimuli
 	cue := stimuli.NewFixCross(50, 4, control.DefaultTextColor)
-	
+
 	instrText := fmt.Sprintf("When you'll see a stimulus, your task to decide, as quickly as possible, whether it is a word or not.\n\nif it is a word, press 'F'\n\nif it is a non-word, press 'J'\n\nPress the SPACE bar to start.")
 	instructions := stimuli.NewTextBox(instrText, 600, control.FPoint{X: 0, Y: 100}, control.DefaultTextColor)
 
 	// 6. Run the experiment logic
 	err = exp.Run(func() error {
 		// Instructions
-		if err := instructions.Present(exp.Screen, true, true); err != nil {
+		if err := exp.Show(instructions); err != nil {
 			return err
 		}
-		if _, err := exp.Keyboard.WaitKeys([]control.Keycode{control.K_SPACE}, -1); err != nil {
+		if err := exp.Keyboard.WaitKey(control.K_SPACE); err != nil {
 			return err
 		}
 
 		// Loop through trials
 		for _, t := range trials {
 			// Blank screen
-			if err := exp.Screen.Clear(); err != nil {
+			if err := exp.Blank(1000); err != nil {
 				return err
 			}
-			if err := exp.Screen.Update(); err != nil {
-				return err
-			}
-			clock.Wait(1000)
 
 			// Cue
-			if err := cue.Present(exp.Screen, true, true); err != nil {
+			if err := exp.Show(cue); err != nil {
 				return err
 			}
 			clock.Wait(500)
 
 			// Stimulus
-			if err := t.stim.Present(exp.Screen, true, true); err != nil {
+			if err := exp.Show(t.stim); err != nil {
 				return err
 			}
 
 			// Wait for response
-			startTime := clock.GetTime()
-			key, err := exp.Keyboard.WaitKeys([]control.Keycode{WordResponseKey, NonWordResponseKey}, MaxResponseDelay)
+			key, rt, err := exp.Keyboard.WaitKeysRT([]control.Keycode{WordResponseKey, NonWordResponseKey}, MaxResponseDelay)
 			if err != nil {
 				return err
 			}
-			rt := clock.GetTime() - startTime
-			
+
 			// RT would be 0 or very large if wait timed out and returned 0,
 			// but RT is calculated from startTime.
 			// Actually, if key is 0, it means timeout.
-			
-			exp.Data.Add([]interface{}{t.item, t.category, key, rt})
+
+			exp.Data.Add(t.item, t.category, key, rt)
 			fmt.Printf("Trial: Item=%s, Cat=%s, Key=%d, RT=%d ms\n", t.item, t.category, key, rt)
 
 			// Small pause between trials
@@ -162,7 +138,7 @@ func main() {
 		return control.EndLoop
 	})
 
-	if err != nil && err != control.EndLoop {
+	if err != nil && !control.IsEndLoop(err) {
 		log.Fatalf("experiment error: %v", err)
 	}
 }

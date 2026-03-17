@@ -74,7 +74,7 @@ Steps:
 
    - Build all examples (via `examples/build.sh`).
    - Download `appimagetool-x86_64.AppImage` if not already present.
-   - For each example directory under `examples/` that contains a `main.go` (excluding `assets/`, `installers/`, `xpd_results/`), create an AppDir and corresponding `<ExampleName>.AppImage` under:
+   - For each example directory under `examples/` that contains a `main.go` (excluding `assets/`, `installers/`, `goxpy_data/`), create an AppDir and corresponding `<ExampleName>.AppImage` under:
 
      ```text
      examples/installers/AppImages/

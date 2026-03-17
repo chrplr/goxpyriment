@@ -31,7 +31,7 @@ The experiment is organized into blocks, each featuring a spatial sequence of **
 
 ## 3. Data Collection
 
-The program automatically saves results in the `xpd_results` directory.
+The program automatically saves results in the `goxpy_data` directory.
 Logged variables include:
 - `trial_idx`: The position of the sequence in the experiment.
 - `seq_name`: The type of sequence being tested.

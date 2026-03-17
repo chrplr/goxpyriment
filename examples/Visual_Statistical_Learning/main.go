@@ -13,7 +13,6 @@ import (
 	"log"
 	"math"
 	"math/rand"
-	"time"
 )
 
 // Constants
@@ -43,26 +42,13 @@ type shapeInfo struct {
 }
 
 func main() {
-	rand.Seed(time.Now().UnixNano())
-
+	// register custom flags first (before NewExperimentFromFlags which calls flag.Parse)
 	expTypeFlag := flag.String("exp", "1B", "Experiment type (1A, 1B, 2A, 2B, 3)")
-	subject := flag.Int("s", 0, "Subject ID")
-	develop := flag.Bool("d", false, "Developer mode (windowed)")
-	flag.Parse()
+
+	exp := control.NewExperimentFromFlags("Visual Statistical Learning", control.White, control.Black, 24)
+	defer exp.End()
 
 	expType := ExperimentType(*expTypeFlag)
-
-	// 1. Create and initialize the experiment
-	width, height, fullscreen := 0, 0, true
-	if *develop {
-		width, height, fullscreen = 1024, 768, false
-	}
-	exp := control.NewExperiment("Visual Statistical Learning", width, height, fullscreen, control.White, control.Black, 24)
-	exp.SubjectID = *subject
-	if err := exp.Initialize(); err != nil {
-		log.Fatalf("failed to initialize experiment: %v", err)
-	}
-	defer exp.End()
 
 	if err := exp.SetLogicalSize(1368, 1024); err != nil {
 		log.Printf("Warning: failed to set logical size: %v", err)
@@ -88,7 +74,7 @@ func main() {
 
 	// 4. Generate familiarization stream
 	attendedColorName := "red"
-	if *subject%2 == 1 {
+	if exp.SubjectID%2 == 1 {
 		attendedColorName = "green"
 	}
 
@@ -112,16 +98,16 @@ func main() {
 			"Press SPACEBAR whenever you see a %s shape repeat immediately.\n\n"+
 			"Press SPACEBAR to start.", attendedColorName, attendedColorName)
 		instructions := stimuli.NewTextBox(instr, 1000, control.Point(0, 0), control.Black)
-		if err := instructions.Present(exp.Screen, true, true); err != nil {
+		if err := exp.Show(instructions); err != nil {
 			return err
 		}
-		if err := waitForKey(exp, control.K_SPACE); err != nil {
+		if err := exp.Keyboard.WaitKey(control.K_SPACE); err != nil {
 			return err
 		}
 
 		// Familiarization Phase
 		exp.AddDataVariableNames([]string{"phase", "trial", "shape_idx", "color", "is_repetition", "attended", "response_key", "rt", "hit"})
-		
+
 		for i, item := range stream {
 			info := shapes[item.shapeIdx]
 			colorName := "red"
@@ -129,11 +115,11 @@ func main() {
 				colorName = "green"
 			}
 			info.shape.Color = info.originalColor
-			
-			if err := info.shape.Present(exp.Screen, true, true); err != nil {
+
+			if err := exp.Show(info.shape); err != nil {
 				return err
 			}
-			
+
 			startTime := clock.GetTime()
 			responded := false
 			var responseKey control.Keycode
@@ -160,7 +146,7 @@ func main() {
 			if err := exp.Screen.Update(); err != nil {
 				return err
 			}
-			
+
 			// Continue polling during blank duration
 			for clock.GetTime()-startTime < int64(soa) {
 				key, _, err := exp.HandleEvents()
@@ -177,7 +163,7 @@ func main() {
 
 			isAttended := colorName == attendedColorName
 			hit := responded && item.isRepetition && isAttended
-			exp.Data.Add([]interface{}{"familiarization", i, item.shapeIdx, colorName, item.isRepetition, isAttended, responseKey, rt, hit})
+			exp.Data.Add("familiarization", i, item.shapeIdx, colorName, item.isRepetition, isAttended, responseKey, rt, hit)
 		}
 
 		// Test Phase
@@ -188,7 +174,7 @@ func main() {
 		}
 	})
 
-	if err != nil && err != control.EndLoop {
+	if err != nil && !control.IsEndLoop(err) {
 		log.Fatalf("experiment error: %v", err)
 	}
 }
@@ -292,22 +278,9 @@ func generateColorStream(triplets []Triplet, isGreen bool) []streamItem {
 	return stream
 }
 
-func waitForKey(exp *control.Experiment, target control.Keycode) error {
-	for {
-		key, _, err := exp.HandleEvents()
-		if err != nil {
-			return err
-		}
-		if key == target {
-			return nil
-		}
-		clock.Wait(10)
-	}
-}
-
 func run2IFCTest(exp *control.Experiment, expType ExperimentType, shapes []shapeInfo, redTriplets, greenTriplets []Triplet) error {
 	exp.AddDataVariableNames([]string{"phase", "trial", "triplet_type", "choice", "correct"})
-	
+
 	instr := "Now we will test your memory of the shapes.\n\n" +
 		"In each trial, you will see two sequences of 3 shapes.\n" +
 		"One sequence appeared more often than the other.\n" +
@@ -315,15 +288,15 @@ func run2IFCTest(exp *control.Experiment, expType ExperimentType, shapes []shape
 		"Press '1' for the first sequence, '2' for the second.\n\n" +
 		"Press SPACEBAR to start."
 	instructions := stimuli.NewTextBox(instr, 1000, control.Point(0, 0), control.Black)
-	if err := instructions.Present(exp.Screen, true, true); err != nil {
+	if err := exp.Show(instructions); err != nil {
 		return err
 	}
-	if err := waitForKey(exp, control.K_SPACE); err != nil {
+	if err := exp.Keyboard.WaitKey(control.K_SPACE); err != nil {
 		return err
 	}
 
 	foils := makeFoils(redTriplets, greenTriplets)
-	
+
 	type testTrial struct {
 		triplet Triplet
 		foil    Triplet
@@ -346,7 +319,7 @@ func run2IFCTest(exp *control.Experiment, expType ExperimentType, shapes []shape
 
 	for i, t := range trials {
 		firstIsTriplet := rand.Float64() < 0.5
-		
+
 		if err := presentSequence(exp, expType, shapes, t.triplet, t.foil, firstIsTriplet, true); err != nil {
 			return err
 		}
@@ -376,7 +349,7 @@ func run2IFCTest(exp *control.Experiment, expType ExperimentType, shapes []shape
 		if t.isGreen {
 			tripletType = "green"
 		}
-		exp.Data.Add([]interface{}{"test_2ifc", i, tripletType, choice, correct})
+		exp.Data.Add("test_2ifc", i, tripletType, choice, correct)
 		clock.Wait(500)
 	}
 	return nil
@@ -404,10 +377,10 @@ func presentSequence(exp *control.Experiment, expType ExperimentType, shapes []s
 		label = "Second sequence"
 	}
 	text := stimuli.NewTextLine(label, 0, 200, control.Black)
-	
+
 	for _, shapeIdx := range seq {
 		info := shapes[shapeIdx]
-		
+
 		color := control.Black
 		if expType == Exp2A {
 			color = info.originalColor
@@ -420,7 +393,7 @@ func presentSequence(exp *control.Experiment, expType ExperimentType, shapes []s
 			}
 		}
 		info.shape.Color = color
-		
+
 		if err := exp.Screen.Clear(); err != nil {
 			return err
 		}
@@ -434,13 +407,9 @@ func presentSequence(exp *control.Experiment, expType ExperimentType, shapes []s
 			return err
 		}
 		clock.Wait(800)
-		if err := exp.Screen.Clear(); err != nil {
+		if err := exp.Blank(200); err != nil {
 			return err
 		}
-		if err := exp.Screen.Update(); err != nil {
-			return err
-		}
-		clock.Wait(200)
 	}
 	clock.Wait(500)
 	return nil
@@ -448,17 +417,17 @@ func presentSequence(exp *control.Experiment, expType ExperimentType, shapes []s
 
 func runExp3Test(exp *control.Experiment, shapes []shapeInfo, redTriplets, greenTriplets []Triplet) error {
 	exp.AddDataVariableNames([]string{"phase", "trial", "target_idx", "pos_in_triplet", "rt", "hit"})
-	
+
 	instr := "Now we will test your reaction speed.\n\n" +
 		"In each trial, you will first see a TARGET shape.\n" +
 		"Then, a fast stream of shapes will appear.\n" +
 		"Press SPACEBAR as fast as possible when you see the TARGET.\n\n" +
 		"Press SPACEBAR to start."
 	instructions := stimuli.NewTextBox(instr, 1000, control.Point(0, 0), control.Black)
-	if err := instructions.Present(exp.Screen, true, true); err != nil {
+	if err := exp.Show(instructions); err != nil {
 		return err
 	}
-	if err := waitForKey(exp, control.K_SPACE); err != nil {
+	if err := exp.Keyboard.WaitKey(control.K_SPACE); err != nil {
 		return err
 	}
 
@@ -466,7 +435,7 @@ func runExp3Test(exp *control.Experiment, shapes []shapeInfo, redTriplets, green
 		targetIdx := rand.Intn(NShapeTotal)
 		info := shapes[targetIdx]
 		info.shape.Color = control.Black
-		
+
 		msg := stimuli.NewTextLine("Target for this trial:", 0, 150, control.Black)
 		if err := exp.Screen.Clear(); err != nil {
 			return err
@@ -499,10 +468,10 @@ func runExp3Test(exp *control.Experiment, shapes []shapeInfo, redTriplets, green
 		for _, idx := range streamIndices {
 			sInfo := shapes[idx]
 			sInfo.shape.Color = control.Black
-			if err := sInfo.shape.Present(exp.Screen, true, true); err != nil {
+			if err := exp.Show(sInfo.shape); err != nil {
 				return err
 			}
-			
+
 			startTime := clock.GetTime()
 			for clock.GetTime()-startTime < 200 {
 				key, _, err := exp.HandleEvents()
@@ -517,15 +486,11 @@ func runExp3Test(exp *control.Experiment, shapes []shapeInfo, redTriplets, green
 				}
 				clock.Wait(1)
 			}
-			if err := exp.Screen.Clear(); err != nil {
+			if err := exp.Blank(200); err != nil {
 				return err
 			}
-			if err := exp.Screen.Update(); err != nil {
-				return err
-			}
-			clock.Wait(200)
 		}
-		
+
 		posInTriplet := -1
 		// Search in red triplets
 		for _, t := range redTriplets {
@@ -545,8 +510,8 @@ func runExp3Test(exp *control.Experiment, shapes []shapeInfo, redTriplets, green
 				}
 			}
 		}
-		
-		exp.Data.Add([]interface{}{"test_rt", i, targetIdx, posInTriplet, rt, responded})
+
+		exp.Data.Add("test_rt", i, targetIdx, posInTriplet, rt, responded)
 		clock.Wait(1000)
 	}
 	return nil

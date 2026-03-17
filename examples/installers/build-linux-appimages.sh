@@ -37,7 +37,7 @@ cd "${EXAMPLES_DIR}"
 for dir in */; do
   name="${dir%/}"
   # Skip non-example directories
-  if [[ "${name}" == "assets" || "${name}" == "installers" || "${name}" == "xpd_results" ]]; then
+  if [[ "${name}" == "assets" || "${name}" == "installers" || "${name}" == "goxpy_data" ]]; then
     continue
   fi
   if [[ ! -f "${dir}/main.go" ]]; then

@@ -5,9 +5,9 @@ package main
 
 import (
 	_ "embed"
-	"flag"
 	"log"
 
+	"github.com/chrplr/goxpyriment/assets_embed"
 	"github.com/chrplr/goxpyriment/control"
 	"github.com/chrplr/goxpyriment/stimuli"
 )
@@ -16,21 +16,8 @@ import (
 var bonjourWav []byte
 
 func main() {
-	develop := flag.Bool("d", false, "Developer mode (windowed 1024x1024)")
-	subject := flag.Int("s", 0, "Subject ID")
-	flag.Parse()
-
-	width, height, fullscreen := 0, 0, true
-	if *develop {
-		width, height, fullscreen = 1024, 1024, false
-	}
-	exp := control.NewExperiment("My First Go Experiment", width, height, fullscreen, control.Black, control.White, 32)
-	exp.SubjectID = *subject
-	if err := exp.Initialize(); err != nil {
-		log.Fatalf("failed to initialize experiment: %v", err)
-	}
+	exp := control.NewExperimentFromFlags("My First Go Experiment", control.Black, control.White, 32)
 	defer exp.End()
-
 
 	greetings := stimuli.NewTextBox("Hello World !", 600, control.FPoint{X: 0, Y: 100}, control.DefaultTextColor)
 	instr := stimuli.NewTextBox("Press any key to start the experiment", 600, control.FPoint{X: 0, Y: 100}, control.DefaultTextColor)
@@ -43,17 +30,28 @@ func main() {
 
 	// Run the experiment logic
 	exp.Run(func() error {
+		// Splash screen: logo + experiment name, up to 3 s or any key
+		if err := stimuli.SplashScreen(exp.Screen, assets_embed.LogoPNG, "My First Go Experiment", 3); err != nil {
+			return err
+		}
+
 		if err := stimuli.PlayPing(exp.AudioDevice); err != nil {
 			log.Printf("Warning: failed to play ping: %v", err)
 		}
-		instr.Present(exp.Screen, true, true)
+		if err := exp.Show(instr); err != nil {
+			return err
+		}
 		exp.Keyboard.Wait()
 		sound.Play()
 
-		greetings.Present(exp.Screen, true, true)
+		if err := exp.Show(greetings); err != nil {
+			return err
+		}
 		exp.Keyboard.Wait()
 
-		finish.Present(exp.Screen, true, true)
+		if err := exp.Show(finish); err != nil {
+			return err
+		}
 		exp.Keyboard.Wait()
 
 		return control.EndLoop

@@ -41,7 +41,7 @@ go run main.go -exp 3 -s 5
 
 ## Data Logging
 
-Results are saved in `xpd_results/` and include:
+Results are saved in `goxpy_data/` and include:
 - `phase`: "familiarization", "test_2ifc", or "test_rt".
 - `trial`: Trial index.
 - `shape_idx`: Index of the shape shown (0-23).

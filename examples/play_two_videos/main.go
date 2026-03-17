@@ -4,7 +4,6 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"io"
 	"log"
@@ -16,27 +15,16 @@ import (
 	"github.com/chrplr/goxpyriment/control"
 	"github.com/chrplr/goxpyriment/clock"
 	"github.com/chrplr/goxpyriment/stimuli"
-
 )
 
 func main() {
-	develop := flag.Bool("d", false, "Developer mode (windowed)")
-	flag.Parse()
+	exp := control.NewExperimentFromFlags("Dual Video Player", control.Black, control.White, 32)
+	defer exp.End()
 
 	// 1. Setup Signal Handling for Ctrl-C
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 	terminate := false // Declared here...
-
-	// 2. Initialize the experiment
-	exp := control.NewExperiment("Dual Video Player", 0, 0, !*develop, control.Black, control.White, 32)
-	if *develop {
-		exp.Screen.Width, exp.Screen.Height = 1280, 720
-	}
-	if err := exp.Initialize(); err != nil {
-		log.Fatalf("failed to initialize: %v", err)
-	}
-	defer exp.End()
 
 	exp.Data.AddVariableNames([]string{"pair_index", "video_left", "video_right", "key", "t_rel_ms"})
 
@@ -63,10 +51,10 @@ func main() {
 
 	// 4. Setup Stimuli
 	fix := stimuli.NewFixCross(40, 4, control.White)
-	
+
 	leftVid, err := stimuli.NewVideo(exp.Screen, leftPath)
 	if err != nil { log.Fatalf("Left video error: %v", err) }
-	
+
 	rightVid, err := stimuli.NewVideo(exp.Screen, rightPath)
 	if err != nil { log.Fatalf("Right video error: %v", err) }
 
@@ -104,7 +92,7 @@ func main() {
 		leftVid.DrawAt(exp.Screen, &leftDest)
 		rightVid.DrawAt(exp.Screen, &rightDest)
 		fix.Present(exp.Screen, false, false)
-		
+
 		exp.Screen.Update()
 
 		if errL == io.EOF && errR == io.EOF {
@@ -116,9 +104,9 @@ func main() {
 			terminate = true
 			return control.EndLoop
 		}
-		
+
 		if key != 0 {
-			exp.Data.Add([]interface{}{1, filepath.Base(leftPath), filepath.Base(rightPath), key, clock.GetTime() - videoStart})
+			exp.Data.Add(1, filepath.Base(leftPath), filepath.Base(rightPath), key, clock.GetTime()-videoStart)
 		}
 
 		if key == control.K_R {
@@ -142,7 +130,7 @@ func main() {
 		return nil
 	})
 
-	if err != nil && err != control.EndLoop {
+	if err != nil && !control.IsEndLoop(err) {
 		log.Printf("Playback error: %v", err)
 	}
 

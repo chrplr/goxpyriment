@@ -11,19 +11,8 @@ import (
 )
 
 func main() {
-	develop := flag.Bool("d", false, "Developer mode (windowed)")
 	gvPath := flag.String("f", "wedges.gv", "Path to .gv video file")
-	flag.Parse()
-
-	width, height, fullscreen := 0, 0, true
-	if *develop {
-		width, height, fullscreen = 1280, 720, false
-	}
-
-	exp := control.NewExperiment("GV Video Test", width, height, fullscreen, control.Black, control.White, 32)
-	if err := exp.Initialize(); err != nil {
-		log.Fatalf("failed to initialize experiment: %v", err)
-	}
+	exp := control.NewExperimentFromFlags("GV Video Test", control.Black, control.White, 32)
 	defer exp.End()
 
 	events, err := stimuli.PlayGv(exp.Screen, *gvPath, 0, 0)

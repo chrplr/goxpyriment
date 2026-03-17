@@ -4,7 +4,6 @@
 package main
 
 import (
-	"flag"
 	"github.com/chrplr/goxpyriment/control"
 	"github.com/chrplr/goxpyriment/design"
 	"github.com/chrplr/goxpyriment/clock"
@@ -41,9 +40,9 @@ type TrialConfig struct {
 
 func runTrial(exp *control.Experiment, config TrialConfig, points []control.FPoint, fixation *stimuli.FixCross) (string, int, error) {
 	targetColor := control.Color{R: 89, G: 89, B: 89, A: 255}
-	
+
 	// 1. Fixation (500ms)
-	if err := fixation.Present(exp.Screen, true, true); err != nil { return "", 0, err }
+	if err := exp.Show(fixation); err != nil { return "", 0, err }
 	clock.Wait(500)
 
 	// 2. Target (17ms)
@@ -55,12 +54,12 @@ func runTrial(exp *control.Experiment, config TrialConfig, points []control.FPoi
 		if err := target.Draw(exp.Screen); err != nil { return "", 0, err }
 		if err := exp.Screen.Update(); err != nil { return "", 0, err }
 	} else {
-		if err := fixation.Present(exp.Screen, true, true); err != nil { return "", 0, err }
+		if err := exp.Show(fixation); err != nil { return "", 0, err }
 	}
 	clock.Wait(17)
 
 	// 3. Post-target Fixation (17ms)
-	if err := fixation.Present(exp.Screen, true, true); err != nil { return "", 0, err }
+	if err := exp.Show(fixation); err != nil { return "", 0, err }
 	clock.Wait(17)
 
 	// 4. Mask (233ms)
@@ -103,20 +102,20 @@ func runTrial(exp *control.Experiment, config TrialConfig, points []control.FPoi
 			distractorShown = true
 		}
 
-		if err := fixation.Present(exp.Screen, true, true); err != nil { return "", 0, err }
-		
+		if err := exp.Show(fixation); err != nil { return "", 0, err }
+
 		// Poll for events to allow exiting
 		if _, _, err := exp.HandleEvents(); err != nil {
 			return "", 0, err
 		}
-		
+
 		clock.Wait(10)
 	}
 
 	// 6. Response Screen (Letters at 20 positions) (2.5s)
 	letters := []string{"a", "b", "c", "d", "f", "g", "h", "i", "k", "l", "m", "o", "q", "r", "s", "u", "w", "x", "y", "z"}
 	design.ShuffleList(letters)
-	
+
 	if err := exp.Screen.Clear(); err != nil { return "", 0, err }
 	if err := fixation.Draw(exp.Screen); err != nil { return "", 0, err }
 	for i, p := range points {
@@ -124,16 +123,16 @@ func runTrial(exp *control.Experiment, config TrialConfig, points []control.FPoi
 		t.Draw(exp.Screen)
 	}
 	if err := exp.Screen.Update(); err != nil { return "", 0, err }
-	
+
 	clock.Wait(2500)
 
 	// 7. Visibility Rating (PAS)
 	vuText := stimuli.NewTextLine("Seen?", 0, 0, control.White)
-	if err := vuText.Present(exp.Screen, true, true); err != nil { return "", 0, err }
-	
+	if err := exp.Show(vuText); err != nil { return "", 0, err }
+
 	ratingKey, err := exp.Keyboard.WaitKeys([]control.Keycode{control.K_1, control.K_2, control.K_3, control.K_4, control.K_KP_1, control.K_KP_2, control.K_KP_3, control.K_KP_4}, 2500)
 	if err != nil { return "", 0, err }
-	
+
 	rating := 0
 	switch ratingKey {
 	case control.K_1, control.K_KP_1: rating = 1
@@ -143,9 +142,7 @@ func runTrial(exp *control.Experiment, config TrialConfig, points []control.FPoi
 	}
 
 	// ITI (1s)
-	if err := exp.Screen.Clear(); err != nil { return "", 0, err }
-	exp.Screen.Update()
-	clock.Wait(1000)
+	if err := exp.Blank(1000); err != nil { return "", 0, err }
 
 	return "n/a", rating, nil
 }
@@ -164,7 +161,7 @@ func showInstructions(exp *control.Experiment) error {
 		"Press any key to begin."
 
 	instrBox := stimuli.NewTextBox(text, 650, control.FPoint{X: 0, Y: 0}, control.White)
-	if err := instrBox.Present(exp.Screen, true, true); err != nil {
+	if err := exp.Show(instrBox); err != nil {
 		return err
 	}
 	_, err := exp.Keyboard.Wait()
@@ -172,26 +169,12 @@ func showInstructions(exp *control.Experiment) error {
 }
 
 func main() {
-	develop := flag.Bool("d", false, "Developer mode (windowed 800x600)")
-	subject := flag.Int("s", 0, "Subject ID")
-	flag.Parse()
-
-	width, height, fullscreen := 0, 0, true
-	if *develop {
-		width, height, fullscreen = 800, 600, false
-	}
-
-	exp := control.NewExperiment("Unconscious-Working-Memory", width, height, fullscreen, control.Black, control.White, 32)
-	exp.SubjectID = *subject
-
-	if err := exp.Initialize(); err != nil {
-		log.Fatalf("failed to initialize experiment: %v", err)
-	}
+	exp := control.NewExperimentFromFlags("Unconscious-Working-Memory", control.Black, control.White, 32)
 	defer exp.End()
 
 	// Show instructions
 	if err := showInstructions(exp); err != nil {
-		if err == control.EndLoop { return }
+		if control.IsEndLoop(err) { return }
 		log.Fatalf("instruction error: %v", err)
 	}
 
@@ -240,7 +223,7 @@ func main() {
 	for _, config := range trainingConfigs {
 		_, rating, err := runTrial(exp, config, points, fixation)
 		if err != nil {
-			if err == control.EndLoop { return }
+			if control.IsEndLoop(err) { return }
 			log.Fatalf("training trial error: %v", err)
 		}
 
@@ -264,10 +247,10 @@ func main() {
 		control.FPoint{X: 0, Y: 0},
 		control.White,
 	)
-	if err := trainDone.Present(exp.Screen, true, true); err != nil {
+	if err := exp.Show(trainDone); err != nil {
 		log.Fatalf("training-finished screen error: %v", err)
 	}
-	if _, err := exp.Keyboard.Wait(); err != nil && err != control.EndLoop {
+	if _, err := exp.Keyboard.Wait(); err != nil && !control.IsEndLoop(err) {
 		log.Fatalf("training-finished wait error: %v", err)
 	}
 
@@ -275,12 +258,12 @@ func main() {
 	for i, config := range trialConfigs {
 		_, rating, err := runTrial(exp, config, points, fixation)
 		if err != nil {
-			if err == control.EndLoop { break }
+			if control.IsEndLoop(err) { break }
 			log.Fatalf("trial error: %v", err)
 		}
-		
-		exp.Data.Add([]interface{}{
-			i + 1, config.TargetPosIdx, config.Delay, config.HasDistractor, rating,
-		})
+
+		exp.Data.Add(
+			i+1, config.TargetPosIdx, config.Delay, config.HasDistractor, rating,
+		)
 	}
 }

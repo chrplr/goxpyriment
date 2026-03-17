@@ -4,7 +4,6 @@
 package main
 
 import (
-	"flag"
 	"log"
 	"math"
 
@@ -61,7 +60,7 @@ func showInstructions(exp *control.Experiment) error {
 		"Press any key to begin."
 
 	instrBox := stimuli.NewTextBox(text, 600, control.FPoint{X: 0, Y: 0}, control.White)
-	if err := instrBox.Present(exp.Screen, true, true); err != nil {
+	if err := exp.Show(instrBox); err != nil {
 		return err
 	}
 	_, err := exp.Keyboard.Wait()
@@ -69,28 +68,14 @@ func showInstructions(exp *control.Experiment) error {
 }
 
 func main() {
-	develop := flag.Bool("d", false, "Developer mode (windowed 800x600)")
-	subjectID := flag.Int("s", 1, "Subject ID")
-	flag.Parse()
-
-	width, height, fullscreen := 0, 0, true
-	if *develop {
-		width, height, fullscreen = 800, 600, false
-	}
-
-	exp := control.NewExperiment("Mental-Rotation", width, height, fullscreen, control.Black, control.White, 32)
-	exp.SubjectID = *subjectID
-
-	if err := exp.Initialize(); err != nil {
-		log.Fatalf("failed to initialize experiment: %v", err)
-	}
+	exp := control.NewExperimentFromFlags("Mental-Rotation", control.Black, control.White, 32)
 	defer exp.End()
 
 	exp.Data.AddVariableNames([]string{"trial_idx", "angle", "condition", "response", "is_correct", "rt"})
 
 	// Show instructions
 	if err := showInstructions(exp); err != nil {
-		if err == control.EndLoop { return }
+		if control.IsEndLoop(err) { return }
 		log.Fatalf("instruction error: %v", err)
 	}
 
@@ -112,7 +97,7 @@ func main() {
 	// 2. Main Loop
 	basePoints := getAsymmetricShape()
 	fixation := stimuli.NewFixCross(20, 3, control.White)
-	
+
 	for i, trial := range block.Trials {
 		angle := float64(trial.GetFactor("angle").(int))
 		condition := trial.GetFactor("condition").(string)
@@ -144,21 +129,21 @@ func main() {
 		if err := exp.Screen.Update(); err != nil { log.Fatal(err) }
 
 		startTime := clock.GetTime()
-		
+
 		// Collect response
 		var key control.Keycode
 		var err error
 		for {
 			key, err = exp.Keyboard.WaitKeys([]control.Keycode{control.K_S, control.K_D, control.K_ESCAPE}, -1)
 			if err != nil {
-				if err == control.EndLoop { return }
+				if control.IsEndLoop(err) { return }
 				log.Fatalf("keyboard error: %v", err)
 			}
 			if key != 0 { break }
 		}
-		
+
 		rt := clock.GetTime() - startTime
-		
+
 		response := ""
 		isCorrect := false
 		if key == control.K_S {
@@ -177,9 +162,9 @@ func main() {
 		}
 
 		// Log data
-		exp.Data.Add([]interface{}{
-			i + 1, angle, condition, response, isCorrect, rt,
-		})
+		exp.Data.Add(
+			i+1, angle, condition, response, isCorrect, rt,
+		)
 
 		// Blank screen (with fixation cross) between trials
 		if err := exp.Screen.Clear(); err != nil { log.Fatal(err) }

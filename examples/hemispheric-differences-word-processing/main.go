@@ -21,15 +21,12 @@
 package main
 
 import (
-	"flag"
 	"log"
 	"math/rand"
-	"time"
 
 	"github.com/chrplr/goxpyriment/clock"
 	"github.com/chrplr/goxpyriment/control"
 	"github.com/chrplr/goxpyriment/stimuli"
-
 )
 
 const (
@@ -53,22 +50,7 @@ type StudyTestPair struct {
 }
 
 func main() {
-	rand.Seed(time.Now().UnixNano())
-
-	develop := flag.Bool("d", false, "Developer mode (windowed 1024x1024)")
-	subject := flag.Int("s", 0, "Subject ID")
-	flag.Parse()
-
-	width, height, fullscreen := 0, 0, true
-	if *develop {
-		width, height, fullscreen = 1024, 1024, false
-	}
-
-	exp := control.NewExperiment("Hemispheric-Differences-Word-Processing", width, height, fullscreen, control.Black, control.White, 32)
-	exp.SubjectID = *subject
-	if err := exp.Initialize(); err != nil {
-		log.Fatalf("failed to initialize experiment: %v", err)
-	}
+	exp := control.NewExperimentFromFlags("Hemispheric-Differences-Word-Processing", control.Black, control.White, 32)
 	defer exp.End()
 
 	if err := exp.SetLogicalSize(1368, 1024); err != nil {
@@ -187,7 +169,7 @@ func main() {
 			log.Fatalf("test error: %v", err)
 		}
 
-		exp.Data.Add([]interface{}{
+		exp.Data.Add(
 			trialIndex,
 			"old",
 			p.Word,
@@ -197,16 +179,12 @@ func main() {
 			key,
 			rt,
 			correct,
-		})
+		)
 
 		// Short ITI after test.
-		if err := exp.Screen.Clear(); err != nil {
+		if err := exp.Blank(1000); err != nil {
 			log.Fatal(err)
 		}
-		if err := exp.Screen.Update(); err != nil {
-			log.Fatal(err)
-		}
-		clock.Wait(1000)
 	}
 
 	// Now present new-only central words.
@@ -219,7 +197,7 @@ func main() {
 			}
 			log.Fatalf("new test error: %v", err)
 		}
-		exp.Data.Add([]interface{}{
+		exp.Data.Add(
 			trialIndex,
 			"new",
 			w,
@@ -229,21 +207,17 @@ func main() {
 			key,
 			rt,
 			correct,
-		})
+		)
 
-		if err := exp.Screen.Clear(); err != nil {
+		if err := exp.Blank(1000); err != nil {
 			log.Fatal(err)
 		}
-		if err := exp.Screen.Update(); err != nil {
-			log.Fatal(err)
-		}
-		clock.Wait(1000)
 	}
 }
 
 func runStudy(exp *control.Experiment, fixation *stimuli.FixCross, p StudyTestPair) error {
 	// Fixation
-	if err := fixation.Present(exp.Screen, true, true); err != nil {
+	if err := exp.Show(fixation); err != nil {
 		return err
 	}
 	clock.Wait(500)
@@ -324,4 +298,3 @@ func runTest(exp *control.Experiment, word string, isOld bool) (control.Keycode,
 	}
 	return key, rt, correct, nil
 }
-

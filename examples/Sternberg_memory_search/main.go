@@ -17,7 +17,6 @@ import (
 	"fmt"
 	"log"
 	"math/rand"
-	"time"
 
 	"github.com/chrplr/goxpyriment/assets_embed"
 	"github.com/chrplr/goxpyriment/clock"
@@ -61,22 +60,8 @@ type trialExp2 struct {
 }
 
 func main() {
-	rand.Seed(time.Now().UnixNano())
-
-	develop := flag.Bool("d", false, "Developer mode (windowed 1024x1024)")
-	subject := flag.Int("s", 0, "Subject ID")
 	expNum := flag.Int("exp", 1, "Which experiment: 1 (varied set), 2 (fixed set), or 0 (both)")
-	flag.Parse()
-
-	width, height, fullscreen := 0, 0, true
-	if *develop {
-		width, height, fullscreen = 1024, 1024, false
-	}
-	exp := control.NewExperiment("Sternberg Memory Search", width, height, fullscreen, control.Black, control.White, 32)
-	exp.SubjectID = *subject
-	if err := exp.Initialize(); err != nil {
-		log.Fatalf("failed to initialize experiment: %v", err)
-	}
+	exp := control.NewExperimentFromFlags("Sternberg Memory Search", control.Black, control.White, 32)
 	defer exp.End()
 
 	if err := exp.SetLogicalSize(1368, 1024); err != nil {
@@ -105,18 +90,11 @@ func main() {
 
 	runInstructions := func(title, body string) error {
 		txt := stimuli.NewTextBox(title+"\n\n"+body, 900, control.FPoint{X: 0, Y: 0}, control.DefaultTextColor)
-		if err := txt.Present(exp.Screen, true, true); err != nil {
+		if err := exp.Show(txt); err != nil {
 			return err
 		}
-		for {
-			key, _, err := exp.HandleEvents()
-			if err != nil {
-				return err
-			}
-			if key == control.K_SPACE {
-				break
-			}
-			clock.Wait(10)
+		if err := exp.Keyboard.WaitKey(control.K_SPACE); err != nil {
+			return err
 		}
 		return nil
 	}
@@ -153,7 +131,7 @@ func main() {
 		if bigFont != nil {
 			txt.Font = bigFont
 		}
-		if err := txt.Present(exp.Screen, true, true); err != nil {
+		if err := exp.Show(txt); err != nil {
 			return err
 		}
 		return waitInterruption(exp, FeedbackDuration)
@@ -183,19 +161,12 @@ func main() {
 			control.FPoint{X: 0, Y: 0},
 			control.DefaultTextColor,
 		)
-		if err := trainDone.Present(exp.Screen, true, true); err != nil {
+		if err := exp.Show(trainDone); err != nil {
 			log.Fatal(err)
 		}
-		for {
-			key, _, err := exp.HandleEvents()
-			if err != nil {
-				if control.IsEndLoop(err) { return }
-				log.Fatal(err)
-			}
-			if key != 0 {
-				break
-			}
-			clock.Wait(10)
+		if _, err := exp.Keyboard.Wait(); err != nil {
+			if control.IsEndLoop(err) { return }
+			log.Fatal(err)
 		}
 
 		// Main experimental block (data logged).
@@ -233,19 +204,12 @@ func main() {
 			control.FPoint{X: 0, Y: 0},
 			control.DefaultTextColor,
 		)
-		if err := trainDone.Present(exp.Screen, true, true); err != nil {
+		if err := exp.Show(trainDone); err != nil {
 			log.Fatal(err)
 		}
-		for {
-			key, _, err := exp.HandleEvents()
-			if err != nil {
-				if control.IsEndLoop(err) { return }
-				log.Fatal(err)
-			}
-			if key != 0 {
-				break
-			}
-			clock.Wait(10)
+		if _, err := exp.Keyboard.Wait(); err != nil {
+			if control.IsEndLoop(err) { return }
+			log.Fatal(err)
 		}
 
 		// Main experimental blocks (data logged).
@@ -408,7 +372,7 @@ func runExp1(exp *control.Experiment, trials []trialExp1, digitStim map[int]*sti
 	return exp.Run(func() error {
 		for i, t := range trials {
 			// Blank
-			if err := blank.Present(exp.Screen, true, true); err != nil {
+			if err := exp.Show(blank); err != nil {
 				return err
 			}
 			if err := waitInterruption(exp, ITIExp1); err != nil {
@@ -417,7 +381,7 @@ func runExp1(exp *control.Experiment, trials []trialExp1, digitStim map[int]*sti
 
 			// Present memory set: one digit at a time, 1.2 s each
 			for _, d := range t.MemorySet {
-				if err := digitStim[d].Present(exp.Screen, true, true); err != nil {
+				if err := exp.Show(digitStim[d]); err != nil {
 					return err
 				}
 				if err := waitInterruption(exp, DigitDurationMs); err != nil {
@@ -426,13 +390,13 @@ func runExp1(exp *control.Experiment, trials []trialExp1, digitStim map[int]*sti
 			}
 
 			// Delay 2 s then warning
-			if err := blank.Present(exp.Screen, true, true); err != nil {
+			if err := exp.Show(blank); err != nil {
 				return err
 			}
 			if err := waitInterruption(exp, DelayBeforeProbe); err != nil {
 				return err
 			}
-			if err := fixation.Present(exp.Screen, true, true); err != nil {
+			if err := exp.Show(fixation); err != nil {
 				return err
 			}
 			if err := waitInterruption(exp, WarningDuration); err != nil {
@@ -440,7 +404,7 @@ func runExp1(exp *control.Experiment, trials []trialExp1, digitStim map[int]*sti
 			}
 
 			// Probe
-			if err := digitStim[t.Probe].Present(exp.Screen, true, true); err != nil {
+			if err := exp.Show(digitStim[t.Probe]); err != nil {
 				return err
 			}
 			key, rt, err := waitYesNo()
@@ -453,7 +417,7 @@ func runExp1(exp *control.Experiment, trials []trialExp1, digitStim map[int]*sti
 				return err
 			}
 			if logData {
-				exp.Data.Add([]interface{}{1, 0, t.SetSize, i, t.Probe, t.Positive, key, rt, correct})
+				exp.Data.Add(1, 0, t.SetSize, i, t.Probe, t.Positive, key, rt, correct)
 			}
 		}
 		return control.EndLoop
@@ -475,23 +439,16 @@ func runExp2(exp *control.Experiment, blocks [][]trialExp2, digitStim map[int]*s
 			}
 			announce += "\n\nYou will see test digits. Press F if in set, J if not.\n\nPress SPACE to start this block."
 			announceBox := stimuli.NewTextBox(announce, 700, control.FPoint{X: 0, Y: 0}, control.DefaultTextColor)
-			if err := announceBox.Present(exp.Screen, true, true); err != nil {
+			if err := exp.Show(announceBox); err != nil {
 				return err
 			}
-			for {
-				key, _, err := exp.HandleEvents()
-				if err != nil {
-					return err
-				}
-				if key == control.K_SPACE {
-					break
-				}
-				clock.Wait(10)
+			if err := exp.Keyboard.WaitKey(control.K_SPACE); err != nil {
+				return err
 			}
 
 			for trialIdx, t := range block {
 				// Warning
-				if err := fixation.Present(exp.Screen, true, true); err != nil {
+				if err := exp.Show(fixation); err != nil {
 					return err
 				}
 				if err := waitInterruption(exp, WarningDuration); err != nil {
@@ -499,7 +456,7 @@ func runExp2(exp *control.Experiment, blocks [][]trialExp2, digitStim map[int]*s
 				}
 
 				// Test digit
-				if err := digitStim[t.Probe].Present(exp.Screen, true, true); err != nil {
+				if err := exp.Show(digitStim[t.Probe]); err != nil {
 					return err
 				}
 				key, rt, err := waitYesNo()
@@ -512,7 +469,7 @@ func runExp2(exp *control.Experiment, blocks [][]trialExp2, digitStim map[int]*s
 					return err
 				}
 				if logData {
-					exp.Data.Add([]interface{}{2, blockIdx, setSize, trialIdx, t.Probe, t.Positive, key, rt, correct})
+					exp.Data.Add(2, blockIdx, setSize, trialIdx, t.Probe, t.Positive, key, rt, correct)
 				}
 
 				// 3.7 s until next trial (paper)

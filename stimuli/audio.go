@@ -84,7 +84,15 @@ func (s *Sound) Play() error {
 	}
 	// Clear any remaining data and put new data
 	s.Stream.Clear()
-	return s.Stream.PutData(s.Data)
+	if err := s.Stream.PutData(s.Data); err != nil {
+		return err
+	}
+	// Flush tells the resampler that no more input is coming so it emits its
+	// lookahead frames.  Without this, SDL_GetAudioStreamQueued never reaches
+	// zero when the WAV sample-rate differs from the device rate (e.g. 44100
+	// Hz WAV on a 48000 Hz PipeWire device), causing Sound.Wait() to spin
+	// forever.
+	return s.Stream.Flush()
 }
 
 // Wait blocks until the sound has finished playing.

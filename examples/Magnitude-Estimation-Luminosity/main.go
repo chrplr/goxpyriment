@@ -108,25 +108,9 @@ func getPositiveNumber(exp *control.Experiment, startMs int64) (float64, int64, 
 }
 
 func main() {
-	subject := flag.Int("s", 0, "Subject ID")
 	distCM := flag.Float64("dist", 60.0, "Viewing distance in cm")
-	develop := flag.Bool("d", false, "Development mode: windowed 1024×768")
-	flag.Parse()
-
-	w, h, fs := 0, 0, true
-	if *develop {
-		w, h, fs = scrW, scrH, false
-	}
-
 	bg := control.RGB(bgGray, bgGray, bgGray) // mid-gray background
-	exp := control.NewExperiment(
-		"Magnitude Estimation – Luminance",
-		w, h, fs,
-		bg, control.Black, 24)
-	exp.SubjectID = *subject
-	if err := exp.Initialize(); err != nil {
-		log.Fatalf("initialize: %v", err)
-	}
+	exp := control.NewExperimentFromFlags("Magnitude Estimation – Luminance", bg, control.Black, 24)
 	defer exp.End()
 
 	if err := exp.SetLogicalSize(scrW, scrH); err != nil {
@@ -156,18 +140,11 @@ func main() {
 				"  • You may use integers or decimals (e.g. 10, 25.5).\n\n" +
 				"Press SPACE to begin."
 		instr := stimuli.NewTextBox(instrText, 900, control.Point(0, 0), control.Black)
-		if err := instr.Present(exp.Screen, true, true); err != nil {
+		if err := exp.Show(instr); err != nil {
 			return err
 		}
-		for {
-			k, _, err := exp.HandleEvents()
-			if err != nil {
-				return err
-			}
-			if k == control.K_SPACE {
-				break
-			}
-			clock.Wait(10)
+		if err := exp.Keyboard.WaitKey(control.K_SPACE); err != nil {
+			return err
 		}
 		if err := instr.Unload(); err != nil {
 			return err
@@ -190,18 +167,11 @@ func main() {
 				msg := stimuli.NewTextBox(
 					fmt.Sprintf("Block %d of %d.\n\nPress SPACE to continue.", block, nBlocks),
 					600, control.Point(0, 0), control.Black)
-				if err := msg.Present(exp.Screen, true, true); err != nil {
+				if err := exp.Show(msg); err != nil {
 					return err
 				}
-				for {
-					k, _, err := exp.HandleEvents()
-					if err != nil {
-						return err
-					}
-					if k == control.K_SPACE {
-						break
-					}
-					clock.Wait(10)
+				if err := exp.Keyboard.WaitKey(control.K_SPACE); err != nil {
+					return err
 				}
 				if err := msg.Unload(); err != nil {
 					return err
@@ -218,20 +188,21 @@ func main() {
 				trialNum++
 
 				// 1. Fixation cross 500 ms.
-				if err := fix.Present(exp.Screen, true, true); err != nil {
+				if err := exp.Show(fix); err != nil {
 					return err
 				}
 				clock.Wait(fixDurMs)
 
 				// 2. Disk 1000 ms.
-				if err := disks[lum].Present(exp.Screen, true, true); err != nil {
+				if err := exp.Show(disks[lum]); err != nil {
 					return err
 				}
 				clock.Wait(stimDurMs)
 
 				// 3. Clear screen → response.
-				exp.Screen.Clear()
-				exp.Screen.Update()
+				if err := exp.Screen.ClearAndUpdate(); err != nil {
+					return err
+				}
 				stimOffset := clock.GetTime()
 
 				response, rtMs, err := getPositiveNumber(exp, stimOffset)
@@ -239,19 +210,19 @@ func main() {
 					return err
 				}
 
-				exp.Data.Add([]interface{}{
+				exp.Data.Add(
 					exp.SubjectID,
 					trialNum,
 					block,
 					lum,
 					response,
 					rtMs,
-				})
+				)
 
 				// 4. ITI 1000 ms of blank gray.
-				exp.Screen.Clear()
-				exp.Screen.Update()
-				clock.Wait(itiDurMs)
+				if err := exp.Blank(itiDurMs); err != nil {
+					return err
+				}
 			}
 		}
 
@@ -259,18 +230,11 @@ func main() {
 		end := stimuli.NewTextBox(
 			"The experiment is complete.\nThank you for your participation!\n\nPress SPACE to exit.",
 			700, control.Point(0, 0), control.Black)
-		if err := end.Present(exp.Screen, true, true); err != nil {
+		if err := exp.Show(end); err != nil {
 			return err
 		}
-		for {
-			k, _, err := exp.HandleEvents()
-			if err != nil {
-				return err
-			}
-			if k == control.K_SPACE {
-				break
-			}
-			clock.Wait(10)
+		if err := exp.Keyboard.WaitKey(control.K_SPACE); err != nil {
+			return err
 		}
 		return control.EndLoop
 	})

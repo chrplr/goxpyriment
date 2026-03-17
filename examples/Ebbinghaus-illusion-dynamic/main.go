@@ -4,7 +4,6 @@
 package main
 
 import (
-	"flag"
 	"log"
 	"math"
 
@@ -38,20 +37,8 @@ func DrawEbbinghaus(screen *io.Screen, n int, d float32, r1 float32, r2 float32,
 }
 
 func main() {
-	develop := flag.Bool("d", false, "Developer mode (windowed 700x500)")
-	flag.Parse()
-
-	width, height, fullscreen := 0, 0, true
-	if *develop {
-		width, height, fullscreen = 700, 500, false
-	}
-
 	// 1. Create and initialize the experiment
-	exp := control.NewExperiment("Dynamic Ebbinghaus", width, height, fullscreen, control.White, control.Black, 32)
-
-	if err := exp.Initialize(); err != nil {
-		log.Fatalf("failed to initialize experiment: %v", err)
-	}
+	exp := control.NewExperimentFromFlags("Dynamic Ebbinghaus", control.White, control.Black, 32)
 	defer exp.End()
 
 	// 2. Constants and initial state for the illusion
@@ -106,7 +93,7 @@ func main() {
 		return nil
 	})
 
-	if err != nil && err != control.EndLoop {
+	if err != nil && !control.IsEndLoop(err) {
 		log.Fatalf("experiment error: %v", err)
 	}
 }

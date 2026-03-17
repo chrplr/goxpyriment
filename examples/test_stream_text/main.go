@@ -41,7 +41,7 @@ func main() {
 		0, 0,
 		control.White,
 	)
-	if err != nil && err != control.EndLoop {
+	if err != nil && !control.IsEndLoop(err) {
 		log.Fatalf("Stream failed: %v", err)
 	}
 
@@ -53,7 +53,7 @@ func main() {
 		targetMS := tl.TargetOn.Milliseconds()
 		fmt.Printf("Word %d (%q): Target %dms | Onset: %dms | Offset: %dms\n",
 			tl.Index, words[tl.Index], targetMS, onsetMS, offsetMS)
-		exp.Data.Add([]interface{}{tl.Index, words[tl.Index], targetMS, onsetMS, offsetMS})
+		exp.Data.Add(tl.Index, words[tl.Index], targetMS, onsetMS, offsetMS)
 	}
 
 	fmt.Println("\n--- User Input Captured ---")

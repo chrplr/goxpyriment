@@ -295,7 +295,7 @@ func runTrial(exp *control.Experiment, t Trial,
 	fix *stimuli.FixCross, feedback bool) (trialResult, error) {
 
 	// 1. Fixation cross 200 ms.
-	if err := fix.Present(exp.Screen, true, true); err != nil {
+	if err := exp.Show(fix); err != nil {
 		return trialResult{}, err
 	}
 	clock.Wait(200)
@@ -343,7 +343,7 @@ func runTrial(exp *control.Experiment, t Trial,
 			msg = "CORRECT"
 		}
 		fb := stimuli.NewTextLine(msg, 0, 0, color)
-		if err := fb.Present(exp.Screen, true, true); err != nil {
+		if err := exp.Show(fb); err != nil {
 			return trialResult{}, err
 		}
 		clock.Wait(600)
@@ -353,9 +353,9 @@ func runTrial(exp *control.Experiment, t Trial,
 	}
 
 	// 4. Inter-trial interval 750 ms.
-	exp.Screen.Clear()
-	exp.Screen.Update()
-	clock.Wait(750)
+	if err := exp.Blank(750); err != nil {
+		return trialResult{}, err
+	}
 
 	return trialResult{key: key, rtMs: rtMs, correct: correct}, nil
 }
@@ -397,18 +397,11 @@ func runTraining(exp *control.Experiment,
 					"Press SPACE to try again.",
 				acc*100),
 			700, control.Point(0, 0), control.Black)
-		if err := msg.Present(exp.Screen, true, true); err != nil {
+		if err := exp.Show(msg); err != nil {
 			return err
 		}
-		for {
-			k, _, err := exp.HandleEvents()
-			if err != nil {
-				return err
-			}
-			if k == control.K_SPACE {
-				break
-			}
-			clock.Wait(10)
+		if err := exp.Keyboard.WaitKey(control.K_SPACE); err != nil {
+			return err
 		}
 		if err := msg.Unload(); err != nil {
 			return err
@@ -420,18 +413,11 @@ func runTraining(exp *control.Experiment,
 // waitSpace shows a text box and waits for the SPACE key.
 func waitSpace(exp *control.Experiment, text string) error {
 	msg := stimuli.NewTextBox(text, 900, control.Point(0, 0), control.Black)
-	if err := msg.Present(exp.Screen, true, true); err != nil {
+	if err := exp.Show(msg); err != nil {
 		return err
 	}
-	for {
-		k, _, err := exp.HandleEvents()
-		if err != nil {
-			return err
-		}
-		if k == control.K_SPACE {
-			break
-		}
-		clock.Wait(10)
+	if err := exp.Keyboard.WaitKey(control.K_SPACE); err != nil {
+		return err
 	}
 	return msg.Unload()
 }
@@ -468,15 +454,15 @@ func runExperiment(exp *control.Experiment,
 			respStr = "RIGHT"
 		}
 
-		exp.Data.Add([]interface{}{
-			i + 1,
+		exp.Data.Add(
+			i+1,
 			t.AnchorText,
 			t.AnchorPos,
 			compNames[t.CompType],
 			t.HeightCond,
 			respStr,
 			r.rtMs,
-		})
+		)
 	}
 	return nil
 }
@@ -485,23 +471,7 @@ func runExperiment(exp *control.Experiment,
 
 func main() {
 	expNum := flag.Int("exp", 1, "Experiment number: 1 (letters) or 2 (words)")
-	subject := flag.Int("s", 0, "Subject ID")
-	develop := flag.Bool("d", false, "Development mode: windowed 1024×768")
-	flag.Parse()
-
-	w, h, fs := 0, 0, true
-	if *develop {
-		w, h, fs = 1024, 768, false
-	}
-
-	exp := control.NewExperiment(
-		"Letter Height Superiority Illusion",
-		w, h, fs,
-		control.White, control.Black, 20)
-	exp.SubjectID = *subject
-	if err := exp.Initialize(); err != nil {
-		log.Fatalf("initialize: %v", err)
-	}
+	exp := control.NewExperimentFromFlags("Letter Height Superiority Illusion", control.White, control.Black, 20)
 	defer exp.End()
 
 	if err := exp.SetLogicalSize(scrW, scrH); err != nil {

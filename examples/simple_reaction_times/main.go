@@ -4,16 +4,12 @@
 package main
 
 import (
-	_ "embed"
-	"flag"
 	"fmt"
 	"github.com/chrplr/goxpyriment/control"
 	"github.com/chrplr/goxpyriment/clock"
 	"github.com/chrplr/goxpyriment/stimuli"
 	"log"
 	"math/rand"
-	"time"
-
 )
 
 const (
@@ -24,47 +20,25 @@ const (
 )
 
 func main() {
-	// Initialize random seed
-	rand.Seed(time.Now().UnixNano())
-
-	develop := flag.Bool("d", false, "Developer mode (windowed 1024x1024)")
-	subject := flag.Int("s", 0, "Subject ID")
-	flag.Parse()
-
-	// 1. Create and initialize the experiment
-	width, height, fullscreen := 0, 0, true
-	if *develop {
-		width, height, fullscreen = 1024, 1024, false
-	}
-	exp := control.NewExperiment("Visual Detection", width, height, fullscreen, control.Black, control.White, 32)
-	exp.SubjectID = *subject
-	if err := exp.Initialize(); err != nil {
-		log.Fatalf("failed to initialize experiment: %v", err)
-	}
+	exp := control.NewExperimentFromFlags("Visual Detection", control.Black, control.White, 32)
 	defer exp.End()
 
 	exp.Data.AddVariableNames([]string{"trial", "wait_time", "key", "rt"})
 
 	// 2. Prepare stimuli
 	target := stimuli.NewTextLine("+", 0, 0, control.DefaultTextColor)
-	
+
 	instrText := fmt.Sprintf("From time to time, a cross will appear at the center of screen.\n\nYour task is to press the SPACEBAR as quickly as possible when you see it (We measure your reaction-time).\n\nThere will be %d trials in total.\n\nPress the spacebar to start.", NTrials)
 	instructions := stimuli.NewTextBox(instrText, 600, control.FPoint{X: 0, Y: 100}, control.DefaultTextColor)
 
 	// 3. Run the experiment logic
 	err := exp.Run(func() error {
 		// Instructions
-		if err := instructions.Present(exp.Screen, true, true); err != nil {
+		if err := exp.Show(instructions); err != nil {
 			return err
 		}
-		for {
-			key, err := exp.Keyboard.Wait()
-			if err != nil {
-				return err
-			}
-			if key == control.K_SPACE {
-				break
-			}
+		if err := exp.Keyboard.WaitKey(control.K_SPACE); err != nil {
+			return err
 		}
 
 		// Loop through trials
@@ -76,12 +50,12 @@ func main() {
 			if err := exp.Screen.Update(); err != nil {
 				return err
 			}
-			
+
 			waitTime := rand.Intn(MaxWaitTime-MinWaitTime) + MinWaitTime
 			clock.Wait(waitTime)
 
 			// Target stimulus
-			if err := target.Present(exp.Screen, true, true); err != nil {
+			if err := exp.Show(target); err != nil {
 				return err
 			}
 
@@ -92,10 +66,10 @@ func main() {
 				return err
 			}
 			rt := clock.GetTime() - startTime
-			
-			exp.Data.Add([]interface{}{i, waitTime, key, rt})
+
+			exp.Data.Add(i, waitTime, key, rt)
 			fmt.Printf("Trial %d: Wait=%d ms, Key=%d, RT=%d ms\n", i, waitTime, key, rt)
-			
+
 			// Small pause between trials
 			clock.Wait(500)
 		}
@@ -103,7 +77,7 @@ func main() {
 		return control.EndLoop // Graceful exit
 	})
 
-	if err != nil && err != control.EndLoop {
+	if err != nil && !control.IsEndLoop(err) {
 		log.Fatalf("experiment error: %v", err)
 	}
 }

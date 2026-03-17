@@ -15,3 +15,8 @@ var BuzzerWav []byte
 
 //go:embed correct.wav
 var CorrectWav []byte
+
+// LogoPNG is the goxpyriment mascot logo, suitable for use with stimuli.SplashScreen.
+//
+//go:embed logo.png
+var LogoPNG []byte

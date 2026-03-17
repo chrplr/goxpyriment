@@ -4,17 +4,13 @@
 package main
 
 import (
-	_ "embed"
-	"flag"
 	"fmt"
 	"log"
 	"math/rand"
-	"time"
 
 	"github.com/chrplr/goxpyriment/clock"
 	"github.com/chrplr/goxpyriment/control"
 	"github.com/chrplr/goxpyriment/stimuli"
-
 )
 
 type stroopTrial struct {
@@ -24,21 +20,7 @@ type stroopTrial struct {
 }
 
 func main() {
-	// Initialize random seed
-	rand.Seed(time.Now().UnixNano())
-
-	develop := flag.Bool("d", false, "Developer mode (windowed 1024x1024)")
-	flag.Parse()
-
-	// 1. Create and initialize the experiment
-	width, height, fullscreen := 0, 0, true
-	if *develop {
-		width, height, fullscreen = 1024, 1024, false
-	}
-	exp := control.NewExperiment("Stroop Task", width, height, fullscreen, control.Black, control.White, 32)
-	if err := exp.Initialize(); err != nil {
-		log.Fatalf("failed to initialize experiment: %v", err)
-	}
+	exp := control.NewExperimentFromFlags("Stroop Task", control.Black, control.White, 32)
 	defer exp.End()
 
 	// Prepare event log header and write it as comments in the data file.
@@ -83,41 +65,30 @@ func main() {
 	err := exp.Run(func() error {
 		// Instructions
 		instructions := stimuli.NewTextBox(instrText, 800, control.FPoint{X: 0, Y: 0}, control.DefaultTextColor)
-		if err := instructions.Present(exp.Screen, true, true); err != nil {
+		if err := exp.Show(instructions); err != nil {
 			return err
 		}
-		var key control.Keycode
-		var subErr error
-		for {
-			key, _, subErr = exp.HandleEvents()
-			if subErr != nil {
-				return subErr
-			}
-			if key == control.K_SPACE {
-				break
-			}
-			clock.Wait(10)
+		if err := exp.Keyboard.WaitKey(control.K_SPACE); err != nil {
+			return err
 		}
 
 		// Loop through trials
 		for i, t := range trials {
 			// Blank screen
-			if err := exp.Screen.Clear(); err != nil {
+			if err := exp.Blank(1000); err != nil {
 				return err
 			}
-			if err := exp.Screen.Update(); err != nil {
-				return err
-			}
-			clock.Wait(1000)
 
 			// Stimulus
 			stim := stimuli.NewTextLine(t.word, 0, 0, t.color)
-			if err := stim.Present(exp.Screen, true, true); err != nil {
+			if err := exp.Show(stim); err != nil {
 				return err
 			}
 
 			// Wait for response
 			startTime := clock.GetTime()
+			var key control.Keycode
+			var subErr error
 			for {
 				key, _, subErr = exp.HandleEvents()
 				if subErr != nil {
@@ -142,7 +113,7 @@ func main() {
 					congruent := t.word == t.name
 
 					// Log to data file
-					exp.Data.Add([]interface{}{
+					exp.Data.Add(
 						i,
 						t.word,
 						t.name,
@@ -150,14 +121,14 @@ func main() {
 						rt,
 						correct,
 						congruent,
-					})
+					)
 
 					fmt.Printf("Trial %d: Word=%s, Color=%s, Resp=%s, RT=%d ms, Correct=%v, Congruent=%v\n", i, t.word, t.name, resp, rt, correct, congruent)
 					break
 				}
 				clock.Wait(1)
 			}
-			
+
 			// Small pause between trials
 			clock.Wait(500)
 		}
@@ -165,7 +136,7 @@ func main() {
 		return control.EndLoop // Graceful exit
 	})
 
-	if err != nil && err != control.EndLoop {
+	if err != nil && !control.IsEndLoop(err) {
 		log.Fatalf("experiment error: %v", err)
 	}
 }

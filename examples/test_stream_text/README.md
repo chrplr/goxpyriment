@@ -23,7 +23,7 @@ go run main.go
 
 ## Output
 
-Data are saved to `xpd_results/` as a `.xpd` file (CSV with a metadata header):
+Data are saved to `goxpy_data/` as a `.xpd` file (CSV with a metadata header):
 
 | Column | Description |
 |--------|-------------|

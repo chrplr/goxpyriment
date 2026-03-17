@@ -4,29 +4,14 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"github.com/chrplr/goxpyriment/control"
 	"github.com/chrplr/goxpyriment/stimuli"
 	"log"
-
 )
 
 func main() {
-	develop := flag.Bool("d", false, "Developer mode (windowed 1024x1024)")
-	subject := flag.Int("s", 0, "Subject ID")
-	flag.Parse()
-
-	// 1. Create and initialize the experiment
-	width, height, fullscreen := 0, 0, true
-	if *develop {
-		width, height, fullscreen = 1024, 1024, false
-	}
-	exp := control.NewExperiment("TextInput Demo", width, height, fullscreen, control.Black, control.White, 32)
-	exp.SubjectID = *subject
-	if err := exp.Initialize(); err != nil {
-		log.Fatalf("failed to initialize experiment: %v", err)
-	}
+	exp := control.NewExperimentFromFlags("TextInput Demo", control.Black, control.White, 32)
 	defer exp.End()
 
 	// 2. Prepare TextInput
@@ -50,7 +35,7 @@ func main() {
 		result := fmt.Sprintf("Hello, %s!\n\nPress any key to exit.", name)
 		msg := stimuli.NewTextBox(result, 600, control.FPoint{X: 0, Y: 0}, control.White)
 		
-		if err := msg.Present(exp.Screen, true, true); err != nil {
+		if err := exp.Show(msg); err != nil {
 			return err
 		}
 		
@@ -61,7 +46,7 @@ func main() {
 		return control.EndLoop
 	})
 
-	if err != nil && err != control.EndLoop {
+	if err != nil && !control.IsEndLoop(err) {
 		log.Fatalf("experiment error: %v", err)
 	}
 }

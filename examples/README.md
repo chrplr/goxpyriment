@@ -33,7 +33,7 @@ All programs accept `-d` for windowed development mode and `-s <id>` for a subje
 
 ## Psychological Experiments
 
-Full experiments that record and save behavioural data to an `.xpd` file in `xpd_results/`.
+Full experiments that record and save behavioural data to an `.xpd` file in `goxpy_data/`.
 
 | Directory | Task | Reference |
 |-----------|------|-----------|

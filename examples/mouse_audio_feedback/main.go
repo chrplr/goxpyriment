@@ -3,30 +3,16 @@
 package main
 
 import (
-	"flag"
 	"log"
 
 	"github.com/chrplr/goxpyriment/control"
 	"github.com/chrplr/goxpyriment/clock"
 	"github.com/chrplr/goxpyriment/stimuli"
-
 )
 
 func main() {
-	develop := flag.Bool("d", false, "Developer mode (windowed 1024x1024)")
-	subject := flag.Int("s", 0, "Subject ID")
-	flag.Parse()
-
 	// 1. Create and initialize the experiment
-	width, height, fullscreen := 0, 0, true
-	if *develop {
-		width, height, fullscreen = 1024, 1024, false
-	}
-	exp := control.NewExperiment("Mouse Audio Feedback", width, height, fullscreen, control.Black, control.White, 32)
-	exp.SubjectID = *subject
-	if err := exp.Initialize(); err != nil {
-		log.Fatalf("failed to initialize experiment: %v", err)
-	}
+	exp := control.NewExperimentFromFlags("Mouse Audio Feedback", control.Black, control.White, 32)
 	defer exp.End()
 
 	// 2. Prepare stimuli
@@ -72,8 +58,7 @@ func main() {
 		return nil
 	})
 
-	if err != nil && err != control.EndLoop {
+	if err != nil && !control.IsEndLoop(err) {
 		log.Fatalf("experiment error: %v", err)
 	}
 }
-

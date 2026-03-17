@@ -14,27 +14,17 @@ import (
 )
 
 func main() {
-	develop := flag.Bool("d", false, "Developer mode (windowed 800x800)")
 	radiusFlag := flag.Float64("r", 40.0, "Radius of the lilac circles (pixels)")
 	rFlag := flag.Int("R", 250, "Red component of circle color (0-255)")
 	gFlag := flag.Int("G", 217, "Green component of circle color (0-255)")
 	bFlag := flag.Int("B", 248, "Blue component of circle color (0-255)")
-	flag.Parse()
+
+	// 1. Create and initialize the experiment
+	exp := control.NewExperimentFromFlags("Lilac Chaser", control.White, control.Black, 32)
+	defer exp.End()
 
 	radius := float32(*radiusFlag)
 	rose := control.Color{R: uint8(*rFlag), G: uint8(*gFlag), B: uint8(*bFlag), A: 255}
-
-	// 1. Create and initialize the experiment
-	width, height, fullscreen := 0, 0, true
-	if *develop {
-		width, height, fullscreen = 800, 800, false
-	}
-	exp := control.NewExperiment("Lilac Chaser", width, height, fullscreen, control.White, control.Black, 32)
-
-	if err := exp.Initialize(); err != nil {
-		log.Fatalf("failed to initialize experiment: %v", err)
-	}
-	defer exp.End()
 
 	// 2. Constants for the Lilac Chaser
 	n := 12
@@ -96,7 +86,7 @@ func main() {
 		return nil
 	})
 
-	if err != nil && err != control.EndLoop {
+	if err != nil && !control.IsEndLoop(err) {
 		log.Fatalf("experiment error: %v", err)
 	}
 }

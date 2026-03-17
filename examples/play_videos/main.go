@@ -4,7 +4,6 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"io"
 	"log"
@@ -16,28 +15,15 @@ import (
 	"github.com/chrplr/goxpyriment/control"
 	"github.com/chrplr/goxpyriment/clock"
 	"github.com/chrplr/goxpyriment/stimuli"
-
 )
 
 func main() {
-	develop := flag.Bool("d", false, "Developer mode (windowed 1024x1024)")
-	subject := flag.Int("s", 0, "Subject ID")
-	flag.Parse()
+	exp := control.NewExperimentFromFlags("Video Player Example", control.Black, control.White, 32)
+	defer exp.End()
 
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 	terminate := false
-
-	width, height, fullscreen := 0, 0, true
-	if *develop {
-		width, height, fullscreen = 1024, 1024, false
-	}
-	exp := control.NewExperiment("Video Player Example", width, height, fullscreen, control.Black, control.White, 32)
-	exp.SubjectID = *subject
-	if err := exp.Initialize(); err != nil {
-		log.Fatalf("failed to initialize experiment: %v", err)
-	}
-	defer exp.End()
 
 	files, err := os.ReadDir("assets")
 	if err != nil {
@@ -95,7 +81,7 @@ func main() {
 				terminate = true
 				return control.EndLoop
 			}
-			
+
 			if key == control.K_SPACE {
 				if vid.IsPaused() {
 					vid.Play()
@@ -103,7 +89,7 @@ func main() {
 					vid.Pause()
 				}
 			}
-			
+
 			if key == control.K_S { return control.EndLoop }
 
 			return nil

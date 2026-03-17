@@ -59,7 +59,7 @@ go run main.go -d
 
 ## Output
 
-Data are saved to `xpd_results/` as a `.xpd` file (CSV with a metadata header). One row per trial:
+Data are saved to `goxpy_data/` as a `.xpd` file (CSV with a metadata header). One row per trial:
 
 | Column | Description |
 |--------|-------------|

@@ -4,7 +4,6 @@
 package main
 
 import (
-	"flag"
 	"log"
 
 	"github.com/chrplr/goxpyriment/control"
@@ -12,19 +11,7 @@ import (
 )
 
 func main() {
-	develop := flag.Bool("d", false, "Developer mode (windowed 800x600)")
-	flag.Parse()
-
-	width, height, fullscreen := 0, 0, true
-	if *develop {
-		width, height, fullscreen = 800, 600, false
-	}
-
-	exp := control.NewExperiment("Random Dot Stereogram", width, height, fullscreen, control.Gray, control.White, 32)
-
-	if err := exp.Initialize(); err != nil {
-		log.Fatalf("failed to initialize experiment: %v", err)
-	}
+	exp := control.NewExperimentFromFlags("Random Dot Stereogram", control.Gray, control.White, 32)
 	defer exp.End()
 
 	// Create RDS stimulus
@@ -48,7 +35,7 @@ func main() {
 		return exp.Screen.Update()
 	})
 
-	if err != nil && err != control.EndLoop {
+	if err != nil && !control.IsEndLoop(err) {
 		log.Fatalf("experiment error: %v", err)
 	}
 }

@@ -22,27 +22,14 @@ const (
 )
 
 func main() {
-	develop := flag.Bool("d", false, "Developer mode (windowed 800x600)")
 	radiusFlag := flag.Float64("r", defaultCircleRadius, "Radius of the inducing circles (pixels)")
 	sizeFlag := flag.Float64("w", defaultSquareSize, "Size of the central square (pixels)")
-	subject := flag.Int("s", 0, "Subject ID (unused, for consistency)")
-	flag.Parse()
+
+	exp := control.NewExperimentFromFlags("Kanizsa Square", control.LightGray, control.White, 16)
+	defer exp.End()
 
 	squareSize := float32(*sizeFlag)
 	circleRadius := float32(*radiusFlag)
-
-	width, height, fullscreen := 0, 0, true
-	if *develop {
-		width, height, fullscreen = 800, 600, false
-	}
-
-	exp := control.NewExperiment("Kanizsa Square", width, height, fullscreen, control.LightGray, control.White, 16)
-	exp.SubjectID = *subject
-
-	if err := exp.Initialize(); err != nil {
-		log.Fatalf("failed to initialize experiment: %v", err)
-	}
-	defer exp.End()
 
 	// Optional logical size for nicer centering on large displays.
 	if err := exp.SetLogicalSize(800, 600); err != nil {
@@ -84,4 +71,3 @@ func main() {
 	exp.Keyboard.Clear()
 	exp.Keyboard.Wait()
 }
-

@@ -4,7 +4,6 @@
 package main
 
 import (
-	"flag"
 	"github.com/chrplr/goxpyriment/control"
 	"github.com/chrplr/goxpyriment/design"
 	"github.com/chrplr/goxpyriment/clock"
@@ -62,7 +61,7 @@ func showInstructions(exp *control.Experiment) error {
 		"Press any key to begin."
 
 	instrBox := stimuli.NewTextBox(text, 650, control.FPoint{X: 0, Y: 0}, control.White)
-	if err := instrBox.Present(exp.Screen, true, true); err != nil {
+	if err := exp.Show(instrBox); err != nil {
 		return err
 	}
 	_, err := exp.Keyboard.Wait()
@@ -70,27 +69,13 @@ func showInstructions(exp *control.Experiment) error {
 }
 
 func main() {
-	develop := flag.Bool("d", false, "Developer mode (windowed 800x600)")
-	subjectID := flag.Int("s", 1, "Subject ID")
-	flag.Parse()
-
-	width, height, fullscreen := 0, 0, true
-	if *develop {
-		width, height, fullscreen = 800, 600, false
-	}
-
-	exp := control.NewExperiment("Attentional-Blink", width, height, fullscreen, control.Gray, control.White, 32)
-	exp.SubjectID = *subjectID
-
-	if err := exp.Initialize(); err != nil {
-		log.Fatalf("failed to initialize experiment: %v", err)
-	}
+	exp := control.NewExperimentFromFlags("Attentional-Blink", control.Gray, control.White, 32)
 	defer exp.End()
 
 	exp.Data.AddVariableNames([]string{"trial_idx", "has_j", "has_k", "lag", "response", "is_correct", "rt"})
 
 	if err := showInstructions(exp); err != nil {
-		if err == control.EndLoop { return }
+		if control.IsEndLoop(err) { return }
 		log.Fatalf("instruction error: %v", err)
 	}
 
@@ -133,19 +118,19 @@ func main() {
 		items := generateLetters(config)
 
 		// A. Fixation
-		if err := fixation.Present(exp.Screen, true, true); err != nil { return "", false, 0, err }
+		if err := exp.Show(fixation); err != nil { return "", false, 0, err }
 		clock.Wait(FixationDuration)
 
 		// B. RSVP Stream
 		for _, char := range items {
 			txt := stimuli.NewTextLine(char, 0, 0, control.Black)
-			if err := txt.Present(exp.Screen, true, true); err != nil { return "", false, 0, err }
+			if err := exp.Show(txt); err != nil { return "", false, 0, err }
 			clock.Wait(ItemDuration)
 		}
 
 		// C. Response Screen
 		prompt := stimuli.NewTextLine("What did you see? (J, K, B=Both, N=Neither)", 0, 0, control.Black)
-		if err := prompt.Present(exp.Screen, true, true); err != nil { return "", false, 0, err }
+		if err := exp.Show(prompt); err != nil { return "", false, 0, err }
 
 		startTime := clock.GetTime()
 		key, err := exp.Keyboard.WaitKeys([]control.Keycode{control.K_J, control.K_K, control.K_B, control.K_N, control.K_ESCAPE}, -1)
@@ -182,9 +167,7 @@ func main() {
 		}
 
 		// ITI
-		if err := exp.Screen.Clear(); err != nil { return response, isCorrect, rt, err }
-		exp.Screen.Update()
-		clock.Wait(1000)
+		if err := exp.Blank(1000); err != nil { return response, isCorrect, rt, err }
 
 		return response, isCorrect, rt, nil
 	}
@@ -192,7 +175,7 @@ func main() {
 	// 2. Training Loop (8 trials, feedback, not logged).
 	for _, config := range trainingConfigs {
 		if _, _, _, err := runOne(config); err != nil {
-			if err == control.EndLoop {
+			if control.IsEndLoop(err) {
 				return
 			}
 			log.Fatalf("training trial error: %v", err)
@@ -206,10 +189,10 @@ func main() {
 		control.FPoint{X: 0, Y: 0},
 		control.White,
 	)
-	if err := trainDone.Present(exp.Screen, true, true); err != nil {
+	if err := exp.Show(trainDone); err != nil {
 		log.Fatalf("training-finished screen error: %v", err)
 	}
-	if _, err := exp.Keyboard.Wait(); err != nil && err != control.EndLoop {
+	if _, err := exp.Keyboard.Wait(); err != nil && !control.IsEndLoop(err) {
 		log.Fatalf("training-finished wait error: %v", err)
 	}
 
@@ -217,13 +200,13 @@ func main() {
 	for i, config := range trialConfigs {
 		response, isCorrect, rt, err := runOne(config)
 		if err != nil {
-			if err == control.EndLoop { return }
+			if control.IsEndLoop(err) { return }
 			log.Fatalf("trial error: %v", err)
 		}
 
 		// Log data
-		exp.Data.Add([]interface{}{
-			i + 1, config.HasJ, config.HasK, config.Lag, response, isCorrect, rt,
-		})
+		exp.Data.Add(
+			i+1, config.HasJ, config.HasK, config.Lag, response, isCorrect, rt,
+		)
 	}
 }

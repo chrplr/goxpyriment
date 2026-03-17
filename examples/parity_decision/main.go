@@ -4,8 +4,6 @@
 package main
 
 import (
-	_ "embed"
-	"flag"
 	"fmt"
 	"github.com/chrplr/goxpyriment/assets_embed"
 	"github.com/chrplr/goxpyriment/control"
@@ -13,7 +11,6 @@ import (
 	"github.com/chrplr/goxpyriment/stimuli"
 	"log"
 	"math/rand"
-	"time"
 )
 
 const (
@@ -25,23 +22,7 @@ const (
 var Targets = []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}
 
 func main() {
-	// Initialize random seed
-	rand.Seed(time.Now().UnixNano())
-
-	develop := flag.Bool("d", false, "Developer mode (windowed 1024x1024)")
-	subject := flag.Int("s", 0, "Subject ID")
-	flag.Parse()
-
-	// 1. Create and initialize the experiment
-	width, height, fullscreen := 0, 0, true
-	if *develop {
-		width, height, fullscreen = 1024, 1024, false
-	}
-	exp := control.NewExperiment("Parity Decision", width, height, fullscreen, control.Black, control.White, 32)
-	exp.SubjectID = *subject
-	if err := exp.Initialize(); err != nil {
-		log.Fatalf("failed to initialize experiment: %v", err)
-	}
+	exp := control.NewExperimentFromFlags("Parity Decision", control.Black, control.White, 32)
 	defer exp.End()
 
 	// Set logical size for consistent centering
@@ -89,45 +70,34 @@ func main() {
 	// 3. Run the experiment logic
 	err = exp.Run(func() error {
 		// Instructions
-		if err := instructions.Present(exp.Screen, true, true); err != nil {
+		if err := exp.Show(instructions); err != nil {
 			return err
 		}
-		var key control.Keycode
-		var subErr error
-		for {
-			key, _, subErr = exp.HandleEvents()
-			if subErr != nil {
-				return subErr
-			}
-			if key == control.K_SPACE {
-				break
-			}
-			clock.Wait(10)
+		if err := exp.Keyboard.WaitKey(control.K_SPACE); err != nil {
+			return err
 		}
 
 		// Loop through trials
 		for i, t := range trials {
 			// Blank screen
-			if err := exp.Screen.Clear(); err != nil {
+			if err := exp.Blank(1000); err != nil {
 				return err
 			}
-			if err := exp.Screen.Update(); err != nil {
-				return err
-			}
-			clock.Wait(1000)
 
 			// Cue
-			if err := cue.Present(exp.Screen, true, true); err != nil {
+			if err := exp.Show(cue); err != nil {
 				return err
 			}
 			clock.Wait(500)
 
 			// Stimulus
-			if err := t.stim.Present(exp.Screen, true, true); err != nil {
+			if err := exp.Show(t.stim); err != nil {
 				return err
 			}
 
 			// Wait for response
+			var key control.Keycode
+			var subErr error
 			startTime := clock.GetTime()
 			for {
 				key, _, subErr = exp.HandleEvents()
@@ -144,8 +114,8 @@ func main() {
 						responseOddity = 0
 					}
 					correct := oddity == responseOddity
-					exp.Data.Add([]interface{}{t.number, key, rt, correct})
-					fmt.Printf("Trial %d: Num=%d, Key=%d, RT=%d ms, Correct=%v\n", i, t.number, key, rt, correct)
+					exp.Data.Add(t.number, key, rt, correct)
+					fmt.Printf("Trial %d: Num=%d, Key=%d, RT=%d ms, Correct=%v\n", i, t.number, key, rt)
 					if !correct {
 						if err := exp.Audio.PlayBuzzer(); err != nil {
 							log.Printf("Warning: buzzer playback failed: %v", err)
@@ -155,7 +125,7 @@ func main() {
 				}
 				clock.Wait(1)
 			}
-			
+
 			// Small pause between trials
 			clock.Wait(500)
 		}
@@ -163,7 +133,7 @@ func main() {
 		return control.EndLoop // Graceful exit
 	})
 
-	if err != nil && err != control.EndLoop {
+	if err != nil && !control.IsEndLoop(err) {
 		log.Fatalf("experiment error: %v", err)
 	}
 }

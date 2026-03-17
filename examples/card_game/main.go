@@ -165,22 +165,15 @@ func main() {
 
 		// Instructions - Initialize here to ensure correct centering after fullscreen transition
 		instr := stimuli.NewTextBox(Instructions, 1000, control.FPoint{X: 0, Y: 0}, control.DefaultTextColor)
-		
+
 		// Small extra wait to ensure renderer is ready
 		clock.Wait(100)
-		
-		if err := instr.Present(exp.Screen, true, true); err != nil {
+
+		if err := exp.Show(instr); err != nil {
 			return err
 		}
-		for {
-			key, _, err := exp.HandleEvents()
-			if err != nil {
-				return err
-			}
-			if key == control.K_SPACE {
-				break
-			}
-			clock.Wait(10)
+		if err := exp.Keyboard.WaitKey(control.K_SPACE); err != nil {
+			return err
 		}
 
 		for _, ct := range trials {
@@ -205,39 +198,39 @@ func main() {
 			}
 
 			// Pre-trial Fixation
-			if err := fixation.Present(exp.Screen, true, true); err != nil { return err }
+			if err := exp.Show(fixation); err != nil { return err }
 			if err := waitInterruption(exp, 1000); err != nil { return err }
 
 			// Show Backs
-			if err := canvas1.Present(exp.Screen, true, true); err != nil { return err }
-			
+			if err := exp.Show(canvas1); err != nil { return err }
+
 			resp, rt, err := waitResponse(exp, BackDisplayDuration)
-			if err != nil && err != control.EndLoop { return err }
+			if err != nil && !control.IsEndLoop(err) { return err }
 
 			// Show Turned Card
-			if err := canvas2.Present(exp.Screen, true, true); err != nil { return err }
-			
+			if err := exp.Show(canvas2); err != nil { return err }
+
 			if resp == 0 {
 				resp, rt, err = waitResponse(exp, MaxResponseTime)
-				if err != nil && err != control.EndLoop { return err }
+				if err != nil && !control.IsEndLoop(err) { return err }
 				rt += int64(BackDisplayDuration)
 			}
 
 			// Check correctness
 			correct := checkCorrect(resp, ct.Expected)
-			exp.Data.Add([]interface{}{ct.Condition, resp, rt, correct})
-			
+			exp.Data.Add(ct.Condition, resp, rt, correct)
+
 			fmt.Printf("Trial: %s, Resp: %d, RT: %d, Correct: %v\n", ct.Condition, resp, rt, correct)
 
 			// Inter-trial Fixation
-			if err := fixation.Present(exp.Screen, true, true); err != nil { return err }
+			if err := exp.Show(fixation); err != nil { return err }
 			if err := waitInterruption(exp, InterTrialTime); err != nil { return err }
 		}
 
 		return control.EndLoop
 	})
 
-	if err != nil && err != control.EndLoop {
+	if err != nil && !control.IsEndLoop(err) {
 		log.Fatalf("experiment error: %v", err)
 	}
 }

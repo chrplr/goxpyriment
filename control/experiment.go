@@ -4,11 +4,14 @@
 package control
 
 import (
+	"flag"
 	"log"
 
 	"github.com/chrplr/goxpyriment/assets_embed"
+	"github.com/chrplr/goxpyriment/clock"
 	"github.com/chrplr/goxpyriment/design"
 	"github.com/chrplr/goxpyriment/io"
+	"github.com/chrplr/goxpyriment/stimuli"
 	"github.com/Zyko0/go-sdl3/bin/binimg"
 	"github.com/Zyko0/go-sdl3/bin/binsdl"
 	"github.com/Zyko0/go-sdl3/bin/binttf"
@@ -100,9 +103,64 @@ func NewExperiment(name string, width, height int, fullscreen bool, bg, fg sdl.C
 	}
 }
 
+// NewExperimentFromFlags creates and initializes an experiment using the
+// standard command-line flags accepted by every goxpyriment program:
+//
+//   - `-d`  developer mode: opens a 1024×768 window instead of fullscreen
+//   - `-s N` subject ID (default 0)
+//
+// Any extra flags the caller registered with the flag package before calling
+// this function are parsed at the same time, so register experiment-specific
+// flags first, then call NewExperimentFromFlags.
+//
+// The experiment is fully initialized (SDL, audio, font, data file) before
+// being returned. If initialization fails the program exits via log.Fatal.
+// The caller should defer exp.End() immediately after this call.
+func NewExperimentFromFlags(name string, bg, fg sdl.Color, fontSize float32) *Experiment {
+	develop := flag.Bool("d", false, "Developer mode (windowed 1024×768)")
+	subject := flag.Int("s", 0, "Subject ID")
+	flag.Parse()
+
+	width, height, fullscreen := 0, 0, true
+	if *develop {
+		width, height, fullscreen = 1024, 768, false
+	}
+
+	exp := NewExperiment(name, width, height, fullscreen, bg, fg, fontSize)
+	exp.SubjectID = *subject
+	if err := exp.Initialize(); err != nil {
+		log.Fatalf("failed to initialize experiment: %v", err)
+	}
+	return exp
+}
+
+// Show presents a visual stimulus on the experiment screen, clearing it first
+// and flipping the backbuffer afterwards. It is equivalent to:
+//
+//	stim.Present(exp.Screen, true, true)
+//
+// This is the standard way to display a stimulus in a trial loop.
+func (e *Experiment) Show(v stimuli.VisualStimulus) error {
+	return v.Present(e.Screen, true, true)
+}
+
+// Blank clears the screen and keeps it blank for the given number of
+// milliseconds. It replaces the common three-line pattern:
+//
+//	exp.Screen.Clear()
+//	exp.Screen.Update()
+//	clock.Wait(ms)
+func (e *Experiment) Blank(ms int) error {
+	if err := e.Screen.ClearAndUpdate(); err != nil {
+		return err
+	}
+	clock.Wait(ms)
+	return nil
+}
+
 // SetOutputDirectory overrides the default folder used to store .xpd result
-// files. If not called, Initialize will use io.DataFileDirectory, which
-// defaults to "xpd_results".
+// files. If not called, Initialize will use the user's home directory
+// with the folder name defined by io.DataFileDirectory (default "goxpy_data").
 func (e *Experiment) SetOutputDirectory(dir string) {
 	e.OutputDirectory = dir
 }

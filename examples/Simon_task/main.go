@@ -4,14 +4,12 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"github.com/chrplr/goxpyriment/clock"
 	"github.com/chrplr/goxpyriment/control"
 	"github.com/chrplr/goxpyriment/stimuli"
 	"log"
 	"math/rand"
-	"time"
 )
 
 const (
@@ -29,23 +27,7 @@ type trialDef struct {
 }
 
 func main() {
-	// Initialize random seed
-	rand.Seed(time.Now().UnixNano())
-
-	develop := flag.Bool("d", false, "Developer mode (windowed 1024x768)")
-	subject := flag.Int("s", 0, "Subject ID")
-	flag.Parse()
-
-	// 1. Create and initialize the experiment
-	width, height, fullscreen := 0, 0, true
-	if *develop {
-		width, height, fullscreen = 1024, 768, false
-	}
-	exp := control.NewExperiment("Simon Task", width, height, fullscreen, control.Black, control.White, 32)
-	exp.SubjectID = *subject
-	if err := exp.Initialize(); err != nil {
-		log.Fatalf("failed to initialize experiment: %v", err)
-	}
+	exp := control.NewExperimentFromFlags("Simon Task", control.Black, control.White, 32)
 	defer exp.End()
 
 	// Set logical size for consistent centering
@@ -85,24 +67,16 @@ func main() {
 	// 4. Run the experiment logic
 	err := exp.Run(func() error {
 		// Instructions
-		if err := instructions.Present(exp.Screen, true, true); err != nil {
+		if err := exp.Show(instructions); err != nil {
 			return err
 		}
-		var key control.Keycode
-		var subErr error
-		for {
-			key, _, subErr = exp.HandleEvents()
-			if subErr != nil {
-				return subErr
-			}
-			if key == control.K_SPACE {
-				break
-			}
-			clock.Wait(10)
+		if err := exp.Keyboard.WaitKey(control.K_SPACE); err != nil {
+			return err
 		}
 
 		trialCount := 0
 		successfulCount := 0
+		var subErr error
 
 		for successfulCount < NTrials && len(trials) > 0 {
 			t := trials[0]
@@ -110,7 +84,7 @@ func main() {
 			trialCount++
 
 			// Fixation (stays on screen)
-			if err := fixation.Present(exp.Screen, true, true); err != nil {
+			if err := exp.Show(fixation); err != nil {
 				return err
 			}
 			// Random delay (fixation cross remains)
@@ -182,7 +156,7 @@ func main() {
 				congruency = "congruent"
 			}
 
-			exp.Data.Add([]interface{}{trialCount, t.color, t.position, responseKey, rt, correct, congruency})
+			exp.Data.Add(trialCount, t.color, t.position, responseKey, rt, correct, congruency)
 			fmt.Printf("Subject %d, Trial %d: Color=%s, Pos=%s, Key=%d, RT=%d, Correct=%v, Congruency=%s\n", exp.SubjectID, trialCount, t.color, t.position, responseKey, rt, correct, congruency)
 
 			if !correct {
@@ -192,17 +166,17 @@ func main() {
 				// Repeat trial: add back to trials slice at a random position
 				insertPos := rand.Intn(len(trials) + 1)
 				trials = append(trials[:insertPos], append([]trialDef{t}, trials[insertPos:]...)...)
-				
+
 				// Optional: Show error feedback
 				errorStim := stimuli.NewTextLine("WRONG!", 0, 0, control.White)
-				errorStim.Present(exp.Screen, true, true)
+				exp.Show(errorStim)
 				clock.Wait(1000)
 			} else {
 				successfulCount++
 			}
 
 			// Inter-trial interval (fixation cross remains)
-			if err := fixation.Present(exp.Screen, true, true); err != nil {
+			if err := exp.Show(fixation); err != nil {
 				return err
 			}
 			clock.Wait(500)
@@ -216,22 +190,15 @@ func main() {
 		// Final message
 		finishText := "Experiment complete!\n\nThank you for your participation.\n\nPress space to exit."
 		finishStim := stimuli.NewTextBox(finishText, 800, control.Point(0, 0), control.DefaultTextColor)
-		finishStim.Present(exp.Screen, true, true)
-		for {
-			key, _, subErr = exp.HandleEvents()
-			if subErr != nil {
-				return subErr
-			}
-			if key == control.K_SPACE {
-				break
-			}
-			clock.Wait(10)
+		exp.Show(finishStim)
+		if err := exp.Keyboard.WaitKey(control.K_SPACE); err != nil {
+			return err
 		}
 
 		return control.EndLoop
 	})
 
-	if err != nil && err != control.EndLoop {
+	if err != nil && !control.IsEndLoop(err) {
 		log.Fatalf("experiment error: %v", err)
 	}
 }

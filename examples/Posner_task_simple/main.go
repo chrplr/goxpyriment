@@ -5,14 +5,12 @@ package main
 
 import (
 	_ "embed"
-	"flag"
 	"fmt"
 	"github.com/chrplr/goxpyriment/control"
 	"github.com/chrplr/goxpyriment/clock"
 	"github.com/chrplr/goxpyriment/stimuli"
 	"log"
 	"math/rand"
-	"time"
 
 )
 
@@ -33,24 +31,8 @@ type trial struct {
 }
 
 func main() {
-	rand.Seed(time.Now().UnixNano())
-
-	develop := flag.Bool("d", false, "Developer mode (windowed 1024x1024)")
-	subject := flag.Int("s", 0, "Subject ID")
-	flag.Parse()
-
 	// 1. Create and initialize the experiment
-	width, height, fullscreen := 0, 0, true
-	if *develop {
-		width, height, fullscreen = 1024, 1024, false
-	}
-	exp := control.NewExperiment("Posner-task", width, height, fullscreen, control.Gray, control.White, 32)
-	exp.SubjectID = *subject
-	exp.ForegroundColor = control.Black
-	
-	if err := exp.Initialize(); err != nil {
-		log.Fatalf("failed to initialize experiment: %v", err)
-	}
+	exp := control.NewExperimentFromFlags("Posner-task", control.Gray, control.Black, 32)
 	defer exp.End()
 
 	// 2. Prepare design
@@ -69,7 +51,7 @@ func main() {
 
 	// 3. Prepare stimuli
 	cross := stimuli.NewFixCross(40, 6, control.Black)
-	
+
 	targetLeft := stimuli.NewPictureFromMemory(starImg, -150, 0)
 	targetRight := stimuli.NewPictureFromMemory(starImg, 150, 0)
 	cueLeft := stimuli.NewPictureFromMemory(leftArrowImg, 0, 0)
@@ -81,30 +63,20 @@ func main() {
 	// 4. Run the experiment logic
 	err := exp.Run(func() error {
 		// Instructions
-		if err := instructions.Present(exp.Screen, true, true); err != nil {
+		if err := exp.Show(instructions); err != nil {
 			return err
 		}
-		for {
-			key, err := exp.Keyboard.Wait()
-			if err != nil {
-				return err
-			}
-			if key == control.K_SPACE {
-				break
-			}
+		if err := exp.Keyboard.WaitKey(control.K_SPACE); err != nil {
+			return err
 		}
 
-		if err := exp.Screen.Clear(); err != nil {
+		if err := exp.Blank(1000); err != nil {
 			return err
 		}
-		if err := exp.Screen.Update(); err != nil {
-			return err
-		}
-		clock.Wait(1000)
 
 		for _, t := range trials {
 			clock.Wait(1000)
-			if err := cross.Present(exp.Screen, true, true); err != nil {
+			if err := exp.Show(cross); err != nil {
 				return err
 			}
 			clock.Wait(1000)
@@ -116,7 +88,7 @@ func main() {
 			} else {
 				cue = cueRight
 			}
-			if err := cue.Present(exp.Screen, true, true); err != nil {
+			if err := exp.Show(cue); err != nil {
 				return err
 			}
 			clock.Wait(2000)
@@ -128,7 +100,7 @@ func main() {
 			} else {
 				target = targetRight
 			}
-			if err := target.Present(exp.Screen, true, true); err != nil {
+			if err := exp.Show(target); err != nil {
 				return err
 			}
 
@@ -153,7 +125,7 @@ func main() {
 		return control.EndLoop
 	})
 
-	if err != nil && err != control.EndLoop {
+	if err != nil && !control.IsEndLoop(err) {
 		log.Fatalf("experiment error: %v", err)
 	}
 }

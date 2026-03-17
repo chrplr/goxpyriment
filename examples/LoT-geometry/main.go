@@ -4,7 +4,6 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"github.com/chrplr/goxpyriment/control"
 	"github.com/chrplr/goxpyriment/design"
@@ -81,6 +80,9 @@ func flashSequence(exp *control.Experiment, dots []*stimuli.Circle, fixation *st
 			return err
 		}
 		clock.Wait(100)
+		if _, _, err := exp.HandleEvents(); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -142,26 +144,12 @@ func showInstructions(exp *control.Experiment) error {
 }
 
 func main() {
-	develop := flag.Bool("d", false, "Developer mode (windowed 800x800)")
-	subjectID := flag.Int("s", 1, "Subject ID")
-	flag.Parse()
-
-	width, height, fullscreen := 0, 0, true
-	if *develop {
-		width, height, fullscreen = 800, 800, false
-	}
-
-	exp := control.NewExperiment("LoT-Geometry-Task", width, height, fullscreen, control.Black, control.White, 32)
-	exp.SubjectID = *subjectID
-
-	if err := exp.Initialize(); err != nil {
-		log.Fatalf("failed to initialize experiment: %v", err)
-	}
+	exp := control.NewExperimentFromFlags("LoT-Geometry-Task", control.Black, control.White, 32)
 	defer exp.End()
 
 	// Show instructions before starting
 	if err := showInstructions(exp); err != nil {
-		if err == control.EndLoop { return }
+		if control.IsEndLoop(err) { return }
 		log.Fatalf("instruction error: %v", err)
 	}
 
@@ -222,7 +210,7 @@ func main() {
 		for step := 2; step < 16; step++ {
 			// A. Flash sequence up to currentKnownCount
 			if err := flashSequence(exp, dots, fixation, target, indices[:currentKnownCount]); err != nil {
-				if err == control.EndLoop { return }
+				if control.IsEndLoop(err) { return }
 				log.Fatalf("flash error: %v", err)
 			}
 
@@ -230,16 +218,16 @@ func main() {
 			targetIdx := indices[step]
 			clickIdx, rt, err := getGuess(exp, dots, fixation, octagonPoints)
 			if err != nil {
-				if err == control.EndLoop { return }
+				if control.IsEndLoop(err) { return }
 				log.Fatalf("guess error: %v", err)
 			}
 
 			isCorrect := (clickIdx == targetIdx)
 			
 			// C. Record data
-			exp.Data.Add([]interface{}{
-				trialIdx + 1, seq.Name, step + 1, targetIdx, clickIdx, isCorrect, rt,
-			})
+			exp.Data.Add(
+				trialIdx+1, seq.Name, step+1, targetIdx, clickIdx, isCorrect, rt,
+			)
 
 			// D. Feedback / Restart logic
 			if isCorrect {
@@ -271,8 +259,6 @@ func main() {
 		}
 		
 		// Inter-trial interval
-		if err := exp.Screen.Clear(); err != nil { log.Fatal(err) }
-		exp.Screen.Update()
-		clock.Wait(1000)
+		if err := exp.Blank(1000); err != nil { log.Fatal(err) }
 	}
 }

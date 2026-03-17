@@ -64,7 +64,7 @@ func main() {
 		targetMS := tl.TargetOn.Milliseconds()
 		fmt.Printf("Image %d: Target %dms | Actual Onset: %dms | Actual Offset: %dms\n",
 			tl.Index, targetMS, onsetMS, offsetMS)
-		exp.Data.Add([]interface{}{tl.Index, assetFiles[tl.Index], targetMS, onsetMS, offsetMS})
+		exp.Data.Add(tl.Index, assetFiles[tl.Index], targetMS, onsetMS, offsetMS)
 	}
 
 	fmt.Println("\n--- User Input Captured ---")

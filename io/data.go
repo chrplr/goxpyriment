@@ -16,7 +16,7 @@ import (
 const (
 	OutputFileCommentChar = "#"           // Character used for comment lines in output files.
 	OutputFileEOL         = "\n"          // Line ending written by WriteLine.
-	DataFileDirectory     = "xpd_results" // Default directory for data files when none is set.
+	DataFileDirectory     = "goxpy_data" // Default directory for data files when none is set.
 	DataFileDelimiter     = ","          // Default CSV delimiter for DataFile.
 )
 
@@ -107,11 +107,16 @@ type DataFile struct {
 }
 
 // NewDataFile creates a new DataFile in the given directory (or in the
-// default directory from DataFileDirectory, e.g. "xpd_results", if empty).
+// default directory from DataFileDirectory, e.g. "$HOME/goxpy_data", if empty).
 // The filename is derived from the experiment name, subject ID, and a timestamp.
 func NewDataFile(directory string, subjectID int, expName string) (*DataFile, error) {
 	if directory == "" {
-		directory = DataFileDirectory
+		home, err := os.UserHomeDir()
+		if err == nil {
+			directory = filepath.Join(home, DataFileDirectory)
+		} else {
+			directory = DataFileDirectory
+		}
 	}
 	
 	timestamp := time.Now().Format("200601021504")
@@ -145,7 +150,7 @@ func NewDataFile(directory string, subjectID int, expName string) (*DataFile, er
 // Add appends a row of data to the data file.
 // The subject ID is automatically prepended as the first column.
 // Fields containing the delimiter or quotes are properly escaped.
-func (df *DataFile) Add(data []interface{}) {
+func (df *DataFile) Add(data ...interface{}) {
 	parts := make([]string, 0, len(data)+1)
 	parts = append(parts, fmt.Sprint(df.SubjectID))
 	
