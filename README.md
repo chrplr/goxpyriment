@@ -45,22 +45,23 @@ Christophe Pallier, March 2026
 - Zero, Nada, None (!) to run precompiled experiments.
 - [Go](http://go.dev), version 1.25 or higher, if you want to modify or program experiments.
 
-(By the way, while [python is easy, go is simple](gemini-go-vs-python.md), which is a good thing.)
+By the way, while Python is easy, Go is simple, which is [a good thing](gemini-go-vs-python.md)
+
 
 
 ## Installation
 
 ### Demos
 
-You can download ready-to-run examples of experiments created with goxpyeriment at <https://github.com/chrplr/goxpyriment/releases>  ; then, it you are interested, read their source code in  [examples](examples).
+You can download [here](https://github.com/chrplr/goxpyriment/releases) an installer of ready-to-run [examples of experiments](examples/README.md) created with goxpyeriment (and check their [source code](examples/) if you want).
 
-* **Windows:** Download  `goxpyriment-examples-setup.exe`. Execute it; Defender may block you: then just click on "more info" and proceed anyway. The applications are installed by default in your user's folder under `AppData\Local\Goxpyriment examples\bin`. As the folder `AppData` is hidden, you may have to select `View/Show/Hidden items` to be able to see it.
-* **MacOS:** Download goexpyriment-examples.dmg', Open it and drag all the files into a single `goexpyriment-examples` folder in your Applications folder. Then provide correct permissions with:
+* **Windows:** Download  `goxpyriment-examples-setup.exe`. Execute it; Defender may block you: then just click on "more info" and click "Run anyway". By default, the experiments are installed in `AppData\Local\Goxpyriment examsples\bin`, in your user folder. As `AppData` is an hidden folder, you have to select `View/Show/Hidden items` in File Exporer to be able to see it. Navigate in the subfolder and click on an App to execute it.
+* **MacOS:** Download goexpyriment-examples.dmg', open it and drag all the files into a single `goxpyriment-examples` folder in your Applications folder. Then provide correct permissions with:
 
-        chmod -R +x /Applications/goexpyriment-examples/*
+        chmod -R +x /Applications/goxpyriment-examples/*
 
-   To run each application, you may need to grant permission in your security settings on macOS: settings > confidentiality & security > at the bottom of the page, you should see that the application has been blocked. Click on open anyway.
-* **Linux**: Download `goxpyriment-example-appimages.tar.gz` and untar it (`tar xzf`). The applications are ready to run (...and wipe out your entire home folder if they want to; using Linux is like driving without a belt; YOLO) 
+   If `settings > confidentiality & security` indicates that an application is blocked, click on "open anyway".
+* **Linux**: Download `goxpyriment-example-appimages.tar.gz` and untar it (`tar xzf`). The applications are ready to run.
  
 
 ### Install the library on your computer to compile source code
