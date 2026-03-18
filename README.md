@@ -16,21 +16,17 @@ Here is how to proceed:
 
 ---
 
-Notes:
-
-* Download ready-to-run [examples of experiments](demos)
-
-
+* You can download ready-to-run [examples of experiments](#demos) and look at their [source code](examples/)
 * Goxpy relies on the [libsdl](http://libsdl.org) library through the [go-sdl3](https://github.com/Zyko0/go-sdl3) bindings. Its API is largely inspired from [expyriment.org](http://expyriment.org): 
 
 > Krause, F., & Lindemann, O. (2014). Expyriment: A Python library for cognitive and neuroscientific experiments. Behavior Research Methods, 46(2), 416-428. <https://doi.org/10.3758/s13428-013-0390-6>.
 
 * Check out [gostim2](http://github.com/chrplr/gostim2) for a less flexible but very simple (no-code!) experiment generator.**
-
 * This software is a beta version. Please report bugs and suggestions for improvement at <https://github.com/chrplr/goxpyriment/issues>.
 
 
 Christophe Pallier, March 2026
+
 ---
 
 ## Features
@@ -51,11 +47,9 @@ Christophe Pallier, March 2026
 
 ## Installation
 
-## Demos
+### Demos
 
-You can download examples of Experiments created with goxpyeriment.
-
-Executables are available at <https://github.com/chrplr/goxpyriment/releases>  and their sources are in  [examples](examples).
+You can download ready-to-run examples of experiments created with goxpyeriment at <https://github.com/chrplr/goxpyriment/releases>  ; then, it you are interested, read their source code in  [examples](examples).
 
 * **Windows:** Download  `goxpyriment-examples-setup.exe`. Execute it; Defender may block you: then just click on "more info" and proceed anyway. The applications are installed by default in your user's folder under `AppData\Local\Goxpyriment examples\bin`. As the folder `AppData` is hidden, you may have to select `View/Show/Hidden items` to be able to see it.
 * **MacOS:** Download goexpyriment-examples.dmg', Open it and drag all the files into a single `goexpyriment-examples` folder in your Applications folder. Then provide correct permissions with:
@@ -65,6 +59,8 @@ Executables are available at <https://github.com/chrplr/goxpyriment/releases>  a
    To run each application, you may need to grant permission in your security settings on macOS: settings > confidentiality & security > at the bottom of the page, you should see that the application has been blocked. Click on open anyway.
 * **Linux**: Download `goxpyriment-example-appimages.tar.gz` and untar it (`tar xzf`). The applications are ready to run (...and wipe out your entire home folder if they want to; using Linux is like driving without a belt; YOLO) 
  
+
+### Install the library on your computer to compile source code
 
 ```bash
 go get github.com/chrplr/goxpyriment
