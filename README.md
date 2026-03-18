@@ -6,7 +6,7 @@
 
 Download ready-to-run [examples of experiments](https://github.com/chrplr/goxpyriment/releases) implemented with it (and their [source code](examples)).
 
-**Goxpyriment is strongly suited to "vibe-code" psychology experiments.** 
+**Goxpyriment is well suited to "vibe-code" psychology experiments. (But humans can code with it too)** 
 
 Here is how to proceed: 
 
@@ -16,12 +16,21 @@ Here is how to proceed:
 4. Once the code is created, say in `my_crazy_exp`, you can test it, typically running  `go run my_crazy_exp/main.go` in the terminal.
 5. Optionaly, you can create an executable and installers for Windows, MacOS and Linux to disribute to your colleagues. They will not need to install anything beyond your executable on their machine: no need to install Python and whatever libraries, things should work out of the box (see an example at <https://github.com/chrplr/retinotopy-go>)
 
-Goxpy relies on the [libsdl](http://libsdl.org) library through the [go-sdl3](https://github.com/Zyko0/go-sdl3) bindings. Its API is largely inspired from [expyriment.org](http://expyriment.org) ; see Krause, F., & Lindemann, O. (2014). Expyriment: A Python library for cognitive and neuroscientific experiments. Behavior Research Methods, 46(2), 416-428. <https://doi.org/10.3758/s13428-013-0390-6>.
+---
 
-**NOTE: This software is a beta version. Please report bugs and suggestions for improvement at <https://github.com/chrplr/goxpyriment/issues>.**
+Note:
 
-**Check out [gostim2](http://github.com/chrplr/gostim2) for a less flexible but very simple (no-code!) experiment generator.**
+* Goxpy relies on the [libsdl](http://libsdl.org) library through the [go-sdl3](https://github.com/Zyko0/go-sdl3) bindings. Its API is largely inspired from [expyriment.org](http://expyriment.org): 
 
+> Krause, F., & Lindemann, O. (2014). Expyriment: A Python library for cognitive and neuroscientific experiments. Behavior Research Methods, 46(2), 416-428. <https://doi.org/10.3758/s13428-013-0390-6>.
+
+* Check out [gostim2](http://github.com/chrplr/gostim2) for a less flexible but very simple (no-code!) experiment generator.**
+
+* This software is a beta version. Please report bugs and suggestions for improvement at <https://github.com/chrplr/goxpyriment/issues>.
+
+
+Christophe Pallier, March 2026
+---
 
 ## Features
 
