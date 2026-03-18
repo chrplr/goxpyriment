@@ -4,8 +4,6 @@
 
 `goxpyriment` is a high-level Go framework for building behavioral and psychological experiments.
 
-Download ready-to-run [examples of experiments](https://github.com/chrplr/goxpyriment/releases) implemented with it (and their [source code](examples)).
-
 **Goxpyriment is well suited to "vibe-code" psychology experiments. (But humans can code with it too)** 
 
 Here is how to proceed: 
@@ -18,7 +16,10 @@ Here is how to proceed:
 
 ---
 
-Note:
+Notes:
+
+* Download ready-to-run [examples of experiments](demos)
+
 
 * Goxpy relies on the [libsdl](http://libsdl.org) library through the [go-sdl3](https://github.com/Zyko0/go-sdl3) bindings. Its API is largely inspired from [expyriment.org](http://expyriment.org): 
 
@@ -49,6 +50,21 @@ Christophe Pallier, March 2026
 - **SDL3:** No installation required. `goxpyriment` uses `github.com/Zyko0/go-sdl3` which embeds pre-built SDL3 and SDL3_ttf libraries for Linux, macOS, and Windows (amd64 and arm64) directly inside the binary.
 
 ## Installation
+
+## Demos
+
+You can download examples of Experiments created with goxpyeriment.
+
+Executables are available at <https://github.com/chrplr/goxpyriment/releases>  and their sources are in  [examples](examples).
+
+* **Windows:** Download  `goxpyriment-examples-setup.exe`. Execute it; Defender may block you: then just click on "more info" and proceed anyway. The applications are installed by default in your user's folder under `AppData\Local\Goxpyriment examples\bin`. As the folder `AppData` is hidden, you may have to select `View/Show/Hidden items` to be able to see it.
+* **MacOS:** Download goexpyriment-examples.dmg', Open it and drag all the files into a single `goexpyriment-examples` folder in your Applications folder. Then provide correct permissions with:
+
+        chmod -R +x /Applications/goexpyriment-examples/*
+
+   To run each application, you may need to grant permission in your security settings on macOS: settings > confidentiality & security > at the bottom of the page, you should see that the application has been blocked. Click on open anyway.
+* **Linux**: Download `goxpyriment-example-appimages.tar.gz` and untar it (`tar xzf`). The applications are ready to run (...and wipe out your entire home folder if they want to; using Linux is like driving without a belt; YOLO) 
+ 
 
 ```bash
 go get github.com/chrplr/goxpyriment
