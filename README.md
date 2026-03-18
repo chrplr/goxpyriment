@@ -42,8 +42,11 @@ Christophe Pallier, March 2026
 
 ## Prerequisites
 
-- **Go:** Version 1.25 or higher.
-- **SDL3:** No installation required. `goxpyriment` uses `github.com/Zyko0/go-sdl3` which embeds pre-built SDL3 and SDL3_ttf libraries for Linux, macOS, and Windows (amd64 and arm64) directly inside the binary.
+- Zero, Nada, None (!) to run precompiled experiments.
+- [Go](http://go.dev), version 1.25 or higher, if you want to modify or program experiments.
+
+(By the way, while [python is easy, go is simple](gemini-go-vs-python.md), which is a good thing.)
+
 
 ## Installation
 
