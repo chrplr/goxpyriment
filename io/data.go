@@ -7,7 +7,9 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"os/user"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 )
@@ -71,7 +73,7 @@ func (o *OutputFile) WriteLine(content string) {
 
 // WriteComment adds a comment line to the buffer.
 func (o *OutputFile) WriteComment(comment string) {
-	o.WriteLine(o.CommentChar + comment)
+	o.WriteLine(o.CommentChar + " " + comment)
 }
 
 // Save flushes the buffer to disk.
@@ -104,6 +106,7 @@ type DataFile struct {
 	Delimiter     string
 	SubjectID     int
 	VariableNames []string
+	StartTime     time.Time
 }
 
 // NewDataFile creates a new DataFile in the given directory (or in the
@@ -127,15 +130,28 @@ func NewDataFile(directory string, subjectID int, expName string) (*DataFile, er
 		return nil, err
 	}
 
+	start := time.Now()
 	df := &DataFile{
 		OutputFile:    base,
 		Delimiter:     DataFileDelimiter,
 		SubjectID:     subjectID,
 		VariableNames: make([]string, 0),
+		StartTime:     start,
 	}
 
 	df.WriteComment("--EXPERIMENT INFO")
 	df.WriteComment(fmt.Sprintf("e mainfile: %s", expName))
+	df.WriteComment(fmt.Sprintf("e cmdline: %s", strings.Join(os.Args, " ")))
+	df.WriteComment(fmt.Sprintf("e start_time: %s", start.Format("20060102-150405")))
+	if hostname, err := os.Hostname(); err == nil {
+		df.WriteComment(fmt.Sprintf("e hostname: %s", hostname))
+	}
+	if u, err := user.Current(); err == nil {
+		df.WriteComment(fmt.Sprintf("e username: %s", u.Username))
+	}
+	df.WriteComment(fmt.Sprintf("e os: %s/%s", runtime.GOOS, runtime.GOARCH))
+	df.WriteComment(fmt.Sprintf("e framework: goxpyriment %s --- see http://chrplr.github.io/goxpyriment", Version))
+	df.WriteComment("e framework_author: Christophe Pallier <christophe.pallier.org>")
 	df.WriteComment("--SUBJECT INFO")
 	df.WriteComment(fmt.Sprintf("s id: %d", subjectID))
 	df.WriteComment("#")
@@ -179,6 +195,18 @@ func (df *DataFile) WriteDisplayInfo(info DisplayInfo) {
 	df.WriteComment(fmt.Sprintf("d bits_per_pixel: %d", info.BitsPerPixel))
 	df.WriteComment(fmt.Sprintf("d bits_per_channel: %d", info.BitsPerChannel))
 	df.WriteComment(fmt.Sprintf("d pixel_format: %s", info.PixelFormat))
+}
+
+// WriteEndTime appends end-time and duration lines to the EXPERIMENT INFO
+// section. It should be called once, just before the final Save.
+func (df *DataFile) WriteEndTime() {
+	end := time.Now()
+	d := end.Sub(df.StartTime)
+	h := int(d.Hours())
+	m := int(d.Minutes()) % 60
+	s := int(d.Seconds()) % 60
+	df.WriteComment(fmt.Sprintf("e end_time: %s", end.Format("20060102-150405")))
+	df.WriteComment(fmt.Sprintf("e duration: %02d:%02d:%02d", h, m, s))
 }
 
 // AddVariableNames appends variable names and writes a header comment.

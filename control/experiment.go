@@ -412,6 +412,7 @@ func (e *Experiment) LoadFontFromMemory(data []byte, size float32) error {
 // End cleans up resources.
 func (e *Experiment) End() {
 	if e.Data != nil {
+		e.Data.WriteEndTime()
 		e.Data.Save()
 	}
 	if e.DefaultFont != nil {

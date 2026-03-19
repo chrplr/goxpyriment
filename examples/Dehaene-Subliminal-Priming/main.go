@@ -501,6 +501,16 @@ func main() {
 	}
 	defer wordFont.Close()
 
+	// Record which font was used for word stimuli.
+	if resolvedPath != "" {
+		exp.Data.WriteComment(fmt.Sprintf("word_font: %s %dpt", resolvedPath, wordFontSize))
+	} else {
+		exp.Data.WriteComment(fmt.Sprintf("word_font: Inconsolata (embedded) %dpt", wordFontSize))
+	}
+	if err := exp.Data.Save(); err != nil {
+		log.Printf("warning: could not write font comment: %v", err)
+	}
+
 	// Pre-render mask canvases (must happen after screen initialisation).
 	maskPool := makeMaskPool(exp, rng, nMasksInPool, *nShapes)
 
