@@ -1,8 +1,13 @@
 # goxpyriment
 
+`goxpyriment` is a high-level Go framework for building behavioral and psychological experiments.
+
+* [HTML version](https://chrplr.github.io/goxpyriment) of this document
+* [Github repository](https://github.com/chrplr/goxpyriment) of the project
+* [Examples of experiments]((https://github.com/chrplr/goxpyriment/releases) using this framework.
+
 ![](assets/icon_512.png)
 
-`goxpyriment` is a high-level Go framework for building behavioral and psychological experiments.
 
 **Goxpyriment is well suited to "vibe-code" psychology experiments. (But humans can code with it too)** 
 
