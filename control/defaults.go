@@ -131,3 +131,8 @@ func FontFromMemory(data []byte, size float32) (*ttf.Font, error) {
 	return ttf.OpenFontIO(ioStream, true, size)
 }
 
+// FontFromFile opens a TTF font from a file path at the given point size.
+func FontFromFile(path string, size float32) (*ttf.Font, error) {
+	return ttf.OpenFont(path, size)
+}
+

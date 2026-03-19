@@ -13,8 +13,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 **Prerequisites:** Go 1.25+, SDL3 development libraries (`sudo apt install libsdl3-dev` on Linux).
 
 ```bash
-# Run a single example directly
+# Run a single example directly (from repo root — go.work handles the workspace)
 go run examples/parity_decision/main.go
+
+# Or from inside the example directory
+cd examples/parity_decision && go run . -d -s 1
 
 # Build a single example
 cd examples/parity_decision && go build .
@@ -22,14 +25,18 @@ cd examples/parity_decision && go build .
 # Build all examples
 cd examples && ./build.sh
 
-# Build/test a package
+# Build/check a library package (no test binary needed)
 go build ./stimuli/
 go build ./...
 ```
 
-Most examples accept `-d` for windowed development mode and `-s <id>` for subject ID.
+Most examples accept `-d` for windowed developer mode (1024×768 window) and `-s <id>` for subject ID.
 
-There are no automated tests (`go test` will find nothing meaningful). Verification is manual: build the package, then run an example with a real display.
+There are no automated tests (`go test` finds nothing meaningful). Verification is manual: build the package, then run an example with a real display.
+
+### Module / workspace layout
+
+The repo uses a Go workspace (`go.work`). `examples/` is a **separate module** (`go.mod` with a `replace github.com/chrplr/goxpyriment => ../` directive). When editing library code and running examples, always stay at the repo root so `go.work` resolves both modules correctly.
 
 ## Package architecture
 
@@ -45,7 +52,27 @@ geometry/     ← math helpers (polar/cartesian, degrees)
 ```
 
 ### control/
-The entry point for every experiment. `NewExperiment(...)` + `Initialize()` + `defer End()` sets up the SDL window, default font, audio device, keyboard/mouse handlers, and event log. `exp.Run(func() error {...})` wraps the main trial loop. Key fields: `exp.Screen`, `exp.Keyboard`, `exp.Mouse`, `exp.AudioDevice`, `exp.Data`, `exp.Design`.
+The entry point for every experiment.
+
+**Preferred boilerplate** — `NewExperimentFromFlags` handles flag parsing, initialization, and fatal-on-error in one call (most examples use this):
+```go
+exp := control.NewExperimentFromFlags("My Experiment", control.Black, control.White, 32)
+defer exp.End()
+```
+Use the lower-level `NewExperiment(...) + Initialize() + defer End()` only when you need non-standard initialization order.
+
+`exp.Run(func() error {...})` wraps the main trial loop; return `control.EndLoop` to exit cleanly, `nil` to continue. Key fields: `exp.Screen`, `exp.Keyboard`, `exp.Mouse`, `exp.AudioDevice`, `exp.Data`, `exp.Design`.
+
+**Convenience methods:** `exp.Show(stim)` — clears, draws, and flips in one call. `exp.Blank(ms)` — clears, flips, and waits `ms` milliseconds.
+
+**SDL re-exports in `control/defaults.go`** — import only `control`, not `go-sdl3`, for day-to-day experiment code:
+- Types: `control.Color`, `control.FPoint`, `control.FRect`, `control.Keycode`
+- Constructors: `control.Point(x, y)`, `control.Origin()`, `control.RGB(r,g,b)`, `control.RGBA(r,g,b,a)`
+- Key codes: `control.K_SPACE`, `control.K_ESCAPE`, `control.K_F`, `control.K_J`, … (see `defaults.go` for full list)
+- Mouse buttons: `control.BUTTON_LEFT`, `control.BUTTON_RIGHT`
+- Loop sentinel: `control.EndLoop` (return from `exp.Run` callback to exit); `control.IsEndLoop(err)` to check
+
+**Embedded assets** — `assets_embed` package bundles the default Inconsolata font, ping sound, and other shared assets; import as `github.com/chrplr/goxpyriment/assets_embed` and pass `assets_embed.InconsolataFont` (a `[]byte`) to `control.FontFromMemory`.
 
 ### stimuli/
 All visual stimuli implement `VisualStimulus` (which extends `Stimulus`):

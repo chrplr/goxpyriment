@@ -16,6 +16,8 @@
 package io
 
 import (
+	"time"
+
 	"github.com/Zyko0/go-sdl3/sdl"
 	"github.com/Zyko0/go-sdl3/ttf"
 )
@@ -181,6 +183,44 @@ func (s *Screen) SetLogicalSize(width, height int32) error {
 	return s.Renderer.SetLogicalPresentation(width, height, sdl.LOGICAL_PRESENTATION_LETTERBOX)
 }
 
+// DisplayInfo holds display properties queried once at experiment startup.
+// It is intended to be logged into the .xpd metadata header so that stimulus
+// timing can be interpreted correctly during analysis.
+type DisplayInfo struct {
+	ID             uint32  // SDL display ID
+	Name           string  // monitor name reported by the OS
+	NativeW        int32   // native display width in pixels
+	NativeH        int32   // native display height in pixels
+	PixelDensity   float32 // HiDPI scale (1.0 = standard, 2.0 = Retina-style)
+	RefreshRate    float32 // nominal refresh rate in Hz
+	BitsPerPixel   uint8   // total bits per pixel (e.g. 32)
+	BitsPerChannel uint8   // bits per colour channel (e.g. 8 for sRGB, 10 for HDR)
+	PixelFormat    string  // human-readable pixel format name (e.g. "SDL_PIXELFORMAT_XRGB8888")
+}
+
+// DisplayInfo queries the display properties for the screen's current window.
+// Fields that cannot be determined are left at their zero values.
+func (s *Screen) DisplayInfo() DisplayInfo {
+	id := sdl.GetDisplayForWindow(s.Window)
+	info := DisplayInfo{ID: uint32(id)}
+
+	if name, err := id.Name(); err == nil {
+		info.Name = name
+	}
+	if mode, err := id.CurrentDisplayMode(); err == nil && mode != nil {
+		info.NativeW = mode.W
+		info.NativeH = mode.H
+		info.PixelDensity = mode.PixelDensity
+		info.RefreshRate = mode.RefreshRate
+		info.PixelFormat = mode.Format.Name()
+		if details, err := mode.Format.Details(); err == nil && details != nil {
+			info.BitsPerPixel = details.BitsPerPixel
+			info.BitsPerChannel = details.Rbits
+		}
+	}
+	return info
+}
+
 // Size returns the current renderer output size.
 func (s *Screen) Size() (int32, int32, error) {
 	w, h, err := s.Renderer.RenderOutputSize()
@@ -226,6 +266,18 @@ func (s *Screen) Flip() error {
 // vsync: 1 to enable, 0 to disable, -1 for adaptive vsync.
 func (s *Screen) SetVSync(vsync int) error {
 	return s.Renderer.SetVSync(int32(vsync))
+}
+
+// FrameDuration returns the nominal duration of one display frame based on
+// the refresh rate of the screen's current display mode.
+// Falls back to 60 Hz if the refresh rate cannot be queried.
+func (s *Screen) FrameDuration() time.Duration {
+	var hz float32 = 60.0
+	id := sdl.GetDisplayForWindow(s.Window)
+	if mode, err := id.CurrentDisplayMode(); err == nil && mode != nil && mode.RefreshRate > 0 {
+		hz = mode.RefreshRate
+	}
+	return time.Duration(float64(time.Second) / float64(hz))
 }
 
 // VSync returns the current VSync state.

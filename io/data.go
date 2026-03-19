@@ -166,6 +166,21 @@ func (df *DataFile) Add(data ...interface{}) {
 	df.WriteLine(strings.Join(parts, df.Delimiter))
 }
 
+// WriteDisplayInfo appends display properties as comment lines in the metadata
+// header so that the physical display configuration is preserved alongside the
+// trial data for later analysis.
+func (df *DataFile) WriteDisplayInfo(info DisplayInfo) {
+	df.WriteComment("--DISPLAY INFO")
+	df.WriteComment(fmt.Sprintf("d id: %d", info.ID))
+	df.WriteComment(fmt.Sprintf("d name: %s", info.Name))
+	df.WriteComment(fmt.Sprintf("d native_resolution: %dx%d", info.NativeW, info.NativeH))
+	df.WriteComment(fmt.Sprintf("d pixel_density: %.2f", info.PixelDensity))
+	df.WriteComment(fmt.Sprintf("d refresh_rate_hz: %.4f", info.RefreshRate))
+	df.WriteComment(fmt.Sprintf("d bits_per_pixel: %d", info.BitsPerPixel))
+	df.WriteComment(fmt.Sprintf("d bits_per_channel: %d", info.BitsPerChannel))
+	df.WriteComment(fmt.Sprintf("d pixel_format: %s", info.PixelFormat))
+}
+
 // AddVariableNames appends variable names and writes a header comment.
 // This should typically be called once near the start of an experiment to
 // document the column structure of subsequent calls to Add.
