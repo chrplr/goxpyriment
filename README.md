@@ -9,7 +9,7 @@
 ![](assets/icon_512.png)
 
 
-**Goxpyriment is well suited to "vibe-code" psychology experiments. (But humans can code with it too)** 
+**Goxpyriment is well suited to "vibe-code" psychology experiments (But humans should enjoy coding with it too!)** 
 
 Here is how to proceed: 
 
