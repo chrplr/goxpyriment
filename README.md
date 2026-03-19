@@ -4,7 +4,7 @@
 
 * [HTML version](https://chrplr.github.io/goxpyriment) of this document
 * [Github repository](https://github.com/chrplr/goxpyriment) of the project
-* [Examples of experiments](https://github.com/chrplr/goxpyriment/releases) using this framework.
+* [Installers](https://github.com/chrplr/goxpyriment/releases) for examples of experiments.
 
 ![](assets/icon_512.png)
 
