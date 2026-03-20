@@ -30,21 +30,11 @@ func main() {
 		log.Fatal("no PNG files found in assets/")
 	}
 
-	var elements []stimuli.StreamElement
-
-	for _, path := range assetFiles {
-
-		// Create the Picture stimulus, initially at position (0, 0);
-		// PresentStreamOfImages will center it at the given (x, y).
-		pic := stimuli.NewPicture(path, 0, 0)
-
-		// Define timing: 100ms ON, 50ms OFF (ISI)
-		elements = append(elements, stimuli.StreamElement{
-			Stimulus:    pic,
-			DurationOn:  100 * time.Millisecond,
-			DurationOff: 50 * time.Millisecond,
-		})
+	pics := make([]stimuli.VisualStimulus, len(assetFiles))
+	for i, path := range assetFiles {
+		pics[i] = stimuli.NewPicture(path, 0, 0)
 	}
+	elements := stimuli.MakeRegularVisualStream(pics, 100*time.Millisecond, 50*time.Millisecond)
 
 	exp.Data.AddVariableNames([]string{"image_index", "filename", "target_on_ms", "actual_onset_ms", "actual_offset_ms"})
 

@@ -131,6 +131,7 @@ func NewExperimentFromFlags(name string, bg, fg sdl.Color, fontSize float32) *Ex
 	if err := exp.Initialize(); err != nil {
 		log.Fatalf("failed to initialize experiment: %v", err)
 	}
+	_ = exp.ShowSplash(true)
 	return exp
 }
 
@@ -403,6 +404,37 @@ func (e *Experiment) LoadFontFromMemory(data []byte, size float32) error {
 		e.Screen.DefaultFont = font
 	}
 	return nil
+}
+
+// ShowSplash displays a brief splash screen with the experiment name in the
+// default font and "Goxpyriment <version>" in a smaller font below.
+// When waitForKey is true, the screen stays up until any key is pressed.
+// When waitForKey is false, it dismisses automatically after 5 seconds (or on
+// any key). Non-fatal: errors during splash rendering are silently ignored so
+// the experiment can continue.
+func (e *Experiment) ShowSplash(waitForKey bool) error {
+	if e.Screen == nil || e.DefaultFont == nil {
+		return nil
+	}
+	smallSize := e.DefaultFontSize * 0.55
+	if smallSize < 10 {
+		smallSize = 10
+	}
+	ioStream, err := sdl.IOFromBytes(assets_embed.InconsolataFont)
+	if err != nil {
+		return nil
+	}
+	smallFont, err := ttf.OpenFontIO(ioStream, true, smallSize)
+	if err != nil {
+		return nil
+	}
+	defer smallFont.Close()
+	subtitle := "Goxpyriment " + io.Version
+	timeoutSec := 5.0
+	if waitForKey {
+		timeoutSec = 0
+	}
+	return stimuli.TwoLineSplash(e.Screen, assets_embed.IconPNG, e.DefaultFont, e.Name, smallFont, subtitle, timeoutSec, true)
 }
 
 // ---------------------------------------------------------------------------

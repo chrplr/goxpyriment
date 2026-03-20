@@ -11,8 +11,8 @@ import (
 	"github.com/Zyko0/go-sdl3/sdl"
 )
 
-// StreamElement represents a single stimulus in a sequence with its timing.
-type StreamElement struct {
+// VisualStreamElement represents a single stimulus in a sequence with its timing.
+type VisualStreamElement struct {
 	Stimulus    VisualStimulus
 	DurationOn  time.Duration
 	DurationOff time.Duration
@@ -35,7 +35,7 @@ type TimingLog struct {
 // PresentStreamOfImages displays a sequence of stimuli with high precision.
 // It preloads textures, disables GC, and aligns presentation to the monitor's VSYNC.
 // Each stimulus is centered on (x, y) in screen-center coordinates.
-func PresentStreamOfImages(screen *io.Screen, elements []StreamElement, x, y float32) ([]UserEvent, []TimingLog, error) {
+func PresentStreamOfImages(screen *io.Screen, elements []VisualStreamElement, x, y float32) ([]UserEvent, []TimingLog, error) {
 	// 1. Pre-load all stimuli into GPU memory (Textures)
 	for _, el := range elements {
 		if err := PreloadVisualOnScreen(screen, el.Stimulus); err != nil {
@@ -109,18 +109,163 @@ func PresentStreamOfImages(screen *io.Screen, elements []StreamElement, x, y flo
 	return userEvents, timingLogs, nil
 }
 
+// MakeVisualStream builds a []VisualStreamElement from parallel slices of
+// stimuli, onset times, and on-durations (all in milliseconds).
+// The off-duration (ISI) for each element is derived as the gap to the next
+// onset; the last element gets an off-duration of zero.
+// Returns an error if the slice lengths differ or any derived ISI is negative.
+func MakeVisualStream(stims []VisualStimulus, onsetMs, durationMs []int) ([]VisualStreamElement, error) {
+	n := len(stims)
+	if len(onsetMs) != n || len(durationMs) != n {
+		return nil, fmt.Errorf("MakeVisualStream: slices have different lengths (%d, %d, %d)",
+			n, len(onsetMs), len(durationMs))
+	}
+	elements := make([]VisualStreamElement, n)
+	for i, s := range stims {
+		on := time.Duration(durationMs[i]) * time.Millisecond
+		var off time.Duration
+		if i < n-1 {
+			gap := onsetMs[i+1] - onsetMs[i] - durationMs[i]
+			if gap < 0 {
+				return nil, fmt.Errorf("MakeVisualStream: negative ISI at index %d", i)
+			}
+			off = time.Duration(gap) * time.Millisecond
+		}
+		elements[i] = VisualStreamElement{Stimulus: s, DurationOn: on, DurationOff: off}
+	}
+	return elements, nil
+}
+
+// MakeRegularVisualStream builds a []VisualStreamElement where every element
+// shares the same on-duration and off-duration (ISI). This covers the common
+// RSVP case where all stimuli are shown for the same amount of time.
+func MakeRegularVisualStream(stims []VisualStimulus, durationOn, durationOff time.Duration) []VisualStreamElement {
+	elements := make([]VisualStreamElement, len(stims))
+	for i, s := range stims {
+		elements[i] = VisualStreamElement{Stimulus: s, DurationOn: durationOn, DurationOff: durationOff}
+	}
+	return elements
+}
+
+// MakeSoundStream builds a []SoundStreamElement from parallel slices of
+// sounds, onset times, and on-durations (all in milliseconds).
+// The off-duration (ISI) for each element is derived as the gap to the next
+// onset; the last element gets an off-duration of zero.
+// Returns an error if the slice lengths differ or any derived ISI is negative.
+func MakeSoundStream(sounds []AudioPlayable, onsetMs, durationMs []int) ([]SoundStreamElement, error) {
+	n := len(sounds)
+	if len(onsetMs) != n || len(durationMs) != n {
+		return nil, fmt.Errorf("MakeSoundStream: slices have different lengths (%d, %d, %d)",
+			n, len(onsetMs), len(durationMs))
+	}
+	elements := make([]SoundStreamElement, n)
+	for i, s := range sounds {
+		on := time.Duration(durationMs[i]) * time.Millisecond
+		var off time.Duration
+		if i < n-1 {
+			gap := onsetMs[i+1] - onsetMs[i] - durationMs[i]
+			if gap < 0 {
+				return nil, fmt.Errorf("MakeSoundStream: negative ISI at index %d", i)
+			}
+			off = time.Duration(gap) * time.Millisecond
+		}
+		elements[i] = SoundStreamElement{Sound: s, DurationOn: on, DurationOff: off}
+	}
+	return elements, nil
+}
+
+// MakeRegularSoundStream builds a []SoundStreamElement where every element
+// shares the same on-duration and off-duration (ISI). This covers the common
+// case of a regular sequence of tones or sounds with uniform timing.
+func MakeRegularSoundStream(sounds []AudioPlayable, durationOn, durationOff time.Duration) []SoundStreamElement {
+	elements := make([]SoundStreamElement, len(sounds))
+	for i, s := range sounds {
+		elements[i] = SoundStreamElement{Sound: s, DurationOn: durationOn, DurationOff: durationOff}
+	}
+	return elements
+}
+
 // PresentStreamOfText handles Rapid Serial Visual Presentation (RSVP).
 // It converts a slice of strings into a stream of centered text stimuli.
 func PresentStreamOfText(screen *io.Screen, words []string, durationOn, durationOff time.Duration, x, y float32, color sdl.Color) ([]UserEvent, []TimingLog, error) {
-	elements := make([]StreamElement, len(words))
+	elements := make([]VisualStreamElement, len(words))
 	for i, word := range words {
-		elements[i] = StreamElement{
+		elements[i] = VisualStreamElement{
 			Stimulus:    NewTextLine(word, 0, 0, color),
 			DurationOn:  durationOn,
 			DurationOff: durationOff,
 		}
 	}
 	return PresentStreamOfImages(screen, elements, x, y)
+}
+
+// AudioPlayable is implemented by any audio stimulus that can be triggered
+// on a pre-bound SDL audio device. Both *Sound and *Tone satisfy this interface.
+type AudioPlayable interface {
+	Play() error
+}
+
+// SoundStreamElement represents a single sound in an auditory sequence,
+// mirroring VisualStreamElement for visual streams.
+// A nil Sound means silence for that slot (only DurationOn + DurationOff are waited).
+type SoundStreamElement struct {
+	Sound       AudioPlayable
+	DurationOn  time.Duration // how long the sound is considered "on"
+	DurationOff time.Duration // silence after the sound (ISI)
+}
+
+// PlayStreamOfSounds plays a sequence of audio stimuli with precise timing,
+// mirroring PresentStreamOfImages for the auditory domain.
+//
+// For each element it triggers the sound, waits DurationOn while polling
+// events, then waits DurationOff while polling events. Timing of actual
+// onsets and offsets is recorded in the returned TimingLog slice.
+//
+// All sounds must be pre-loaded (bound to an audio device) before calling.
+// GC is disabled during playback to reduce timing jitter.
+// ESC causes early return with sdl.EndLoop.
+func PlayStreamOfSounds(elements []SoundStreamElement) ([]UserEvent, []TimingLog, error) {
+	oldGC := debug.SetGCPercent(-1)
+	defer debug.SetGCPercent(oldGC)
+
+	var userEvents []UserEvent
+	var timingLogs []TimingLog
+
+	streamStart := time.Now()
+
+	for i, el := range elements {
+		actualOnset := time.Since(streamStart)
+
+		// --- SOUND ON ---
+		if el.Sound != nil {
+			if err := el.Sound.Play(); err != nil {
+				return userEvents, timingLogs, err
+			}
+		}
+		onDeadline := time.Now().Add(el.DurationOn)
+		for time.Now().Before(onDeadline) {
+			userEvents = collectEvents(streamStart, userEvents)
+			sdl.Delay(1)
+		}
+
+		actualOffset := time.Since(streamStart)
+
+		// --- SOUND OFF (ISI / silence) ---
+		offDeadline := time.Now().Add(el.DurationOff)
+		for time.Now().Before(offDeadline) {
+			userEvents = collectEvents(streamStart, userEvents)
+			sdl.Delay(1)
+		}
+
+		timingLogs = append(timingLogs, TimingLog{
+			Index:        i,
+			TargetOn:     el.DurationOn,
+			ActualOnset:  actualOnset,
+			ActualOffset: actualOffset,
+		})
+	}
+
+	return userEvents, timingLogs, nil
 }
 
 // collectEvents drains the SDL event queue without blocking, appending any

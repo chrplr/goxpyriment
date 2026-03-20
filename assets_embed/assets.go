@@ -20,3 +20,8 @@ var CorrectWav []byte
 //
 //go:embed logo.png
 var LogoPNG []byte
+
+// IconPNG is the 256×256 goxpyriment icon, displayed in the experiment splash screen.
+//
+//go:embed icon_256.png
+var IconPNG []byte

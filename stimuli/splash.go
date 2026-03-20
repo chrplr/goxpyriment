@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/Zyko0/go-sdl3/sdl"
+	"github.com/Zyko0/go-sdl3/ttf"
 	"github.com/chrplr/goxpyriment/io"
 )
 
@@ -153,6 +154,149 @@ func splashWait(timeoutSec float64) error {
 		}
 	}
 }
+
+// TwoLineSplash displays an optional image above two centred text lines
+// rendered at different font sizes, then waits until the timeout elapses or
+// any key is pressed.
+//
+//   - imageData: PNG/JPG bytes for an icon shown above the text. Pass nil to omit.
+//   - titleFont / title:         upper text line (usually larger).
+//   - subtitleFont / subtitle:   lower text line (usually smaller).
+//   - timeoutSec: maximum wait in seconds; pass 0 to wait indefinitely.
+//   - splitLayout: when true, the title is centred at Y=0 independently, and
+//     the image+subtitle block is placed in the lower third of the screen.
+//     When false, all three elements are stacked and centred as a group.
+//
+// Returns sdl.EndLoop on ESC or window-close; nil on timeout or any other key.
+func TwoLineSplash(screen *io.Screen, imageData []byte, titleFont *ttf.Font, title string, subtitleFont *ttf.Font, subtitle string, timeoutSec float64, splitLayout bool) error {
+	const gap = float32(20)
+
+	textColor := contrastWith(screen.BgColor)
+
+	// ── Image ────────────────────────────────────────────────────────────────
+	var pic *Picture
+	if imageData != nil {
+		pic = NewPictureFromMemory(imageData, 0, 0)
+		if err := pic.preload(screen); err != nil {
+			return err
+		}
+	}
+
+	// ── Title text ───────────────────────────────────────────────────────────
+	var titleTxt *TextBox
+	if title != "" && titleFont != nil {
+		titleTxt = NewTextBox(title, 900, sdl.FPoint{}, textColor)
+		if err := titleTxt.preload(screen, titleFont); err != nil {
+			return err
+		}
+	}
+
+	// ── Subtitle text ────────────────────────────────────────────────────────
+	var subTxt *TextBox
+	if subtitle != "" && subtitleFont != nil {
+		subTxt = NewTextBox(subtitle, 700, sdl.FPoint{}, textColor)
+		if err := subTxt.preload(screen, subtitleFont); err != nil {
+			return err
+		}
+	}
+
+	// ── Layout ───────────────────────────────────────────────────────────────
+	imgH := float32(0)
+	if pic != nil {
+		imgH = pic.Height
+	}
+	titleH := float32(0)
+	if titleTxt != nil {
+		titleH = titleTxt.Height
+	}
+	subH := float32(0)
+	if subTxt != nil {
+		subH = subTxt.Height
+	}
+
+	if splitLayout {
+		// Title centred at Y=0; image+subtitle block in the lower third.
+		if titleTxt != nil {
+			titleTxt.Position.Y = 0
+		}
+		bottomElems := 0
+		for _, h := range []float32{imgH, subH} {
+			if h > 0 {
+				bottomElems++
+			}
+		}
+		bottomH := imgH + subH + float32(max(bottomElems-1, 0))*gap
+		// Centre of bottom block at 1/3 of the way from screen centre to bottom.
+		blockCenterY := -float32(screen.Height) / 3
+		cursor := blockCenterY - bottomH/2
+		if pic != nil {
+			pic.Position.Y = cursor + imgH/2
+			cursor += imgH + gap
+		}
+		if subTxt != nil {
+			subTxt.Position.Y = cursor + subH/2
+		}
+	} else {
+		// All elements stacked and centred at (0, 0).
+		elems := 0
+		for _, h := range []float32{imgH, titleH, subH} {
+			if h > 0 {
+				elems++
+			}
+		}
+		totalH := imgH + titleH + subH + float32(max(elems-1, 0))*gap
+
+		cursor := -totalH / 2
+		if pic != nil {
+			pic.Position.Y = cursor + imgH/2
+			cursor += imgH + gap
+		}
+		if titleTxt != nil {
+			titleTxt.Position.Y = cursor + titleH/2
+			cursor += titleH + gap
+		}
+		if subTxt != nil {
+			subTxt.Position.Y = cursor + subH/2
+		}
+	}
+
+	// ── Render once ───────────────────────────────────────────────────────────
+	if err := screen.Clear(); err != nil {
+		return err
+	}
+	if pic != nil {
+		if err := pic.Draw(screen); err != nil {
+			return err
+		}
+	}
+	if titleTxt != nil {
+		if err := titleTxt.Draw(screen); err != nil {
+			return err
+		}
+	}
+	if subTxt != nil {
+		if err := subTxt.Draw(screen); err != nil {
+			return err
+		}
+	}
+	if err := screen.Update(); err != nil {
+		return err
+	}
+
+	result := splashWait(timeoutSec)
+
+	if pic != nil {
+		_ = pic.Unload()
+	}
+	if titleTxt != nil {
+		_ = titleTxt.Unload()
+	}
+	if subTxt != nil {
+		_ = subTxt.Unload()
+	}
+	return result
+}
+
 
 // contrastWith returns white on dark backgrounds and black on light ones,
 // using the standard luminance formula.
