@@ -4,31 +4,25 @@
 
 * [HTML version](https://chrplr.github.io/goxpyriment) of this document
 * [Github repository](https://github.com/chrplr/goxpyriment) of the project
-* [Ready to run experiments](#demos) based on this framework.
+* Report bugs and suggestions at <https://github.com/chrplr/goxpyriment/issues>
 
 ![](assets/icon_512.png)
 
+**Just want to run demo experiments?** → Jump to [Demos](#demos).
 
-**Goxpyriment is well suited to "vibe-code" psychology experiments (But humans should enjoy coding with it too!)** 
+**Want to write your own experiment?** Goxpyriment is well suited to "vibe-coding" psychology experiments — but humans enjoy coding with it too:
 
-Here is how to proceed: 
+1. Install Go on your machine (see <https://go.dev/doc/install>).
+2. Clone this repository (`git clone https://github.com/chrplr/goxpyriment.git` or [download ZIP](https://github.com/chrplr/goxpyriment/archive/refs/heads/main.zip)).
+3. Fire your favorite AI coding agent (gemini-cli, claude, cursor...) inside the `goxpyriment` folder and ask it to review the provided examples; then prompt it to program your experiment, describing it in plain language (stimuli, design, etc.).
+4. Once the code is created, e.g. in `my_experiment/`, test it by running `go run my_experiment/main.go` in the terminal.
+5. Optionally, build installers for Windows, macOS, and Linux to distribute to colleagues — no Python or libraries needed on their machines (see <https://github.com/chrplr/retinotopy-go> for an example).
 
-1. Install Go on your machine (see <https://go.dev/doc/install>). 
-2. Clone this repository  (`git clone https://github.com/chrplr/goxpyriment.git` or [download ZIP](https://github.com/chrplr/goxpyriment/archive/refs/heads/main.zip))
-3. Fire your favorite AI coding agent (gemini-cli, claude, cursor...) inside goxpyriment folder and ask it to review the provided examples; then prompt it to program your experiment, describing it in plain language (stimuli, design, etc.)
-4. Once the code is created, say in `my_crazy_exp`, you can test it, typically running  `go run my_crazy_exp/main.go` in the terminal.
-5. Optionaly, you can create an executable and installers for Windows, MacOS and Linux to disribute to your colleagues. They will not need to install anything beyond your executable on their machine: no need to install Python and whatever libraries, things should work out of the box (see an example at <https://github.com/chrplr/retinotopy-go>)
+Goxpyriment relies on the [libsdl](http://libsdl.org) library through the [go-sdl3](https://github.com/Zyko0/go-sdl3) bindings. Its API is largely inspired by [expyriment.org](http://expyriment.org):
 
----
+> Krause, F., & Lindemann, O. (2014). Expyriment: A Python library for cognitive and neuroscientific experiments. *Behavior Research Methods*, 46(2), 416–428. <https://doi.org/10.3758/s13428-013-0390-6>
 
-* You can download ready-to-run [examples of experiments](#demos) and look at their [source code](examples/)
-* Goxpy relies on the [libsdl](http://libsdl.org) library through the [go-sdl3](https://github.com/Zyko0/go-sdl3) bindings. Its API is largely inspired from [expyriment.org](http://expyriment.org): 
-
-> Krause, F., & Lindemann, O. (2014). Expyriment: A Python library for cognitive and neuroscientific experiments. Behavior Research Methods, 46(2), 416-428. <https://doi.org/10.3758/s13428-013-0390-6>.
-
-* Check out [gostim2](http://github.com/chrplr/gostim2) for a less flexible but very simple (no-code!) experiment generator.**
-* This software is a beta version. Please report bugs and suggestions for improvement at <https://github.com/chrplr/goxpyriment/issues>.
-
+See also [gostim2](http://github.com/chrplr/gostim2) for a simpler, no-code experiment generator.
 
 Christophe Pallier, March 2026
 
@@ -36,39 +30,33 @@ Christophe Pallier, March 2026
 
 ## Features
 
-- **Experimental Design:** Easily define Experiments, Blocks, and Trials with support for factors and randomization.
-- **Rich Stimuli Library:**
-  - **Visual:** Text (lines and boxes), shapes (rectangles, circles), images, fixation crosses, and Gabor patches.
-  - **Audio:** Playback of WAV files and synthetic tones.
-- **Hardware Acceleration:** Seamless integration with SDL3 for smooth, high-performance stimulus presentation.
-- **Input Handling:** Simplified interfaces for Keyboard and Mouse events.
-- **Data Collection:** Automatic logging of trial data to `.xpd` files for later analysis.
-- **Timing:** High-precision timing utilities for stimulus duration and reaction time measurement.
-
-## Prerequisites
-
-- Zero, Nada, None (!) to run precompiled experiments.
-- [Go](http://go.dev), version 1.25 or higher, if you want to modify or program experiments.
-
-By the way, while Python is easy, Go is simple, which is [a good thing](gemini-go-vs-python.md)
-
-
+- **Visual stimuli:** text (single-line and word-wrapped boxes), shapes (rectangles, circles, lines, polygons), fixation crosses, images, Gabor patches, drifting sinusoidal gratings, random-dot clouds, random-dot stereograms, off-screen canvases, and visual masks.
+- **Audio stimuli:** WAV playback (from file or embedded bytes), procedurally generated tones (pure or multi-frequency with linear ramps), and time-windowed segment playback with fade-in/fade-out.
+- **Video playback:** MPEG video files and `.gv` (LZ4-compressed RGBA) sequences, both VSYNC-locked.
+- **Stimulus streams:** high-precision RSVP presentation of image, text, or audio sequences with per-stimulus timing logs and user-event capture.
+- **Animated stimuli:** VSYNC-locked loops for moving dot clouds, drifting gratings, and drifting Gabor patches; GC disabled during loops for stable frame timing.
+- **Experimental design:** Experiments → Blocks → Trials with arbitrary string factors; block shuffling; between-subjects Latin-square counterbalancing.
+- **Randomization:** shuffled sequences, random draws, truncated normal sampling, and constrained shuffling (maximum consecutive repetitions, minimum gap between repetitions).
+- **Input handling:** keyboard (blocking/non-blocking, multi-key, timeout, reaction-time measurement) and mouse (position, button detection); serial port for hardware triggers.
+- **Data collection:** trial data logged to `.xpd` files (CSV with metadata header) with automatic subject ID, timestamp, and display-info fields.
+- **Timing:** millisecond-precision clock, `Wait()` / `WaitUntil()`, VSYNC-locked frame cadence via SDL3.
 
 ## Installation
 
 ### Demos
 
-You can download [here](https://github.com/chrplr/goxpyriment/releases) an installer of ready-to-run [examples of experiments](examples/README.md) created with goxpyeriment (and check their [source code](examples/) if you want).
+You can download [here](https://github.com/chrplr/goxpyriment/releases) ready-to-run [examples of experiments](examples/README.md) created with goxpyriment (and check their [source code](examples/) if you want).
 
-* **Windows:** Download [`goxpyriment-examples-windows-x86_64-setup.exe`](https://github.com/chrplr/goxpyriment/releases/latest/download/goxpyriment-examples-windows-x86_64-setup.exe). Execute it; Defender may block you: then just click on "more info" and click "Run anyway". By default, the experiments are installed in `AppData\Local\Goxpyriment examsples\bin`, in your user folder. As `AppData` is an hidden folder, you have to select `View/Show/Hidden items` in File Exporer to be able to see it. Navigate in the subfolder and click on an App to execute it.
-* **MacOS:** Download [`goxpyriment-examples-macos-arm64-app.zip`](https://github.com/chrplr/goxpyriment/releases/latest/download/goxpyriment-examples-macos-arm64-app.zip), extract it, and drag the `.app` files into a folder of your choice (e.g. `Applications/goxpyriment-examples`).
+* **Windows:** Download [`goxpyriment-examples-windows-x86_64-setup.exe`](https://github.com/chrplr/goxpyriment/releases/latest/download/goxpyriment-examples-windows-x86_64-setup.exe). Execute it; Defender may block you: click "more info" then "Run anyway". By default, experiments are installed in `AppData\Local\Goxpyriment examples\bin` in your user folder. As `AppData` is a hidden folder, select `View > Show > Hidden items` in File Explorer to navigate there.
+* **macOS:** Download [`goxpyriment-examples-macos-arm64-app.zip`](https://github.com/chrplr/goxpyriment/releases/latest/download/goxpyriment-examples-macos-arm64-app.zip), extract it, and drag the `.app` files into a folder of your choice (e.g. `Applications/goxpyriment-examples`).
 
   > [!WARNING]
   > macOS may show a security warning the first time you open each app. See [macOS installation and security](https://chrplr.github.io/note-about-macos-unsigned-apps) for an explanation and step-by-step instructions to bypass it.
-* **Linux**: Download [`goxpyriment-examples-linux-x86_64-appimages.tar.gz`](https://github.com/chrplr/goxpyriment/releases/latest/download/goxpyriment-examples-linux-x86_64-appimages.tar.gz) and untar it (`tar xzf`). The applications are ready to run.
- 
+* **Linux:** Download [`goxpyriment-examples-linux-x86_64-appimages.tar.gz`](https://github.com/chrplr/goxpyriment/releases/latest/download/goxpyriment-examples-linux-x86_64-appimages.tar.gz) and untar it (`tar xzf`). The applications are ready to run.
 
-### Install the library on your computer to compile source code
+### Install Go and the library to compile source code
+
+Download and install Go from <https://go.dev>. While Python is easy, Go is simple, which is [a good thing](gemini-go-vs-python.md).
 
 ```bash
 go get github.com/chrplr/goxpyriment
@@ -76,93 +64,62 @@ go get github.com/chrplr/goxpyriment
 
 ## Quick Start
 
-Here is the code of a simple "Hello World" experiment (also at `examples/hello_world/main.go`):
+Here is the code of a minimal "Hello World" experiment (the full version with audio is at `examples/hello_world/main.go`):
 
 ```go
 package main
 
 import (
-	_ "embed"  // to embed stimuli files, fonts, etc. inside the executable
-	"flag"
-	"log"
-
 	"github.com/chrplr/goxpyriment/control"
 	"github.com/chrplr/goxpyriment/stimuli"
 )
 
-//go:embed assets/bonjour.wav
-var bonjourWav []byte
-
 func main() {
-	develop := flag.Bool("d", false, "Developer mode (windowed 1024x1024)")
-	subject := flag.Int("s", 0, "Subject ID")
-	flag.Parse()
-
-	width, height, fullscreen := 0, 0, true
-	if *develop {
-		width, height, fullscreen = 1024, 1024, false
-	}
-
-	exp := control.NewExperiment(
-		"My First Go Experiment",
-		width, height, fullscreen,
-		control.Black, // background color
-		control.White, // foreground (text) color
-		32,            // default font size in points
-	)
-	exp.SubjectID = *subject
-	if err := exp.Initialize(); err != nil {
-		log.Fatalf("failed to initialize experiment: %v", err)
-	}
+	exp := control.NewExperimentFromFlags("Hello World", control.Black, control.White, 32)
 	defer exp.End()
 
-	greetings := stimuli.NewTextBox("Hello World !", 600, control.FPoint{X: 0, Y: 100}, control.DefaultTextColor)
-	instr := stimuli.NewTextBox("Press any key to start the experiment", 600, control.FPoint{X: 0, Y: 100}, control.DefaultTextColor)
-	finish := stimuli.NewTextBox("Experiment Finished!\nPress any key to exit.", 600, control.FPoint{X: 0, Y: 100}, control.DefaultTextColor)
-
-	sound := stimuli.NewSoundFromMemory(bonjourWav)
-	if err := sound.PreloadDevice(exp.AudioDevice); err != nil {
-		log.Printf("Warning: failed to load sound: %v", err)
-	}
+	instr  := stimuli.NewTextBox("Press any key to start.", 600, control.FPoint{X: 0, Y: 0}, control.DefaultTextColor)
+	hello  := stimuli.NewTextBox("Hello World!", 600, control.FPoint{X: 0, Y: 0}, control.DefaultTextColor)
+	finish := stimuli.NewTextBox("Done — press any key to exit.", 600, control.FPoint{X: 0, Y: 0}, control.DefaultTextColor)
 
 	exp.Run(func() error {
-		if err := stimuli.PlayPing(exp.AudioDevice); err != nil {
-			log.Printf("Warning: failed to play ping: %v", err)
-		}
-		instr.Present(exp.Screen, true, true)
+		if err := exp.Show(instr); err != nil { return err }
 		exp.Keyboard.Wait()
-
-		sound.Play()
-		greetings.Present(exp.Screen, true, true)
+		if err := exp.Show(hello); err != nil { return err }
 		exp.Keyboard.Wait()
-
-		finish.Present(exp.Screen, true, true)
+		if err := exp.Show(finish); err != nil { return err }
 		exp.Keyboard.Wait()
-
 		return control.EndLoop
 	})
 }
 ```
 
-To run it directly from within this repository:
+Run or build examples from within this repository:
 
 ```bash
 cd examples/hello_world
 go run .            # fullscreen by default
 go run . -d         # windowed 1024×1024 (developer mode)
 go run . -d -s 1    # windowed, subject ID = 1
+go build .          # build a standalone binary
 ```
 
-To build a standalone binary:
+Run any example directly from the repository root:
 
 ```bash
-cd examples/hello_world
-go build -o hello_goxpy .
-./hello_goxpy -d
+go run ./examples/parity_decision/ -d -s 1
+```
+
+Most examples accept `-d` (windowed 1024×1024 developer mode) and `-s <id>` (subject ID written to the `.xpd` data file).
+
+To build all examples at once:
+
+```bash
+cd examples
+./build.sh
 ```
 
 Cross-compiling is [straightforward](https://golangcookbook.com/chapters/running/cross-compiling/) in Go — you can build binaries for Windows, macOS, and Linux (Intel or ARM) from any machine.
- 
 
 ## Project Structure
 
@@ -174,38 +131,8 @@ Cross-compiling is [straightforward](https://golangcookbook.com/chapters/running
 - `geometry/`: Geometry utilities.
 - `examples/`: Ready-to-run examples (Stroop task, Lexical Decision, etc.).
 
-## Building and Running Examples
-
-Run any example directly from the repository root:
-
-```bash
-go run ./examples/parity_decision/ -d -s 1
-```
-
-Or build and run the binary:
-
-```bash
-cd examples/parity_decision
-go build .
-./parity_decision -d -s 1
-```
-
-Most examples accept:
-- `-d` — windowed 1024×1024 developer mode (default is exclusive fullscreen)
-- `-s <id>` — subject ID written into the `.xpd` data file
-
-To build all examples at once:
-
-```bash
-cd examples
-./build.sh
-```
-
-
 ## License
 
 This project is licensed under the GNU Public License v3 - see the [LICENSE](LICENSE.txt) file for details.
 
 Christophe Pallier, 2026
-
-

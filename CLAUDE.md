@@ -10,7 +10,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Build & run
 
-**Prerequisites:** Go 1.25+, SDL3 development libraries (`sudo apt install libsdl3-dev` on Linux).
+**Prerequisites:** Go 1.25+.
 
 ```bash
 # Run a single example directly (from repo root — go.work handles the workspace)
