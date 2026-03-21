@@ -45,11 +45,15 @@ jobs:
           cd examples/installers
           ISCC windows-goxpyriment-examples.iss
 
+      - name: Rename Windows installer
+        shell: pwsh
+        run: mv examples/installers/goxpyriment-examples-setup.exe examples/installers/goxpyriment-examples-windows-x86_64-setup.exe
+
       - name: Upload Windows installer artifact
         uses: actions/upload-artifact@v4
         with:
           name: windows-installer
-          path: examples/installers/goxpyriment-examples-setup.exe
+          path: examples/installers/goxpyriment-examples-windows-x86_64-setup.exe
 
   build-macos-zip:
     runs-on: macos-latest
@@ -69,11 +73,14 @@ jobs:
           cd examples/installers
           bash build-macos-dmg.sh
 
+      - name: Rename macOS zip
+        run: mv examples/installers/goxpyriment-examples.zip examples/installers/goxpyriment-examples-macos-arm64-app.zip
+
       - name: Upload macOS zip artifact
         uses: actions/upload-artifact@v4
         with:
           name: macos-zip
-          path: examples/installers/goxpyriment-examples.zip
+          path: examples/installers/goxpyriment-examples-macos-arm64-app.zip
 
   build-linux-appimages:
     runs-on: ubuntu-latest
@@ -151,13 +158,13 @@ jobs:
       - name: Archive AppImages
         run: |
           cd examples/installers/AppImages
-          tar czf ../goxpyriment-examples-appimages.tar.gz *.AppImage
+          tar czf ../goxpyriment-examples-linux-x86_64-appimages.tar.gz *.AppImage
 
       - name: Upload Linux AppImages artifact
         uses: actions/upload-artifact@v4
         with:
           name: linux-appimages
-          path: examples/installers/goxpyriment-examples-appimages.tar.gz
+          path: examples/installers/goxpyriment-examples-linux-x86_64-appimages.tar.gz
 
   create-release:
     runs-on: ubuntu-latest
@@ -178,9 +185,9 @@ jobs:
       - name: Generate Master Checksum
         run: |
           cd artifacts
-          sha256sum goxpyriment-examples-setup.exe > SHA256SUMS
-          sha256sum goxpyriment-examples.zip >> SHA256SUMS
-          sha256sum goxpyriment-examples-appimages.tar.gz >> SHA256SUMS
+          sha256sum goxpyriment-examples-windows-x86_64-setup.exe > SHA256SUMS
+          sha256sum goxpyriment-examples-macos-arm64-app.zip >> SHA256SUMS
+          sha256sum goxpyriment-examples-linux-x86_64-appimages.tar.gz >> SHA256SUMS
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
@@ -188,9 +195,9 @@ jobs:
           name: Goxpyriment examples ${{ github.ref_name }}
           tag_name: ${{ github.ref_name }}
           files: |
-            artifacts/goxpyriment-examples-setup.exe
-            artifacts/goxpyriment-examples.zip
-            artifacts/goxpyriment-examples-appimages.tar.gz
+            artifacts/goxpyriment-examples-windows-x86_64-setup.exe
+            artifacts/goxpyriment-examples-macos-arm64-app.zip
+            artifacts/goxpyriment-examples-linux-x86_64-appimages.tar.gz
             artifacts/SHA256SUMS
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
