@@ -26,10 +26,16 @@ The "attentional blink" is a phenomenon where the second of two targets cannot b
 
 ## 4. How to Run
 
-From the `examples` directory:
+From the `Attentional-Blink` directory:
 
 ```bash
-go run ./attentional-blink/ -d -s [subject_id]
+go run main.go -d -s [subject_id]
+```
+
+Or from the repository root:
+
+```bash
+go run examples/Attentional-Blink/main.go -d -s [subject_id]
 ```
 
 - **-d**: Developer mode (windowed display).

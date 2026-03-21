@@ -59,3 +59,7 @@ Data are saved to `goxpy_data/` as a `.xpd` file (CSV with a metadata header). O
 | `response_key` | Key pressed (test phase only) |
 | `rt` | Reaction time in milliseconds |
 | `hit` | Whether the response was correct |
+
+## References
+
+Turk-Browne, N. B., Jungé, J. A., & Scholl, B. J. (2005). The automaticity of visual statistical learning. *Journal of Experimental Psychology: General*, 134(4), 552–564. https://doi.org/10.1037/0096-3445.134.4.552

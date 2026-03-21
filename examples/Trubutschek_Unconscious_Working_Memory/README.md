@@ -21,10 +21,17 @@ The task is a spatial delayed-response task designed to assess the retention of 
 
 ## 3. How to Run
 
-From the `examples` directory:
+From the `Trubutschek_Unconscious_Working_Memory` directory:
 
 ```bash
-go run ./unconscious-working-memory/task/ -d
+go run main.go -d -s [subject_id]
+```
+
+Or from the repository root:
+
+```bash
+go run examples/Trubutschek_Unconscious_Working_Memory/main.go -d -s [subject_id]
 ```
 
 - **-d**: Developer mode (windowed display).
+- **-s**: Subject ID for data logging.

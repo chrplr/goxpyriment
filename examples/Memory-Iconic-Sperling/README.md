@@ -33,10 +33,16 @@ Sperling found that when participants were shown a 3x3 grid of letters for a ver
 
 ## 5. How to Run
 
-From the `examples` directory:
+From the `Memory-Iconic-Sperling` directory:
 
 ```bash
-go run ./Sperling-iconic-memory/ -d -s [subject_id]
+go run main.go -d -s [subject_id]
+```
+
+Or from the repository root:
+
+```bash
+go run examples/Memory-Iconic-Sperling/main.go -d -s [subject_id]
 ```
 
 - **-d**: Developer mode (windowed display).

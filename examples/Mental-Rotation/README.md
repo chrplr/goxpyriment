@@ -28,10 +28,16 @@ The participant is shown two 2D asymmetrical shapes side-by-side. The task is to
 
 ## 4. How to Run
 
-From the `examples` directory:
+From the `Mental-Rotation` directory:
 
 ```bash
-go run ./mental-rotation/ -d -s [subject_id]
+go run main.go -d -s [subject_id]
+```
+
+Or from the repository root:
+
+```bash
+go run examples/Mental-Rotation/main.go -d -s [subject_id]
 ```
 
 - **-d**: Developer mode (windowed display).

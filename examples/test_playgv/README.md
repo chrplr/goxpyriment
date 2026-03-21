@@ -1,11 +1,29 @@
-To play assets/bonatti1.gv:
+# Test Play GV Video
 
-    go run main.go -f assets/bonatti1.gv 
+Plays a `.gv` (GPU-friendly video) file using the `PlayGv` function. Use this to verify `.gv` playback on your hardware before embedding video in an experiment.
 
+The `.gv` format stores frames as LZ4-compressed RGBA texture blocks with a seekable index, enabling ultra-low-overhead VSYNC-locked frame delivery.
 
-The .gv format (*Extreme GPU Friendly Video Format*) is designed for ultra-fast, low-overhead video playback in creative coding environments and game engines. It achieves this by storing frames as individual LZ4-compressed texture blocks with a seekable index table at the end of the file.
+## Prerequisites
 
+- Go 1.25+
+- SDL3 development libraries (`sudo apt install libsdl3-dev` on Ubuntu/Debian)
+- A `.gv` file (see https://github.com/chrplr/images2gv to convert image sequences)
 
-To create a gv files from a series of images, see <https://github.com/chrplr/images2gv>
+## Running
 
+```bash
+go run main.go -f assets/bonatti1.gv
+go run main.go -d -f assets/bonatti1.gv   # windowed (development)
+```
 
+### Flags
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `-f` | — | Path to the `.gv` file to play (required) |
+| `-d` | off | Development mode: windowed 1024×768 |
+
+## Note
+
+This is a hardware verification utility. No data file is written. Press Escape to quit.

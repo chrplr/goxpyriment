@@ -1,20 +1,38 @@
-Hello world example
--------------------
+# Hello World
 
-0. Make sure that you have downloaded and installed Go on your computer (see <https://go.dev/doc/install>)
+A minimal standalone goxpyriment example that can be copied outside the repository and built without the `go.work` workspace. It shows a coloured rectangle on screen and waits for a key press.
 
-1. Copy this the content of this folder (main.go and assets/) to any folder on your computer, e.g. `~/tmp`
+Use this as a starting point if you want to develop an experiment in its own separate Go module.
 
-2. In the terminal:
+## Prerequisites
 
-       cd ~/tmp
-       go mod init hello
-       go mod tidy
-       go run main.go
-       go build . -o hello_goxpy
-       ./goxpy
+- Go 1.25+
+- SDL3 development libraries (`sudo apt install libsdl3-dev` on Ubuntu/Debian)
 
+## Running inside the repository
 
+```bash
+go run main.go
+go run main.go -d   # windowed (development)
+```
 
+## Running as a standalone module (outside the repo)
 
+```bash
+cp -r examples/hello_world ~/my-experiment
+cd ~/my-experiment
+go mod init my-experiment
+go mod tidy
+go run main.go
+```
 
+## Building a binary
+
+```bash
+go build -o hello_goxpy .
+./hello_goxpy
+```
+
+## Controls
+
+Press any key to exit.
