@@ -6,7 +6,6 @@
 * [Github repository](https://github.com/chrplr/goxpyriment) of the project
 * Report bugs and suggestions at <https://github.com/chrplr/goxpyriment/issues>
 
-![](assets/icon_512.png)
 
 **Just want to run demo experiments?** → Jump to [Demos](#demos).
 
@@ -82,15 +81,12 @@ func main() {
 	hello  := stimuli.NewTextBox("Hello World!", 600, control.FPoint{X: 0, Y: 0}, control.DefaultTextColor)
 	finish := stimuli.NewTextBox("Done — press any key to exit.", 600, control.FPoint{X: 0, Y: 0}, control.DefaultTextColor)
 
-	exp.Run(func() error {
-		if err := exp.Show(instr); err != nil { return err }
-		exp.Keyboard.Wait()
-		if err := exp.Show(hello); err != nil { return err }
-		exp.Keyboard.Wait()
-		if err := exp.Show(finish); err != nil { return err }
-		exp.Keyboard.Wait()
-		return control.EndLoop
-	})
+	exp.Show(instr)
+	exp.Keyboard.Wait()
+	exp.Show(hello)
+	exp.Keyboard.Wait()
+	exp.Show(finish)
+	exp.Keyboard.Wait()
 }
 ```
 
@@ -136,3 +132,8 @@ Cross-compiling is [straightforward](https://golangcookbook.com/chapters/running
 This project is licensed under the GNU Public License v3 - see the [LICENSE](LICENSE.txt) file for details.
 
 Christophe Pallier, 2026
+
+---
+
+![](assets/icon_512.png)
+
