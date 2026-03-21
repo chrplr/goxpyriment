@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# Build a macOS DMG containing all goxpyriment examples as .app bundles.
+# Build a macOS zip containing all goxpyriment examples as .app bundles.
 # Run this script on macOS from the examples/installers directory:
 #   cd examples/installers
 #   bash build-macos-dmg.sh
@@ -10,11 +10,11 @@ set -euo pipefail
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 EXAMPLES_DIR="${SCRIPT_DIR%/installers}"
 APPS_DIR="${SCRIPT_DIR}/GoxpyrimentExamples-apps"
-DMG_NAME="goxpyriment-examples.dmg"
+ZIP_NAME="goxpyriment-examples.zip"
 
 # Clean up previous builds
 rm -rf "${APPS_DIR}"
-rm -f "${SCRIPT_DIR}/${DMG_NAME}"
+rm -f "${SCRIPT_DIR}/${ZIP_NAME}"
 mkdir -p "${APPS_DIR}"
 
 echo "Building .app bundles into ${APPS_DIR} ..."
@@ -68,13 +68,14 @@ EOF
   if [[ -d "${dir}/assets" ]]; then
     cp -R "${dir}/assets" "${app}/Contents/Resources/"
   fi
+
+  # Ad-hoc sign to prevent macOS Gatekeeper "damaged" error
+  codesign --force --deep --sign - "${app}"
 done
 
-echo "Creating highly compressed DMG ${DMG_NAME} ..."
+echo "Creating zip ${ZIP_NAME} ..."
 
-# OPTIMIZATION: Changed format to ULFO (LZMA compression) for maximum space saving
-hdiutil create -volname "Goxpyriment Examples" \
-  -srcfolder "${APPS_DIR}" \
-  -ov -format ULFO "${SCRIPT_DIR}/${DMG_NAME}"
+cd "${APPS_DIR}"
+zip -r "${SCRIPT_DIR}/${ZIP_NAME}" .
 
-echo "Done. DMG created at: ${SCRIPT_DIR}/${DMG_NAME}"
+echo "Done. Zip created at: ${SCRIPT_DIR}/${ZIP_NAME}"

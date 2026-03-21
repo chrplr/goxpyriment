@@ -51,7 +51,7 @@ jobs:
           name: windows-installer
           path: examples/installers/goxpyriment-examples-setup.exe
 
-  build-macos-dmg:
+  build-macos-zip:
     runs-on: macos-latest
     env:
       CGO_ENABLED: 0
@@ -64,17 +64,16 @@ jobs:
         with:
           go-version: "1.25.x"
 
-      - name: Build macOS DMG
+      - name: Build macOS App Bundles (zip)
         run: |
           cd examples/installers
-          # Ensure build-macos-dmg.sh no longer excludes video examples
           bash build-macos-dmg.sh
 
-      - name: Upload macOS DMG artifact
+      - name: Upload macOS zip artifact
         uses: actions/upload-artifact@v4
         with:
-          name: macos-dmg
-          path: examples/installers/goxpyriment-examples.dmg
+          name: macos-zip
+          path: examples/installers/goxpyriment-examples.zip
 
   build-linux-appimages:
     runs-on: ubuntu-latest
@@ -162,7 +161,7 @@ jobs:
 
   create-release:
     runs-on: ubuntu-latest
-    needs: [build-windows-installers, build-macos-dmg, build-linux-appimages]
+    needs: [build-windows-installers, build-macos-zip, build-linux-appimages]
     if: startsWith(github.ref, 'refs/tags/')
     permissions:
       contents: write
@@ -180,7 +179,7 @@ jobs:
         run: |
           cd artifacts
           sha256sum goxpyriment-examples-setup.exe > SHA256SUMS
-          sha256sum goxpyriment-examples.dmg >> SHA256SUMS
+          sha256sum goxpyriment-examples.zip >> SHA256SUMS
           sha256sum goxpyriment-examples-appimages.tar.gz >> SHA256SUMS
 
       - name: Create GitHub Release
@@ -190,7 +189,7 @@ jobs:
           tag_name: ${{ github.ref_name }}
           files: |
             artifacts/goxpyriment-examples-setup.exe
-            artifacts/goxpyriment-examples.dmg
+            artifacts/goxpyriment-examples.zip
             artifacts/goxpyriment-examples-appimages.tar.gz
             artifacts/SHA256SUMS
         env:
