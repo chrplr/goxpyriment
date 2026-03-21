@@ -60,12 +60,12 @@ By the way, while Python is easy, Go is simple, which is [a good thing](gemini-g
 
 You can download [here](https://github.com/chrplr/goxpyriment/releases) an installer of ready-to-run [examples of experiments](examples/README.md) created with goxpyeriment (and check their [source code](examples/) if you want).
 
-* **Windows:** Download  `goxpyriment-examples-setup.exe`. Execute it; Defender may block you: then just click on "more info" and click "Run anyway". By default, the experiments are installed in `AppData\Local\Goxpyriment examsples\bin`, in your user folder. As `AppData` is an hidden folder, you have to select `View/Show/Hidden items` in File Exporer to be able to see it. Navigate in the subfolder and click on an App to execute it.
-* **MacOS:** Download `goxpyriment-examples.zip`, extract it, and drag the `.app` files into a folder of your choice (e.g. `Applications/goxpyriment-examples`).
+* **Windows:** Download [`goxpyriment-examples-windows-x86_64-setup.exe`](https://github.com/chrplr/goxpyriment/releases/latest/download/goxpyriment-examples-windows-x86_64-setup.exe). Execute it; Defender may block you: then just click on "more info" and click "Run anyway". By default, the experiments are installed in `AppData\Local\Goxpyriment examsples\bin`, in your user folder. As `AppData` is an hidden folder, you have to select `View/Show/Hidden items` in File Exporer to be able to see it. Navigate in the subfolder and click on an App to execute it.
+* **MacOS:** Download [`goxpyriment-examples-macos-arm64-app.zip`](https://github.com/chrplr/goxpyriment/releases/latest/download/goxpyriment-examples-macos-arm64-app.zip), extract it, and drag the `.app` files into a folder of your choice (e.g. `Applications/goxpyriment-examples`).
 
   > [!WARNING]
   > macOS may show a security warning the first time you open each app. See [macOS installation and security](https://chrplr.github.io/note-about-macos-unsigned-apps) for an explanation and step-by-step instructions to bypass it.
-* **Linux**: Download `goxpyriment-example-appimages.tar.gz` and untar it (`tar xzf`). The applications are ready to run.
+* **Linux**: Download [`goxpyriment-examples-linux-x86_64-appimages.tar.gz`](https://github.com/chrplr/goxpyriment/releases/latest/download/goxpyriment-examples-linux-x86_64-appimages.tar.gz) and untar it (`tar xzf`). The applications are ready to run.
  
 
 ### Install the library on your computer to compile source code
