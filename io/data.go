@@ -4,7 +4,6 @@
 package io
 
 import (
-	"bufio"
 	"fmt"
 	"os"
 	"os/user"
@@ -22,7 +21,7 @@ const (
 	DataFileDelimiter     = ","          // Default CSV delimiter for DataFile.
 )
 
-// OutputFile represents a generic buffered text file on disk.
+// OutputFile represents a generic buffered text file.
 // It is used as the backend for `DataFile` but can also be used for logs
 // or any other line‑oriented output the experiment needs to produce.
 type OutputFile struct {
@@ -31,34 +30,6 @@ type OutputFile struct {
 	FullPath    string
 	CommentChar string
 	Buffer      []string
-}
-
-// NewOutputFile creates a new OutputFile in the given directory with the
-// provided filename. The directory is created if it does not exist and the
-// file is truncated if it already exists.
-func NewOutputFile(directory, filename string) (*OutputFile, error) {
-	if _, err := os.Stat(directory); os.IsNotExist(err) {
-		if err := os.MkdirAll(directory, 0755); err != nil {
-			return nil, err
-		}
-	}
-
-	fullPath := filepath.Join(directory, filename)
-
-	// Create/truncate file
-	f, err := os.Create(fullPath)
-	if err != nil {
-		return nil, err
-	}
-	f.Close()
-
-	return &OutputFile{
-		Filename:    filename,
-		Directory:   directory,
-		FullPath:    fullPath,
-		CommentChar: OutputFileCommentChar,
-		Buffer:      make([]string, 0),
-	}, nil
 }
 
 // Write adds content to the buffer.
@@ -74,28 +45,6 @@ func (o *OutputFile) WriteLine(content string) {
 // WriteComment adds a comment line to the buffer.
 func (o *OutputFile) WriteComment(comment string) {
 	o.WriteLine(o.CommentChar + " " + comment)
-}
-
-// Save flushes the buffer to disk.
-func (o *OutputFile) Save() error {
-	if len(o.Buffer) == 0 {
-		return nil
-	}
-
-	f, err := os.OpenFile(o.FullPath, os.O_APPEND|os.O_WRONLY, 0644)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-
-	writer := bufio.NewWriter(f)
-	for _, line := range o.Buffer {
-		if _, err := writer.WriteString(line); err != nil {
-			return err
-		}
-	}
-	o.Buffer = make([]string, 0)
-	return writer.Flush()
 }
 
 // DataFile represents an experiment data file in CSV‑like format.

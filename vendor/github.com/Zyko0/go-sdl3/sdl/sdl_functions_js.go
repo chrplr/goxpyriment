@@ -2479,13 +2479,14 @@ func initialize() {
 	}
 
 	iOpenAudioDevice = func(devid AudioDeviceID, spec *AudioSpec) AudioDeviceID {
-		panic("not implemented on js")
 		internal.StackSave()
 		defer internal.StackRestore()
 		_devid := int32(devid)
-		_spec, ok := internal.GetJSPointer(spec)
-		if !ok {
-			_spec = internal.StackAlloc(int(unsafe.Sizeof(*spec)))
+		var _spec js.Value
+		if spec == nil {
+			_spec = js.Null()
+		} else {
+			_spec, _ = internal.GetJSPointer(spec)
 		}
 		ret := js.Global().Get("Module").Call(
 			"_SDL_OpenAudioDevice",

@@ -39,3 +39,7 @@ octin_college_font/
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# Generated documentation artefacts
+site/
+docs/*.pdf

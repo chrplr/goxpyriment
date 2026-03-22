@@ -18,11 +18,11 @@ import (
 	"fmt"
 	"log"
 	"math"
-	"math/rand"
 
 	"github.com/Zyko0/go-sdl3/sdl"
 	"github.com/chrplr/goxpyriment/clock"
 	"github.com/chrplr/goxpyriment/control"
+	"github.com/chrplr/goxpyriment/design"
 	"github.com/chrplr/goxpyriment/stimuli"
 )
 
@@ -137,7 +137,7 @@ func buildTrialList(reps int) []trialDef {
 			}
 		}
 	}
-	rand.Shuffle(len(trials), func(i, j int) { trials[i], trials[j] = trials[j], trials[i] })
+	design.ShuffleList(trials)
 	return trials
 }
 

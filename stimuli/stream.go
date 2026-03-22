@@ -245,7 +245,7 @@ func PlayStreamOfSounds(elements []SoundStreamElement) ([]UserEvent, []TimingLog
 		onDeadline := time.Now().Add(el.DurationOn)
 		for time.Now().Before(onDeadline) {
 			userEvents = collectEvents(streamStart, userEvents)
-			sdl.Delay(1)
+			time.Sleep(1 * time.Millisecond)
 		}
 
 		actualOffset := time.Since(streamStart)
@@ -254,7 +254,7 @@ func PlayStreamOfSounds(elements []SoundStreamElement) ([]UserEvent, []TimingLog
 		offDeadline := time.Now().Add(el.DurationOff)
 		for time.Now().Before(offDeadline) {
 			userEvents = collectEvents(streamStart, userEvents)
-			sdl.Delay(1)
+			time.Sleep(1 * time.Millisecond)
 		}
 
 		timingLogs = append(timingLogs, TimingLog{

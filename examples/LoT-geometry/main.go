@@ -5,7 +5,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"math"
 
 	"github.com/chrplr/goxpyriment/clock"
@@ -43,47 +42,43 @@ func NewSequence(name string, base []int) Sequence {
 	return Sequence{Name: name, Base: base, Indices: full}
 }
 
-// Global drawing function for the octagon
+// drawEnvironment uses exp.Do to safely render stimuli on the main thread.
 func drawEnvironment(exp *control.Experiment, dots []*stimuli.Circle, fixation *stimuli.FixCross, target *stimuli.Circle, activeIdx int) error {
-	if err := exp.Screen.Clear(); err != nil {
-		return err
-	}
-	// Draw background dots
-	for i := 0; i < 8; i++ {
-		if err := dots[i].Draw(exp.Screen); err != nil {
+	return exp.Do(func() error {
+		if err := exp.Screen.Clear(); err != nil {
 			return err
 		}
-	}
-	// Draw fixation
-	if err := fixation.Draw(exp.Screen); err != nil {
-		return err
-	}
-	// Draw target if activeIdx >= 0
-	if activeIdx >= 0 {
-		target.SetPosition(dots[activeIdx].Position)
-		if err := target.Draw(exp.Screen); err != nil {
+		// Draw background dots
+		for i := 0; i < 8; i++ {
+			if err := dots[i].Draw(exp.Screen); err != nil {
+				return err
+			}
+		}
+		// Draw fixation
+		if err := fixation.Draw(exp.Screen); err != nil {
 			return err
 		}
-	}
-	return exp.Screen.Update()
+		// Draw target if activeIdx >= 0
+		if activeIdx >= 0 {
+			target.SetPosition(dots[activeIdx].Position)
+			if err := target.Draw(exp.Screen); err != nil {
+				return err
+			}
+		}
+		return exp.Screen.Update()
+	})
 }
 
 func flashSequence(exp *control.Experiment, dots []*stimuli.Circle, fixation *stimuli.FixCross, target *stimuli.Circle, indices []int) error {
 	for _, idx := range indices {
-		if _, _, err := exp.HandleEvents(); err != nil {
-			return err
-		}
 		if err := drawEnvironment(exp, dots, fixation, target, idx); err != nil {
 			return err
 		}
-		clock.Wait(500)
+		exp.Wait(500)
 		if err := drawEnvironment(exp, dots, fixation, target, -1); err != nil {
 			return err
 		}
-		clock.Wait(100)
-		if _, _, err := exp.HandleEvents(); err != nil {
-			return err
-		}
+		exp.Wait(100)
 	}
 	return nil
 }
@@ -96,15 +91,12 @@ func getGuess(exp *control.Experiment, dots []*stimuli.Circle, fixation *stimuli
 	}
 
 	for {
-		key, button, err := exp.HandleEvents()
+		btn, err := exp.Mouse.WaitPress()
 		if err != nil {
 			return -1, 0, err
 		}
-		if key == control.K_ESCAPE {
-			return -1, 0, control.EndLoop
-		}
 
-		if button == 1 { // Left click
+		if btn == 1 { // Left click
 			mx, my := exp.Screen.MousePosition()
 			for i, p := range octagonPoints {
 				dx := mx - p.X
@@ -114,7 +106,6 @@ func getGuess(exp *control.Experiment, dots []*stimuli.Circle, fixation *stimuli
 				}
 			}
 		}
-		clock.Wait(10)
 	}
 }
 
@@ -128,146 +119,116 @@ func showInstructions(exp *control.Experiment) error {
 		"beginning to show you the correct locations.\n\n" +
 		"Press any key to begin."
 
-	instrBox := stimuli.NewTextBox(text, 600, control.FPoint{X: 0, Y: 0}, control.White)
-
-	if err := exp.Screen.Clear(); err != nil {
-		return err
-	}
-	if err := instrBox.Draw(exp.Screen); err != nil {
-		return err
-	}
-	if err := exp.Screen.Update(); err != nil {
-		return err
-	}
-
-	_, err := exp.Keyboard.Wait()
-	return err
+	return exp.ShowInstructions(text)
 }
 
 func main() {
+	fmt.Println("Main started")
 	exp := control.NewExperimentFromFlags("LoT-Geometry-Task", control.Black, control.White, 32)
 	defer exp.End()
 
-	// Show instructions before starting
-	if err := showInstructions(exp); err != nil {
-		if control.IsEndLoop(err) {
-			return
+	fmt.Println("Experiment loaded. Starting Run...")
+
+	exp.Run(func() error {
+		fmt.Println("Inside Logic Thread: about to show instructions")
+		// Show instructions before starting
+		if err := showInstructions(exp); err != nil {
+			fmt.Printf("showInstructions error: %v\n", err)
+			return err
 		}
-		log.Fatalf("instruction error: %v", err)
-	}
+		fmt.Println("Instructions dismissed!")
 
-	exp.AddDataVariableNames([]string{"trial_idx", "seq_name", "step", "target_idx", "click_idx", "is_correct", "rt"})
+		exp.AddDataVariableNames([]string{"trial_idx", "seq_name", "step", "target_idx", "click_idx", "is_correct", "rt"})
 
-	octagonPoints := getOctagonPoints(300)
-	dots := make([]*stimuli.Circle, 8)
-	for i := 0; i < 8; i++ {
-		dots[i] = stimuli.NewCircle(15, control.Color{R: 80, G: 80, B: 80, A: 255})
-		dots[i].SetPosition(octagonPoints[i])
-	}
-	target := stimuli.NewCircle(25, control.White)
-	fixation := stimuli.NewFixCross(20, 3, control.White)
+		octagonPoints := getOctagonPoints(300)
+		dots := make([]*stimuli.Circle, 8)
+		for i := 0; i < 8; i++ {
+			dots[i] = stimuli.NewCircle(15, control.Color{R: 80, G: 80, B: 80, A: 255})
+			dots[i].SetPosition(octagonPoints[i])
+		}
+		target := stimuli.NewCircle(25, control.White)
+		fixation := stimuli.NewFixCross(20, 3, control.White)
 
-	// Define sequences (base 8 items, will be repeated to 16)
-	// Indices 0-7 correspond to 1-8 in the study.
-	allSequences := []Sequence{
-		NewSequence("Repeat CW", []int{0, 1, 2, 3, 4, 5, 6, 7}),
-		NewSequence("Repeat CCW", []int{0, 7, 6, 5, 4, 3, 2, 1}),
-		NewSequence("Alternate CW", []int{0, 2, 1, 3, 2, 4, 3, 5}),  // +2, -1
-		NewSequence("Alternate CCW", []int{0, 6, 7, 5, 6, 4, 5, 3}), // -2, +1
-		NewSequence("2squares CW", []int{0, 2, 4, 6, 1, 3, 5, 7}),
-		NewSequence("2squares CCW", []int{0, 6, 4, 2, 7, 5, 3, 1}),
-		NewSequence("2arcs CW", []int{4, 5, 6, 7, 4, 3, 2, 1}),
-		NewSequence("2arcs CCW", []int{0, 7, 6, 5, 0, 1, 2, 3}),
-		NewSequence("4segments H", []int{1, 7, 2, 6, 3, 5, 0, 4}),
-		NewSequence("4segments V", []int{1, 3, 0, 4, 7, 5, 2, 6}),
-		NewSequence("4segments A", []int{0, 2, 7, 3, 6, 4, 5, 1}),
-		NewSequence("4segments B", []int{0, 6, 1, 5, 2, 4, 7, 3}),
-		NewSequence("4diagonals", []int{0, 4, 1, 5, 2, 6, 3, 7}),
-		NewSequence("2rectangles", []int{1, 7, 5, 3, 0, 2, 4, 6}),
-		NewSequence("2crosses", []int{0, 4, 2, 6, 1, 5, 3, 7}),
-		NewSequence("Irregular 1", []int{0, 3, 5, 1, 7, 6, 2, 4}),
-		NewSequence("Irregular 2", []int{0, 5, 2, 7, 4, 1, 6, 3}),
-	}
-
-	// Randomized order: first 2 are always Repeat CW and CCW (randomized between them)
-	firstTwo := []Sequence{allSequences[0], allSequences[1]}
-	design.ShuffleList(firstTwo)
-
-	rest := allSequences[2:]
-	design.ShuffleList(rest)
-
-	orderedSequences := append(firstTwo, rest...)
-
-	// Main Experiment Loop
-	for trialIdx, seq := range orderedSequences {
-		fmt.Printf("Starting trial %d: %s\n", trialIdx+1, seq.Name)
-
-		// Starting point randomization (0-7)
-		startOffset := design.RandInt(0, 7)
-		indices := make([]int, 16)
-		for i := 0; i < 16; i++ {
-			indices[i] = (seq.Indices[i] + startOffset) % 8
+		// Define sequences (base 8 items, will be repeated to 16)
+		// Indices 0-7 correspond to 1-8 in the study.
+		allSequences := []Sequence{
+			NewSequence("Repeat CW", []int{0, 1, 2, 3, 4, 5, 6, 7}),
+			NewSequence("Repeat CCW", []int{0, 7, 6, 5, 4, 3, 2, 1}),
+			NewSequence("Alternate CW", []int{0, 2, 1, 3, 2, 4, 3, 5}),  // +2, -1
+			NewSequence("Alternate CCW", []int{0, 6, 7, 5, 6, 4, 5, 3}), // -2, +1
+			NewSequence("2squares CW", []int{0, 2, 4, 6, 1, 3, 5, 7}),
+			NewSequence("2squares CCW", []int{0, 6, 4, 2, 7, 5, 3, 1}),
+			NewSequence("2arcs CW", []int{4, 5, 6, 7, 4, 3, 2, 1}),
+			NewSequence("2arcs CCW", []int{0, 7, 6, 5, 0, 1, 2, 3}),
+			NewSequence("4segments H", []int{1, 7, 2, 6, 3, 5, 0, 4}),
+			NewSequence("4segments V", []int{1, 3, 0, 4, 7, 5, 2, 6}),
+			NewSequence("4segments A", []int{0, 2, 7, 3, 6, 4, 5, 1}),
+			NewSequence("4segments B", []int{0, 6, 1, 5, 2, 4, 7, 3}),
+			NewSequence("4diagonals", []int{0, 4, 1, 5, 2, 6, 3, 7}),
+			NewSequence("2rectangles", []int{1, 7, 5, 3, 0, 2, 4, 6}),
+			NewSequence("2crosses", []int{0, 4, 2, 6, 1, 5, 3, 7}),
+			NewSequence("Irregular 1", []int{0, 3, 5, 1, 7, 6, 2, 4}),
+			NewSequence("Irregular 2", []int{0, 5, 2, 7, 4, 1, 6, 3}),
 		}
 
-		currentKnownCount := 2
-		for step := 2; step < 16; step++ {
-			// A. Flash sequence up to currentKnownCount
-			if err := flashSequence(exp, dots, fixation, target, indices[:currentKnownCount]); err != nil {
-				if control.IsEndLoop(err) {
-					return
-				}
-				log.Fatalf("flash error: %v", err)
+		// Randomized order: first 2 are always Repeat CW and CCW (randomized between them)
+		firstTwo := []Sequence{allSequences[0], allSequences[1]}
+		design.ShuffleList(firstTwo)
+
+		rest := allSequences[2:]
+		design.ShuffleList(rest)
+
+		orderedSequences := append(firstTwo, rest...)
+
+		// Main Experiment Loop
+		for trialIdx, seq := range orderedSequences {
+			fmt.Printf("Starting trial %d: %s\n", trialIdx+1, seq.Name)
+
+			// Starting point randomization (0-7)
+			startOffset := design.RandInt(0, 7)
+			indices := make([]int, 16)
+			for i := 0; i < 16; i++ {
+				indices[i] = (seq.Indices[i] + startOffset) % 8
 			}
 
-			// B. Wait for guess
-			targetIdx := indices[step]
-			clickIdx, rt, err := getGuess(exp, dots, fixation, octagonPoints)
-			if err != nil {
-				if control.IsEndLoop(err) {
-					return
+			currentKnownCount := 2
+			for step := 2; step < 16; step++ {
+				// A. Flash sequence up to currentKnownCount
+				flashSequence(exp, dots, fixation, target, indices[:currentKnownCount])
+
+				// B. Wait for guess
+				targetIdx := indices[step]
+				clickIdx, rt, _ := getGuess(exp, dots, fixation, octagonPoints)
+
+				isCorrect := (clickIdx == targetIdx)
+
+				// C. Record data
+				exp.Data.Add(
+					trialIdx+1, seq.Name, step+1, targetIdx, clickIdx, isCorrect, rt,
+				)
+
+				// D. Feedback / Restart logic
+				if isCorrect {
+					// Play "Ping" for correct answer
+					stimuli.PlayPing(exp.AudioDevice)
+					// Briefly flash the correct one as feedback
+					drawEnvironment(exp, dots, fixation, target, targetIdx)
+					exp.Wait(300)
+					currentKnownCount++
+				} else {
+					// Play "Buzzer" for incorrect answer
+					stimuli.PlayBuzzer(exp.AudioDevice)
+					// Incorrect: show correct one in red? or just move on after restart
+					currentKnownCount = step + 1
 				}
-				log.Fatalf("guess error: %v", err)
+
+				drawEnvironment(exp, dots, fixation, target, -1)
+				exp.Wait(500)
 			}
 
-			isCorrect := (clickIdx == targetIdx)
-
-			// C. Record data
-			exp.Data.Add(
-				trialIdx+1, seq.Name, step+1, targetIdx, clickIdx, isCorrect, rt,
-			)
-
-			// D. Feedback / Restart logic
-			if isCorrect {
-				// Play "Ping" for correct answer
-				if err := stimuli.PlayPing(exp.AudioDevice); err != nil {
-					log.Printf("audio error: %v", err)
-				}
-				// Briefly flash the correct one as feedback
-				if err := drawEnvironment(exp, dots, fixation, target, targetIdx); err != nil {
-					log.Fatal(err)
-				}
-				clock.Wait(300)
-				currentKnownCount++
-			} else {
-				// Play "Buzzer" for incorrect answer
-				if err := stimuli.PlayBuzzer(exp.AudioDevice); err != nil {
-					log.Printf("audio error: %v", err)
-				}
-				// Incorrect: show correct one in red? or just move on after restart
-				// The paper says "the entire sequence was flashed again, the mistake was corrected"
-				// So we increment known count and re-flash in next step loop
-				currentKnownCount = step + 1
-			}
-
-			if err := drawEnvironment(exp, dots, fixation, target, -1); err != nil {
-				log.Fatal(err)
-			}
-			clock.Wait(500)
+			// Inter-trial interval
+			exp.Blank(1000)
 		}
-
-		// Inter-trial interval
-		if err := exp.Blank(1000); err != nil {
-			log.Fatal(err)
-		}
-	}
+		return control.EndLoop
+	})
 }

@@ -4,7 +4,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"strings"
 
@@ -21,17 +20,20 @@ const (
 	GridSpacing      = 60  // pixels
 )
 
-// generateGrid creates a 3x3 array of random uppercase letters (excluding vowels for standard practice).
+// letterPool contains the consonants used to build the stimulus grids.
+// Vowels are excluded following the standard Sperling (1960) practice.
+var letterPool = strings.Split("BCDFGHJKLMNPQRSTVWXYZ", "")
+
+// generateGrid creates a 3×3 array of unique consonants drawn from letterPool.
 func generateGrid() [3][3]string {
-	letters := "BCDFGHJKLMNPQRSTVWXYZ"
 	grid := [3][3]string{}
-	used := make(map[byte]bool)
+	used := make(map[string]bool)
 	for r := 0; r < 3; r++ {
-		for c := 0; r < 3 && c < 3; c++ {
+		for c := 0; c < 3; c++ {
 			for {
-				l := letters[design.RandInt(0, len(letters)-1)]
+				l := letterPool[design.RandInt(0, len(letterPool)-1)]
 				if !used[l] {
-					grid[r][c] = string(l)
+					grid[r][c] = l
 					used[l] = true
 					break
 				}
@@ -45,7 +47,7 @@ func drawGrid(exp *control.Experiment, grid [3][3]string) error {
 	for r := 0; r < 3; r++ {
 		for c := 0; c < 3; c++ {
 			x := float32((c - 1) * GridSpacing)
-			y := float32((1 - r) * GridSpacing) // Row 0 is Top
+			y := float32((1 - r) * GridSpacing) // row 0 → top
 			txt := stimuli.NewTextLine(grid[r][c], x, y, control.White)
 			if err := txt.Draw(exp.Screen); err != nil {
 				return err
@@ -57,14 +59,16 @@ func drawGrid(exp *control.Experiment, grid [3][3]string) error {
 
 func showInstructions(exp *control.Experiment) error {
 	text := "Sperling's Iconic Memory Experiment\n\n" +
-		"A 3x3 grid of letters will flash very briefly.\n\n" +
+		"A 3×3 grid of letters will flash very briefly.\n\n" +
 		"PARTIAL REPORT:\n" +
 		"After the flash, you will hear a TONE:\n" +
 		" - HIGH tone: Recall TOP row\n" +
 		" - MEDIUM tone: Recall MIDDLE row\n" +
 		" - LOW tone: Recall BOTTOM row\n\n" +
+		"Click the letters you remember (or press their keys).\n" +
+		"BACKSPACE to undo the last choice.\n\n" +
 		"WHOLE REPORT:\n" +
-		"Recall as many letters as you can.\n\n" +
+		"Recall as many letters as you can, then press ENTER.\n\n" +
 		"Press any key to begin."
 
 	instrBox := stimuli.NewTextBox(text, 650, control.FPoint{X: 0, Y: 0}, control.White)
@@ -76,7 +80,7 @@ func showInstructions(exp *control.Experiment) error {
 }
 
 func main() {
-	exp := control.NewExperimentFromFlags("Sperling-Partial-Report", control.Black, control.White, 32)
+	exp := control.NewExperimentFromFlags("Sperling-Partial-Report", control.Black, control.White, 28)
 	defer exp.End()
 
 	exp.AddDataVariableNames([]string{"trial_idx", "condition", "cued_row", "target_letters", "response", "accuracy"})
@@ -97,18 +101,16 @@ func main() {
 	medTone.PreloadDevice(exp.AudioDevice)
 	lowTone.PreloadDevice(exp.AudioDevice)
 
-	// Trial configurations
+	// Trial configurations.
 	type TrialConfig struct {
 		Condition string // "partial" or "whole"
-		CuedRow   int    // 0, 1, 2
+		CuedRow   int    // 0=top, 1=middle, 2=bottom; -1 for whole
 	}
 
 	var trials []TrialConfig
-	// 10 Whole report trials
 	for i := 0; i < 10; i++ {
 		trials = append(trials, TrialConfig{Condition: "whole", CuedRow: -1})
 	}
-	// 30 Partial report trials (10 per row)
 	for row := 0; row < 3; row++ {
 		for i := 0; i < 10; i++ {
 			trials = append(trials, TrialConfig{Condition: "partial", CuedRow: row})
@@ -116,20 +118,21 @@ func main() {
 	}
 	design.ShuffleList(trials)
 
-	// 8 training trials (mix of whole and partial report, not logged).
+	// 8 training trials (4 whole + 4 partial), not logged.
 	var trainingTrials []TrialConfig
 	for i := 0; i < 4; i++ {
 		trainingTrials = append(trainingTrials, TrialConfig{Condition: "whole", CuedRow: -1})
 	}
 	for i := 0; i < 4; i++ {
-		row := design.RandInt(0, 2)
-		trainingTrials = append(trainingTrials, TrialConfig{Condition: "partial", CuedRow: row})
+		trainingTrials = append(trainingTrials, TrialConfig{Condition: "partial", CuedRow: design.RandInt(0, 2)})
 	}
 	design.ShuffleList(trainingTrials)
 
 	fixation := stimuli.NewFixCross(20, 2, control.White)
 
-	// Helper to run a single trial and optionally provide error feedback.
+	// runOne executes a single trial.
+	// giveFeedback: play a buzzer on incorrect responses (training only).
+	// logData: write a row to the data file (main block only).
 	runOne := func(trialIdx int, config TrialConfig, giveFeedback bool, logData bool) error {
 		grid := generateGrid()
 
@@ -139,7 +142,7 @@ func main() {
 		}
 		clock.Wait(FixationDuration)
 
-		// 2. Stimulus flash (50ms)
+		// 2. Stimulus flash (50 ms)
 		if err := exp.Screen.Clear(); err != nil {
 			return err
 		}
@@ -151,17 +154,19 @@ func main() {
 		}
 		clock.Wait(StimulusDuration)
 
-		// 3. Offset (ISI) - can be varied, here 0ms
+		// 3. Blank offset (ISI = 0 ms here; extend as needed)
 		if err := exp.Screen.Clear(); err != nil {
 			return err
 		}
 		if err := exp.Screen.Update(); err != nil {
 			return err
 		}
-		// clock.Wait(offset)
 
-		// 4. Cue
+		// 4. Cue tone + build target string
 		var targetLetters string
+		rowNames := []string{"TOP", "MIDDLE", "BOTTOM"}
+		var prompt string
+
 		if config.Condition == "partial" {
 			switch config.CuedRow {
 			case 0:
@@ -174,40 +179,39 @@ func main() {
 				lowTone.Play()
 				targetLetters = strings.Join(grid[2][:], "")
 			}
+			prompt = "Recall the " + rowNames[config.CuedRow] + " row  (3 letters):"
 		} else {
-			// Whole report: no specific tone cue, or a neutral one
-			targetLetters = strings.Join(grid[0][:], "") + strings.Join(grid[1][:], "") + strings.Join(grid[2][:], "")
+			targetLetters = strings.Join(grid[0][:], "") +
+				strings.Join(grid[1][:], "") +
+				strings.Join(grid[2][:], "")
+			prompt = "Recall all letters you saw  (press ENTER when done):"
 		}
 
-		// 5. Response
-		prompt := "Enter the letters you remember:"
+		// 5. Response via ChoiceGrid
+		var maxSel int
 		if config.Condition == "partial" {
-			rowNames := []string{"TOP", "MIDDLE", "BOTTOM"}
-			prompt = fmt.Sprintf("Recall the %s row:", rowNames[config.CuedRow])
+			maxSel = 3 // auto-submit after 3 selections
 		}
+		// maxSel == 0 for whole report → explicit ENTER/SPACE to submit
 
-		ti := stimuli.NewTextInput(prompt, control.FPoint{X: 0, Y: 0}, 300, control.Black, control.White, control.White)
-		response, err := ti.Get(exp.Screen, exp.Keyboard)
+		cg := stimuli.NewChoiceGrid(letterPool, maxSel, prompt)
+		cg.Cols = 7 // 21 consonants × 7 columns = 3 rows
+		selections, err := cg.Get(exp.Screen, exp.Keyboard)
 		if err != nil {
 			return err
 		}
+		response := strings.Join(selections, "")
 
-		response = strings.ToUpper(strings.TrimSpace(response))
-
-		// Calculate accuracy (count how many target letters are in response)
+		// 6. Accuracy: count target letters present in the response
 		acc := 0
-		for _, char := range targetLetters {
-			if strings.Contains(response, string(char)) {
+		for _, ch := range targetLetters {
+			if strings.Contains(response, string(ch)) {
 				acc++
 			}
 		}
 
-		if giveFeedback {
-			// Treat a trial as correct only if the full target row (or whole grid)
-			// is exactly reproduced (order-sensitive). Otherwise, play an error buzzer.
-			if response != strings.ToUpper(targetLetters) {
-				_ = stimuli.PlayBuzzer(exp.AudioDevice)
-			}
+		if giveFeedback && response != strings.ToUpper(targetLetters) {
+			_ = stimuli.PlayBuzzer(exp.AudioDevice)
 		}
 
 		if logData {
@@ -224,7 +228,7 @@ func main() {
 		return nil
 	}
 
-	// Training block (8 trials, feedback with buzzer on incorrect, no logging).
+	// Training block (feedback, no logging).
 	for i, config := range trainingTrials {
 		if err := runOne(i+1, config, true, false); err != nil {
 			if control.IsEndLoop(err) {
@@ -234,12 +238,9 @@ func main() {
 		}
 	}
 
-	// Training finished screen.
 	trainDone := stimuli.NewTextBox(
-		"Training finished.\n\nPress a key to go on to the main experiment.",
-		650,
-		control.FPoint{X: 0, Y: 0},
-		control.White,
+		"Training finished.\n\nPress a key to start the main experiment.",
+		650, control.FPoint{}, control.White,
 	)
 	if err := exp.Show(trainDone); err != nil {
 		log.Fatalf("training-finished screen error: %v", err)
@@ -248,7 +249,7 @@ func main() {
 		log.Fatalf("training-finished wait error: %v", err)
 	}
 
-	// Main experimental trials (logged, no additional buzzer feedback).
+	// Main block (logged, no buzzer feedback).
 	for i, config := range trials {
 		if err := runOne(i+1, config, false, true); err != nil {
 			if control.IsEndLoop(err) {

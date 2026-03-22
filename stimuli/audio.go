@@ -6,6 +6,7 @@ package stimuli
 import (
 	"fmt"
 	"math"
+	"time"
 
 	"github.com/Zyko0/go-sdl3/sdl"
 	"github.com/chrplr/goxpyriment/io"
@@ -105,7 +106,7 @@ func (s *Sound) Wait() {
 		if n <= 0 {
 			break
 		}
-		sdl.Delay(10)
+		time.Sleep(10 * time.Millisecond)
 	}
 }
 

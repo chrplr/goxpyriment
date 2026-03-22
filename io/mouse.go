@@ -5,12 +5,17 @@ package io
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/Zyko0/go-sdl3/sdl"
 )
 
 // Mouse provides methods for handling mouse input.
-type Mouse struct{}
+type Mouse struct {
+	// PollButtons is injected by the control layer to avoid direct SDL polling
+	// that discards non-mouse events. It returns (button, quitRequested).
+	PollButtons func() (uint32, bool)
+}
 
 // ShowCursor shows or hides the mouse cursor.
 func (m *Mouse) ShowCursor(show bool) error {
@@ -36,6 +41,19 @@ func (m *Mouse) SetPosition(x, y float32) error {
 
 // WaitPress blocks until a mouse button is pressed.
 func (m *Mouse) WaitPress() (uint32, error) {
+	if m.PollButtons != nil {
+		for {
+			btn, quit := m.PollButtons()
+			if quit {
+				return 0, sdl.EndLoop
+			}
+			if btn != 0 {
+				return btn, nil
+			}
+			time.Sleep(1 * time.Millisecond)
+		}
+	}
+
 	for {
 		var event sdl.Event
 		if sdl.WaitEvent(&event) == nil {
@@ -50,12 +68,15 @@ func (m *Mouse) WaitPress() (uint32, error) {
 }
 
 // Check polls for mouse button events without blocking.
-//
-// WARNING: Because SDL uses a single shared event queue, calling Check drains
-// ALL pending events — including keyboard events. If you need to process both
-// keyboard and mouse input, use the unified Experiment.PollEvents/HandleEvents
-// methods instead.
 func (m *Mouse) Check() (uint32, error) {
+	if m.PollButtons != nil {
+		btn, quit := m.PollButtons()
+		if quit {
+			return 0, sdl.EndLoop
+		}
+		return btn, nil
+	}
+
 	var event sdl.Event
 	for sdl.PollEvent(&event) {
 		if event.Type == sdl.EVENT_MOUSE_BUTTON_DOWN {

@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LoT-Geometry Experiment (Wasm)</title>
+    <script src="wasm_exec.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #000;
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+            font-family: sans-serif;
+        }
+        #status {
+            margin-bottom: 20px;
+        }
+        #canvas-container {
+            position: relative;
+        }
+        /* The SDL canvas will be automatically added by go-sdl3 if it doesn't exist,
+           but we can also provide one. */
+        canvas {
+            display: block;
+            border: 1px solid #333;
+        }
+    </style>
+</head>
+<body>
+    <div id="status">Loading experiment...</div>
+    <div id="canvas-container">
+        <!-- SDL3 will look for a canvas or create one -->
+    </div>
+
+    <script>
+        if (!WebAssembly.instantiateStreaming) {
+            // polyfill
+            WebAssembly.instantiateStreaming = async (resp, importObject) => {
+                const source = await (await resp).arrayBuffer();
+                return await WebAssembly.instantiate(source, importObject);
+            };
+        }
+
+        const go = new Go();
+        let mod, inst;
+
+        WebAssembly.instantiateStreaming(fetch("main.wasm"), go.importObject).then((result) => {
+            mod = result.module;
+            inst = result.instance;
+            document.getElementById("status").style.display = "none";
+            run();
+        }).catch((err) => {
+            console.error(err);
+            document.getElementById("status").innerText = "Failed to load WASM: " + err;
+        });
+
+        async function run() {
+            // console.clear();
+            await go.run(inst);
+            inst = await WebAssembly.instantiate(mod, go.importObject); // reset instance
+        }
+    </script>
+</body>
+</html>

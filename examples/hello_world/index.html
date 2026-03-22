@@ -1,0 +1,10 @@
+<!DOCTYPE html>
+<html><head><script src="wasm_exec.js"></script></head><body>
+<script>
+    console.log("HELLO FROM HTML");
+    const go = new Go();
+    WebAssembly.instantiateStreaming(fetch("main.wasm"), go.importObject).then((result) => {
+        console.log("INSTANTIATED");
+        go.run(result.instance).then(() => console.log("DONE RUNNING")).catch(e => console.error("ERROR", e));
+    });
+</script></body></html>

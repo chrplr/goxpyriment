@@ -7,10 +7,10 @@ import (
 	_ "embed"
 	"fmt"
 	"log"
-	"math/rand"
 
 	"github.com/chrplr/goxpyriment/clock"
 	"github.com/chrplr/goxpyriment/control"
+	"github.com/chrplr/goxpyriment/design"
 	"github.com/chrplr/goxpyriment/stimuli"
 )
 
@@ -45,9 +45,7 @@ func main() {
 		trials = append(trials, trial{"incongruent", "left"})
 		trials = append(trials, trial{"incongruent", "right"})
 	}
-	rand.Shuffle(len(trials), func(i, j int) {
-		trials[i], trials[j] = trials[j], trials[i]
-	})
+	design.ShuffleList(trials)
 
 	// 3. Prepare stimuli
 	cross := stimuli.NewFixCross(40, 6, control.Black)

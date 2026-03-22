@@ -6,9 +6,9 @@ package main
 import (
 	"fmt"
 	"log"
-	"math/rand"
 
 	"github.com/chrplr/goxpyriment/control"
+	"github.com/chrplr/goxpyriment/design"
 	"github.com/chrplr/goxpyriment/stimuli"
 )
 
@@ -54,9 +54,7 @@ func main() {
 		}
 	}
 	// Shuffle trials
-	rand.Shuffle(len(trials), func(i, j int) {
-		trials[i], trials[j] = trials[j], trials[i]
-	})
+	design.ShuffleList(trials)
 
 	instrText := "Name the COLOR of the word as quickly as possible!\n\nUse keys R, G, B, Y for Red, Green, Blue, Yellow.\n\nPress SPACE to start."
 

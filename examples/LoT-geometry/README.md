@@ -53,6 +53,29 @@ go run ./LoT-geometry/ -d -s [subject_id]
 - **-s**: Subject ID (default is 1).
 - **ESC**: Quit the experiment.
 
+### 4.1 Running in a Web Browser (WebAssembly)
+
+This experiment can also be run directly in a modern web browser thanks to WebAssembly (Wasm). A pre-compiled version is available in the `web/` folder.
+
+To run the web version:
+1.  Navigate to the `examples/LoT-geometry/web` directory.
+2.  Serve the files using a local web server (Wasm cannot be loaded directly from `file://` for security reasons). For example:
+    ```bash
+    # Using Python
+    python3 -m http.server 8080
+    
+    # Or using a Go-based server (if installed)
+    serve .
+    ```
+3.  Open `http://localhost:8080` in your browser.
+
+**Data Saving**: When the experiment ends in the browser, the `.xpd` result file will be automatically triggered as a **download** to your computer's `Downloads` folder.
+
+To re-compile the Wasm version yourself:
+```bash
+GOOS=js GOARCH=wasm go build -o web/main.wasm main.go
+```
+
 ## References
 
 - Amalric, M., Wang, L., Pica, P., Figueira, S., Sigman, M., & Dehaene, S. (2017). **The language of geometry: Fast comprehension of geometrical primitives and rules in human adults and preschoolers.** *PLoS Computational Biology*, 13(1), e1005273.

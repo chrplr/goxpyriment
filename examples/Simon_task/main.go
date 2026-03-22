@@ -6,9 +6,9 @@ package main
 import (
 	"fmt"
 	"log"
-	"math/rand"
 
 	"github.com/chrplr/goxpyriment/control"
+	"github.com/chrplr/goxpyriment/design"
 	"github.com/chrplr/goxpyriment/stimuli"
 )
 
@@ -57,9 +57,7 @@ func main() {
 		trials = append(trials, trialDef{"green", "right"})
 	}
 	// Shuffle initial trials
-	rand.Shuffle(len(trials), func(i, j int) {
-		trials[i], trials[j] = trials[j], trials[i]
-	})
+	design.ShuffleList(trials)
 
 	instrText := fmt.Sprintf("In this experiment, you will see red or green squares appearing to the left or right of the center.\n\nYour task is to identify the COLOR of the square as quickly as possible:\n\n- If the square is RED, press 'F' (left index finger)\n- If the square is GREEN, press 'J' (right index finger)\n\nA fixation cross will remain in the center of the screen.\nIf you make a mistake, the trial will be repeated later.\n\nPress the spacebar to start.")
 
@@ -79,7 +77,7 @@ func main() {
 			// Fixation (stays on screen)
 			exp.Show(fixation)
 			// Random delay (fixation cross remains)
-			delay := 500 + rand.Intn(1000) // 500 to 1500 ms
+			delay := design.RandInt(500, 1499) // 500 to 1499 ms
 			exp.Wait(delay)
 
 			// Stimulus selection
@@ -129,7 +127,7 @@ func main() {
 			if !correct {
 				_ = exp.Audio.PlayBuzzer()
 				// Repeat trial: add back to trials slice at a random position
-				insertPos := rand.Intn(len(trials) + 1)
+				insertPos := design.RandInt(0, len(trials))
 				trials = append(trials[:insertPos], append([]trialDef{t}, trials[insertPos:]...)...)
 
 				// Optional: Show error feedback

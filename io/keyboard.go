@@ -4,6 +4,8 @@
 package io
 
 import (
+	"time"
+
 	"github.com/Zyko0/go-sdl3/sdl"
 )
 
@@ -61,7 +63,7 @@ func (k *Keyboard) WaitKeys(keys []sdl.Keycode, timeoutMS int) (sdl.Keycode, err
 				}
 			}
 
-			sdl.Delay(1)
+			time.Sleep(1 * time.Millisecond)
 		}
 	}
 

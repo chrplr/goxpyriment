@@ -6,10 +6,10 @@ package main
 import (
 	"fmt"
 	"log"
-	"math/rand"
 
 	"github.com/chrplr/goxpyriment/assets_embed"
 	"github.com/chrplr/goxpyriment/control"
+	"github.com/chrplr/goxpyriment/design"
 	"github.com/chrplr/goxpyriment/stimuli"
 )
 
@@ -57,9 +57,7 @@ func main() {
 		}
 	}
 	// Shuffle trials
-	rand.Shuffle(len(trials), func(i, j int) {
-		trials[i], trials[j] = trials[j], trials[i]
-	})
+	design.ShuffleList(trials)
 
 	cue := stimuli.NewFixCross(50, 4, control.DefaultTextColor)
 

@@ -80,6 +80,14 @@ type Experiment struct {
 	event EventState
 }
 
+// Do executes the given function on the current goroutine (which is the
+// main SDL thread when called from inside exp.Run). It exists as a named
+// wrapper so that code can be annotated as "this must run on the render
+// thread" without needing a separate dispatch mechanism.
+func (e *Experiment) Do(f func() error) error {
+	return f()
+}
+
 // exitPanic is a internal sentinel used to abort the experiment loop
 // gracefully (e.g. on ESC or window close) without requiring manual
 // error propagation in every line of user code.
@@ -151,7 +159,9 @@ func NewExperimentFromFlags(name string, bg, fg sdl.Color, fontSize float32) *Ex
 // If the user requests to exit during presentation, this method will panic
 // with an internal sentinel to abort the experiment loop gracefully.
 func (e *Experiment) Show(v stimuli.VisualStimulus) error {
-	err := v.Present(e.Screen, true, true)
+	err := e.Do(func() error {
+		return v.Present(e.Screen, true, true)
+	})
 	if IsEndLoop(err) {
 		panic(exitPanic{err: err})
 	}
@@ -173,14 +183,8 @@ func (e *Experiment) ShowInstructions(text string) error {
 		w = 400
 	}
 	tb := stimuli.NewTextBox(text, w, sdl.FPoint{}, e.ForegroundColor)
-	if err := e.Show(tb); err != nil {
-		return err
-	}
-	err := e.Keyboard.WaitKey(K_SPACE)
-	if IsEndLoop(err) {
-		panic(exitPanic{err: err})
-	}
-	return err
+	e.Show(tb)
+	return e.Keyboard.WaitKey(K_SPACE)
 }
 
 // Blank clears the screen and keeps it blank for the given number of
@@ -190,7 +194,10 @@ func (e *Experiment) ShowInstructions(text string) error {
 //	exp.Screen.Update()
 //	exp.Wait(ms)
 func (e *Experiment) Blank(ms int) error {
-	if err := e.Screen.ClearAndUpdate(); err != nil {
+	err := e.Do(func() error {
+		return e.Screen.ClearAndUpdate()
+	})
+	if err != nil {
 		return err
 	}
 	return e.Wait(ms)
@@ -200,20 +207,19 @@ func (e *Experiment) Blank(ms int) error {
 // responsive by pumping SDL events. If a quit event or ESC key is detected
 // during the wait, it panics with an internal sentinel to exit gracefully.
 func (e *Experiment) Wait(ms int) error {
-	start := sdl.Ticks()
+	start := getTicks()
 	for {
-		elapsed := int(sdl.Ticks() - start)
+		elapsed := int(getTicks() - start)
 		if elapsed >= ms {
 			return nil
 		}
 
-		// Pump events via the central PollEvents
+		// Pump events so the OS stays responsive and ESC is detected promptly.
 		state := e.PollEvents(nil)
 		if state.QuitRequested {
 			panic(exitPanic{err: sdl.EndLoop})
 		}
 
-		// Small sleep to prevent 100% CPU usage
 		clock.Wait(1)
 	}
 }
@@ -269,7 +275,12 @@ func (e *Experiment) Initialize() error {
 			return state.LastKey, state.QuitRequested
 		},
 	}
-	e.Mouse = &io.Mouse{}
+	e.Mouse = &io.Mouse{
+		PollButtons: func() (uint32, bool) {
+			state := e.PollEvents(nil)
+			return state.LastMouseButton, state.QuitRequested
+		},
+	}
 
 	// Load default font if not already set
 	if e.DefaultFont == nil {
@@ -294,6 +305,16 @@ func (e *Experiment) Initialize() error {
 	return nil
 }
 
+// pollEvent is a hook for sdl.PollEvent to allow unit testing without
+// a live SDL context.
+var pollEvent = sdl.PollEvent
+
+// getTicks is a hook for sdl.Ticks to allow unit testing.
+var getTicks = sdl.Ticks
+
+// sdlDelay is a hook for sdl.Delay to allow unit testing.
+var sdlDelay = sdl.Delay
+
 // ---------------------------------------------------------------------------
 // Event handling
 // ---------------------------------------------------------------------------
@@ -306,13 +327,14 @@ func (e *Experiment) Initialize() error {
 // polling cycle. The returned `EventState` summarizes the last keyboard and
 // mouse button pressed and whether a quit/escape was requested.
 func (e *Experiment) PollEvents(handle func(ev sdl.Event) bool) EventState {
-	// Reset summary for this polling cycle.
+	// Reset transient state for this polling cycle.
+	// QuitRequested is intentionally sticky: once ESC or window-close is
+	// received, it stays true so the experiment can unwind gracefully.
 	e.event.LastKey = 0
 	e.event.LastMouseButton = 0
-	e.event.QuitRequested = false
 
 	var ev sdl.Event
-	for sdl.PollEvent(&ev) {
+	for pollEvent(&ev) {
 		switch ev.Type {
 		case sdl.EVENT_QUIT:
 			e.event.QuitRequested = true
@@ -352,6 +374,8 @@ func (e *Experiment) HandleEvents() (sdl.Keycode, uint32, error) {
 	if state.QuitRequested {
 		return 0, 0, sdl.EndLoop
 	}
+	// Note: HandleEvents from logic thread will return the sticky key, 
+	// but it won't clear it. Users should prefer Keyboard.Wait() or similar.
 	return state.LastKey, state.LastMouseButton, nil
 }
 
@@ -415,7 +439,9 @@ func (e *Experiment) SetVSync(vsync int) error {
 	if e.Screen == nil {
 		return nil
 	}
-	return e.Screen.SetVSync(vsync)
+	return e.Do(func() error {
+		return e.Screen.SetVSync(vsync)
+	})
 }
 
 // SetLogicalSize sets a device-independent resolution for the experiment.
@@ -423,7 +449,9 @@ func (e *Experiment) SetLogicalSize(width, height int32) error {
 	if e.Screen == nil {
 		return nil
 	}
-	return e.Screen.SetLogicalSize(width, height)
+	return e.Do(func() error {
+		return e.Screen.SetLogicalSize(width, height)
+	})
 }
 
 // Flip presents the backbuffer to the display using the experiment's screen.
@@ -432,7 +460,9 @@ func (e *Experiment) Flip() error {
 	if e.Screen == nil {
 		return nil
 	}
-	return e.Screen.Flip()
+	return e.Do(func() error {
+		return e.Screen.Flip()
+	})
 }
 
 // ---------------------------------------------------------------------------
@@ -538,10 +568,14 @@ func (e *Experiment) End() {
 
 // Run executes the main experiment logic inside SDL's run loop.
 //
-// The provided callback is called once per frame until it returns either:
-//   - nil          to continue the loop,
-//   - sdl.EndLoop  to terminate cleanly,
-//   - any other error, which is returned to the caller.
+// The logic callback runs directly on the main (OS) thread so that all SDL
+// calls inside it — screen rendering, event polling, etc. — are issued from
+// the correct thread. This preserves compatibility with every example that
+// calls exp.Screen.Clear(), stim.Draw(), and exp.Screen.Update() directly.
+//
+// For code that wants to compose rendering steps before presenting, use
+// exp.Screen methods directly (they're on the main thread here).
+// For code that wants automatic thread dispatch, use exp.Show / exp.Blank.
 //
 // If the callback (or any Experiment method called from it) panics with an
 // internal sentinel, Run will recover and return the original error.

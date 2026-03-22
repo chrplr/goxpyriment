@@ -2,6 +2,31 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Documentation
+
+All user-facing documentation lives in `docs/`:
+
+| File | Contents |
+|---|---|
+| `docs/GettingStarted.md` | Tutorial introduction — Python/Expyriment mapping, 3 worked examples |
+| `docs/UserManual.md` | Concept guide — rendering model, timing, input, data, streams, audio, design |
+| `docs/API.md` | Complete public API reference organized by package |
+| `docs/index.md` | Landing page (rendered by MkDocs) |
+
+Build and preview the docs site locally (Makefile targets at repo root):
+
+```bash
+pip install -r docs/requirements.txt   # install MkDocs + Material once
+
+make pdfs      # generate docs/*.pdf via pandoc + xelatex
+make serve     # live-reload preview at http://127.0.0.1:8000
+make docs      # build static HTML → site/
+make deploy    # generate PDFs + build + push to GitHub Pages
+make clean-docs  # remove site/
+```
+
+PDFs and the `site/` directory are excluded from git (see `.gitignore`); they are generated locally and pushed to the `gh-pages` branch via `make deploy`.
+
 ## What this repo is
 
 `goxpyriment` is a Go framework for building behavioral and psychological experiments, inspired by [expyriment.org](http://expyriment.org). It wraps SDL3 (via `go-sdl3`) for hardware-accelerated stimulus presentation with high-precision VSYNC-locked timing.

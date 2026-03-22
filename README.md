@@ -2,8 +2,11 @@
 
 `goxpyriment` is a high-level Go framework for building behavioral and psychological experiments.
 
-* [HTML version](https://chrplr.github.io/goxpyriment) of this document
-* [Github repository](https://github.com/chrplr/goxpyriment) of the project
+* [Documentation site](https://chrplr.github.io/goxpyriment)
+* [Github repository](https://github.com/chrplr/goxpyriment)
+* [Getting Started](docs/GettingStarted.md) — Tutorial for psychologists (Python/Expyriment users)
+* [User Manual](docs/UserManual.md) — Core concepts explained in depth
+* [API Reference](docs/API.md) — Complete function and type reference
 * Report bugs and suggestions at <https://github.com/chrplr/goxpyriment/issues>
 
 
@@ -29,16 +32,16 @@ Christophe Pallier, March 2026
 
 ## Features
 
-- **Visual stimuli:** text (single-line and word-wrapped boxes), shapes (rectangles, circles, lines, polygons), fixation crosses, images, Gabor patches, drifting sinusoidal gratings, random-dot clouds, random-dot stereograms, off-screen canvases, and visual masks.
-- **Audio stimuli:** WAV playback (from file or embedded bytes), procedurally generated tones (pure or multi-frequency with linear ramps), and time-windowed segment playback with fade-in/fade-out.
+- **Visual stimuli:** text (single-line `TextLine` and word-wrapped `TextBox`), shapes (rectangles, circles, lines, filled polygons), fixation crosses, images (`Picture`), Gabor patches, drifting sinusoidal gratings, random-dot clouds, random-dot stereograms, off-screen canvases, visual masks, thermometer displays, stimulus circles, visual multiple-choice grids (`ChoiceGrid`), and text input boxes.
+- **Audio stimuli:** WAV playback (from file or embedded bytes), procedurally generated pure and complex tones with linear ramps, time-windowed segment playback with fade-in/fade-out, and embedded feedback sounds (buzzer, ping).
 - **Video playback:** MPEG video files and `.gv` (LZ4-compressed RGBA) sequences, both VSYNC-locked.
 - **Stimulus streams:** high-precision RSVP presentation of image, text, or audio sequences with per-stimulus timing logs and user-event capture.
 - **Animated stimuli:** VSYNC-locked loops for moving dot clouds, drifting gratings, and drifting Gabor patches; GC disabled during loops for stable frame timing.
 - **Experimental design:** Experiments → Blocks → Trials with arbitrary string factors; block shuffling; between-subjects Latin-square counterbalancing.
 - **Randomization:** shuffled sequences, random draws, truncated normal sampling, and constrained shuffling (maximum consecutive repetitions, minimum gap between repetitions).
-- **Input handling:** keyboard (blocking/non-blocking, multi-key, timeout, reaction-time measurement) and mouse (position, button detection); serial port for hardware triggers.
+- **Input handling:** keyboard (blocking/non-blocking, multi-key, timeout, reaction-time measurement) and mouse (position, button detection); hardware trigger devices (serial/USB DLP-IO8, parallel port) via the separate `triggers` package.
 - **Data collection:** trial data logged to `.xpd` files (CSV with metadata header) with automatic subject ID, timestamp, and display-info fields.
-- **Timing:** millisecond-precision clock, `Wait()` / `WaitUntil()`, VSYNC-locked frame cadence via SDL3.
+- **Timing:** millisecond-precision clock, `exp.Wait()`, VSYNC-locked frame cadence via SDL3.
 
 ## Installation
 
@@ -69,6 +72,8 @@ Here is the code of a minimal "Hello World" experiment (the full version with au
 package main
 
 import (
+	"log"
+
 	"github.com/chrplr/goxpyriment/control"
 	"github.com/chrplr/goxpyriment/stimuli"
 )
@@ -81,12 +86,18 @@ func main() {
 	hello  := stimuli.NewTextBox("Hello World!", 600, control.FPoint{X: 0, Y: 0}, control.DefaultTextColor)
 	finish := stimuli.NewTextBox("Done — press any key to exit.", 600, control.FPoint{X: 0, Y: 0}, control.DefaultTextColor)
 
-	exp.Show(instr)
-	exp.Keyboard.Wait()
-	exp.Show(hello)
-	exp.Keyboard.Wait()
-	exp.Show(finish)
-	exp.Keyboard.Wait()
+	err := exp.Run(func() error {
+		exp.Show(instr)
+		exp.Keyboard.Wait()
+		exp.Show(hello)
+		exp.Keyboard.Wait()
+		exp.Show(finish)
+		exp.Keyboard.Wait()
+		return control.EndLoop
+	})
+	if err != nil && !control.IsEndLoop(err) {
+		log.Fatalf("experiment error: %v", err)
+	}
 }
 ```
 
@@ -95,7 +106,7 @@ Run or build examples from within this repository:
 ```bash
 cd examples/hello_world
 go run .            # fullscreen by default
-go run . -d         # windowed 1024×1024 (developer mode)
+go run . -d         # windowed 1024×768 (developer mode)
 go run . -d -s 1    # windowed, subject ID = 1
 go build .          # build a standalone binary
 ```
@@ -106,7 +117,7 @@ Run any example directly from the repository root:
 go run ./examples/parity_decision/ -d -s 1
 ```
 
-Most examples accept `-d` (windowed 1024×1024 developer mode) and `-s <id>` (subject ID written to the `.xpd` data file).
+Most examples accept `-d` (windowed 1024×768 developer mode) and `-s <id>` (subject ID written to the `.xpd` data file).
 
 To build all examples at once:
 

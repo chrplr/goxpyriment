@@ -6,10 +6,10 @@ package main
 import (
 	"fmt"
 	"log"
-	"math/rand"
 
 	"github.com/chrplr/goxpyriment/clock"
 	"github.com/chrplr/goxpyriment/control"
+	"github.com/chrplr/goxpyriment/design"
 	"github.com/chrplr/goxpyriment/stimuli"
 )
 
@@ -41,7 +41,7 @@ func main() {
 			// Blank screen
 			exp.Blank(0)
 
-			waitTime := rand.Intn(MaxWaitTime-MinWaitTime) + MinWaitTime
+			waitTime := design.RandInt(MinWaitTime, MaxWaitTime-1)
 			exp.Wait(waitTime)
 
 			// Target stimulus

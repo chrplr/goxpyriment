@@ -22,10 +22,10 @@ package main
 
 import (
 	"log"
-	"math/rand"
 
 	"github.com/chrplr/goxpyriment/clock"
 	"github.com/chrplr/goxpyriment/control"
+	"github.com/chrplr/goxpyriment/design"
 	"github.com/chrplr/goxpyriment/stimuli"
 )
 
@@ -89,7 +89,7 @@ func main() {
 	var pairs []StudyTestPair
 	shuffled := make([]string, len(wordPool))
 	copy(shuffled, wordPool)
-	rand.Shuffle(len(shuffled), func(i, j int) { shuffled[i], shuffled[j] = shuffled[j], shuffled[i] })
+	design.ShuffleList(shuffled)
 
 	// Use first 24 words for old items (12 LVF, 12 RVF, half short, half long).
 	oldWords := shuffled[:24]
@@ -121,7 +121,7 @@ func main() {
 	newWords := shuffled[24:36] // 12 new items
 
 	// Shuffle the studied pairs so VF/lag conditions are intermixed.
-	rand.Shuffle(len(pairs), func(i, j int) { pairs[i], pairs[j] = pairs[j], pairs[i] })
+	design.ShuffleList(pairs)
 
 	// Instructions
 	instrText := "Lateralized Recognition Memory\n\n" +
