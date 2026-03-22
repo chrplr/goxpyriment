@@ -5,19 +5,20 @@ package main
 
 import (
 	"fmt"
-	"github.com/chrplr/goxpyriment/control"
-	"github.com/chrplr/goxpyriment/design"
-	"github.com/chrplr/goxpyriment/clock"
-	"github.com/chrplr/goxpyriment/stimuli"
 	"log"
 	"strings"
+
+	"github.com/chrplr/goxpyriment/clock"
+	"github.com/chrplr/goxpyriment/control"
+	"github.com/chrplr/goxpyriment/design"
+	"github.com/chrplr/goxpyriment/stimuli"
 )
 
 const (
-	StimulusDuration = 50   // ms
-	CueDuration      = 200  // ms
-	FixationDuration = 500  // ms
-	GridSpacing      = 60   // pixels
+	StimulusDuration = 50  // ms
+	CueDuration      = 200 // ms
+	FixationDuration = 500 // ms
+	GridSpacing      = 60  // pixels
 )
 
 // generateGrid creates a 3x3 array of random uppercase letters (excluding vowels for standard practice).
@@ -81,7 +82,9 @@ func main() {
 	exp.AddDataVariableNames([]string{"trial_idx", "condition", "cued_row", "target_letters", "response", "accuracy"})
 
 	if err := showInstructions(exp); err != nil {
-		if control.IsEndLoop(err) { return }
+		if control.IsEndLoop(err) {
+			return
+		}
 		log.Fatalf("instruction error: %v", err)
 	}
 
@@ -131,27 +134,45 @@ func main() {
 		grid := generateGrid()
 
 		// 1. Fixation
-		if err := exp.Show(fixation); err != nil { return err }
+		if err := exp.Show(fixation); err != nil {
+			return err
+		}
 		clock.Wait(FixationDuration)
 
 		// 2. Stimulus flash (50ms)
-		if err := exp.Screen.Clear(); err != nil { return err }
-		if err := drawGrid(exp, grid); err != nil { return err }
-		if err := exp.Screen.Update(); err != nil { return err }
+		if err := exp.Screen.Clear(); err != nil {
+			return err
+		}
+		if err := drawGrid(exp, grid); err != nil {
+			return err
+		}
+		if err := exp.Screen.Update(); err != nil {
+			return err
+		}
 		clock.Wait(StimulusDuration)
 
 		// 3. Offset (ISI) - can be varied, here 0ms
-		if err := exp.Screen.Clear(); err != nil { return err }
-		if err := exp.Screen.Update(); err != nil { return err }
+		if err := exp.Screen.Clear(); err != nil {
+			return err
+		}
+		if err := exp.Screen.Update(); err != nil {
+			return err
+		}
 		// clock.Wait(offset)
 
 		// 4. Cue
 		var targetLetters string
 		if config.Condition == "partial" {
 			switch config.CuedRow {
-			case 0: highTone.Play(); targetLetters = strings.Join(grid[0][:], "")
-			case 1: medTone.Play(); targetLetters = strings.Join(grid[1][:], "")
-			case 2: lowTone.Play(); targetLetters = strings.Join(grid[2][:], "")
+			case 0:
+				highTone.Play()
+				targetLetters = strings.Join(grid[0][:], "")
+			case 1:
+				medTone.Play()
+				targetLetters = strings.Join(grid[1][:], "")
+			case 2:
+				lowTone.Play()
+				targetLetters = strings.Join(grid[2][:], "")
 			}
 		} else {
 			// Whole report: no specific tone cue, or a neutral one
@@ -196,7 +217,9 @@ func main() {
 		}
 
 		// ITI
-		if err := exp.Blank(1000); err != nil { return err }
+		if err := exp.Blank(1000); err != nil {
+			return err
+		}
 
 		return nil
 	}

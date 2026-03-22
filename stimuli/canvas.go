@@ -4,8 +4,8 @@
 package stimuli
 
 import (
-	"github.com/chrplr/goxpyriment/io"
 	"github.com/Zyko0/go-sdl3/sdl"
+	"github.com/chrplr/goxpyriment/io"
 )
 
 // Canvas is an offscreen render target of the given size and background color; stimuli can be drawn to it, then the canvas is drawn to the screen.
@@ -22,7 +22,7 @@ type Canvas struct {
 // NewCanvas creates a canvas with the given width, height, and background color (center at 0,0).
 func NewCanvas(width, height float32, color sdl.Color) *Canvas {
 	return &Canvas{
-		Size:  sdl.FPoint{X: width, Y: height},
+		Size: sdl.FPoint{X: width, Y: height},
 		// BaseVisual.Position defaults to (0, 0)
 		Color: color,
 	}
@@ -33,13 +33,13 @@ func (c *Canvas) preload(screen *io.Screen) error {
 	if c.Texture != nil {
 		return nil
 	}
-	
+
 	tex, err := screen.Renderer.CreateTexture(sdl.PIXELFORMAT_RGBA32, sdl.TEXTUREACCESS_TARGET, int(c.Size.X), int(c.Size.Y))
 	if err != nil {
 		return err
 	}
 	c.Texture = tex
-	
+
 	// Initial clear
 	return c.Clear(screen)
 }
@@ -78,11 +78,11 @@ func (c *Canvas) Blit(stim VisualStimulus, screen *io.Screen) error {
 	if err := screen.Renderer.SetRenderTarget(c.Texture); err != nil {
 		return err
 	}
-	
+
 	// Set the screen offset to the center of this canvas
 	oldOffset := screen.CanvasOffset
 	screen.CanvasOffset = &sdl.FPoint{X: c.Size.X / 2, Y: c.Size.Y / 2}
-	
+
 	// Ensure we restore both the render target AND the offset
 	defer func() {
 		screen.Renderer.SetRenderTarget(prevTarget)
@@ -93,14 +93,13 @@ func (c *Canvas) Blit(stim VisualStimulus, screen *io.Screen) error {
 	return stim.Draw(screen)
 }
 
-
 func (c *Canvas) Draw(screen *io.Screen) error {
 	if c.Texture == nil {
 		if err := c.preload(screen); err != nil {
 			return err
 		}
 	}
-	
+
 	destX, destY := screen.CenterToSDL(c.Position.X, c.Position.Y)
 	destRect := &sdl.FRect{
 		X: destX - c.Size.X/2,
@@ -108,7 +107,7 @@ func (c *Canvas) Draw(screen *io.Screen) error {
 		W: c.Size.X,
 		H: c.Size.Y,
 	}
-	
+
 	return screen.Renderer.RenderTexture(c.Texture, nil, destRect)
 }
 

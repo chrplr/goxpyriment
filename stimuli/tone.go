@@ -5,8 +5,9 @@ package stimuli
 
 import (
 	"math"
-	"github.com/chrplr/goxpyriment/io"
+
 	"github.com/Zyko0/go-sdl3/sdl"
+	"github.com/chrplr/goxpyriment/io"
 )
 
 // Tone is a procedural sine-wave tone with configurable frequency (Hz),
@@ -95,7 +96,7 @@ func (t *Tone) PreloadDevice(audioDevice sdl.AudioDeviceID) error {
 		t.Data = make([]byte, numSamples*4) // 32-bit float
 
 		for i := 0; i < numSamples; i++ {
-			val := float32(math.Sin(2 * math.Pi * t.Frequency * float64(i) / float64(sampleRate))) * t.Amplitude
+			val := float32(math.Sin(2*math.Pi*t.Frequency*float64(i)/float64(sampleRate))) * t.Amplitude
 			// Store as float32 in little endian
 			bits := math.Float32bits(val)
 			t.Data[i*4] = byte(bits)
@@ -110,13 +111,13 @@ func (t *Tone) PreloadDevice(audioDevice sdl.AudioDeviceID) error {
 		Channels: 1,
 		Freq:     44100,
 	}
-	
+
 	stream, err := sdl.CreateAudioStream(spec, spec)
 	if err != nil {
 		return err
 	}
 	t.Stream = stream
-	
+
 	return audioDevice.BindAudioStream(t.Stream)
 }
 

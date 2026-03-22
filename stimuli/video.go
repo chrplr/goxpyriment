@@ -8,24 +8,24 @@ import (
 	"os"
 	"time"
 
-	"github.com/gen2brain/mpeg"
 	"github.com/Zyko0/go-sdl3/sdl"
 	xio "github.com/chrplr/goxpyriment/io"
+	"github.com/gen2brain/mpeg"
 )
 
 // Video represents a playable video stimulus using MPEG decoding.
 type Video struct {
-	mpg          *mpeg.MPEG
-	file         *os.File
-	texture      *sdl.Texture
-	startTime    time.Time
-	pauseTime    time.Time 
-	totalPaused  time.Duration 
-	
-	Width        int32
-	Height       int32
-	fps          float64
-	
+	mpg         *mpeg.MPEG
+	file        *os.File
+	texture     *sdl.Texture
+	startTime   time.Time
+	pauseTime   time.Time
+	totalPaused time.Duration
+
+	Width  int32
+	Height int32
+	fps    float64
+
 	playing      bool
 	paused       bool
 	currentFrame int
@@ -138,10 +138,14 @@ func (v *Video) Pause() {
 func (v *Video) IsPlaying() bool { return v.playing }
 
 // IsPaused returns true if the video is currently paused.
-func (v *Video) IsPaused() bool  { return v.paused }
+func (v *Video) IsPaused() bool { return v.paused }
 
 // Close releases resources associated with the video, including the file handle and SDL texture.
 func (v *Video) Close() {
-	if v.file != nil { v.file.Close() }
-	if v.texture != nil { v.texture.Destroy() }
+	if v.file != nil {
+		v.file.Close()
+	}
+	if v.texture != nil {
+		v.texture.Destroy()
+	}
 }

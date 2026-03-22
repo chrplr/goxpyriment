@@ -5,11 +5,11 @@ package main
 
 import (
 	"fmt"
-	"github.com/chrplr/goxpyriment/clock"
-	"github.com/chrplr/goxpyriment/control"
-	"github.com/chrplr/goxpyriment/stimuli"
 	"log"
 	"math/rand"
+
+	"github.com/chrplr/goxpyriment/control"
+	"github.com/chrplr/goxpyriment/stimuli"
 )
 
 const (
@@ -62,21 +62,14 @@ func main() {
 	})
 
 	instrText := fmt.Sprintf("In this experiment, you will see red or green squares appearing to the left or right of the center.\n\nYour task is to identify the COLOR of the square as quickly as possible:\n\n- If the square is RED, press 'F' (left index finger)\n- If the square is GREEN, press 'J' (right index finger)\n\nA fixation cross will remain in the center of the screen.\nIf you make a mistake, the trial will be repeated later.\n\nPress the spacebar to start.")
-	instructions := stimuli.NewTextBox(instrText, 1000, control.Point(0, 0), control.DefaultTextColor)
 
 	// 4. Run the experiment logic
 	err := exp.Run(func() error {
 		// Instructions
-		if err := exp.Show(instructions); err != nil {
-			return err
-		}
-		if err := exp.Keyboard.WaitKey(control.K_SPACE); err != nil {
-			return err
-		}
+		exp.ShowInstructions(instrText)
 
 		trialCount := 0
 		successfulCount := 0
-		var subErr error
 
 		for successfulCount < NTrials && len(trials) > 0 {
 			t := trials[0]
@@ -84,12 +77,10 @@ func main() {
 			trialCount++
 
 			// Fixation (stays on screen)
-			if err := exp.Show(fixation); err != nil {
-				return err
-			}
+			exp.Show(fixation)
 			// Random delay (fixation cross remains)
 			delay := 500 + rand.Intn(1000) // 500 to 1500 ms
-			clock.Wait(delay)
+			exp.Wait(delay)
 
 			// Stimulus selection
 			var stim *stimuli.Rectangle
@@ -108,27 +99,17 @@ func main() {
 			}
 
 			// Draw BOTH fixation and stimulus
-			if err := exp.Screen.Clear(); err != nil {
-				return err
-			}
-			if err := fixation.Draw(exp.Screen); err != nil {
-				return err
-			}
-			if err := stim.Draw(exp.Screen); err != nil {
-				return err
-			}
-			if err := exp.Screen.Update(); err != nil {
-				return err
-			}
+			_ = exp.Screen.Clear()
+			_ = fixation.Draw(exp.Screen)
+			_ = stim.Draw(exp.Screen)
+			_ = exp.Screen.Update()
 
 			// Wait for response
 			var responseKey control.Keycode
 			var rt int64
 			var correct bool
-			responseKey, rt, subErr = exp.Keyboard.WaitKeysRT([]control.Keycode{RedKey, GreenKey}, -1)
-			if subErr != nil {
-				return subErr
-			}
+			responseKey, rt, _ = exp.Keyboard.WaitKeysRT([]control.Keycode{RedKey, GreenKey}, -1)
+
 			if t.color == "red" && responseKey == RedKey {
 				correct = true
 			} else if t.color == "green" && responseKey == GreenKey {
@@ -146,9 +127,7 @@ func main() {
 			fmt.Printf("Subject %d, Trial %d: Color=%s, Pos=%s, Key=%d, RT=%d, Correct=%v, Congruency=%s\n", exp.SubjectID, trialCount, t.color, t.position, responseKey, rt, correct, congruency)
 
 			if !correct {
-				if err := exp.Audio.PlayBuzzer(); err != nil {
-					log.Printf("Warning: buzzer playback failed: %v", err)
-				}
+				_ = exp.Audio.PlayBuzzer()
 				// Repeat trial: add back to trials slice at a random position
 				insertPos := rand.Intn(len(trials) + 1)
 				trials = append(trials[:insertPos], append([]trialDef{t}, trials[insertPos:]...)...)
@@ -156,30 +135,22 @@ func main() {
 				// Optional: Show error feedback
 				errorStim := stimuli.NewTextLine("WRONG!", 0, 0, control.White)
 				exp.Show(errorStim)
-				clock.Wait(1000)
+				exp.Wait(1000)
 			} else {
 				successfulCount++
 			}
 
 			// Inter-trial interval (fixation cross remains)
-			if err := exp.Show(fixation); err != nil {
-				return err
-			}
-			clock.Wait(500)
+			exp.Show(fixation)
+			exp.Wait(500)
 		}
 
 		// Explicitly save results after the loop
-		if err := exp.Data.Save(); err != nil {
-			log.Printf("Warning: failed to save data file: %v", err)
-		}
+		_ = exp.Data.Save()
 
 		// Final message
-		finishText := "Experiment complete!\n\nThank you for your participation.\n\nPress space to exit."
-		finishStim := stimuli.NewTextBox(finishText, 800, control.Point(0, 0), control.DefaultTextColor)
-		exp.Show(finishStim)
-		if err := exp.Keyboard.WaitKey(control.K_SPACE); err != nil {
-			return err
-		}
+		finishText := "Experiment complete!\n\nThank you for your participation.\n\nPress SPACE to exit."
+		exp.ShowInstructions(finishText)
 
 		return control.EndLoop
 	})

@@ -21,8 +21,8 @@ package stimuli
 // interface with just a Draw method and a one-line Present delegation.
 
 import (
-	"github.com/chrplr/goxpyriment/io"
 	"github.com/Zyko0/go-sdl3/sdl"
+	"github.com/chrplr/goxpyriment/io"
 )
 
 // ---------------------------------------------------------------------------

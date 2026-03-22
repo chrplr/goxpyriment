@@ -483,7 +483,7 @@ func (r *Retinotopy) updateCombinedTexture(patternID, maskID int) {
 		r.PixelBuffer[i*4] = pattern[i*3]     // R
 		r.PixelBuffer[i*4+1] = pattern[i*3+1] // G
 		r.PixelBuffer[i*4+2] = pattern[i*3+2] // B
-		r.PixelBuffer[i*4+3] = mask[i]         // A
+		r.PixelBuffer[i*4+3] = mask[i]        // A
 	}
 
 	r.CombinedTexture.Update(nil, r.PixelBuffer, WindowWidth*4)

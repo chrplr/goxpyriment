@@ -9,9 +9,9 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/chrplr/goxpyriment/clock"
 	"github.com/chrplr/goxpyriment/control"
 	"github.com/chrplr/goxpyriment/design"
-	"github.com/chrplr/goxpyriment/clock"
 	"github.com/chrplr/goxpyriment/stimuli"
 )
 
@@ -33,9 +33,9 @@ var redBackImg []byte
 var blueBackImg []byte
 
 const (
-	BackDisplayDuration = 1000
-	MaxResponseTime     = 5000
-	InterTrialTime      = 2000
+	BackDisplayDuration  = 1000
+	MaxResponseTime      = 5000
+	InterTrialTime       = 2000
 	BaseCardW, BaseCardH = 300, 458
 	BaseGap              = 100
 )
@@ -198,21 +198,33 @@ func main() {
 			}
 
 			// Pre-trial Fixation
-			if err := exp.Show(fixation); err != nil { return err }
-			if err := waitInterruption(exp, 1000); err != nil { return err }
+			if err := exp.Show(fixation); err != nil {
+				return err
+			}
+			if err := waitInterruption(exp, 1000); err != nil {
+				return err
+			}
 
 			// Show Backs
-			if err := exp.Show(canvas1); err != nil { return err }
+			if err := exp.Show(canvas1); err != nil {
+				return err
+			}
 
 			resp, rt, err := waitResponse(exp, BackDisplayDuration)
-			if err != nil && !control.IsEndLoop(err) { return err }
+			if err != nil && !control.IsEndLoop(err) {
+				return err
+			}
 
 			// Show Turned Card
-			if err := exp.Show(canvas2); err != nil { return err }
+			if err := exp.Show(canvas2); err != nil {
+				return err
+			}
 
 			if resp == 0 {
 				resp, rt, err = waitResponse(exp, MaxResponseTime)
-				if err != nil && !control.IsEndLoop(err) { return err }
+				if err != nil && !control.IsEndLoop(err) {
+					return err
+				}
 				rt += int64(BackDisplayDuration)
 			}
 
@@ -223,8 +235,12 @@ func main() {
 			fmt.Printf("Trial: %s, Resp: %d, RT: %d, Correct: %v\n", ct.Condition, resp, rt, correct)
 
 			// Inter-trial Fixation
-			if err := exp.Show(fixation); err != nil { return err }
-			if err := waitInterruption(exp, InterTrialTime); err != nil { return err }
+			if err := exp.Show(fixation); err != nil {
+				return err
+			}
+			if err := waitInterruption(exp, InterTrialTime); err != nil {
+				return err
+			}
 		}
 
 		return control.EndLoop
@@ -254,6 +270,8 @@ func checkCorrect(key control.Keycode, expected int) bool {
 		control.K_N: -1,
 	}
 	val, ok := mapping[key]
-	if !ok { return false }
+	if !ok {
+		return false
+	}
 	return val == expected
 }

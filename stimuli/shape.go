@@ -4,8 +4,8 @@
 package stimuli
 
 import (
-	"github.com/chrplr/goxpyriment/io"
 	"github.com/Zyko0/go-sdl3/sdl"
+	"github.com/chrplr/goxpyriment/io"
 )
 
 // Shape is a filled polygon defined by Points (relative to the shape center) and a single color.
@@ -32,7 +32,7 @@ func (s *Shape) Draw(screen *io.Screen) error {
 	}
 
 	cX, cY := screen.CenterToSDL(s.Position.X, s.Position.Y)
-	
+
 	// Create vertices for RenderGeometry
 	// For a simple filled polygon, we treat it as a fan from the first point (simplistic)
 	// A more robust implementation would use a triangulation algorithm.
@@ -40,7 +40,7 @@ func (s *Shape) Draw(screen *io.Screen) error {
 	for i, p := range s.Points {
 		vertices[i] = sdl.Vertex{
 			Position: sdl.FPoint{X: cX + p.X, Y: cY - p.Y},
-			Color:    sdl.FColor{R: float32(s.Color.R)/255, G: float32(s.Color.G)/255, B: float32(s.Color.B)/255, A: float32(s.Color.A)/255},
+			Color:    sdl.FColor{R: float32(s.Color.R) / 255, G: float32(s.Color.G) / 255, B: float32(s.Color.B) / 255, A: float32(s.Color.A) / 255},
 		}
 	}
 

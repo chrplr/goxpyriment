@@ -7,8 +7,9 @@ package design
 
 import (
 	"fmt"
-	"github.com/chrplr/goxpyriment/stimuli"
 	"math/rand"
+
+	"github.com/chrplr/goxpyriment/stimuli"
 )
 
 // Trial represents a single trial in an experiment.
@@ -123,7 +124,7 @@ func (b *Block) AddTrial(t *Trial, copies int, randomPosition bool) {
 		newT := t.Copy()
 		newT.ID = b.trialIDCounter
 		b.trialIDCounter++
-		
+
 		if randomPosition && len(b.Trials) > 0 {
 			pos := rand.Intn(len(b.Trials) + 1)
 			b.Trials = append(b.Trials, nil)

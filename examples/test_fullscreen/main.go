@@ -86,11 +86,11 @@ func main() {
 
 		// Draw a 1-pixel thick border around the physical edge
 		renderer.SetDrawColor(255, 255, 255, 255)
-		
+
 		// Display info
 		infoStr := fmt.Sprintf("Bypassing Scaling | Res: %dx%d | Refresh: %.2fHz", physW, physH, refreshRate)
 		renderer.DebugText(20, 20, infoStr)
-		
+
 		// Draw center cross
 		centerX, centerY := float32(physW)/2, float32(physH)/2
 		crossSize := float32(20)

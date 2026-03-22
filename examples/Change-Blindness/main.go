@@ -46,13 +46,13 @@ const (
 
 // palette of 7 visually distinct pastel-saturated colors
 var palette = []control.Color{
-	control.RGB(210, 50, 50),   // red
-	control.RGB(50, 110, 210),  // blue
-	control.RGB(60, 170, 60),   // green
-	control.RGB(210, 175, 50),  // yellow
-	control.RGB(180, 75, 195),  // purple
-	control.RGB(45, 190, 190),  // cyan
-	control.RGB(210, 130, 50),  // orange
+	control.RGB(210, 50, 50),  // red
+	control.RGB(50, 110, 210), // blue
+	control.RGB(60, 170, 60),  // green
+	control.RGB(210, 175, 50), // yellow
+	control.RGB(180, 75, 195), // purple
+	control.RGB(45, 190, 190), // cyan
+	control.RGB(210, 130, 50), // orange
 }
 
 var colorLabels = []string{"red", "blue", "green", "yellow", "purple", "cyan", "orange"}

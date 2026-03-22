@@ -202,8 +202,8 @@ func applyLinearRamps(buf []byte, format sdl.AudioFormat, channels, rampFrames i
 
 	for f := 0; f < rampFrames; f++ {
 		scale := float32(f) / float32(rampFrames)
-		scaleFrame(f, scale)                   // fade-in
-		scaleFrame(totalFrames-1-f, scale)     // fade-out
+		scaleFrame(f, scale)               // fade-in
+		scaleFrame(totalFrames-1-f, scale) // fade-out
 	}
 }
 

@@ -101,8 +101,8 @@ var (
 
 type stats struct {
 	mean, sd, minV, maxV, p5, p95 float64
-	late05, late1                  int // count > 0.5 ms and > 1 ms from target
-	n                              int
+	late05, late1                 int // count > 0.5 ms and > 1 ms from target
+	n                             int
 }
 
 func computeStats(deltas []float64, targetMs float64) stats {
@@ -242,7 +242,7 @@ func runFrames(exp *control.Experiment, trig triggers.Trigger) error {
 
 					var intervalMs float64
 					if prevT > 0 {
-						intervalMs = float64(tA-prevT)
+						intervalMs = float64(tA - prevT)
 						intervals = append(intervals, intervalMs)
 					}
 					prevT = tA

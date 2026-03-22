@@ -4,11 +4,12 @@
 package stimuli
 
 import (
-	"github.com/chrplr/goxpyriment/io"
 	"image"
 	"image/color"
 	"math"
+
 	"github.com/Zyko0/go-sdl3/sdl"
+	"github.com/chrplr/goxpyriment/io"
 )
 
 // GaborPatch is a Gabor patch (sinusoidal grating windowed by a Gaussian) with orientation, spatial frequency, phase, and size parameters.
@@ -16,13 +17,13 @@ import (
 // Embeds BaseVisual for position management. Overrides Unload to destroy the
 // GPU texture; Preload is a no-op (lazy-loaded on first Draw via preload).
 type GaborPatch struct {
-	BaseVisual      // Position, GetPosition, SetPosition, Preload, Unload (Unload overridden below)
-	Sigma           float64
-	Theta           float64 // orientation in degrees
-	Lambda          float64 // spatial wavelength in pixels (cycles per pixel = 1/Lambda)
-	Phase           float64
-	Psi             float64
-	Gamma           float64
+	BaseVisual // Position, GetPosition, SetPosition, Preload, Unload (Unload overridden below)
+	Sigma      float64
+	Theta      float64 // orientation in degrees
+	Lambda     float64 // spatial wavelength in pixels (cycles per pixel = 1/Lambda)
+	Phase      float64
+	Psi        float64
+	Gamma      float64
 	// Contrast is the Michelson contrast of the grating [0, 1].
 	// Zero defaults to full contrast (1.0) for backwards compatibility.
 	Contrast        float64
@@ -42,7 +43,7 @@ func NewGaborPatch(sigma, theta, lambda, phase, psi, gamma float64, bgColor sdl.
 		Gamma:           gamma,
 		BackgroundColor: bgColor,
 		// BaseVisual.Position defaults to (0, 0)
-		Size:            size,
+		Size: size,
 	}
 }
 
@@ -50,28 +51,28 @@ func NewGaborPatch(sigma, theta, lambda, phase, psi, gamma float64, bgColor sdl.
 func (gp *GaborPatch) preload(screen *io.Screen) error {
 	w, h := int(gp.Size), int(gp.Size)
 	img := image.NewRGBA(image.Rect(0, 0, w, h))
-	
+
 	thetaRad := gp.Theta * math.Pi / 180.0
-	
+
 	halfW := float64(w) / 2
 	halfH := float64(h) / 2
-	
+
 	for y := 0; y < h; y++ {
 		for x := 0; x < w; x++ {
 			// Center coordinates
 			xf := float64(x) - halfW
 			yf := float64(y) - halfH
-			
+
 			// Rotation
 			x_prime := xf*math.Cos(thetaRad) + yf*math.Sin(thetaRad)
 			y_prime := -xf*math.Sin(thetaRad) + yf*math.Cos(thetaRad)
-			
+
 			// Gaussian envelope
 			envelope := math.Exp(-(x_prime*x_prime + gp.Gamma*gp.Gamma*y_prime*y_prime) / (2 * gp.Sigma * gp.Sigma))
-			
+
 			// Sinusoidal grating
 			grating := math.Cos(2*math.Pi*(x_prime/gp.Lambda) + gp.Psi + gp.Phase*2*math.Pi)
-			
+
 			// Apply Michelson contrast (defaults to 1.0 when unset).
 			c := gp.Contrast
 			if c == 0 {
@@ -83,13 +84,13 @@ func (gp *GaborPatch) preload(screen *io.Screen) error {
 			img.Set(x, y, color.RGBA{R: cVal, G: cVal, B: cVal, A: uint8(envelope * 255)})
 		}
 	}
-	
+
 	surface, err := sdl.CreateSurfaceFrom(w, h, sdl.PIXELFORMAT_RGBA32, img.Pix, w*4)
 	if err != nil {
 		return err
 	}
 	defer surface.Destroy()
-	
+
 	texture, err := screen.Renderer.CreateTextureFromSurface(surface)
 	if err != nil {
 		return err
@@ -110,7 +111,7 @@ func (gp *GaborPatch) Draw(screen *io.Screen) error {
 			return err
 		}
 	}
-	
+
 	destX, destY := screen.CenterToSDL(gp.Position.X, gp.Position.Y)
 	destRect := &sdl.FRect{
 		X: destX - gp.Size/2,
@@ -118,7 +119,7 @@ func (gp *GaborPatch) Draw(screen *io.Screen) error {
 		W: gp.Size,
 		H: gp.Size,
 	}
-	
+
 	return screen.Renderer.RenderTexture(gp.Texture, nil, destRect)
 }
 

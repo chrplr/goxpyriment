@@ -109,7 +109,7 @@ func seqString(seq []int) string {
 // tapRecord holds timing data for one tap.
 type tapRecord struct {
 	rep, tap, expected, pressed int
-	tGoMs, itiMs               int64
+	tGoMs, itiMs                int64
 }
 
 // runTrial shows the sequence, waits for the subject to practise and signal
@@ -243,8 +243,8 @@ func main() {
 
 	// Prepare tones.
 	readyTone := stimuli.NewTone(440, 200, 0.5) // A4  — "ready"
-	goTone    := stimuli.NewTone(880, 100, 0.6) // A5  — "go"
-	stopTone  := stimuli.NewTone(660, 400, 0.4) // E5  — "stop"
+	goTone := stimuli.NewTone(880, 100, 0.6)    // A5  — "go"
+	stopTone := stimuli.NewTone(660, 400, 0.4)  // E5  — "stop"
 	errorTone := stimuli.NewTone(220, 350, 0.5) // A3  — "error"
 
 	for _, t := range []*stimuli.Tone{readyTone, goTone, stopTone, errorTone} {

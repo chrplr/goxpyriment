@@ -16,8 +16,8 @@ import (
 
 // Default settings for OutputFile and DataFile.
 const (
-	OutputFileCommentChar = "#"           // Character used for comment lines in output files.
-	OutputFileEOL         = "\n"          // Line ending written by WriteLine.
+	OutputFileCommentChar = "#"          // Character used for comment lines in output files.
+	OutputFileEOL         = "\n"         // Line ending written by WriteLine.
 	DataFileDirectory     = "goxpy_data" // Default directory for data files when none is set.
 	DataFileDelimiter     = ","          // Default CSV delimiter for DataFile.
 )
@@ -44,7 +44,7 @@ func NewOutputFile(directory, filename string) (*OutputFile, error) {
 	}
 
 	fullPath := filepath.Join(directory, filename)
-	
+
 	// Create/truncate file
 	f, err := os.Create(fullPath)
 	if err != nil {
@@ -121,10 +121,10 @@ func NewDataFile(directory string, subjectID int, expName string) (*DataFile, er
 			directory = DataFileDirectory
 		}
 	}
-	
+
 	timestamp := time.Now().Format("200601021504")
 	filename := fmt.Sprintf("%s_%03d_%s.xpd", expName, subjectID, timestamp)
-	
+
 	base, err := NewOutputFile(directory, filename)
 	if err != nil {
 		return nil, err
@@ -155,7 +155,7 @@ func NewDataFile(directory string, subjectID int, expName string) (*DataFile, er
 	df.WriteComment("--SUBJECT INFO")
 	df.WriteComment(fmt.Sprintf("s id: %d", subjectID))
 	df.WriteComment("#")
-	
+
 	if err := df.Save(); err != nil {
 		return nil, err
 	}
@@ -169,7 +169,7 @@ func NewDataFile(directory string, subjectID int, expName string) (*DataFile, er
 func (df *DataFile) Add(data ...interface{}) {
 	parts := make([]string, 0, len(data)+1)
 	parts = append(parts, fmt.Sprint(df.SubjectID))
-	
+
 	for _, d := range data {
 		s := fmt.Sprint(d)
 		if strings.Contains(s, df.Delimiter) || strings.Contains(s, "\"") {
@@ -178,7 +178,7 @@ func (df *DataFile) Add(data ...interface{}) {
 		}
 		parts = append(parts, s)
 	}
-	
+
 	df.WriteLine(strings.Join(parts, df.Delimiter))
 }
 

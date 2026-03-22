@@ -8,7 +8,6 @@ import (
 	"log"
 	"math/rand"
 
-	"github.com/chrplr/goxpyriment/clock"
 	"github.com/chrplr/goxpyriment/control"
 	"github.com/chrplr/goxpyriment/stimuli"
 )
@@ -64,33 +63,21 @@ func main() {
 	// 3. Run the experiment logic
 	err := exp.Run(func() error {
 		// Instructions
-		instructions := stimuli.NewTextBox(instrText, 800, control.FPoint{X: 0, Y: 0}, control.DefaultTextColor)
-		if err := exp.Show(instructions); err != nil {
-			return err
-		}
-		if err := exp.Keyboard.WaitKey(control.K_SPACE); err != nil {
-			return err
-		}
+		exp.ShowInstructions(instrText)
 
 		// Loop through trials
 		for i, t := range trials {
 			// Blank screen
-			if err := exp.Blank(1000); err != nil {
-				return err
-			}
+			exp.Blank(1000)
 
 			// Stimulus
 			stim := stimuli.NewTextLine(t.word, 0, 0, t.color)
-			if err := exp.Show(stim); err != nil {
-				return err
-			}
+			exp.Show(stim)
 
 			// Wait for response
 			responseKeys := []control.Keycode{control.K_R, control.K_G, control.K_B, control.K_Y}
-			key, rt, err := exp.Keyboard.WaitKeysRT(responseKeys, -1)
-			if err != nil {
-				return err
-			}
+			key, rt, _ := exp.Keyboard.WaitKeysRT(responseKeys, -1)
+
 			var resp string
 			switch key {
 			case control.K_R:
@@ -108,7 +95,7 @@ func main() {
 			fmt.Printf("Trial %d: Word=%s, Color=%s, Resp=%s, RT=%d ms, Correct=%v, Congruent=%v\n", i, t.word, t.name, resp, rt, correct, congruent)
 
 			// Small pause between trials
-			clock.Wait(500)
+			exp.Wait(500)
 		}
 
 		return control.EndLoop // Graceful exit

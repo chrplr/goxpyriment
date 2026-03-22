@@ -42,13 +42,13 @@ import (
 
 // gratingState holds the per-pixel spatial data that is constant across frames.
 type gratingState struct {
-	w, h        int
-	pixels      []byte    // RGBA pixel buffer, w*h*4 bytes; reused every frame
-	spatialArg  []float64 // 2π × spatialFreq × x_projected[i], one entry per pixel
-	envelope    []float64 // Gaussian envelope [0,1] per pixel; nil for rectangular
-	alphaLUT    []byte    // pre-baked uint8 alpha per pixel; nil for rectangular
-	meanGray    float64   // bgLuminance × 255
-	amplitude   float64   // contrast × meanGray (peak grating swing in 0-255 units)
+	w, h       int
+	pixels     []byte    // RGBA pixel buffer, w*h*4 bytes; reused every frame
+	spatialArg []float64 // 2π × spatialFreq × x_projected[i], one entry per pixel
+	envelope   []float64 // Gaussian envelope [0,1] per pixel; nil for rectangular
+	alphaLUT   []byte    // pre-baked uint8 alpha per pixel; nil for rectangular
+	meanGray   float64   // bgLuminance × 255
+	amplitude  float64   // contrast × meanGray (peak grating swing in 0-255 units)
 }
 
 // buildGratingState pre-computes spatialArg and (when sigma > 0) the Gaussian
@@ -56,12 +56,12 @@ type gratingState struct {
 // sigma = 0 selects a rectangular (uniform) aperture.
 func buildGratingState(w, h int, orientation, spatialFreqCPP, bgLuminance, contrast, sigma float64) gratingState {
 	g := gratingState{
-		w:         w,
-		h:         h,
-		pixels:    make([]byte, w*h*4),
+		w:          w,
+		h:          h,
+		pixels:     make([]byte, w*h*4),
 		spatialArg: make([]float64, w*h),
-		meanGray:  bgLuminance * 255.0,
-		amplitude: contrast * bgLuminance * 255.0,
+		meanGray:   bgLuminance * 255.0,
+		amplitude:  contrast * bgLuminance * 255.0,
 	}
 	if sigma > 0 {
 		g.envelope = make([]float64, w*h)

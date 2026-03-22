@@ -6,13 +6,14 @@ package main
 import (
 	"flag"
 	"fmt"
-	"github.com/chrplr/goxpyriment/clock"
-	"github.com/chrplr/goxpyriment/control"
-	"github.com/chrplr/goxpyriment/stimuli"
-	"github.com/Zyko0/go-sdl3/sdl"
 	"log"
 	"math"
 	"math/rand"
+
+	"github.com/Zyko0/go-sdl3/sdl"
+	"github.com/chrplr/goxpyriment/clock"
+	"github.com/chrplr/goxpyriment/control"
+	"github.com/chrplr/goxpyriment/stimuli"
 )
 
 // Constants
@@ -20,7 +21,7 @@ const (
 	NShapeTotal       = 24
 	NShapesPerColor   = 12
 	NTripletsPerColor = 4
-	NRepetitions      = 24 // Number of cover task repetitions per color
+	NRepetitions      = 24  // Number of cover task repetitions per color
 	NFamiliarization  = 624 // Total shapes in interleaved stream
 )
 
@@ -84,7 +85,6 @@ func main() {
 		soa = 400
 		stimDuration = 200
 	}
-
 
 	stream := generateInterleavedStream(redTriplets, greenTriplets)
 

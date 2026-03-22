@@ -13,8 +13,8 @@ import (
 
 // Default Experiment settings
 const (
-	DefaultWindowWidth  = 800         // Default width of the experiment window in pixels.
-	DefaultWindowHeight = 600         // Default height of the experiment window in pixels.
+	DefaultWindowWidth  = 800           // Default width of the experiment window in pixels.
+	DefaultWindowHeight = 600           // Default height of the experiment window in pixels.
 	DefaultWindowTitle  = "Goxpyriment" // Default title of the experiment window.
 )
 
@@ -27,16 +27,16 @@ var (
 
 // Common colors
 var (
-	Black    = sdl.Color{R: 0, G: 0, B: 0, A: 255}
-	White    = sdl.Color{R: 255, G: 255, B: 255, A: 255}
-	Red      = sdl.Color{R: 255, G: 0, B: 0, A: 255}
-	Green    = sdl.Color{R: 0, G: 255, B: 0, A: 255}
-	Blue     = sdl.Color{R: 0, G: 0, B: 255, A: 255}
-	Yellow   = sdl.Color{R: 255, G: 255, B: 0, A: 255}
-	Magenta  = sdl.Color{R: 255, G: 0, B: 255, A: 255}
-	Cyan     = sdl.Color{R: 0, G: 255, B: 255, A: 255}
-	Gray     = sdl.Color{R: 128, G: 128, B: 128, A: 255}
-	DarkGray = sdl.Color{R: 50, G: 50, B: 50, A: 255}
+	Black     = sdl.Color{R: 0, G: 0, B: 0, A: 255}
+	White     = sdl.Color{R: 255, G: 255, B: 255, A: 255}
+	Red       = sdl.Color{R: 255, G: 0, B: 0, A: 255}
+	Green     = sdl.Color{R: 0, G: 255, B: 0, A: 255}
+	Blue      = sdl.Color{R: 0, G: 0, B: 255, A: 255}
+	Yellow    = sdl.Color{R: 255, G: 255, B: 0, A: 255}
+	Magenta   = sdl.Color{R: 255, G: 0, B: 255, A: 255}
+	Cyan      = sdl.Color{R: 0, G: 255, B: 255, A: 255}
+	Gray      = sdl.Color{R: 128, G: 128, B: 128, A: 255}
+	DarkGray  = sdl.Color{R: 50, G: 50, B: 50, A: 255}
 	LightGray = sdl.Color{R: 200, G: 200, B: 200, A: 255}
 )
 
@@ -135,4 +135,3 @@ func FontFromMemory(data []byte, size float32) (*ttf.Font, error) {
 func FontFromFile(path string, size float32) (*ttf.Font, error) {
 	return ttf.OpenFont(path, size)
 }
-

@@ -4,8 +4,8 @@
 package stimuli
 
 import (
-	"github.com/chrplr/goxpyriment/io"
 	"github.com/Zyko0/go-sdl3/sdl"
+	"github.com/chrplr/goxpyriment/io"
 )
 
 // Line is a line segment from Start to End in center-based coordinates, with
@@ -36,11 +36,11 @@ func (l *Line) Draw(screen *io.Screen) error {
 	if err := screen.Renderer.SetDrawColor(l.Color.R, l.Color.G, l.Color.B, l.Color.A); err != nil {
 		return err
 	}
-	
+
 	x1, y1 := screen.CenterToSDL(l.Start.X, l.Start.Y)
 	x2, y2 := screen.CenterToSDL(l.End.X, l.End.Y)
-	
-	// For simplicity, just use RenderLine. 
+
+	// For simplicity, just use RenderLine.
 	// For thicker lines, we'd need to draw a rotated rectangle.
 	return screen.Renderer.RenderLine(x1, y1, x2, y2)
 }

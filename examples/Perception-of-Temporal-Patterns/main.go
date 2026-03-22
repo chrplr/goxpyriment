@@ -46,9 +46,9 @@ var cymbalBytes []byte
 // ── Timing constants ──────────────────────────────────────────────────────────
 
 const (
-	unitMs    = 200 // smallest inter-onset interval (ms)
-	toneDurMs = 50  // tone on-duration (ms)
-	toneRampMs = 5  // linear ramp applied at onset/offset (ms)
+	unitMs     = 200 // smallest inter-onset interval (ms)
+	toneDurMs  = 50  // tone on-duration (ms)
+	toneRampMs = 5   // linear ramp applied at onset/offset (ms)
 )
 
 // ── Sequence definitions ──────────────────────────────────────────────────────

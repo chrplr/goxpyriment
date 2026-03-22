@@ -12,8 +12,8 @@ import (
 	"path/filepath"
 	"syscall"
 
-	"github.com/chrplr/goxpyriment/control"
 	"github.com/chrplr/goxpyriment/clock"
+	"github.com/chrplr/goxpyriment/control"
 	"github.com/chrplr/goxpyriment/stimuli"
 )
 
@@ -32,7 +32,9 @@ func main() {
 
 	var videoFiles []string
 	for _, file := range files {
-		if file.IsDir() { continue }
+		if file.IsDir() {
+			continue
+		}
 		ext := filepath.Ext(file.Name())
 		if ext == ".mpg" || ext == ".mpeg" {
 			videoFiles = append(videoFiles, filepath.Join("assets", file.Name()))
@@ -45,7 +47,9 @@ func main() {
 	}
 
 	for i, videoPath := range videoFiles {
-		if terminate { break }
+		if terminate {
+			break
+		}
 
 		fmt.Printf("Playing video %d/%d: %s\n", i+1, len(videoFiles), videoPath)
 
@@ -66,7 +70,9 @@ func main() {
 			}
 
 			if err := vid.Update(); err != nil {
-				if err == io.EOF { return control.EndLoop }
+				if err == io.EOF {
+					return control.EndLoop
+				}
 				return err
 			}
 
@@ -74,7 +80,9 @@ func main() {
 			vid.Draw(exp.Screen, 0, 0)
 			exp.Screen.Update()
 
-			if !vid.IsPlaying() { return control.EndLoop }
+			if !vid.IsPlaying() {
+				return control.EndLoop
+			}
 
 			key, _, err := exp.HandleEvents()
 			if err == control.EndLoop {
@@ -90,7 +98,9 @@ func main() {
 				}
 			}
 
-			if key == control.K_S { return control.EndLoop }
+			if key == control.K_S {
+				return control.EndLoop
+			}
 
 			return nil
 		})
@@ -104,7 +114,9 @@ func main() {
 			for clock.GetTime()-gapStartTime < 4000 {
 				key, _, err := exp.HandleEvents()
 				if err == control.EndLoop || key != 0 {
-					if err == control.EndLoop { terminate = true }
+					if err == control.EndLoop {
+						terminate = true
+					}
 					break
 				}
 				select {
@@ -113,7 +125,9 @@ func main() {
 					break
 				default:
 				}
-				if terminate { break }
+				if terminate {
+					break
+				}
 				clock.Wait(10)
 			}
 		}

@@ -15,8 +15,9 @@ import (
 // Linux ppdev ioctl constants derived from <linux/ppdev.h>.
 //
 // Encoding: _IO(type,nr)  = (type<<8)|nr
-//           _IOW(type,nr,T) = (1<<30)|(sizeof(T)<<16)|(type<<8)|nr
-//           _IOR(type,nr,T) = (2<<30)|(sizeof(T)<<16)|(type<<8)|nr
+//
+//	_IOW(type,nr,T) = (1<<30)|(sizeof(T)<<16)|(type<<8)|nr
+//	_IOR(type,nr,T) = (2<<30)|(sizeof(T)<<16)|(type<<8)|nr
 //
 // type = 'p' = 0x70, sizeof(uint8) = 1.
 const (

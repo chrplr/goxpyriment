@@ -75,7 +75,9 @@ func main() {
 
 	// Show instructions
 	if err := showInstructions(exp); err != nil {
-		if control.IsEndLoop(err) { return }
+		if control.IsEndLoop(err) {
+			return
+		}
 		log.Fatalf("instruction error: %v", err)
 	}
 
@@ -116,17 +118,33 @@ func main() {
 		rightShape.SetPosition(control.FPoint{X: 150, Y: 0})
 
 		// Fixation period
-		if err := exp.Screen.Clear(); err != nil { log.Fatal(err) }
-		if err := fixation.Draw(exp.Screen); err != nil { log.Fatal(err) }
-		if err := exp.Screen.Update(); err != nil { log.Fatal(err) }
+		if err := exp.Screen.Clear(); err != nil {
+			log.Fatal(err)
+		}
+		if err := fixation.Draw(exp.Screen); err != nil {
+			log.Fatal(err)
+		}
+		if err := exp.Screen.Update(); err != nil {
+			log.Fatal(err)
+		}
 		clock.Wait(500)
 
 		// Show stimulus
-		if err := exp.Screen.Clear(); err != nil { log.Fatal(err) }
-		if err := fixation.Draw(exp.Screen); err != nil { log.Fatal(err) }
-		if err := leftShape.Draw(exp.Screen); err != nil { log.Fatal(err) }
-		if err := rightShape.Draw(exp.Screen); err != nil { log.Fatal(err) }
-		if err := exp.Screen.Update(); err != nil { log.Fatal(err) }
+		if err := exp.Screen.Clear(); err != nil {
+			log.Fatal(err)
+		}
+		if err := fixation.Draw(exp.Screen); err != nil {
+			log.Fatal(err)
+		}
+		if err := leftShape.Draw(exp.Screen); err != nil {
+			log.Fatal(err)
+		}
+		if err := rightShape.Draw(exp.Screen); err != nil {
+			log.Fatal(err)
+		}
+		if err := exp.Screen.Update(); err != nil {
+			log.Fatal(err)
+		}
 
 		startTime := clock.GetTime()
 
@@ -136,10 +154,14 @@ func main() {
 		for {
 			key, err = exp.Keyboard.WaitKeys([]control.Keycode{control.K_S, control.K_D, control.K_ESCAPE}, -1)
 			if err != nil {
-				if control.IsEndLoop(err) { return }
+				if control.IsEndLoop(err) {
+					return
+				}
 				log.Fatalf("keyboard error: %v", err)
 			}
-			if key != 0 { break }
+			if key != 0 {
+				break
+			}
 		}
 
 		rt := clock.GetTime() - startTime
@@ -167,8 +189,12 @@ func main() {
 		)
 
 		// Blank screen (with fixation cross) between trials
-		if err := exp.Screen.Clear(); err != nil { log.Fatal(err) }
-		if err := fixation.Draw(exp.Screen); err != nil { log.Fatal(err) }
+		if err := exp.Screen.Clear(); err != nil {
+			log.Fatal(err)
+		}
+		if err := fixation.Draw(exp.Screen); err != nil {
+			log.Fatal(err)
+		}
 		exp.Screen.Update()
 		clock.Wait(500)
 	}

@@ -7,16 +7,16 @@ import (
 	"flag"
 	"log"
 
-	"github.com/chrplr/goxpyriment/assets_embed"
-	"github.com/chrplr/goxpyriment/clock"
-	"github.com/chrplr/goxpyriment/design"
-	"github.com/chrplr/goxpyriment/io"
-	"github.com/chrplr/goxpyriment/stimuli"
 	"github.com/Zyko0/go-sdl3/bin/binimg"
 	"github.com/Zyko0/go-sdl3/bin/binsdl"
 	"github.com/Zyko0/go-sdl3/bin/binttf"
 	"github.com/Zyko0/go-sdl3/sdl"
 	"github.com/Zyko0/go-sdl3/ttf"
+	"github.com/chrplr/goxpyriment/assets_embed"
+	"github.com/chrplr/goxpyriment/clock"
+	"github.com/chrplr/goxpyriment/design"
+	"github.com/chrplr/goxpyriment/io"
+	"github.com/chrplr/goxpyriment/stimuli"
 )
 
 // EventState provides a convenient summary of the last processed input events.
@@ -80,6 +80,13 @@ type Experiment struct {
 	event EventState
 }
 
+// exitPanic is a internal sentinel used to abort the experiment loop
+// gracefully (e.g. on ESC or window close) without requiring manual
+// error propagation in every line of user code.
+type exitPanic struct {
+	err error
+}
+
 // NewExperiment creates a new Experiment instance with the requested logical
 // window size, fullscreen flag, background/foreground colors, and default font size.
 //
@@ -141,8 +148,14 @@ func NewExperimentFromFlags(name string, bg, fg sdl.Color, fontSize float32) *Ex
 //	stim.Present(exp.Screen, true, true)
 //
 // This is the standard way to display a stimulus in a trial loop.
+// If the user requests to exit during presentation, this method will panic
+// with an internal sentinel to abort the experiment loop gracefully.
 func (e *Experiment) Show(v stimuli.VisualStimulus) error {
-	return v.Present(e.Screen, true, true)
+	err := v.Present(e.Screen, true, true)
+	if IsEndLoop(err) {
+		panic(exitPanic{err: err})
+	}
+	return err
 }
 
 // ShowInstructions displays a centered text block and waits for the
@@ -163,7 +176,11 @@ func (e *Experiment) ShowInstructions(text string) error {
 	if err := e.Show(tb); err != nil {
 		return err
 	}
-	return e.Keyboard.WaitKey(K_SPACE)
+	err := e.Keyboard.WaitKey(K_SPACE)
+	if IsEndLoop(err) {
+		panic(exitPanic{err: err})
+	}
+	return err
 }
 
 // Blank clears the screen and keeps it blank for the given number of
@@ -171,13 +188,34 @@ func (e *Experiment) ShowInstructions(text string) error {
 //
 //	exp.Screen.Clear()
 //	exp.Screen.Update()
-//	clock.Wait(ms)
+//	exp.Wait(ms)
 func (e *Experiment) Blank(ms int) error {
 	if err := e.Screen.ClearAndUpdate(); err != nil {
 		return err
 	}
-	clock.Wait(ms)
-	return nil
+	return e.Wait(ms)
+}
+
+// Wait blocks for the given number of milliseconds while keeping the OS
+// responsive by pumping SDL events. If a quit event or ESC key is detected
+// during the wait, it panics with an internal sentinel to exit gracefully.
+func (e *Experiment) Wait(ms int) error {
+	start := sdl.Ticks()
+	for {
+		elapsed := int(sdl.Ticks() - start)
+		if elapsed >= ms {
+			return nil
+		}
+
+		// Pump events via the central PollEvents
+		state := e.PollEvents(nil)
+		if state.QuitRequested {
+			panic(exitPanic{err: sdl.EndLoop})
+		}
+
+		// Small sleep to prevent 100% CPU usage
+		clock.Wait(1)
+	}
 }
 
 // SetOutputDirectory overrides the default folder used to store .xpd result
@@ -225,7 +263,12 @@ func (e *Experiment) Initialize() error {
 		return err
 	}
 	e.Screen = screen
-	e.Keyboard = &io.Keyboard{}
+	e.Keyboard = &io.Keyboard{
+		PollKeys: func() (sdl.Keycode, bool) {
+			state := e.PollEvents(nil)
+			return state.LastKey, state.QuitRequested
+		},
+	}
 	e.Mouse = &io.Mouse{}
 
 	// Load default font if not already set
@@ -499,10 +542,20 @@ func (e *Experiment) End() {
 //   - nil          to continue the loop,
 //   - sdl.EndLoop  to terminate cleanly,
 //   - any other error, which is returned to the caller.
+//
+// If the callback (or any Experiment method called from it) panics with an
+// internal sentinel, Run will recover and return the original error.
 func (e *Experiment) Run(logic func() error) error {
-	// For simplicity in this prototype, we'll run the logic directly.
-	// In a real implementation, we'd handle the RunLoop properly.
-	return sdl.RunLoop(func() error {
+	return sdl.RunLoop(func() (err error) {
+		defer func() {
+			if r := recover(); r != nil {
+				if p, ok := r.(exitPanic); ok {
+					err = p.err
+				} else {
+					panic(r)
+				}
+			}
+		}()
 		return logic()
 	})
 }

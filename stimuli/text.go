@@ -4,9 +4,9 @@
 package stimuli
 
 import (
-	"github.com/chrplr/goxpyriment/io"
 	"github.com/Zyko0/go-sdl3/sdl"
 	"github.com/Zyko0/go-sdl3/ttf"
+	"github.com/chrplr/goxpyriment/io"
 )
 
 // TextLine is a single line of text rendered with an optional font (or the screen default).
@@ -78,7 +78,7 @@ func (t *TextLine) Draw(screen *io.Screen) error {
 				return err
 			}
 		}
-		
+
 		if t.Texture != nil {
 			destX, destY := screen.CenterToSDL(t.Position.X, t.Position.Y)
 			destRect := &sdl.FRect{
@@ -114,4 +114,3 @@ func (t *TextLine) Unload() error {
 }
 
 // GetPosition, SetPosition are provided by BaseVisual.
-

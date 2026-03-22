@@ -44,14 +44,14 @@ import (
 
 // Experiment parameters.
 const (
-	nBlocks          = 5
-	fixDurMs         = 500
-	stimDurMs        = 1000
-	itiDurMs         = 1000
-	bgGray    uint8  = 128 // mid-gray background
-	scrW             = 1024
-	scrH             = 768
-	scrDiagInch      = 17.0 // for visual-angle computation
+	nBlocks           = 5
+	fixDurMs          = 500
+	stimDurMs         = 1000
+	itiDurMs          = 1000
+	bgGray      uint8 = 128 // mid-gray background
+	scrW              = 1024
+	scrH              = 768
+	scrDiagInch       = 17.0 // for visual-angle computation
 )
 
 // luminanceLevels are the 7 gray values used as stimuli.

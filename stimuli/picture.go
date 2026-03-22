@@ -4,9 +4,9 @@
 package stimuli
 
 import (
-	"github.com/chrplr/goxpyriment/io"
-	"github.com/Zyko0/go-sdl3/sdl"
 	"github.com/Zyko0/go-sdl3/img"
+	"github.com/Zyko0/go-sdl3/sdl"
+	"github.com/chrplr/goxpyriment/io"
 )
 
 // Picture is an image stimulus loaded from a file path or from memory (e.g. embedded data).
@@ -83,7 +83,7 @@ func (p *Picture) Draw(screen *io.Screen) error {
 			return err
 		}
 	}
-	
+
 	destX, destY := screen.CenterToSDL(p.Position.X, p.Position.Y)
 	// Centering the image at the target position
 	destRect := &sdl.FRect{
@@ -92,7 +92,7 @@ func (p *Picture) Draw(screen *io.Screen) error {
 		W: p.Width,
 		H: p.Height,
 	}
-	
+
 	return screen.Renderer.RenderTexture(p.Texture, nil, destRect)
 }
 

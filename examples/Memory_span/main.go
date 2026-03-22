@@ -5,13 +5,14 @@ package main
 
 import (
 	"fmt"
-	"github.com/chrplr/goxpyriment/clock"
-	"github.com/chrplr/goxpyriment/control"
-	"github.com/chrplr/goxpyriment/stimuli"
-	"github.com/Zyko0/go-sdl3/sdl"
 	"log"
 	"math/rand"
 	"strings"
+
+	"github.com/Zyko0/go-sdl3/sdl"
+	"github.com/chrplr/goxpyriment/clock"
+	"github.com/chrplr/goxpyriment/control"
+	"github.com/chrplr/goxpyriment/stimuli"
 )
 
 type StimType int
@@ -40,9 +41,9 @@ var Letters = []string{"A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L
 var Words = []string{"CAT", "DOG", "SUN", "HAT", "BOX", "RED", "BIG", "FLY", "CUP", "BED", "PEN", "RUN", "EAT", "SIT", "TOP"}
 
 type Button struct {
-	Rect  *stimuli.Rectangle
-	Text  *stimuli.TextLine
-	Value string
+	Rect   *stimuli.Rectangle
+	Text   *stimuli.TextLine
+	Value  string
 	Bounds sdl.FRect // in SDL coordinates
 }
 
@@ -59,9 +60,9 @@ func NewButton(value string, x, y, w, h float32, screen *control.Experiment) *Bu
 	}
 
 	return &Button{
-		Rect:  rect,
-		Text:  text,
-		Value: value,
+		Rect:   rect,
+		Text:   text,
+		Value:  value,
 		Bounds: bounds,
 	}
 }
@@ -128,9 +129,12 @@ func main() {
 			// Select stimuli
 			var pool []string
 			switch tType {
-			case TypeDigit: pool = Digits
-			case TypeLetter: pool = Letters
-			case TypeWord: pool = Words
+			case TypeDigit:
+				pool = Digits
+			case TypeLetter:
+				pool = Letters
+			case TypeWord:
+				pool = Words
 			}
 
 			sequence := make([]string, length)

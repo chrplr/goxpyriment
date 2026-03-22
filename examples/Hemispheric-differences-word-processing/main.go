@@ -59,11 +59,11 @@ func main() {
 
 	exp.AddDataVariableNames([]string{
 		"trial_index",
-		"phase",    // "old" (studied) or "new"
+		"phase", // "old" (studied) or "new"
 		"word",
-		"vf",       // LVF, RVF, or "NA" for new-only items
-		"lag_tag",  // "short" or "long"
-		"lag_ms",   // intended lag between study and test (ms)
+		"vf",      // LVF, RVF, or "NA" for new-only items
+		"lag_tag", // "short" or "long"
+		"lag_ms",  // intended lag between study and test (ms)
 		"key",
 		"rt",
 		"correct",

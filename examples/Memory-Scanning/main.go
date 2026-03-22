@@ -32,11 +32,11 @@ const (
 	NoKey  = control.K_J // J = digit was not in the set
 
 	// Experiment 1 timing (Sternberg 1966)
-	DigitDurationMs = 1200  // each digit in memory set
-	DelayBeforeProbe = 2000  // delay after last digit, before warning
+	DigitDurationMs  = 1200 // each digit in memory set
+	DelayBeforeProbe = 2000 // delay after last digit, before warning
 	WarningDuration  = 500  // warning/fixation before probe
 	FeedbackDuration = 800  // show correct/incorrect
-	ITIExp1         = 1000  // inter-trial interval
+	ITIExp1          = 1000 // inter-trial interval
 
 	// Experiment 2 timing
 	ISIExp2 = 3700 // 3.7 s between response and next trial (paper)
@@ -138,12 +138,16 @@ func main() {
 			"Sternberg Experiment 1: Varied Set",
 			"You will see a series of digits (1 to 6 digits), one at a time. Memorize them.\n\nAfter a short delay, a single test digit will appear. Press F if it was IN the set you saw, J if it was NOT in the set. Respond as quickly and accurately as you can.\n\nPress SPACE to start.",
 		); err != nil {
-			if control.IsEndLoop(err) { return }
+			if control.IsEndLoop(err) {
+				return
+			}
 			log.Fatal(err)
 		}
 		// Training block (10 trials, no data logging).
 		if err := runExp1(exp, trainingExp1, digitStim, fixation, blank, waitYesNo, showFeedback, false); err != nil {
-			if control.IsEndLoop(err) { return }
+			if control.IsEndLoop(err) {
+				return
+			}
 			log.Fatal(err)
 		}
 		// Training finished screen.
@@ -157,18 +161,24 @@ func main() {
 			log.Fatal(err)
 		}
 		if _, err := exp.Keyboard.Wait(); err != nil {
-			if control.IsEndLoop(err) { return }
+			if control.IsEndLoop(err) {
+				return
+			}
 			log.Fatal(err)
 		}
 
 		// Main experimental block (data logged).
 		if err := runExp1(exp, trialsExp1, digitStim, fixation, blank, waitYesNo, showFeedback, true); err != nil {
-			if control.IsEndLoop(err) { return }
+			if control.IsEndLoop(err) {
+				return
+			}
 			log.Fatal(err)
 		}
 		if *expNum == 0 {
 			if err := runInstructions("Break", "End of Experiment 1.\n\nPress SPACE to continue to Experiment 2."); err != nil {
-				if control.IsEndLoop(err) { return }
+				if control.IsEndLoop(err) {
+					return
+				}
 				log.Fatal(err)
 			}
 		}
@@ -181,12 +191,16 @@ func main() {
 			"Sternberg Experiment 2: Fixed Set",
 			"In each block you will be told a small set of digits to remember. Then you will see a series of test digits. Press F if the digit is IN your memorized set, J if it is NOT. The set stays the same for the whole block.\n\nPress SPACE to start.",
 		); err != nil {
-			if control.IsEndLoop(err) { return }
+			if control.IsEndLoop(err) {
+				return
+			}
 			log.Fatal(err)
 		}
 		// Training block (10 trials, no data logging).
 		if err := runExp2(exp, [][]trialExp2{trainingExp2}, digitStim, fixation, blank, waitYesNo, showFeedback, false); err != nil {
-			if control.IsEndLoop(err) { return }
+			if control.IsEndLoop(err) {
+				return
+			}
 			log.Fatal(err)
 		}
 		// Training finished screen.
@@ -200,13 +214,17 @@ func main() {
 			log.Fatal(err)
 		}
 		if _, err := exp.Keyboard.Wait(); err != nil {
-			if control.IsEndLoop(err) { return }
+			if control.IsEndLoop(err) {
+				return
+			}
 			log.Fatal(err)
 		}
 
 		// Main experimental blocks (data logged).
 		if err := runExp2(exp, blocksExp2, digitStim, fixation, blank, waitYesNo, showFeedback, true); err != nil {
-			if control.IsEndLoop(err) { return }
+			if control.IsEndLoop(err) {
+				return
+			}
 			log.Fatal(err)
 		}
 	}

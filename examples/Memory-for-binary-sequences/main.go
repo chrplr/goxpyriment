@@ -59,8 +59,8 @@ const (
 // ── Sequence definitions ──────────────────────────────────────────────────────
 
 type seqDef struct {
-	id           int
-	items        [16]byte // 0 = item A, 1 = item B
+	id            int
+	items         [16]byte // 0 = item A, 1 = item B
 	lotComplexity int
 }
 

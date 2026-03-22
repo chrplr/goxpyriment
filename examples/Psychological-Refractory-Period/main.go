@@ -42,13 +42,13 @@ const (
 	FreqLow        = 400.0
 	FreqHigh       = 900.0
 
-	FixationMs  = 500  // fixation cross duration
-	TimeoutMs   = 3000 // response window timeout (from S2 onset)
-	ITIMs       = 1000 // inter-trial interval
+	FixationMs = 500  // fixation cross duration
+	TimeoutMs  = 3000 // response window timeout (from S2 onset)
+	ITIMs      = 1000 // inter-trial interval
 
-	PracticeTrials  = 16  // 1 rep × 16 conditions
-	TrialsPerBlock  = 48  // 3 reps × 16 conditions
-	NMainBlocks     = 3
+	PracticeTrials = 16 // 1 rep × 16 conditions
+	TrialsPerBlock = 48 // 3 reps × 16 conditions
+	NMainBlocks    = 3
 )
 
 var SOALevels = []int{50, 150, 400, 800} // ms
@@ -81,8 +81,8 @@ func generateTone(freqHz float64, durationMs, rampMs int) []byte {
 // ─── Tone player ─────────────────────────────────────────────────────────────
 
 type tonePlayer struct {
-	stream  *sdl.AudioStream
-	toneLow []byte
+	stream   *sdl.AudioStream
+	toneLow  []byte
 	toneHigh []byte
 }
 
@@ -119,9 +119,9 @@ func (p *tonePlayer) destroy() { p.stream.Destroy() }
 // ─── Trial definition ────────────────────────────────────────────────────────
 
 type trialDef struct {
-	soaMs   int
-	highTone bool   // true = 900 Hz, false = 400 Hz
-	letterA  bool   // true = 'A', false = 'B'
+	soaMs    int
+	highTone bool // true = 900 Hz, false = 400 Hz
+	letterA  bool // true = 'A', false = 'B'
 }
 
 // buildTrialList returns a balanced, shuffled slice of trial definitions.
@@ -144,23 +144,23 @@ func buildTrialList(reps int) []trialDef {
 // ─── Single trial ────────────────────────────────────────────────────────────
 
 type trialResult struct {
-	trialNum  int
-	soaMs     int
-	s1Type    string // "Low" or "High"
-	s2Type    string // "A" or "B"
-	rt1Ms     int64  // RT for Task 1, -1 if no response
-	rt2Ms     int64  // RT for Task 2 (relative to S2 onset), -1 if no response
-	acc1      bool
-	acc2      bool
-	orderErr  bool // Task 2 key pressed before Task 1 key
-	timeout   bool
+	trialNum int
+	soaMs    int
+	s1Type   string // "Low" or "High"
+	s2Type   string // "A" or "B"
+	rt1Ms    int64  // RT for Task 1, -1 if no response
+	rt2Ms    int64  // RT for Task 2 (relative to S2 onset), -1 if no response
+	acc1     bool
+	acc2     bool
+	orderErr bool // Task 2 key pressed before Task 1 key
+	timeout  bool
 }
 
 func runTrial(exp *control.Experiment, player *tonePlayer,
 	t trialDef, trialNum int,
 	fixCross *stimuli.FixCross,
 	stimA, stimB *stimuli.TextLine,
-	showFeedback bool) (trialResult, error) {
+	showFeedback bool) trialResult {
 
 	res := trialResult{
 		trialNum: trialNum,
@@ -180,15 +180,13 @@ func runTrial(exp *control.Experiment, player *tonePlayer,
 	}
 
 	// 1. Fixation.
-	if err := exp.Show(fixCross); err != nil {
-		return res, err
-	}
-	clock.Wait(FixationMs)
+	exp.Show(fixCross)
+	exp.Wait(FixationMs)
 
 	// 2. S1 onset — play tone and record T0.
 	t0, err := player.play(t.highTone)
 	if err != nil {
-		return res, fmt.Errorf("play tone: %w", err)
+		log.Printf("Warning: play tone failed: %v", err)
 	}
 
 	// 3. SOA wait, then show S2.
@@ -210,10 +208,7 @@ func runTrial(exp *control.Experiment, player *tonePlayer,
 		if now >= soaDeadline {
 			break
 		}
-		k, kRt, err := exp.Keyboard.WaitKeysRT(allKeys, int(soaDeadline-now))
-		if err != nil {
-			return res, err
-		}
+		k, kRt, _ := exp.Keyboard.WaitKeysRT(allKeys, int(soaDeadline-now))
 		if k == 0 {
 			break // timeout
 		}
@@ -237,18 +232,10 @@ func runTrial(exp *control.Experiment, player *tonePlayer,
 		s2Stim = stimB
 	}
 	// Draw fixation + letter together.
-	if err := exp.Screen.Clear(); err != nil {
-		return res, err
-	}
-	if err := fixCross.Draw(exp.Screen); err != nil {
-		return res, err
-	}
-	if err := s2Stim.Draw(exp.Screen); err != nil {
-		return res, err
-	}
-	if err := exp.Screen.Update(); err != nil {
-		return res, err
-	}
+	_ = exp.Screen.Clear()
+	_ = fixCross.Draw(exp.Screen)
+	_ = s2Stim.Draw(exp.Screen)
+	_ = exp.Screen.Update()
 
 	// 5. Response window — collect any remaining responses until timeout.
 	deadline := tSOA + int64(TimeoutMs)
@@ -257,10 +244,7 @@ func runTrial(exp *control.Experiment, player *tonePlayer,
 		if now >= deadline {
 			break
 		}
-		k, kRt, err := exp.Keyboard.WaitKeysRT(allKeys, int(deadline-now))
-		if err != nil {
-			return res, err
-		}
+		k, kRt, _ := exp.Keyboard.WaitKeysRT(allKeys, int(deadline-now))
 		if k == 0 {
 			break // timeout
 		}
@@ -276,9 +260,7 @@ func runTrial(exp *control.Experiment, player *tonePlayer,
 	}
 
 	// Clear S2.
-	if err := exp.Show(fixCross); err != nil {
-		return res, err
-	}
+	exp.Show(fixCross)
 
 	// 6. Compute results.
 	if r1Time != -1 {
@@ -315,18 +297,14 @@ func runTrial(exp *control.Experiment, player *tonePlayer,
 			fbColor = control.Red
 		}
 		fb := stimuli.NewTextLine(msg, 0, 0, fbColor)
-		if err := exp.Show(fb); err != nil {
-			return res, err
-		}
-		clock.Wait(700)
+		exp.Show(fb)
+		exp.Wait(700)
 	}
 
 	// 8. ITI.
-	if err := exp.Blank(ITIMs); err != nil {
-		return res, err
-	}
+	exp.Blank(ITIMs)
 
-	return res, nil
+	return res
 }
 
 // ─── Block runner ─────────────────────────────────────────────────────────────
@@ -335,14 +313,11 @@ func runBlock(exp *control.Experiment, player *tonePlayer,
 	trials []trialDef, startTrialNum int,
 	fixCross *stimuli.FixCross,
 	stimA, stimB *stimuli.TextLine,
-	showFeedback bool) ([]trialResult, error) {
+	showFeedback bool) []trialResult {
 
 	var results []trialResult
 	for i, t := range trials {
-		r, err := runTrial(exp, player, t, startTrialNum+i, fixCross, stimA, stimB, showFeedback)
-		if err != nil {
-			return results, err
-		}
+		r := runTrial(exp, player, t, startTrialNum+i, fixCross, stimA, stimB, showFeedback)
 		results = append(results, r)
 
 		rt1Str := fmt.Sprintf("%d", r.rt1Ms)
@@ -360,7 +335,7 @@ func runBlock(exp *control.Experiment, player *tonePlayer,
 		fmt.Printf("Trial %3d  SOA=%3d  S1=%s S2=%s  RT1=%s RT2=%s  acc1=%v acc2=%v  orderErr=%v\n",
 			r.trialNum, r.soaMs, r.s1Type, r.s2Type, rt1Str, rt2Str, r.acc1, r.acc2, r.orderErr)
 	}
-	return results, nil
+	return results
 }
 
 // ─── main ─────────────────────────────────────────────────────────────────────
@@ -403,31 +378,16 @@ func main() {
 			"Always respond to the TONE first, then to the letter.\n" +
 			"Respond as quickly and accurately as possible.\n\n" +
 			"Press SPACE to begin the practice block."
-		instr := stimuli.NewTextBox(instrText, 900, control.Point(0, 0), control.White)
-		if err := exp.Show(instr); err != nil {
-			return err
-		}
-		if err := exp.Keyboard.WaitKey(control.K_SPACE); err != nil {
-			return err
-		}
+		exp.ShowInstructions(instrText)
 
 		// ── Practice block ───────────────────────────────────────────────────
 		practiceTrials := buildTrialList(1) // 16 trials = 1 rep
 		practiceTrials = practiceTrials[:PracticeTrials]
 
-		notice := stimuli.NewTextBox(
-			"PRACTICE BLOCK\n\nFeedback will be shown after each trial.\n\nPress SPACE to start.",
-			800, control.Point(0, 0), control.White)
-		if err := exp.Show(notice); err != nil {
-			return err
-		}
-		if err := exp.Keyboard.WaitKey(control.K_SPACE); err != nil {
-			return err
-		}
+		notice := "PRACTICE BLOCK\n\nFeedback will be shown after each trial.\n\nPress SPACE to start."
+		exp.ShowInstructions(notice)
 
-		if _, err := runBlock(exp, player, practiceTrials, 0, fixCross, stimA, stimB, true); err != nil {
-			return err
-		}
+		runBlock(exp, player, practiceTrials, 0, fixCross, stimA, stimB, true)
 
 		// ── Main blocks ──────────────────────────────────────────────────────
 		trialCounter := 0
@@ -437,34 +397,18 @@ func main() {
 			blockMsg := fmt.Sprintf(
 				"Block %d of %d\n\nNo feedback will be shown.\n\nPress SPACE to begin.",
 				block, NMainBlocks)
-			blockNotice := stimuli.NewTextBox(blockMsg, 700, control.Point(0, 0), control.White)
-			if err := exp.Show(blockNotice); err != nil {
-				return err
-			}
-			if err := exp.Keyboard.WaitKey(control.K_SPACE); err != nil {
-				return err
-			}
+			exp.ShowInstructions(blockMsg)
 
-			if _, err := runBlock(exp, player, blockTrials, trialCounter+1, fixCross, stimA, stimB, false); err != nil {
-				return err
-			}
+			runBlock(exp, player, blockTrials, trialCounter+1, fixCross, stimA, stimB, false)
 			trialCounter += len(blockTrials)
 		}
 
 		// ── Save & goodbye ───────────────────────────────────────────────────
-		if err := exp.Data.Save(); err != nil {
-			log.Printf("warning: save data: %v", err)
-		}
+		_ = exp.Data.Save()
 
-		goodbye := stimuli.NewTextBox(
-			"Experiment complete!\n\nThank you for your participation.\n\nPress SPACE to exit.",
-			700, control.Point(0, 0), control.White)
-		if err := exp.Show(goodbye); err != nil {
-			return err
-		}
-		if err := exp.Keyboard.WaitKey(control.K_SPACE); err != nil {
-			return err
-		}
+		goodbye := "Experiment complete!\n\nThank you for your participation.\n\nPress SPACE to exit."
+		exp.ShowInstructions(goodbye)
+
 		return control.EndLoop
 	})
 

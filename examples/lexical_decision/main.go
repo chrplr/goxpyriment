@@ -12,7 +12,6 @@ import (
 	"os"
 
 	"github.com/chrplr/goxpyriment/control"
-	"github.com/chrplr/goxpyriment/clock"
 	"github.com/chrplr/goxpyriment/stimuli"
 )
 
@@ -88,41 +87,26 @@ func main() {
 	cue := stimuli.NewFixCross(50, 4, control.DefaultTextColor)
 
 	instrText := fmt.Sprintf("When you'll see a stimulus, your task to decide, as quickly as possible, whether it is a word or not.\n\nif it is a word, press 'F'\n\nif it is a non-word, press 'J'\n\nPress the SPACE bar to start.")
-	instructions := stimuli.NewTextBox(instrText, 600, control.FPoint{X: 0, Y: 100}, control.DefaultTextColor)
 
 	// 6. Run the experiment logic
 	err = exp.Run(func() error {
 		// Instructions
-		if err := exp.Show(instructions); err != nil {
-			return err
-		}
-		if err := exp.Keyboard.WaitKey(control.K_SPACE); err != nil {
-			return err
-		}
+		exp.ShowInstructions(instrText)
 
 		// Loop through trials
 		for _, t := range trials {
 			// Blank screen
-			if err := exp.Blank(1000); err != nil {
-				return err
-			}
+			exp.Blank(1000)
 
 			// Cue
-			if err := exp.Show(cue); err != nil {
-				return err
-			}
-			clock.Wait(500)
+			exp.Show(cue)
+			exp.Wait(500)
 
 			// Stimulus
-			if err := exp.Show(t.stim); err != nil {
-				return err
-			}
+			exp.Show(t.stim)
 
 			// Wait for response
-			key, rt, err := exp.Keyboard.WaitKeysRT([]control.Keycode{WordResponseKey, NonWordResponseKey}, MaxResponseDelay)
-			if err != nil {
-				return err
-			}
+			key, rt, _ := exp.Keyboard.WaitKeysRT([]control.Keycode{WordResponseKey, NonWordResponseKey}, MaxResponseDelay)
 
 			// RT would be 0 or very large if wait timed out and returned 0,
 			// but RT is calculated from startTime.
@@ -132,7 +116,7 @@ func main() {
 			fmt.Printf("Trial: Item=%s, Cat=%s, Key=%d, RT=%d ms\n", t.item, t.category, key, rt)
 
 			// Small pause between trials
-			clock.Wait(500)
+			exp.Wait(500)
 		}
 
 		return control.EndLoop

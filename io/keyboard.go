@@ -10,6 +10,9 @@ import (
 // Keyboard provides blocking and non‑blocking helpers around SDL's keyboard
 // events, mirroring the high‑level API of Expyriment.
 type Keyboard struct {
+	// PollKeys is injected by the control layer to avoid direct SDL polling
+	// that discards non-keyboard events. It returns (firstKey, quitRequested).
+	PollKeys func() (sdl.Keycode, bool)
 }
 
 // Wait blocks until any key is pressed and returns its SDL keycode.
@@ -27,6 +30,42 @@ func (k *Keyboard) Wait() (sdl.Keycode, error) {
 //   - On ESC or quit, it returns sdl.EndLoop.
 func (k *Keyboard) WaitKeys(keys []sdl.Keycode, timeoutMS int) (sdl.Keycode, error) {
 	start := sdl.Ticks()
+
+	// If a callback is injected (by control.Experiment), use it to avoid
+	// discarding mouse events by directly draining the SDL queue.
+	if k.PollKeys != nil {
+		for {
+			if timeoutMS >= 0 {
+				elapsed := int(sdl.Ticks() - start)
+				if elapsed >= timeoutMS {
+					return 0, nil
+				}
+			}
+
+			keycode, quit := k.PollKeys()
+			if quit {
+				return 0, sdl.EndLoop
+			}
+
+			if keycode != 0 {
+				if keycode == sdl.K_ESCAPE {
+					return sdl.K_ESCAPE, sdl.EndLoop
+				}
+				if keys == nil {
+					return keycode, nil
+				}
+				for _, kc := range keys {
+					if keycode == kc {
+						return keycode, nil
+					}
+				}
+			}
+
+			sdl.Delay(1)
+		}
+	}
+
+	// Fallback behavior if no callback is injected
 	for {
 		var event sdl.Event
 		var hasEvent bool

@@ -4,9 +4,9 @@
 package stimuli
 
 import (
-	"github.com/chrplr/goxpyriment/io"
 	"github.com/Zyko0/go-sdl3/sdl"
 	"github.com/Zyko0/go-sdl3/ttf"
+	"github.com/chrplr/goxpyriment/io"
 )
 
 // TextBox represents a multi-line text box with wrapping and alignment.

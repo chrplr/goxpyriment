@@ -297,7 +297,6 @@ func TwoLineSplash(screen *io.Screen, imageData []byte, titleFont *ttf.Font, tit
 	return result
 }
 
-
 // contrastWith returns white on dark backgrounds and black on light ones,
 // using the standard luminance formula.
 func contrastWith(c sdl.Color) sdl.Color {

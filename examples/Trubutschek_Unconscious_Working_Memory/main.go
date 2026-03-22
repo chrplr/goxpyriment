@@ -4,12 +4,13 @@
 package main
 
 import (
-	"github.com/chrplr/goxpyriment/control"
-	"github.com/chrplr/goxpyriment/design"
-	"github.com/chrplr/goxpyriment/clock"
-	"github.com/chrplr/goxpyriment/stimuli"
 	"log"
 	"math"
+
+	"github.com/chrplr/goxpyriment/clock"
+	"github.com/chrplr/goxpyriment/control"
+	"github.com/chrplr/goxpyriment/design"
+	"github.com/chrplr/goxpyriment/stimuli"
 )
 
 const (
@@ -32,9 +33,9 @@ func getCirclePoints(num int, radius float32) []control.FPoint {
 }
 
 type TrialConfig struct {
-	TargetPosIdx int     // 0-19, or -1 for blank
-	Delay        float64 // in seconds
-	HasDistractor bool
+	TargetPosIdx     int     // 0-19, or -1 for blank
+	Delay            float64 // in seconds
+	HasDistractor    bool
 	DistractorPosIdx int
 }
 
@@ -42,30 +43,48 @@ func runTrial(exp *control.Experiment, config TrialConfig, points []control.FPoi
 	targetColor := control.Color{R: 89, G: 89, B: 89, A: 255}
 
 	// 1. Fixation (500ms)
-	if err := exp.Show(fixation); err != nil { return "", 0, err }
+	if err := exp.Show(fixation); err != nil {
+		return "", 0, err
+	}
 	clock.Wait(500)
 
 	// 2. Target (17ms)
 	if config.TargetPosIdx >= 0 {
 		p := points[config.TargetPosIdx]
 		target := stimuli.NewRectangle(p.X, p.Y, SquareSize, SquareSize, targetColor)
-		if err := exp.Screen.Clear(); err != nil { return "", 0, err }
-		if err := fixation.Draw(exp.Screen); err != nil { return "", 0, err }
-		if err := target.Draw(exp.Screen); err != nil { return "", 0, err }
-		if err := exp.Screen.Update(); err != nil { return "", 0, err }
+		if err := exp.Screen.Clear(); err != nil {
+			return "", 0, err
+		}
+		if err := fixation.Draw(exp.Screen); err != nil {
+			return "", 0, err
+		}
+		if err := target.Draw(exp.Screen); err != nil {
+			return "", 0, err
+		}
+		if err := exp.Screen.Update(); err != nil {
+			return "", 0, err
+		}
 	} else {
-		if err := exp.Show(fixation); err != nil { return "", 0, err }
+		if err := exp.Show(fixation); err != nil {
+			return "", 0, err
+		}
 	}
 	clock.Wait(17)
 
 	// 3. Post-target Fixation (17ms)
-	if err := exp.Show(fixation); err != nil { return "", 0, err }
+	if err := exp.Show(fixation); err != nil {
+		return "", 0, err
+	}
 	clock.Wait(17)
 
 	// 4. Mask (233ms)
 	// Mask consists of 4 squares at EVERY possible target location
-	if err := exp.Screen.Clear(); err != nil { return "", 0, err }
-	if err := fixation.Draw(exp.Screen); err != nil { return "", 0, err }
+	if err := exp.Screen.Clear(); err != nil {
+		return "", 0, err
+	}
+	if err := fixation.Draw(exp.Screen); err != nil {
+		return "", 0, err
+	}
 	for _, p := range points {
 		// 4 mask squares surrounding the location
 		maskColor := control.White // Usually calibrated, but using white as placeholder
@@ -79,7 +98,9 @@ func runTrial(exp *control.Experiment, config TrialConfig, points []control.FPoi
 		m4 := stimuli.NewRectangle(p.X, p.Y-offset, SquareSize, SquareSize, maskColor)
 		m4.Draw(exp.Screen)
 	}
-	if err := exp.Screen.Update(); err != nil { return "", 0, err }
+	if err := exp.Screen.Update(); err != nil {
+		return "", 0, err
+	}
 	clock.Wait(233)
 
 	// 5. Delay Period (2.5, 3.0, 3.5, 4.0s)
@@ -94,15 +115,25 @@ func runTrial(exp *control.Experiment, config TrialConfig, points []control.FPoi
 		if config.HasDistractor && !distractorShown && elapsed >= 1.5 {
 			dp := points[config.DistractorPosIdx]
 			distractor := stimuli.NewRectangle(dp.X, dp.Y, SquareSize, SquareSize, targetColor)
-			if err := exp.Screen.Clear(); err != nil { return "", 0, err }
-			if err := fixation.Draw(exp.Screen); err != nil { return "", 0, err }
-			if err := distractor.Draw(exp.Screen); err != nil { return "", 0, err }
-			if err := exp.Screen.Update(); err != nil { return "", 0, err }
+			if err := exp.Screen.Clear(); err != nil {
+				return "", 0, err
+			}
+			if err := fixation.Draw(exp.Screen); err != nil {
+				return "", 0, err
+			}
+			if err := distractor.Draw(exp.Screen); err != nil {
+				return "", 0, err
+			}
+			if err := exp.Screen.Update(); err != nil {
+				return "", 0, err
+			}
 			clock.Wait(17)
 			distractorShown = true
 		}
 
-		if err := exp.Show(fixation); err != nil { return "", 0, err }
+		if err := exp.Show(fixation); err != nil {
+			return "", 0, err
+		}
 
 		// Poll for events to allow exiting
 		if _, _, err := exp.HandleEvents(); err != nil {
@@ -116,33 +147,49 @@ func runTrial(exp *control.Experiment, config TrialConfig, points []control.FPoi
 	letters := []string{"a", "b", "c", "d", "f", "g", "h", "i", "k", "l", "m", "o", "q", "r", "s", "u", "w", "x", "y", "z"}
 	design.ShuffleList(letters)
 
-	if err := exp.Screen.Clear(); err != nil { return "", 0, err }
-	if err := fixation.Draw(exp.Screen); err != nil { return "", 0, err }
+	if err := exp.Screen.Clear(); err != nil {
+		return "", 0, err
+	}
+	if err := fixation.Draw(exp.Screen); err != nil {
+		return "", 0, err
+	}
 	for i, p := range points {
 		t := stimuli.NewTextLine(letters[i], p.X, p.Y, control.White)
 		t.Draw(exp.Screen)
 	}
-	if err := exp.Screen.Update(); err != nil { return "", 0, err }
+	if err := exp.Screen.Update(); err != nil {
+		return "", 0, err
+	}
 
 	clock.Wait(2500)
 
 	// 7. Visibility Rating (PAS)
 	vuText := stimuli.NewTextLine("Seen?", 0, 0, control.White)
-	if err := exp.Show(vuText); err != nil { return "", 0, err }
+	if err := exp.Show(vuText); err != nil {
+		return "", 0, err
+	}
 
 	ratingKey, err := exp.Keyboard.WaitKeys([]control.Keycode{control.K_1, control.K_2, control.K_3, control.K_4, control.K_KP_1, control.K_KP_2, control.K_KP_3, control.K_KP_4}, 2500)
-	if err != nil { return "", 0, err }
+	if err != nil {
+		return "", 0, err
+	}
 
 	rating := 0
 	switch ratingKey {
-	case control.K_1, control.K_KP_1: rating = 1
-	case control.K_2, control.K_KP_2: rating = 2
-	case control.K_3, control.K_KP_3: rating = 3
-	case control.K_4, control.K_KP_4: rating = 4
+	case control.K_1, control.K_KP_1:
+		rating = 1
+	case control.K_2, control.K_KP_2:
+		rating = 2
+	case control.K_3, control.K_KP_3:
+		rating = 3
+	case control.K_4, control.K_KP_4:
+		rating = 4
 	}
 
 	// ITI (1s)
-	if err := exp.Blank(1000); err != nil { return "", 0, err }
+	if err := exp.Blank(1000); err != nil {
+		return "", 0, err
+	}
 
 	return "n/a", rating, nil
 }
@@ -174,7 +221,9 @@ func main() {
 
 	// Show instructions
 	if err := showInstructions(exp); err != nil {
-		if control.IsEndLoop(err) { return }
+		if control.IsEndLoop(err) {
+			return
+		}
 		log.Fatalf("instruction error: %v", err)
 	}
 
@@ -187,18 +236,18 @@ func main() {
 	for loc := 0; loc < NumPositions; loc++ {
 		for rep := 0; rep < 8; rep++ {
 			trialConfigs = append(trialConfigs, TrialConfig{
-				TargetPosIdx: loc,
-				Delay:        []float64{2.5, 3.0, 3.5, 4.0}[design.RandInt(0, 3)],
-				HasDistractor: design.CoinFlip(0.5),
+				TargetPosIdx:     loc,
+				Delay:            []float64{2.5, 3.0, 3.5, 4.0}[design.RandInt(0, 3)],
+				HasDistractor:    design.CoinFlip(0.5),
 				DistractorPosIdx: design.RandInt(0, NumPositions-1),
 			})
 		}
 	}
 	for i := 0; i < 40; i++ {
 		trialConfigs = append(trialConfigs, TrialConfig{
-			TargetPosIdx: -1,
-			Delay:        []float64{2.5, 3.0, 3.5, 4.0}[design.RandInt(0, 3)],
-			HasDistractor: design.CoinFlip(0.5),
+			TargetPosIdx:     -1,
+			Delay:            []float64{2.5, 3.0, 3.5, 4.0}[design.RandInt(0, 3)],
+			HasDistractor:    design.CoinFlip(0.5),
 			DistractorPosIdx: design.RandInt(0, NumPositions-1),
 		})
 	}
@@ -212,9 +261,9 @@ func main() {
 			targetIdx = design.RandInt(0, NumPositions-1)
 		}
 		trainingConfigs = append(trainingConfigs, TrialConfig{
-			TargetPosIdx: targetIdx,
-			Delay:        []float64{2.5, 3.0, 3.5, 4.0}[design.RandInt(0, 3)],
-			HasDistractor: design.CoinFlip(0.5),
+			TargetPosIdx:     targetIdx,
+			Delay:            []float64{2.5, 3.0, 3.5, 4.0}[design.RandInt(0, 3)],
+			HasDistractor:    design.CoinFlip(0.5),
 			DistractorPosIdx: design.RandInt(0, NumPositions-1),
 		})
 	}
@@ -223,7 +272,9 @@ func main() {
 	for _, config := range trainingConfigs {
 		_, rating, err := runTrial(exp, config, points, fixation)
 		if err != nil {
-			if control.IsEndLoop(err) { return }
+			if control.IsEndLoop(err) {
+				return
+			}
 			log.Fatalf("training trial error: %v", err)
 		}
 
@@ -258,7 +309,9 @@ func main() {
 	for i, config := range trialConfigs {
 		_, rating, err := runTrial(exp, config, points, fixation)
 		if err != nil {
-			if control.IsEndLoop(err) { break }
+			if control.IsEndLoop(err) {
+				break
+			}
 			log.Fatalf("trial error: %v", err)
 		}
 

@@ -4,8 +4,8 @@
 package stimuli
 
 import (
-	"github.com/chrplr/goxpyriment/io"
 	"github.com/Zyko0/go-sdl3/sdl"
+	"github.com/chrplr/goxpyriment/io"
 )
 
 // Rectangle is a filled rectangle with center at (x,y) and size (w,h) in center-based coordinates.
@@ -31,7 +31,7 @@ func (r *Rectangle) Draw(screen *io.Screen) error {
 	if err := screen.Renderer.SetDrawColor(r.Color.R, r.Color.G, r.Color.B, r.Color.A); err != nil {
 		return err
 	}
-	
+
 	destX, destY := screen.CenterToSDL(r.Position.X, r.Position.Y)
 	// Centering the rectangle at the target position
 	destRect := &sdl.FRect{
@@ -40,7 +40,7 @@ func (r *Rectangle) Draw(screen *io.Screen) error {
 		W: r.Rect.W,
 		H: r.Rect.H,
 	}
-	
+
 	return screen.Renderer.RenderFillRect(destRect)
 }
 

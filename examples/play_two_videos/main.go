@@ -12,8 +12,8 @@ import (
 	"path/filepath"
 	"syscall"
 
-	"github.com/chrplr/goxpyriment/control"
 	"github.com/chrplr/goxpyriment/clock"
+	"github.com/chrplr/goxpyriment/control"
 	"github.com/chrplr/goxpyriment/stimuli"
 )
 
@@ -53,10 +53,14 @@ func main() {
 	fix := stimuli.NewFixCross(40, 4, control.White)
 
 	leftVid, err := stimuli.NewVideo(exp.Screen, leftPath)
-	if err != nil { log.Fatalf("Left video error: %v", err) }
+	if err != nil {
+		log.Fatalf("Left video error: %v", err)
+	}
 
 	rightVid, err := stimuli.NewVideo(exp.Screen, rightPath)
-	if err != nil { log.Fatalf("Right video error: %v", err) }
+	if err != nil {
+		log.Fatalf("Right video error: %v", err)
+	}
 
 	fmt.Println("Controls: [SPACE] Pause/Resume, [R] Sync Rewind, [S] Skip, [ESC] Quit")
 
@@ -125,7 +129,9 @@ func main() {
 			}
 		}
 
-		if key == control.K_S { return control.EndLoop }
+		if key == control.K_S {
+			return control.EndLoop
+		}
 
 		return nil
 	})

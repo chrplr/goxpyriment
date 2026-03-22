@@ -4,9 +4,10 @@
 package stimuli
 
 import (
-	"github.com/chrplr/goxpyriment/io"
 	"math"
+
 	"github.com/Zyko0/go-sdl3/sdl"
+	"github.com/chrplr/goxpyriment/io"
 )
 
 // Circle is a filled circle with the given radius and color; Position is center-based.
@@ -34,17 +35,17 @@ func (c *Circle) Draw(screen *io.Screen) error {
 	if err := screen.Renderer.SetDrawColor(c.Color.R, c.Color.G, c.Color.B, c.Color.A); err != nil {
 		return err
 	}
-	
+
 	cX, cY := screen.CenterToSDL(c.Position.X, c.Position.Y)
-	
+
 	// Draw a filled circle using horizontal lines
 	for dy := -c.Radius; dy <= c.Radius; dy++ {
 		dx := float32(math.Sqrt(float64(c.Radius*c.Radius - dy*dy)))
 		x1, y := cX-dx, cY+dy
-		x2 := cX+dx
+		x2 := cX + dx
 		screen.Renderer.RenderLine(x1, y, x2, y)
 	}
-	
+
 	return nil
 }
 

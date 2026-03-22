@@ -45,8 +45,8 @@
 package stimuli
 
 import (
-	"github.com/chrplr/goxpyriment/io"
 	"github.com/Zyko0/go-sdl3/sdl"
+	"github.com/chrplr/goxpyriment/io"
 )
 
 // Stimulus is the interface for all visual and auditory stimuli.
@@ -137,4 +137,3 @@ func PreloadAllVisual(screen *io.Screen, visuals []VisualStimulus) error {
 	}
 	return nil
 }
-

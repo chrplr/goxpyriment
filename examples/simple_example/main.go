@@ -6,11 +6,12 @@ package main
 import (
 	_ "embed"
 	"fmt"
+	"log"
+
+	"github.com/chrplr/goxpyriment/clock"
 	"github.com/chrplr/goxpyriment/control"
 	"github.com/chrplr/goxpyriment/design"
-	"github.com/chrplr/goxpyriment/clock"
 	"github.com/chrplr/goxpyriment/stimuli"
-	"log"
 )
 
 //go:embed assets/bonjour.wav
@@ -29,7 +30,7 @@ func main() {
 		block.AddTrial(trial, 1, false)
 	}
 
-		// 3. Prepare stimuli
+	// 3. Prepare stimuli
 	instr := stimuli.NewTextBox("Press any key to start the experiment", 600, control.FPoint{X: 0, Y: 100}, control.DefaultTextColor)
 	fixation := stimuli.NewTextLine("+", 0, 0, control.DefaultTextColor)
 	rect := stimuli.NewRectangle(0, 0, 100, 100, control.Red)
@@ -43,56 +44,36 @@ func main() {
 	// 4. Run the experiment logic
 	err := exp.Run(func() error {
 		// Instructions
-		if err := exp.Show(instr); err != nil {
-			return err
-		}
-		if _, err := exp.Keyboard.Wait(); err != nil {
-			return err
-		}
+		exp.Show(instr)
+		exp.Keyboard.Wait()
 
 		// Play sound at start
-		if err := sound.Play(); err != nil {
-			return err
-		}
-
+		_ = sound.Play()
 
 		// Loop through trials
 		for _, trial := range block.Trials {
 			fmt.Printf("Running trial %d\n", trial.ID)
 
 			// Fixation cross
-			if err := exp.Show(fixation); err != nil {
-				return err
-			}
-			clock.Wait(500)
+			exp.Show(fixation)
+			exp.Wait(500)
 
 			// Target stimulus
-			if err := exp.Show(rect); err != nil {
-				return err
-			}
+			exp.Show(rect)
 
 			// Wait for response
 			startTime := clock.GetTime()
-			_, err := exp.Keyboard.Wait()
-			if err != nil {
-				return err
-			}
+			_, _ = exp.Keyboard.Wait()
 			rt := clock.GetTime() - startTime
 			fmt.Printf("Reaction Time: %d ms\n", rt)
 
 			// Clear screen between trials
-			if err := exp.Blank(500); err != nil {
-				return err
-			}
+			exp.Blank(500)
 		}
 
 		// Finish
-		if err := exp.Show(finish); err != nil {
-			return err
-		}
-		if _, err := exp.Keyboard.Wait(); err != nil {
-			return err
-		}
+		exp.Show(finish)
+		_, _ = exp.Keyboard.Wait()
 
 		return control.EndLoop // Graceful exit
 	})

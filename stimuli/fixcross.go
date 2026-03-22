@@ -4,8 +4,8 @@
 package stimuli
 
 import (
-	"github.com/chrplr/goxpyriment/io"
 	"github.com/Zyko0/go-sdl3/sdl"
+	"github.com/chrplr/goxpyriment/io"
 )
 
 // FixCross is a centered fixation cross (horizontal and vertical lines).
@@ -33,10 +33,10 @@ func (f *FixCross) Draw(screen *io.Screen) error {
 	if err := screen.Renderer.SetDrawColor(f.Color.R, f.Color.G, f.Color.B, f.Color.A); err != nil {
 		return err
 	}
-	
+
 	cX, cY := screen.CenterToSDL(f.Position.X, f.Position.Y)
 	halfSize := f.Size / 2
-	
+
 	// Horizontal line
 	hRect := &sdl.FRect{
 		X: cX - halfSize,
@@ -47,7 +47,7 @@ func (f *FixCross) Draw(screen *io.Screen) error {
 	if err := screen.Renderer.RenderFillRect(hRect); err != nil {
 		return err
 	}
-	
+
 	// Vertical line
 	vRect := &sdl.FRect{
 		X: cX - f.LineWidth/2,

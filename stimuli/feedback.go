@@ -4,8 +4,8 @@
 package stimuli
 
 import (
-	"github.com/chrplr/goxpyriment/assets_embed"
 	"github.com/Zyko0/go-sdl3/sdl"
+	"github.com/chrplr/goxpyriment/assets_embed"
 )
 
 // PlayBuzzer plays the embedded buzzer sound synchronously on the given audio device.
@@ -17,4 +17,3 @@ func PlayBuzzer(audioDevice sdl.AudioDeviceID) error {
 func PlayPing(audioDevice sdl.AudioDeviceID) error {
 	return PlaySoundFromMemory(audioDevice, assets_embed.CorrectWav)
 }
-

@@ -2,7 +2,8 @@
 // Distributed under the GNU General Public License v3.
 //
 // Kanizsa illusory square demo, ported from:
-//   python_examples/kanizsa-expyriment_v2.py
+//
+//	python_examples/kanizsa-expyriment_v2.py
 //
 // It draws four black disks on a gray background and overlays a gray
 // central rectangle, producing the perception of an illusory square.

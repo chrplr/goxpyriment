@@ -117,7 +117,7 @@ func LatinSquareInts(n int, permutationType string) ([][]int, error) {
 		for i := 0; i < n-2; i++ {
 			tmp[i] = i + 2
 		}
-		
+
 		takeLast := true
 		for len(tmp) > 0 {
 			if takeLast {

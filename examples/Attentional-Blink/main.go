@@ -4,11 +4,12 @@
 package main
 
 import (
+	"log"
+
+	"github.com/chrplr/goxpyriment/clock"
 	"github.com/chrplr/goxpyriment/control"
 	"github.com/chrplr/goxpyriment/design"
-	"github.com/chrplr/goxpyriment/clock"
 	"github.com/chrplr/goxpyriment/stimuli"
-	"log"
 )
 
 const (
@@ -75,7 +76,9 @@ func main() {
 	exp.AddDataVariableNames([]string{"trial_idx", "has_j", "has_k", "lag", "response", "is_correct", "rt"})
 
 	if err := showInstructions(exp); err != nil {
-		if control.IsEndLoop(err) { return }
+		if control.IsEndLoop(err) {
+			return
+		}
 		log.Fatalf("instruction error: %v", err)
 	}
 
@@ -118,19 +121,25 @@ func main() {
 		items := generateLetters(config)
 
 		// A. Fixation
-		if err := exp.Show(fixation); err != nil { return "", false, 0, err }
+		if err := exp.Show(fixation); err != nil {
+			return "", false, 0, err
+		}
 		clock.Wait(FixationDuration)
 
 		// B. RSVP Stream
 		for _, char := range items {
 			txt := stimuli.NewTextLine(char, 0, 0, control.Black)
-			if err := exp.Show(txt); err != nil { return "", false, 0, err }
+			if err := exp.Show(txt); err != nil {
+				return "", false, 0, err
+			}
 			clock.Wait(ItemDuration)
 		}
 
 		// C. Response Screen
 		prompt := stimuli.NewTextLine("What did you see? (J, K, B=Both, N=Neither)", 0, 0, control.Black)
-		if err := exp.Show(prompt); err != nil { return "", false, 0, err }
+		if err := exp.Show(prompt); err != nil {
+			return "", false, 0, err
+		}
 
 		startTime := clock.GetTime()
 		key, err := exp.Keyboard.WaitKeys([]control.Keycode{control.K_J, control.K_K, control.K_B, control.K_N, control.K_ESCAPE}, -1)
@@ -167,7 +176,9 @@ func main() {
 		}
 
 		// ITI
-		if err := exp.Blank(1000); err != nil { return response, isCorrect, rt, err }
+		if err := exp.Blank(1000); err != nil {
+			return response, isCorrect, rt, err
+		}
 
 		return response, isCorrect, rt, nil
 	}
@@ -200,7 +211,9 @@ func main() {
 	for i, config := range trialConfigs {
 		response, isCorrect, rt, err := runOne(config)
 		if err != nil {
-			if control.IsEndLoop(err) { return }
+			if control.IsEndLoop(err) {
+				return
+			}
 			log.Fatalf("trial error: %v", err)
 		}
 

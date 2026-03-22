@@ -305,14 +305,14 @@ func main() {
 		// ── QUEST staircase ──────────────────────────────────────────────────
 		sc := staircase.NewQuest(staircase.QuestConfig{
 			TGuess:         *initGuess,
-			TGuessSd:       1.5,   // wide prior: ±1.5 log-units covers the plausible range
-			PThreshold:     0.82,  // 2AFC d′ ≈ 1 threshold criterion
-			Beta:           3.5,   // typical Weibull slope for contrast detection
-			Delta:          0.01,  // 1 % lapse rate
-			Gamma:          0.5,   // 2AFC lower asymptote
-			IntensityMin:   -3.0,  // log₁₀(0.001) = 0.1 % contrast
-			IntensityMax:   0.0,   // log₁₀(1.0)   = 100 % contrast
-			IntensityStep:  0.01,  // 0.01 log-unit resolution
+			TGuessSd:       1.5,  // wide prior: ±1.5 log-units covers the plausible range
+			PThreshold:     0.82, // 2AFC d′ ≈ 1 threshold criterion
+			Beta:           3.5,  // typical Weibull slope for contrast detection
+			Delta:          0.01, // 1 % lapse rate
+			Gamma:          0.5,  // 2AFC lower asymptote
+			IntensityMin:   -3.0, // log₁₀(0.001) = 0.1 % contrast
+			IntensityMax:   0.0,  // log₁₀(1.0)   = 100 % contrast
+			IntensityStep:  0.01, // 0.01 log-unit resolution
 			MaxTrials:      *nTrials,
 			EstimateMethod: "mean",
 		})

@@ -5,9 +5,10 @@ package main
 
 import (
 	"fmt"
+	"log"
+
 	"github.com/chrplr/goxpyriment/control"
 	"github.com/chrplr/goxpyriment/stimuli"
-	"log"
 )
 
 func main() {
@@ -15,11 +16,11 @@ func main() {
 	defer exp.End()
 
 	// 2. Prepare TextInput
-	ti := stimuli.NewTextInput("Please enter your name:", 
-		control.FPoint{X: 100, Y: 10}, 
-		400, 
-		control.Color{R: 50, G: 50, B: 50, A: 255}, 
-		control.Color{R: 200, G: 200, B: 200, A: 255}, 
+	ti := stimuli.NewTextInput("Please enter your name:",
+		control.FPoint{X: 100, Y: 10},
+		400,
+		control.Color{R: 50, G: 50, B: 50, A: 255},
+		control.Color{R: 200, G: 200, B: 200, A: 255},
 		control.White)
 
 	// 3. Run the experiment logic
@@ -30,15 +31,15 @@ func main() {
 		}
 
 		fmt.Printf("User entered: %s\n", name)
-		
+
 		// Show result
 		result := fmt.Sprintf("Hello, %s!\n\nPress any key to exit.", name)
 		msg := stimuli.NewTextBox(result, 600, control.FPoint{X: 0, Y: 0}, control.White)
-		
+
 		if err := exp.Show(msg); err != nil {
 			return err
 		}
-		
+
 		if _, err := exp.Keyboard.Wait(); err != nil {
 			return err
 		}

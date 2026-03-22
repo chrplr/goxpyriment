@@ -37,9 +37,9 @@ import (
 var (
 	ringAngles = []float64{2, 5, 10} // degrees of visual angle
 	ringColors = []control.Color{
-		{R: 0, G: 210, B: 255, A: 255},  // cyan  — 2°
-		{R: 255, G: 210, B: 0, A: 255},  // gold  — 5°
-		{R: 255, G: 90, B: 50, A: 255},  // coral — 10°
+		{R: 0, G: 210, B: 255, A: 255}, // cyan  — 2°
+		{R: 255, G: 210, B: 0, A: 255}, // gold  — 5°
+		{R: 255, G: 90, B: 50, A: 255}, // coral — 10°
 	}
 )
 
@@ -82,8 +82,8 @@ func askFloat(exp *control.Experiment, prompt string, min, max float64) (float64
 			control.Point(0, -120),
 			500,
 			control.Color{R: 20, G: 20, B: 20, A: 255}, // input bg
-			control.LightGray,                           // frame
-			control.White,                               // text
+			control.LightGray,                          // frame
+			control.White,                              // text
 		)
 		str, err := ti.Get(exp.Screen, exp.Keyboard)
 		if err != nil {

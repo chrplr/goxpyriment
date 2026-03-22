@@ -5,8 +5,8 @@ package main
 import (
 	"log"
 
-	"github.com/chrplr/goxpyriment/control"
 	"github.com/chrplr/goxpyriment/clock"
+	"github.com/chrplr/goxpyriment/control"
 	"github.com/chrplr/goxpyriment/stimuli"
 )
 

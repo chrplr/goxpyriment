@@ -5,12 +5,12 @@
 //
 // Demonstrates the "TestUFO" perceptual effect using a VSYNC-locked 60 Hz loop:
 //
-//   • Lane 1 (top):    Static fixation cross + moving vertical white bar.
-//                      Staring at the cross reveals the "Phantom Array" — the
-//                      bar appears to split into ghost copies.
-//   • Lane 2 (bottom): Moving white bar + co-moving green square (50 px ahead).
-//                      Tracking the square makes the bar look wide and blurry
-//                      ("Retinal Blur").
+//   - Lane 1 (top):    Static fixation cross + moving vertical white bar.
+//     Staring at the cross reveals the "Phantom Array" — the
+//     bar appears to split into ghost copies.
+//   - Lane 2 (bottom): Moving white bar + co-moving green square (50 px ahead).
+//     Tracking the square makes the bar look wide and blurry
+//     ("Retinal Blur").
 //
 // Sync-strobe mode (toggle with S) draws the bar only on even frames (50% duty
 // cycle), which sharpens the phantom effect.
@@ -20,16 +20,18 @@
 // press Enter to record the match.
 //
 // Controls:
-//   S          — toggle strobe mode
-//   ↑ / ↓      — velocity  +/- 50 px/s  (100 – 1500)
-//   ← / →      — bar width +/- 1 px     (1 – 10)  [normal mode]
-//               comparison width ± 1 px          [measure mode]
-//   M          — toggle measurement mode
-//   Enter      — record perceived width (measure mode)
-//   ESC        — quit
+//
+//	S          — toggle strobe mode
+//	↑ / ↓      — velocity  +/- 50 px/s  (100 – 1500)
+//	← / →      — bar width +/- 1 px     (1 – 10)  [normal mode]
+//	            comparison width ± 1 px          [measure mode]
+//	M          — toggle measurement mode
+//	Enter      — record perceived width (measure mode)
+//	ESC        — quit
 //
 // Usage:
-//   go run main.go [-d] [-s <subject_id>]
+//
+//	go run main.go [-d] [-s <subject_id>]
 package main
 
 import (
@@ -38,11 +40,11 @@ import (
 	"runtime/debug"
 	"time"
 
+	"github.com/Zyko0/go-sdl3/sdl"
 	"github.com/chrplr/goxpyriment/clock"
 	"github.com/chrplr/goxpyriment/control"
 	"github.com/chrplr/goxpyriment/io"
 	"github.com/chrplr/goxpyriment/stimuli"
-	"github.com/Zyko0/go-sdl3/sdl"
 )
 
 // ---------------------------------------------------------------------------
@@ -59,12 +61,12 @@ const (
 	minBarWidth     = float32(1)
 	maxBarWidth     = float32(10)
 
-	squareSize    = float32(20)  // green tracking square side length
-	squareLeadPx  = float32(50)  // bar is this many px behind the square
+	squareSize   = float32(20) // green tracking square side length
+	squareLeadPx = float32(50) // bar is this many px behind the square
 
-	measRectH     = float32(20)  // height of comparison rectangle
-	minMeasWidth  = float32(1)
-	maxMeasWidth  = float32(500)
+	measRectH    = float32(20) // height of comparison rectangle
+	minMeasWidth = float32(1)
+	maxMeasWidth = float32(500)
 
 	hudFontSize = float32(18)
 )
@@ -86,9 +88,9 @@ type appState struct {
 
 	trialID int
 
-	fps       float32
-	fpsCnt    int
-	fpsTimer  time.Time
+	fps      float32
+	fpsCnt   int
+	fpsTimer time.Time
 }
 
 // ---------------------------------------------------------------------------
@@ -202,19 +204,19 @@ func animLoop(exp *control.Experiment) error {
 	//         │  instructions                            │
 	//  -sh/2  └──────────── bottom of screen ────────────┘
 
-	hudLineY  := sh/2 - 12           // centre of the single HUD strip
-	laneH     := sh/2 - 2            // usable height inside each lane
-	topLaneY  := sh/4                // centre of top lane
-	botLaneY  := -sh/4               // centre of bottom lane
-	instrOffY := float32(-10)        // instruction text offset below lane centre
-	measRectY := -sh/2 + measRectH   // comparison rect near bottom
+	hudLineY := sh/2 - 12          // centre of the single HUD strip
+	laneH := sh/2 - 2              // usable height inside each lane
+	topLaneY := sh / 4             // centre of top lane
+	botLaneY := -sh / 4            // centre of bottom lane
+	instrOffY := float32(-10)      // instruction text offset below lane centre
+	measRectY := -sh/2 + measRectH // comparison rect near bottom
 
 	// Colours
-	dimGray    := sdl.Color{R: 55,  G: 55,  B: 55,  A: 255}
-	midGray    := sdl.Color{R: 110, G: 110, B: 110, A: 255}
-	green      := sdl.Color{R: 0,   G: 220, B: 0,   A: 255}
-	hudColor   := sdl.Color{R: 200, G: 200, B: 200, A: 255}
-	instrColor := sdl.Color{R: 85,  G: 85,  B: 85,  A: 255}
+	dimGray := sdl.Color{R: 55, G: 55, B: 55, A: 255}
+	midGray := sdl.Color{R: 110, G: 110, B: 110, A: 255}
+	green := sdl.Color{R: 0, G: 220, B: 0, A: 255}
+	hudColor := sdl.Color{R: 200, G: 200, B: 200, A: 255}
+	instrColor := sdl.Color{R: 85, G: 85, B: 85, A: 255}
 
 	// ---- Persistent stimuli ----
 	fixCross := stimuli.NewFixCross(18, 2, control.White)
@@ -343,7 +345,7 @@ func animLoop(exp *control.Experiment) error {
 			hudMeas.draw(screen, measText, 0, measRectY+measRectH+12, control.White)
 		}
 
-		_ = instrTop  // already drawn above; suppress "unused" warning
+		_ = instrTop // already drawn above; suppress "unused" warning
 		_ = instrBot
 
 		// VSYNC-locked flip.

@@ -220,5 +220,3 @@ func (l EventLog) String() string {
 
 	return "#" + strings.Join(lines, "\n#")
 }
-
-

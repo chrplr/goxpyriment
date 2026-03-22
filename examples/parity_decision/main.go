@@ -9,7 +9,6 @@ import (
 	"math/rand"
 
 	"github.com/chrplr/goxpyriment/assets_embed"
-	"github.com/chrplr/goxpyriment/clock"
 	"github.com/chrplr/goxpyriment/control"
 	"github.com/chrplr/goxpyriment/stimuli"
 )
@@ -73,7 +72,7 @@ func main() {
 		for i, t := range trials {
 			exp.Blank(1000)
 			exp.Show(cue)
-			clock.Wait(500)
+			exp.Wait(500)
 			exp.Show(t.stim)
 
 			key, rt, _ := exp.Keyboard.WaitKeysRT([]control.Keycode{EvenResponse, OddResponse}, -1)
@@ -83,7 +82,7 @@ func main() {
 			if !correct {
 				exp.Audio.PlayBuzzer()
 			}
-			clock.Wait(500)
+			exp.Wait(500)
 		}
 
 		return control.EndLoop

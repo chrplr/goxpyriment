@@ -56,13 +56,13 @@ const (
 	trialDurationMs   = 2400 // total trial duration
 	firstWordOnsetMs  = 284  // ~4 × 71 ms of filler before first word
 
-	maskProbability  = 0.72 // P(mask) in the random filler stream
-	nMasksInPool     = 12   // number of distinct pre-rendered mask canvases
-	maskWidth        = 400  // mask canvas width (px) — covers a 4-letter word
-	maskHeight       = 120  // mask canvas height (px)
-	maskShapeSize    = 28.0 // outer dimension of each hollow shape (px)
-	maskStrokeWidth  = 4.0  // outline stroke width — matched to letter stroke at 64 pt
-	maskShapesPerMask = 48  // default shapes per canvas (mix of squares and diamonds)
+	maskProbability   = 0.72 // P(mask) in the random filler stream
+	nMasksInPool      = 12   // number of distinct pre-rendered mask canvases
+	maskWidth         = 400  // mask canvas width (px) — covers a 4-letter word
+	maskHeight        = 120  // mask canvas height (px)
+	maskShapeSize     = 28.0 // outer dimension of each hollow shape (px)
+	maskStrokeWidth   = 4.0  // outline stroke width — matched to letter stroke at 64 pt
+	maskShapesPerMask = 48   // default shapes per canvas (mix of squares and diamonds)
 
 	wordFontSize = 64 // pt — large enough to read at arm's length
 
@@ -93,9 +93,9 @@ func (t trialType) String() string {
 }
 
 type trial struct {
-	typ           trialType
-	word          string // empty for blank conditions
-	wordDurationMs int   // presentation duration of the target/blank slot
+	typ            trialType
+	word           string // empty for blank conditions
+	wordDurationMs int    // presentation duration of the target/blank slot
 }
 
 // ── Stream element ────────────────────────────────────────────────────────────
@@ -457,8 +457,8 @@ func printTimingSummary(timings []timingEntry, frameDuration time.Duration) {
 const defaultFontPath = "assets/font/octin_college_rg.ttf"
 
 func main() {
-	nShapes   := flag.Int("shapes",  maskShapesPerMask, "number of shapes per mask canvas")
-	nTargets  := flag.Int("targets", 1,                 "number of target (word/blank) slots per trial")
+	nShapes := flag.Int("shapes", maskShapesPerMask, "number of shapes per mask canvas")
+	nTargets := flag.Int("targets", 1, "number of target (word/blank) slots per trial")
 	fontPath := flag.String("font", "", "path to a TTF font file to use for word stimuli (overrides built-in default)")
 	exp := control.NewExperimentFromFlags("Dehaene-Subliminal-Priming", control.Black, control.White, 32)
 	defer exp.End()

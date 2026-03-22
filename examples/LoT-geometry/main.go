@@ -5,12 +5,13 @@ package main
 
 import (
 	"fmt"
-	"github.com/chrplr/goxpyriment/control"
-	"github.com/chrplr/goxpyriment/design"
-	"github.com/chrplr/goxpyriment/clock"
-	"github.com/chrplr/goxpyriment/stimuli"
 	"log"
 	"math"
+
+	"github.com/chrplr/goxpyriment/clock"
+	"github.com/chrplr/goxpyriment/control"
+	"github.com/chrplr/goxpyriment/design"
+	"github.com/chrplr/goxpyriment/stimuli"
 )
 
 // Octagon locations (centered)
@@ -128,7 +129,7 @@ func showInstructions(exp *control.Experiment) error {
 		"Press any key to begin."
 
 	instrBox := stimuli.NewTextBox(text, 600, control.FPoint{X: 0, Y: 0}, control.White)
-	
+
 	if err := exp.Screen.Clear(); err != nil {
 		return err
 	}
@@ -149,7 +150,9 @@ func main() {
 
 	// Show instructions before starting
 	if err := showInstructions(exp); err != nil {
-		if control.IsEndLoop(err) { return }
+		if control.IsEndLoop(err) {
+			return
+		}
 		log.Fatalf("instruction error: %v", err)
 	}
 
@@ -169,7 +172,7 @@ func main() {
 	allSequences := []Sequence{
 		NewSequence("Repeat CW", []int{0, 1, 2, 3, 4, 5, 6, 7}),
 		NewSequence("Repeat CCW", []int{0, 7, 6, 5, 4, 3, 2, 1}),
-		NewSequence("Alternate CW", []int{0, 2, 1, 3, 2, 4, 3, 5}), // +2, -1
+		NewSequence("Alternate CW", []int{0, 2, 1, 3, 2, 4, 3, 5}),  // +2, -1
 		NewSequence("Alternate CCW", []int{0, 6, 7, 5, 6, 4, 5, 3}), // -2, +1
 		NewSequence("2squares CW", []int{0, 2, 4, 6, 1, 3, 5, 7}),
 		NewSequence("2squares CCW", []int{0, 6, 4, 2, 7, 5, 3, 1}),
@@ -189,16 +192,16 @@ func main() {
 	// Randomized order: first 2 are always Repeat CW and CCW (randomized between them)
 	firstTwo := []Sequence{allSequences[0], allSequences[1]}
 	design.ShuffleList(firstTwo)
-	
+
 	rest := allSequences[2:]
 	design.ShuffleList(rest)
-	
+
 	orderedSequences := append(firstTwo, rest...)
 
 	// Main Experiment Loop
 	for trialIdx, seq := range orderedSequences {
 		fmt.Printf("Starting trial %d: %s\n", trialIdx+1, seq.Name)
-		
+
 		// Starting point randomization (0-7)
 		startOffset := design.RandInt(0, 7)
 		indices := make([]int, 16)
@@ -210,7 +213,9 @@ func main() {
 		for step := 2; step < 16; step++ {
 			// A. Flash sequence up to currentKnownCount
 			if err := flashSequence(exp, dots, fixation, target, indices[:currentKnownCount]); err != nil {
-				if control.IsEndLoop(err) { return }
+				if control.IsEndLoop(err) {
+					return
+				}
 				log.Fatalf("flash error: %v", err)
 			}
 
@@ -218,12 +223,14 @@ func main() {
 			targetIdx := indices[step]
 			clickIdx, rt, err := getGuess(exp, dots, fixation, octagonPoints)
 			if err != nil {
-				if control.IsEndLoop(err) { return }
+				if control.IsEndLoop(err) {
+					return
+				}
 				log.Fatalf("guess error: %v", err)
 			}
 
 			isCorrect := (clickIdx == targetIdx)
-			
+
 			// C. Record data
 			exp.Data.Add(
 				trialIdx+1, seq.Name, step+1, targetIdx, clickIdx, isCorrect, rt,
@@ -251,14 +258,16 @@ func main() {
 				// So we increment known count and re-flash in next step loop
 				currentKnownCount = step + 1
 			}
-			
+
 			if err := drawEnvironment(exp, dots, fixation, target, -1); err != nil {
 				log.Fatal(err)
 			}
 			clock.Wait(500)
 		}
-		
+
 		// Inter-trial interval
-		if err := exp.Blank(1000); err != nil { log.Fatal(err) }
+		if err := exp.Blank(1000); err != nil {
+			log.Fatal(err)
+		}
 	}
 }

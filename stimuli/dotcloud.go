@@ -4,10 +4,11 @@
 package stimuli
 
 import (
-	"github.com/chrplr/goxpyriment/io"
 	"math"
 	"math/rand"
+
 	"github.com/Zyko0/go-sdl3/sdl"
+	"github.com/chrplr/goxpyriment/io"
 )
 
 // DotCloud represents a circular cloud of dots.
@@ -25,7 +26,7 @@ type DotCloud struct {
 // NewDotCloud creates a new DotCloud.
 func NewDotCloud(radius float32, bgColor, dotColor sdl.Color) *DotCloud {
 	return &DotCloud{
-		Radius:          radius,
+		Radius: radius,
 		// BaseVisual.Position defaults to (0, 0)
 		BackgroundColor: bgColor,
 		DotColor:        dotColor,
@@ -36,17 +37,17 @@ func NewDotCloud(radius float32, bgColor, dotColor sdl.Color) *DotCloud {
 // Make generates the dots randomly within the cloud.
 func (dc *DotCloud) Make(nDots int, dotRadius float32, gap float32) bool {
 	dc.Dots = make([]*Circle, 0, nDots)
-	
+
 	for i := 0; i < nDots; i++ {
 		reps := 0
 		for {
 			dot := NewCircle(dotRadius, dc.DotColor)
-			
+
 			// Random position within square bounding box of radius
 			x := rand.Float32()*(2*dc.Radius-2*dotRadius) - (dc.Radius - dotRadius)
 			y := rand.Float32()*(2*dc.Radius-2*dotRadius) - (dc.Radius - dotRadius)
 			dot.Position = sdl.FPoint{X: dc.Position.X + x, Y: dc.Position.Y + y}
-			
+
 			// Check if inside the cloud radius
 			if dot.InsideCircle(dc.Radius, dc.Position) {
 				// Check overlap with existing dots
@@ -60,13 +61,13 @@ func (dc *DotCloud) Make(nDots int, dotRadius float32, gap float32) bool {
 						break
 					}
 				}
-				
+
 				if !overlapping {
 					dc.Dots = append(dc.Dots, dot)
 					break
 				}
 			}
-			
+
 			reps++
 			if reps > 10000 {
 				return false
@@ -86,7 +87,7 @@ func (dc *DotCloud) Draw(screen *io.Screen) error {
 			return err
 		}
 	}
-	
+
 	for _, dot := range dc.Dots {
 		if err := dot.Draw(screen); err != nil {
 			return err

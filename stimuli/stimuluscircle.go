@@ -4,10 +4,11 @@
 package stimuli
 
 import (
-	"github.com/chrplr/goxpyriment/io"
 	"math"
 	"math/rand"
+
 	"github.com/Zyko0/go-sdl3/sdl"
+	"github.com/chrplr/goxpyriment/io"
 )
 
 // StimulusCircle represents a collection of stimuli arranged in a circle.
@@ -35,29 +36,29 @@ func (sc *StimulusCircle) Make(shuffle bool, jitter bool) {
 	if n == 0 {
 		return
 	}
-	
+
 	indices := make([]int, n)
 	for i := range indices {
 		indices[i] = i
 	}
-	
+
 	if shuffle {
 		rand.Shuffle(n, func(i, j int) {
 			indices[i], indices[j] = indices[j], indices[i]
 		})
 	}
-	
+
 	step := 2 * math.Pi / float64(n)
 	offset := 0.0
 	if jitter {
 		offset = rand.Float64() * step
 	}
-	
+
 	for i, idx := range indices {
 		angle := offset + float64(i)*step - math.Pi/2
 		x := sc.Radius * float32(math.Cos(angle))
 		y := sc.Radius * float32(math.Sin(angle))
-		
+
 		sc.Stimuli[idx].SetPosition(sdl.FPoint{X: sc.Position.X + x, Y: sc.Position.Y + y})
 	}
 }

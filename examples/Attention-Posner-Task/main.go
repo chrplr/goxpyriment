@@ -6,12 +6,12 @@ package main
 import (
 	_ "embed"
 	"fmt"
-	"github.com/chrplr/goxpyriment/control"
-	"github.com/chrplr/goxpyriment/clock"
-	"github.com/chrplr/goxpyriment/stimuli"
 	"log"
 	"math/rand"
 
+	"github.com/chrplr/goxpyriment/clock"
+	"github.com/chrplr/goxpyriment/control"
+	"github.com/chrplr/goxpyriment/stimuli"
 )
 
 //go:embed assets/star.png

@@ -4,8 +4,8 @@
 package stimuli
 
 import (
-	"github.com/chrplr/goxpyriment/io"
 	"github.com/Zyko0/go-sdl3/sdl"
+	"github.com/chrplr/goxpyriment/io"
 )
 
 // TextInput represents a text input box for user input.
@@ -36,7 +36,7 @@ func NewTextInput(message string, position sdl.FPoint, boxWidth float32, bgColor
 // Get displays the input box and waits for user input.
 func (ti *TextInput) Get(screen *io.Screen, keyboard *io.Keyboard) (string, error) {
 	runes := []rune(ti.UserText)
-	
+
 	// Start SDL text input
 	if err := screen.Window.StartTextInput(); err != nil {
 		return "", err
@@ -87,7 +87,7 @@ func (ti *TextInput) Draw(screen *io.Screen) error {
 	if err := frame.Draw(screen); err != nil {
 		return err
 	}
-	
+
 	// Inner background (smaller than frame)
 	inner := NewRectangle(ti.Position.X, ti.Position.Y, ti.BoxWidth-2, 38, ti.BackgroundColor)
 	if err := inner.Draw(screen); err != nil {
