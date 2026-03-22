@@ -36,7 +36,7 @@ func main() {
 	}
 	elements := stimuli.MakeRegularVisualStream(pics, 100*time.Millisecond, 50*time.Millisecond)
 
-	exp.Data.AddVariableNames([]string{"image_index", "filename", "target_on_ms", "actual_onset_ms", "actual_offset_ms"})
+	exp.AddDataVariableNames([]string{"image_index", "filename", "target_on_ms", "actual_onset_ms", "actual_offset_ms"})
 
 	fmt.Println("Starting stream... Press keys to test logging.")
 

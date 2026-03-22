@@ -203,21 +203,29 @@ func runTrial(exp *control.Experiment, player *tonePlayer,
 	isTask2Key := func(k control.Keycode) bool { return k == KeyA || k == KeyB }
 
 	// Poll during SOA.
+	allKeys := []control.Keycode{KeyLow, KeyHigh, KeyA, KeyB}
 	soaDeadline := t0 + int64(t.soaMs)
-	for clock.GetTime() < soaDeadline {
-		k, _, err := exp.HandleEvents()
+	for r1Time == -1 || r2Time == -1 {
+		now := clock.GetTime()
+		if now >= soaDeadline {
+			break
+		}
+		k, kRt, err := exp.Keyboard.WaitKeysRT(allKeys, int(soaDeadline-now))
 		if err != nil {
 			return res, err
 		}
+		if k == 0 {
+			break // timeout
+		}
+		keyTime := now + kRt
 		if r1Time == -1 && isTask1Key(k) {
-			r1Time = clock.GetTime()
+			r1Time = keyTime
 			r1Key = k
 		}
 		if r2Time == -1 && isTask2Key(k) {
-			r2Time = clock.GetTime()
+			r2Time = keyTime
 			r2Key = k
 		}
-		clock.Wait(1)
 	}
 
 	// 4. S2 onset.
@@ -244,23 +252,27 @@ func runTrial(exp *control.Experiment, player *tonePlayer,
 
 	// 5. Response window — collect any remaining responses until timeout.
 	deadline := tSOA + int64(TimeoutMs)
-	for clock.GetTime() < deadline {
-		if r1Time != -1 && r2Time != -1 {
-			break // both responses collected
+	for r1Time == -1 || r2Time == -1 {
+		now := clock.GetTime()
+		if now >= deadline {
+			break
 		}
-		k, _, err := exp.HandleEvents()
+		k, kRt, err := exp.Keyboard.WaitKeysRT(allKeys, int(deadline-now))
 		if err != nil {
 			return res, err
 		}
+		if k == 0 {
+			break // timeout
+		}
+		keyTime := now + kRt
 		if r1Time == -1 && isTask1Key(k) {
-			r1Time = clock.GetTime()
+			r1Time = keyTime
 			r1Key = k
 		}
 		if r2Time == -1 && isTask2Key(k) {
-			r2Time = clock.GetTime()
+			r2Time = keyTime
 			r2Key = k
 		}
-		clock.Wait(1)
 	}
 
 	// Clear S2.

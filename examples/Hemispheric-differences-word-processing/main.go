@@ -57,7 +57,7 @@ func main() {
 		log.Printf("Warning: failed to set logical size: %v", err)
 	}
 
-	exp.Data.AddVariableNames([]string{
+	exp.AddDataVariableNames([]string{
 		"trial_index",
 		"phase",    // "old" (studied) or "new"
 		"word",

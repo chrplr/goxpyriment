@@ -45,98 +45,9 @@ import (
 	"github.com/Zyko0/go-sdl3/sdl"
 	"github.com/chrplr/goxpyriment/clock"
 	"github.com/chrplr/goxpyriment/control"
+	"github.com/chrplr/goxpyriment/staircase"
 	"github.com/chrplr/goxpyriment/stimuli"
 )
-
-// ─── Staircase constants ────────────────────────────────────────────────────
-
-const (
-	phase1Step   = 4.0  // dB step during Phase 1
-	phase2Step   = 2.0  // dB step during Phase 2
-	phase1Revs   = 2    // reversals before switching to phase2Step
-	maxReversals = 8    // reversals before staircase terminates
-	minDB        = -80.0
-	maxDB        = 0.0
-)
-
-// ─── Staircase ──────────────────────────────────────────────────────────────
-
-// Staircase implements a 1-up/2-down adaptive procedure for one frequency.
-type Staircase struct {
-	FreqHz       float64
-	currentDB    float64
-	stepSize     float64
-	direction    int // 0=undefined, +1=going louder, -1=going quieter
-	consecHits   int
-	numReversals int
-	reversals    []float64 // intensity at each reversal
-	Done         bool
-}
-
-func newStaircase(freqHz, startDB float64) *Staircase {
-	return &Staircase{
-		FreqHz:    freqHz,
-		currentDB: startDB,
-		stepSize:  phase1Step,
-	}
-}
-
-// update applies the 1-up/2-down rule and returns whether a reversal occurred.
-func (sc *Staircase) update(correct bool) (reversal bool) {
-	if correct {
-		sc.consecHits++
-		if sc.consecHits < 2 {
-			return false // need one more hit
-		}
-		// Two consecutive hits → step down (quieter).
-		sc.consecHits = 0
-		if sc.direction == +1 { // was going up → reversal
-			reversal = true
-			sc.numReversals++
-			sc.reversals = append(sc.reversals, sc.currentDB)
-			if sc.numReversals == phase1Revs {
-				sc.stepSize = phase2Step
-			}
-		}
-		sc.direction = -1
-		sc.currentDB = math.Max(sc.currentDB-sc.stepSize, minDB)
-	} else {
-		// One miss → step up (louder).
-		sc.consecHits = 0
-		if sc.direction == -1 { // was going down → reversal
-			reversal = true
-			sc.numReversals++
-			sc.reversals = append(sc.reversals, sc.currentDB)
-			if sc.numReversals == phase1Revs {
-				sc.stepSize = phase2Step
-			}
-		}
-		sc.direction = +1
-		sc.currentDB = math.Min(sc.currentDB+sc.stepSize, maxDB)
-	}
-
-	if sc.numReversals >= maxReversals {
-		sc.Done = true
-	}
-	return reversal
-}
-
-// threshold returns the mean of the last 4 reversal levels.
-func (sc *Staircase) threshold() float64 {
-	n := len(sc.reversals)
-	if n == 0 {
-		return sc.currentDB
-	}
-	k := 4
-	if n < k {
-		k = n
-	}
-	sum := 0.0
-	for _, v := range sc.reversals[n-k:] {
-		sum += v
-	}
-	return sum / float64(k)
-}
 
 // ─── Tone generation ────────────────────────────────────────────────────────
 
@@ -204,16 +115,6 @@ func (p *tonePlayer) stop() { _ = p.stream.Clear() }
 
 func (p *tonePlayer) destroy() { p.stream.Destroy() }
 
-// ─── Trial data ─────────────────────────────────────────────────────────────
-
-type trialRecord struct {
-	freqHz   float64
-	trialNum int
-	levelDB  float64
-	correct  bool
-	reversal bool
-}
-
 // ─── Visual helpers ─────────────────────────────────────────────────────────
 
 // drawIFCScreen renders the 2-IFC interval display.
@@ -274,19 +175,19 @@ func showFeedback(exp *control.Experiment, correct bool) error {
 
 // runTrial runs one 2-IFC trial for the given staircase and returns whether
 // the response was correct (tone interval identified).
-func runTrial(exp *control.Experiment, sc *Staircase, player *tonePlayer, trialNum int) (bool, error) {
+func runTrial(exp *control.Experiment, sc *staircase.UpDown, hz float64, maxReversals int, player *tonePlayer, trialNum int) (bool, error) {
 	// Randomly assign tone to interval 1 or 2.
 	toneInterval := 1 + rand.Intn(2)
 
 	info := fmt.Sprintf("%.0f Hz  |  level %.1f dBFS  |  reversals %d/%d  |  trial %d",
-		sc.FreqHz, sc.currentDB, sc.numReversals, maxReversals, trialNum)
+		hz, sc.Intensity(), sc.NReversals(), maxReversals, trialNum)
 
 	// Interval 1.
 	if err := drawIFCScreen(exp, 1, info); err != nil {
 		return false, err
 	}
 	if toneInterval == 1 {
-		if err := player.play(sc.FreqHz, sc.currentDB); err != nil {
+		if err := player.play(hz, sc.Intensity()); err != nil {
 			return false, err
 		}
 	}
@@ -304,7 +205,7 @@ func runTrial(exp *control.Experiment, sc *Staircase, player *tonePlayer, trialN
 		return false, err
 	}
 	if toneInterval == 2 {
-		if err := player.play(sc.FreqHz, sc.currentDB); err != nil {
+		if err := player.play(hz, sc.Intensity()); err != nil {
 			return false, err
 		}
 	}
@@ -313,6 +214,7 @@ func runTrial(exp *control.Experiment, sc *Staircase, player *tonePlayer, trialN
 
 	// Response prompt.
 	exp.Screen.Clear()
+	exp.Keyboard.Clear() // discard stale keys before the response prompt appears
 	prompt := stimuli.NewTextBox(
 		"In which interval did you hear the tone?\nPress  1  or  2.",
 		600, control.Point(0, 0), control.Black)
@@ -323,22 +225,16 @@ func runTrial(exp *control.Experiment, sc *Staircase, player *tonePlayer, trialN
 		return false, err
 	}
 
-	exp.Keyboard.Clear()
+	responseKeys := []control.Keycode{control.K_1, control.K_KP_1, control.K_2, control.K_KP_2}
+	k, _, err := exp.Keyboard.WaitKeysRT(responseKeys, -1)
+	if err != nil {
+		return false, err
+	}
 	var response int
-	for {
-		k, _, err := exp.HandleEvents()
-		if err != nil {
-			return false, err
-		}
-		if k == control.K_1 || k == control.K_KP_1 {
-			response = 1
-			break
-		}
-		if k == control.K_2 || k == control.K_KP_2 {
-			response = 2
-			break
-		}
-		clock.Wait(1)
+	if k == control.K_1 || k == control.K_KP_1 {
+		response = 1
+	} else {
+		response = 2
 	}
 
 	correct := response == toneInterval
@@ -431,77 +327,62 @@ func main() {
 		defer player.destroy()
 
 		// ── Create one staircase per frequency ───────────────────────────────
-		staircases := make([]*Staircase, len(freqs))
-		for i, f := range freqs {
-			staircases[i] = newStaircase(f, *startDB)
+		const maxReversals = 8
+		freqFor := make(map[staircase.Staircase]float64, len(freqs))
+		all := make([]staircase.Staircase, len(freqs))
+		for i, hz := range freqs {
+			sc := staircase.NewUpDown(staircase.UpDownConfig{
+				StartIntensity:         *startDB,
+				MinIntensity:           -80,
+				MaxIntensity:           0,
+				StepUp:                 4,
+				StepDown:               4,
+				NCorrectDown:           2, // 1-up/2-down → ~70.7 % threshold
+				Phase2StepUp:           2,
+				Phase2StepDown:         2,
+				Phase2StartReversal:    2,
+				MaxReversals:           maxReversals,
+				NReversalsForThreshold: 4,
+			})
+			all[i] = sc
+			freqFor[sc] = hz
 		}
 
+		runner := staircase.NewRunner(nil, all...)
+
 		// ── Interleaved staircase loop ───────────────────────────────────────
-		var records []trialRecord
 		trialNum := 0
-
-		for {
-			// Collect all non-done staircases.
-			var active []*Staircase
-			for _, sc := range staircases {
-				if !sc.Done {
-					active = append(active, sc)
-				}
-			}
-			if len(active) == 0 {
-				break
-			}
-
-			// Pick one at random.
-			sc := active[rand.Intn(len(active))]
+		for !runner.Done() {
+			sc := runner.Next().(*staircase.UpDown)
 			trialNum++
-			levelAtTrial := sc.currentDB
-
-			correct, err := runTrial(exp, sc, player, trialNum)
+			correct, err := runTrial(exp, sc, freqFor[sc], maxReversals, player, trialNum)
 			if err != nil {
 				return err
 			}
-
-			reversal := sc.update(correct)
-
-			records = append(records, trialRecord{
-				freqHz:   sc.FreqHz,
-				trialNum: trialNum,
-				levelDB:  levelAtTrial,
-				correct:  correct,
-				reversal: reversal,
-			})
+			sc.Update(correct)
 		}
 
-		// ── Compute and log thresholds ───────────────────────────────────────
-		thresholds := make(map[float64]float64, len(staircases))
-		for _, sc := range staircases {
-			thresholds[sc.FreqHz] = sc.threshold()
-		}
-
-		for _, r := range records {
-			// Only populate final threshold on the last trial of each staircase.
-			thr := "NA"
-			if staircases[freqIndex(staircases, r.freqHz)].Done {
-				if r.trialNum == lastTrialForFreq(records, r.freqHz) {
-					thr = fmt.Sprintf("%.2f", thresholds[r.freqHz])
+		// ── Log data ─────────────────────────────────────────────────────────
+		globalTrial := 0
+		for _, sc := range runner.All() {
+			hz := freqFor[sc]
+			history := sc.History()
+			threshold := sc.Threshold()
+			for i, trial := range history {
+				globalTrial++
+				thrStr := "NA"
+				if i == len(history)-1 {
+					thrStr = fmt.Sprintf("%.2f", threshold)
 				}
+				exp.Data.Add(hz, globalTrial, trial.Intensity, trial.Correct, trial.Reversal, thrStr)
 			}
-			exp.Data.Add(
-				r.freqHz,
-				r.trialNum,
-				r.levelDB,
-				r.correct,
-				r.reversal,
-				thr,
-			)
 		}
 
 		// ── Results summary ──────────────────────────────────────────────────
 		lines := []string{"Estimated thresholds:\n"}
-		for _, sc := range staircases {
+		for _, sc := range runner.All() {
 			lines = append(lines,
-				fmt.Sprintf("  %.0f Hz  →  %.1f dBFS", sc.FreqHz, thresholds[sc.FreqHz]))
+				fmt.Sprintf("  %.0f Hz  →  %.1f dBFS", freqFor[sc], sc.Threshold()))
 		}
 		lines = append(lines, "\nPress SPACE to exit.")
 
@@ -519,25 +400,4 @@ func main() {
 	if runErr != nil && !control.IsEndLoop(runErr) {
 		log.Fatalf("experiment error: %v", runErr)
 	}
-}
-
-// freqIndex returns the index of the staircase matching freqHz.
-func freqIndex(staircases []*Staircase, freqHz float64) int {
-	for i, sc := range staircases {
-		if sc.FreqHz == freqHz {
-			return i
-		}
-	}
-	return 0
-}
-
-// lastTrialForFreq returns the trial number of the last record with the given frequency.
-func lastTrialForFreq(records []trialRecord, freqHz float64) int {
-	last := -1
-	for _, r := range records {
-		if r.freqHz == freqHz {
-			last = r.trialNum
-		}
-	}
-	return last
 }

@@ -163,7 +163,7 @@ func main() {
 	exp := control.NewExperimentFromFlags("Motion-Blur", control.Black, control.White, hudFontSize)
 	defer exp.End()
 
-	exp.Data.AddVariableNames([]string{
+	exp.AddDataVariableNames([]string{
 		"trial_id", "velocity_px_per_sec", "actual_bar_width_px",
 		"strobe_status", "perceived_width_px", "timestamp_ms",
 	})

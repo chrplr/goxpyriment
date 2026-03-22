@@ -19,10 +19,13 @@ type GaborPatch struct {
 	BaseVisual      // Position, GetPosition, SetPosition, Preload, Unload (Unload overridden below)
 	Sigma           float64
 	Theta           float64 // orientation in degrees
-	Lambda          float64 // spatial frequency
+	Lambda          float64 // spatial wavelength in pixels (cycles per pixel = 1/Lambda)
 	Phase           float64
 	Psi             float64
 	Gamma           float64
+	// Contrast is the Michelson contrast of the grating [0, 1].
+	// Zero defaults to full contrast (1.0) for backwards compatibility.
+	Contrast        float64
 	BackgroundColor sdl.Color
 	Size            float32
 	Texture         *sdl.Texture
@@ -69,15 +72,14 @@ func (gp *GaborPatch) preload(screen *io.Screen) error {
 			// Sinusoidal grating
 			grating := math.Cos(2*math.Pi*(x_prime/gp.Lambda) + gp.Psi + gp.Phase*2*math.Pi)
 			
-			// Combine and scale to 0-255
-			val := envelope * grating
-			
-			// Map val [-1, 1] to [0, 255]
+			// Apply Michelson contrast (defaults to 1.0 when unset).
+			c := gp.Contrast
+			if c == 0 {
+				c = 1.0
+			}
+			// Map [-c, c] → [0, 255]; midpoint 127.5 is neutral gray.
+			val := c * envelope * grating
 			cVal := uint8((val + 1) * 127.5)
-			
-			// Background blending
-			// In expyriment, it's often centered around the background color
-			// Let's just use the calculated gray value for now
 			img.Set(x, y, color.RGBA{R: cVal, G: cVal, B: cVal, A: uint8(envelope * 255)})
 		}
 	}
@@ -90,6 +92,10 @@ func (gp *GaborPatch) preload(screen *io.Screen) error {
 	
 	texture, err := screen.Renderer.CreateTextureFromSurface(surface)
 	if err != nil {
+		return err
+	}
+	if err := texture.SetBlendMode(sdl.BLENDMODE_BLEND); err != nil {
+		texture.Destroy()
 		return err
 	}
 	gp.Texture = texture

@@ -26,7 +26,7 @@ func main() {
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 	terminate := false // Declared here...
 
-	exp.Data.AddVariableNames([]string{"pair_index", "video_left", "video_right", "key", "t_rel_ms"})
+	exp.AddDataVariableNames([]string{"pair_index", "video_left", "video_right", "key", "t_rel_ms"})
 
 	// 3. Identify .mpg files in assets
 	files, err := os.ReadDir("assets")

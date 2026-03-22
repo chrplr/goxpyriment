@@ -122,31 +122,17 @@ func main() {
 			}
 
 			// Wait for response
-			startTime := clock.GetTime()
-			responded := false
-			var rt int64
 			var responseKey control.Keycode
+			var rt int64
 			var correct bool
-
-			for !responded {
-				responseKey, _, subErr = exp.HandleEvents()
-				if subErr != nil {
-					return subErr
-				}
-
-				if responseKey == RedKey || responseKey == GreenKey {
-					rt = clock.GetTime() - startTime
-					responded = true
-
-					if t.color == "red" && responseKey == RedKey {
-						correct = true
-					} else if t.color == "green" && responseKey == GreenKey {
-						correct = true
-					} else {
-						correct = false
-					}
-				}
-				clock.Wait(1)
+			responseKey, rt, subErr = exp.Keyboard.WaitKeysRT([]control.Keycode{RedKey, GreenKey}, -1)
+			if subErr != nil {
+				return subErr
+			}
+			if t.color == "red" && responseKey == RedKey {
+				correct = true
+			} else if t.color == "green" && responseKey == GreenKey {
+				correct = true
 			}
 
 			// Congruency:

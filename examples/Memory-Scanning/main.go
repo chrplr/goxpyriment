@@ -99,20 +99,12 @@ func main() {
 		return nil
 	}
 
-	// Wait for F or J; return key, rt (ms), error
+	// Wait for F or J; return key, rt (ms), error.
+	// Keyboard.Clear() must be called by the caller BEFORE showing the probe,
+	// not here — otherwise fast responses made just after stimulus onset are lost.
 	waitYesNo := func() (control.Keycode, int64, error) {
-		exp.Keyboard.Clear()
-		start := clock.GetTime()
-		for {
-			key, _, err := exp.HandleEvents()
-			if err != nil {
-				return 0, 0, err
-			}
-			if key == YesKey || key == NoKey {
-				return key, clock.GetTime() - start, nil
-			}
-			clock.Wait(1)
-		}
+		key, rt, err := exp.Keyboard.WaitKeysRT([]control.Keycode{YesKey, NoKey}, -1)
+		return key, rt, err
 	}
 
 	showFeedback := func(correct bool) error {
@@ -137,7 +129,7 @@ func main() {
 		return waitInterruption(exp, FeedbackDuration)
 	}
 
-	exp.Data.AddVariableNames([]string{"experiment", "block", "set_size", "trial", "probe", "positive", "key", "rt", "correct"})
+	exp.AddDataVariableNames([]string{"experiment", "block", "set_size", "trial", "probe", "positive", "key", "rt", "correct"})
 
 	if *expNum == 1 || *expNum == 0 {
 		trainingExp1 := buildTrainingTrialsExp1()
@@ -404,6 +396,7 @@ func runExp1(exp *control.Experiment, trials []trialExp1, digitStim map[int]*sti
 			}
 
 			// Probe
+			exp.Keyboard.Clear() // discard any stale keys before probe onset
 			if err := exp.Show(digitStim[t.Probe]); err != nil {
 				return err
 			}
@@ -456,6 +449,7 @@ func runExp2(exp *control.Experiment, blocks [][]trialExp2, digitStim map[int]*s
 				}
 
 				// Test digit
+				exp.Keyboard.Clear() // discard any stale keys before probe onset
 				if err := exp.Show(digitStim[t.Probe]); err != nil {
 					return err
 				}

@@ -469,7 +469,7 @@ func main() {
 
 	dispInfo := exp.Screen.DisplayInfo()
 	exp.Data.WriteDisplayInfo(dispInfo)
-	exp.Data.AddVariableNames([]string{"trial_num", "condition", "word", "word_duration_ms", "estimated_word_duration_ms", "response", "rt_ms", "reported_word"})
+	exp.AddDataVariableNames([]string{"trial_num", "condition", "word", "word_duration_ms", "estimated_word_duration_ms", "response", "rt_ms", "reported_word"})
 	if err := exp.Data.Save(); err != nil {
 		log.Fatalf("failed to write data header: %v", err)
 	}

@@ -540,7 +540,7 @@ func main() {
 
 	circleSpeed = float32(*speed)
 
-	exp.Data.AddVariableNames([]string{
+	exp.AddDataVariableNames([]string{
 		"trial_id", "n_targets", "circle_index",
 		"is_target", "was_selected", "score", "timestamp_ms",
 	})

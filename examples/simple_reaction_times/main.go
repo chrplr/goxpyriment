@@ -23,7 +23,7 @@ func main() {
 	exp := control.NewExperimentFromFlags("Visual Detection", control.Black, control.White, 32)
 	defer exp.End()
 
-	exp.Data.AddVariableNames([]string{"trial", "wait_time", "key", "rt"})
+	exp.AddDataVariableNames([]string{"trial", "wait_time", "key", "rt"})
 
 	// 2. Prepare stimuli
 	target := stimuli.NewTextLine("+", 0, 0, control.DefaultTextColor)

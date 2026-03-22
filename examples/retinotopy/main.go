@@ -14,11 +14,13 @@ import (
 	_ "image/png"
 	"log"
 	"strconv"
+	"strings"
 
-	"github.com/chrplr/goxpyriment/control"
 	"github.com/chrplr/goxpyriment/clock"
+	"github.com/chrplr/goxpyriment/control"
 	"github.com/chrplr/goxpyriment/io"
 	"github.com/chrplr/goxpyriment/stimuli"
+	"github.com/chrplr/goxpyriment/units"
 )
 
 //go:embed assets
@@ -487,9 +489,36 @@ func (r *Retinotopy) updateCombinedTexture(patternID, maskID int) {
 	r.CombinedTexture.Update(nil, r.PixelBuffer, WindowWidth*4)
 }
 
+// askFloat shows a TextInput prompt and keeps re-prompting until the user
+// enters a number in [min, max]. Returns control.EndLoop on ESC.
+func askFloat(exp *control.Experiment, prompt string, minVal, maxVal float64) (float64, error) {
+	msg := prompt
+	for {
+		ti := stimuli.NewTextInput(
+			msg,
+			control.Point(0, -120),
+			500,
+			control.Color{R: 20, G: 20, B: 20, A: 255},
+			control.LightGray,
+			control.White,
+		)
+		str, err := ti.Get(exp.Screen, exp.Keyboard)
+		if err != nil {
+			return 0, err
+		}
+		v, parseErr := strconv.ParseFloat(strings.TrimSpace(str), 64)
+		if parseErr != nil || v < minVal || v > maxVal {
+			msg = fmt.Sprintf(
+				"%s\n\nInvalid input %q — please enter a number between %.0f and %.0f.",
+				prompt, str, minVal, maxVal)
+			continue
+		}
+		return v, nil
+	}
+}
+
 func main() {
 	runID := flag.Int("r", 1, "Run ID (1-6)")
-	scaling := flag.Float64("scaling", 1.0, "Scaling factor for stimuli (e.g., 0.5, 1.5)")
 	_ = flag.Bool("F", false, "Force Fullscreen (redundant if -d is not used)")
 
 	exp := control.NewExperimentFromFlags("Retinotopy", BackgroundColor, control.White, 32)
@@ -505,12 +534,67 @@ func main() {
 
 	exp.Mouse.ShowCursor(false)
 
-	retino := NewRetinotopy(exp, runLabel, *scaling)
-	if err := retino.LoadStimuli(exp.SubjectID, *runID); err != nil {
-		log.Fatal(err)
-	}
-
 	err := exp.Run(func() error {
+		// ── Step 1: collect monitor parameters via TextInput ──────────────────
+		widthCm, err := askFloat(exp,
+			"Monitor physical width (cm)\n\n"+
+				"Measure only the screen surface, not the bezel.\n"+
+				"A 24\" monitor is approximately 53 cm wide.\n\n"+
+				"Press Enter to confirm.",
+			10, 300)
+		if err != nil {
+			return err
+		}
+
+		distanceCm, err := askFloat(exp,
+			fmt.Sprintf(
+				"Viewing distance (cm)\n\n"+
+					"Measure from your eyes to the screen surface.\n"+
+					"A typical lab distance is 57–70 cm.\n"+
+					"(Monitor width: %.1f cm)\n\n"+
+					"Press Enter to confirm.", widthCm),
+			20, 500)
+		if err != nil {
+			return err
+		}
+
+		// ── Step 2: compute scaling so max eccentricity = 15° ─────────────────
+		widthPx := exp.Screen.Width
+		heightPx := exp.Screen.Height
+		heightCm := widthCm * float64(heightPx) / float64(widthPx)
+		mon := units.NewMonitor(widthCm, heightCm, widthPx, heightPx, distanceCm)
+
+		const stimHalfPx = 384.0 // 768 / 2
+		scaling := mon.DegToPx(15.0) / stimHalfPx
+
+		// Clamp: the 768×768 stimulus must not exceed the screen.
+		maxScaling := float64(min(widthPx, heightPx)) / 768.0
+		if scaling > maxScaling {
+			scaling = maxScaling
+		}
+
+		// ── Step 3: record monitor calibration in the data file ───────────────
+		actualEcc := mon.PxToDeg(stimHalfPx * scaling)
+		exp.Data.WriteComment("--MONITOR INFO")
+		exp.Data.WriteComment(fmt.Sprintf("m %s", mon.String()))
+		exp.Data.WriteComment(fmt.Sprintf("m scaling: %.4f", scaling))
+		exp.Data.WriteComment(fmt.Sprintf("m max_eccentricity_deg: %.2f", actualEcc))
+		statusMsg := fmt.Sprintf(
+			"Monitor: %s\n\nScaling: %.3f  |  Max eccentricity: %.1f°\n\nPress any key to continue.",
+			mon.String(), scaling, actualEcc)
+		status := stimuli.NewTextBox(statusMsg, 800, control.Point(0, 0), control.White)
+		if err := exp.Show(status); err != nil {
+			return err
+		}
+		if _, err := exp.Keyboard.Wait(); err != nil {
+			return err
+		}
+
+		// ── Step 4: load stimuli and run ──────────────────────────────────────
+		retino := NewRetinotopy(exp, runLabel, scaling)
+		if err := retino.LoadStimuli(exp.SubjectID, *runID); err != nil {
+			return err
+		}
 		if err := retino.Instructions(); err != nil {
 			return err
 		}

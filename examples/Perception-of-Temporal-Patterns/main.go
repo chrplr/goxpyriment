@@ -238,7 +238,7 @@ func main() {
 	}
 
 	// ── Data file setup ──────────────────────────────────────────────────────
-	exp.Data.AddVariableNames([]string{
+	exp.AddDataVariableNames([]string{
 		"seq_id", "category", "sound_type",
 		"n_presentations", "repro_error_ms",
 	})

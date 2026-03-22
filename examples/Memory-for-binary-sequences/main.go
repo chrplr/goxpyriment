@@ -241,7 +241,7 @@ func main() {
 	}
 
 	// Data file columns (subject ID is prepended automatically).
-	exp.Data.AddVariableNames([]string{
+	exp.AddDataVariableNames([]string{
 		"part", "session", "trial", "seq_id", "lot_complexity",
 		"a_is_low", "deviant_present", "deviant_pos", "deviant_type",
 		"rating", "hit", "fa", "rt_ms",

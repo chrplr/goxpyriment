@@ -8,8 +8,10 @@
 //   - Keyboard — blocking (Wait/WaitKeys) and non-blocking (Check) key input.
 //   - Mouse — cursor visibility, position, and button input.
 //   - GamePad — game-controller button input.
-//   - SerialPort / ParallelPort — hardware I/O for response boxes and EEG triggers.
 //   - OutputFile / DataFile — CSV-like result logging with automatic timestamping.
+//
+// Hardware trigger devices (DLP-IO8, parallel port, serial port) are in the
+// separate [github.com/chrplr/goxpyriment/triggers] package.
 //
 // Most types in this package are not used directly; the control.Experiment
 // facade creates and wires them together during initialization.

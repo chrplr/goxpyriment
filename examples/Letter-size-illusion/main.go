@@ -299,6 +299,7 @@ func runTrial(exp *control.Experiment, t Trial,
 		return trialResult{}, err
 	}
 	clock.Wait(200)
+	exp.Keyboard.Clear() // discard any stale keys before the stimulus appears
 
 	// 2. Two stimuli presented simultaneously for stimMs.
 	lt := pickTex(cache[t.LeftText], t.LeftSmall)
@@ -313,25 +314,16 @@ func runTrial(exp *control.Experiment, t Trial,
 	exp.Screen.Update()
 	clock.Wait(stimMs)
 
-	// 3. Clear screen and wait for a response key.
+	// 3. Clear screen then collect response — no Keyboard.Clear() here so that
+	// presses made just as the screen blanks are never lost.
 	exp.Screen.Clear()
 	exp.Screen.Update()
-	exp.Keyboard.Clear() // discard keys pressed during stimulus
 
-	start := clock.GetTime()
-	var key sdl.Keycode
-	for {
-		var err error
-		key, _, err = exp.HandleEvents()
-		if err != nil {
-			return trialResult{}, err
-		}
-		if key == control.K_LEFT || key == control.K_RIGHT || key == control.K_DOWN {
-			break
-		}
-		clock.Wait(1)
+	responseKeys := []sdl.Keycode{control.K_LEFT, control.K_RIGHT, control.K_DOWN}
+	key, rtMs, err := exp.Keyboard.WaitKeysRT(responseKeys, -1)
+	if err != nil {
+		return trialResult{}, err
 	}
-	rtMs := clock.GetTime() - start
 	correct := key == t.CorrectKey
 
 	// Feedback (training phase only).

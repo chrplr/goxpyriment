@@ -31,7 +31,7 @@ func main() {
 	exp.Data.WriteComment("--EVENT LOG")
 	exp.Data.WriteComment(evLog.String())
 	exp.Data.WriteComment("--TRIAL DATA")
-	exp.Data.AddVariableNames([]string{"trial", "word", "ink_color", "response", "rt", "correct", "congruent"})
+	exp.AddDataVariableNames([]string{"trial", "word", "ink_color", "response", "rt", "correct", "congruent"})
 
 	// Set logical size for consistent centering
 	//if err := exp.SetLogicalSize(int32(winW), int32(winH)); err != nil {
@@ -86,48 +86,26 @@ func main() {
 			}
 
 			// Wait for response
-			startTime := clock.GetTime()
-			var key control.Keycode
-			var subErr error
-			for {
-				key, _, subErr = exp.HandleEvents()
-				if subErr != nil {
-					return subErr
-				}
-
-				var resp string
-				switch key {
-				case control.K_R:
-					resp = "RED"
-				case control.K_G:
-					resp = "GREEN"
-				case control.K_B:
-					resp = "BLUE"
-				case control.K_Y:
-					resp = "YELLOW"
-				}
-
-				if resp != "" {
-					rt := clock.GetTime() - startTime
-					correct := resp == t.name
-					congruent := t.word == t.name
-
-					// Log to data file
-					exp.Data.Add(
-						i,
-						t.word,
-						t.name,
-						resp,
-						rt,
-						correct,
-						congruent,
-					)
-
-					fmt.Printf("Trial %d: Word=%s, Color=%s, Resp=%s, RT=%d ms, Correct=%v, Congruent=%v\n", i, t.word, t.name, resp, rt, correct, congruent)
-					break
-				}
-				clock.Wait(1)
+			responseKeys := []control.Keycode{control.K_R, control.K_G, control.K_B, control.K_Y}
+			key, rt, err := exp.Keyboard.WaitKeysRT(responseKeys, -1)
+			if err != nil {
+				return err
 			}
+			var resp string
+			switch key {
+			case control.K_R:
+				resp = "RED"
+			case control.K_G:
+				resp = "GREEN"
+			case control.K_B:
+				resp = "BLUE"
+			case control.K_Y:
+				resp = "YELLOW"
+			}
+			correct := resp == t.name
+			congruent := t.word == t.name
+			exp.Data.Add(i, t.word, t.name, resp, rt, correct, congruent)
+			fmt.Printf("Trial %d: Word=%s, Color=%s, Resp=%s, RT=%d ms, Correct=%v, Congruent=%v\n", i, t.word, t.name, resp, rt, correct, congruent)
 
 			// Small pause between trials
 			clock.Wait(500)

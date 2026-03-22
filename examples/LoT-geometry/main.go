@@ -153,7 +153,7 @@ func main() {
 		log.Fatalf("instruction error: %v", err)
 	}
 
-	exp.Data.AddVariableNames([]string{"trial_idx", "seq_name", "step", "target_idx", "click_idx", "is_correct", "rt"})
+	exp.AddDataVariableNames([]string{"trial_idx", "seq_name", "step", "target_idx", "click_idx", "is_correct", "rt"})
 
 	octagonPoints := getOctagonPoints(300)
 	dots := make([]*stimuli.Circle, 8)

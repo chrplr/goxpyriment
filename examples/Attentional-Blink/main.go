@@ -72,7 +72,7 @@ func main() {
 	exp := control.NewExperimentFromFlags("Attentional-Blink", control.Gray, control.White, 32)
 	defer exp.End()
 
-	exp.Data.AddVariableNames([]string{"trial_idx", "has_j", "has_k", "lag", "response", "is_correct", "rt"})
+	exp.AddDataVariableNames([]string{"trial_idx", "has_j", "has_k", "lag", "response", "is_correct", "rt"})
 
 	if err := showInstructions(exp); err != nil {
 		if control.IsEndLoop(err) { return }

@@ -236,34 +236,14 @@ func main() {
 }
 
 func waitInterruption(exp *control.Experiment, timeout int) error {
-	start := clock.GetTime()
-	for {
-		_, _, err := exp.HandleEvents()
-		if err != nil {
-			return err
-		}
-		if int(clock.GetTime()-start) >= timeout {
-			return nil
-		}
-		clock.Wait(1)
-	}
+	clock.Wait(timeout)
+	return nil
 }
 
 func waitResponse(exp *control.Experiment, timeout int) (control.Keycode, int64, error) {
-	start := clock.GetTime()
-	for {
-		key, _, err := exp.HandleEvents()
-		if err != nil {
-			return 0, clock.GetTime() - start, err
-		}
-		if key == control.K_Q || key == control.K_S || key == control.K_D || key == control.K_N {
-			return key, clock.GetTime() - start, nil
-		}
-		if timeout > 0 && int(clock.GetTime()-start) >= timeout {
-			return 0, int64(timeout), nil
-		}
-		clock.Wait(1)
-	}
+	responseKeys := []control.Keycode{control.K_Q, control.K_S, control.K_D, control.K_N}
+	key, rt, err := exp.Keyboard.WaitKeysRT(responseKeys, timeout)
+	return key, rt, err
 }
 
 func checkCorrect(key control.Keycode, expected int) bool {

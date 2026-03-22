@@ -71,7 +71,7 @@ func main() {
 	exp := control.NewExperimentFromFlags("Mental-Rotation", control.Black, control.White, 32)
 	defer exp.End()
 
-	exp.Data.AddVariableNames([]string{"trial_idx", "angle", "condition", "response", "is_correct", "rt"})
+	exp.AddDataVariableNames([]string{"trial_idx", "angle", "condition", "response", "is_correct", "rt"})
 
 	// Show instructions
 	if err := showInstructions(exp); err != nil {

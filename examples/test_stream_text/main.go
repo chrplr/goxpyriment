@@ -28,7 +28,7 @@ func main() {
 
 	words := strings.Fields(sentence)
 
-	exp.Data.AddVariableNames([]string{"word_index", "word", "target_on_ms", "actual_onset_ms", "actual_offset_ms"})
+	exp.AddDataVariableNames([]string{"word_index", "word", "target_on_ms", "actual_onset_ms", "actual_offset_ms"})
 
 	fmt.Printf("Presenting %d words...\n", len(words))
 

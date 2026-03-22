@@ -178,7 +178,7 @@ func main() {
 		log.Fatalf("instruction error: %v", err)
 	}
 
-	exp.Data.AddVariableNames([]string{"trial", "target_idx", "delay", "distractor", "rating"})
+	exp.AddDataVariableNames([]string{"trial", "target_idx", "delay", "distractor", "rating"})
 
 	points := getCirclePoints(NumPositions, Radius)
 	fixation := stimuli.NewFixCross(20, 2, control.White)

@@ -78,7 +78,7 @@ func main() {
 	exp := control.NewExperimentFromFlags("Sperling-Partial-Report", control.Black, control.White, 32)
 	defer exp.End()
 
-	exp.Data.AddVariableNames([]string{"trial_idx", "condition", "cued_row", "target_letters", "response", "accuracy"})
+	exp.AddDataVariableNames([]string{"trial_idx", "condition", "cued_row", "target_letters", "response", "accuracy"})
 
 	if err := showInstructions(exp); err != nil {
 		if control.IsEndLoop(err) { return }

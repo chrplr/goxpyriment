@@ -5,12 +5,13 @@ package main
 
 import (
 	"fmt"
-	"github.com/chrplr/goxpyriment/assets_embed"
-	"github.com/chrplr/goxpyriment/control"
-	"github.com/chrplr/goxpyriment/clock"
-	"github.com/chrplr/goxpyriment/stimuli"
 	"log"
 	"math/rand"
+
+	"github.com/chrplr/goxpyriment/assets_embed"
+	"github.com/chrplr/goxpyriment/clock"
+	"github.com/chrplr/goxpyriment/control"
+	"github.com/chrplr/goxpyriment/stimuli"
 )
 
 const (
@@ -38,7 +39,7 @@ func main() {
 		defer bigFont.Close()
 	}
 
-	exp.Data.AddVariableNames([]string{"number", "key", "rt", "correct"})
+	exp.AddDataVariableNames([]string{"number", "key", "rt", "correct"})
 
 	// 2. Prepare design and stimuli
 	type trialData struct {
@@ -64,73 +65,28 @@ func main() {
 	cue := stimuli.NewFixCross(50, 4, control.DefaultTextColor)
 
 	instrText := fmt.Sprintf("When you'll see a number, your task to decide, as quickly as possible, whether it is even or odd.\n\nif it is even, press 'F'\n\nif it is odd, press 'J'\n\nThere will be %d trials in total.\n\nPress the spacebar to start.", len(trials))
-	// Use 1000px width for instructions to ensure they fit well
-	instructions := stimuli.NewTextBox(instrText, 1000, control.FPoint{X: 0, Y: 0}, control.DefaultTextColor)
 
 	// 3. Run the experiment logic
 	err = exp.Run(func() error {
-		// Instructions
-		if err := exp.Show(instructions); err != nil {
-			return err
-		}
-		if err := exp.Keyboard.WaitKey(control.K_SPACE); err != nil {
-			return err
-		}
+		exp.ShowInstructions(instrText)
 
-		// Loop through trials
 		for i, t := range trials {
-			// Blank screen
-			if err := exp.Blank(1000); err != nil {
-				return err
-			}
-
-			// Cue
-			if err := exp.Show(cue); err != nil {
-				return err
-			}
+			exp.Blank(1000)
+			exp.Show(cue)
 			clock.Wait(500)
+			exp.Show(t.stim)
 
-			// Stimulus
-			if err := exp.Show(t.stim); err != nil {
-				return err
+			key, rt, _ := exp.Keyboard.WaitKeysRT([]control.Keycode{EvenResponse, OddResponse}, -1)
+			correct := (t.number%2 == 0) == (key == EvenResponse)
+			exp.Data.Add(t.number, key, rt, correct)
+			fmt.Printf("Trial %d: Num=%d, RT=%d ms, Correct=%v\n", i, t.number, rt, correct)
+			if !correct {
+				exp.Audio.PlayBuzzer()
 			}
-
-			// Wait for response
-			var key control.Keycode
-			var subErr error
-			startTime := clock.GetTime()
-			for {
-				key, _, subErr = exp.HandleEvents()
-				if subErr != nil {
-					return subErr
-				}
-				if key == EvenResponse || key == OddResponse {
-					rt := clock.GetTime() - startTime
-					oddity := t.number % 2
-					var responseOddity int
-					if key == OddResponse {
-						responseOddity = 1
-					} else {
-						responseOddity = 0
-					}
-					correct := oddity == responseOddity
-					exp.Data.Add(t.number, key, rt, correct)
-					fmt.Printf("Trial %d: Num=%d, Key=%d, RT=%d ms, Correct=%v\n", i, t.number, key, rt)
-					if !correct {
-						if err := exp.Audio.PlayBuzzer(); err != nil {
-							log.Printf("Warning: buzzer playback failed: %v", err)
-						}
-					}
-					break
-				}
-				clock.Wait(1)
-			}
-
-			// Small pause between trials
 			clock.Wait(500)
 		}
 
-		return control.EndLoop // Graceful exit
+		return control.EndLoop
 	})
 
 	if err != nil && !control.IsEndLoop(err) {

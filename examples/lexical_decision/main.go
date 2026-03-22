@@ -77,7 +77,7 @@ func main() {
 	exp.Data.WriteComment(evLog.String())
 	exp.Data.WriteComment("--TRIAL DATA")
 
-	exp.Data.AddVariableNames([]string{"item", "category", "key", "rt"})
+	exp.AddDataVariableNames([]string{"item", "category", "key", "rt"})
 
 	// 4. Shuffle trials
 	rand.Shuffle(len(trials), func(i, j int) {

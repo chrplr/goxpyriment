@@ -145,6 +145,27 @@ func (e *Experiment) Show(v stimuli.VisualStimulus) error {
 	return v.Present(e.Screen, true, true)
 }
 
+// ShowInstructions displays a centered text block and waits for the
+// participant to press the spacebar before returning. This replaces the
+// common three-line pattern:
+//
+//	tb := stimuli.NewTextBox(text, width, control.Origin(), exp.ForegroundColor)
+//	exp.Show(tb)
+//	exp.Keyboard.WaitKey(control.K_SPACE)
+//
+// The wrap width defaults to 80 % of the screen width (minimum 400 px).
+func (e *Experiment) ShowInstructions(text string) error {
+	w := int32(float32(e.Screen.Width) * 0.80)
+	if w < 400 {
+		w = 400
+	}
+	tb := stimuli.NewTextBox(text, w, sdl.FPoint{}, e.ForegroundColor)
+	if err := e.Show(tb); err != nil {
+		return err
+	}
+	return e.Keyboard.WaitKey(K_SPACE)
+}
+
 // Blank clears the screen and keeps it blank for the given number of
 // milliseconds. It replaces the common three-line pattern:
 //

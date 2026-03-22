@@ -4,12 +4,25 @@
 package control
 
 import (
+	"fmt"
 	"sync"
 
+	"github.com/Zyko0/go-sdl3/sdl"
 	"github.com/chrplr/goxpyriment/assets_embed"
 	"github.com/chrplr/goxpyriment/stimuli"
-	"github.com/Zyko0/go-sdl3/sdl"
 )
+
+// SetAudioSampleFrames sets the SDL hint that controls how many sample frames
+// the audio device uses per hardware callback (i.e. the hardware buffer size).
+// Smaller values reduce output latency; larger values reduce underrun risk.
+// Common values: 256, 512, 1024, 2048. The default is platform-dependent.
+//
+// This must be called BEFORE [NewExperiment] / [NewExperimentFromFlags] —
+// the hint is consumed when the audio device is opened during initialization.
+// To read back the actual value after init: exp.AudioDevice.GetAudioDeviceFormat().
+func SetAudioSampleFrames(frames int) {
+	sdl.SetHint(sdl.HINT_AUDIO_DEVICE_SAMPLE_FRAMES, fmt.Sprintf("%d", frames))
+}
 
 // AudioManager coordinates audio playback on top of a single SDL audio device.
 // It provides synchronous and asynchronous helpers and ensures that all

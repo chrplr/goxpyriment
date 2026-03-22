@@ -84,8 +84,7 @@ func main() {
 		soa = 400
 		stimDuration = 200
 	}
-	blankDuration := soa - stimDuration
-	_ = blankDuration // unused directly, handled by timing logic
+
 
 	stream := generateInterleavedStream(redTriplets, greenTriplets)
 
@@ -120,23 +119,18 @@ func main() {
 				return err
 			}
 
-			startTime := clock.GetTime()
-			responded := false
+			// Stim phase — wait up to stimDuration for SPACE
 			var responseKey control.Keycode
 			var rt int64
-
-			// Wait for stim duration while polling for spacebar
-			for clock.GetTime()-startTime < int64(stimDuration) {
-				key, _, err := exp.HandleEvents()
-				if err != nil {
-					return err
-				}
-				if key == control.K_SPACE && !responded {
-					responded = true
-					responseKey = key
-					rt = clock.GetTime() - startTime
-				}
-				clock.Wait(1)
+			spaceKey := []control.Keycode{control.K_SPACE}
+			k, rtMs, err := exp.Keyboard.WaitKeysRT(spaceKey, stimDuration)
+			if err != nil {
+				return err
+			}
+			responded := k == control.K_SPACE
+			if responded {
+				responseKey = k
+				rt = rtMs
 			}
 
 			// Blank screen
@@ -147,18 +141,20 @@ func main() {
 				return err
 			}
 
-			// Continue polling during blank duration
-			for clock.GetTime()-startTime < int64(soa) {
-				key, _, err := exp.HandleEvents()
+			// Blank phase — collect response if not yet given
+			blankMs := soa - stimDuration
+			if !responded && blankMs > 0 {
+				k, rtMs, err = exp.Keyboard.WaitKeysRT(spaceKey, blankMs)
 				if err != nil {
 					return err
 				}
-				if key == control.K_SPACE && !responded {
+				if k == control.K_SPACE {
 					responded = true
-					responseKey = key
-					rt = clock.GetTime() - startTime
+					responseKey = k
+					rt = int64(stimDuration) + rtMs
 				}
-				clock.Wait(1)
+			} else if blankMs > 0 {
+				clock.Wait(blankMs)
 			}
 
 			isAttended := colorName == attendedColorName
@@ -327,21 +323,15 @@ func run2IFCTest(exp *control.Experiment, expType ExperimentType, shapes []shape
 			return err
 		}
 
+		key, _, err := exp.Keyboard.WaitKeysRT([]control.Keycode{control.K_1, control.K_2}, -1)
+		if err != nil {
+			return err
+		}
 		var choice int
-		for {
-			key, _, err := exp.HandleEvents()
-			if err != nil {
-				return err
-			}
-			if key == control.K_1 {
-				choice = 1
-				break
-			}
-			if key == control.K_2 {
-				choice = 2
-				break
-			}
-			clock.Wait(10)
+		if key == control.K_1 {
+			choice = 1
+		} else {
+			choice = 2
 		}
 
 		correct := (choice == 1 && firstIsTriplet) || (choice == 2 && !firstIsTriplet)
@@ -472,19 +462,13 @@ func runExp3Test(exp *control.Experiment, shapes []shapeInfo, redTriplets, green
 				return err
 			}
 
-			startTime := clock.GetTime()
-			for clock.GetTime()-startTime < 200 {
-				key, _, err := exp.HandleEvents()
-				if err != nil {
-					return err
-				}
-				if key == control.K_SPACE && !responded {
-					if idx == targetIdx {
-						responded = true
-						rt = clock.GetTime() - startTime
-					}
-				}
-				clock.Wait(1)
+			k, rtMs, err := exp.Keyboard.WaitKeysRT([]control.Keycode{control.K_SPACE}, 200)
+			if err != nil {
+				return err
+			}
+			if k == control.K_SPACE && !responded && idx == targetIdx {
+				responded = true
+				rt = rtMs
 			}
 			if err := exp.Blank(200); err != nil {
 				return err
