@@ -1,0 +1,1042 @@
+% Options for packages loaded elsewhere
+\PassOptionsToPackage{unicode}{hyperref}
+\PassOptionsToPackage{hyphens}{url}
+\PassOptionsToPackage{dvipsnames,svgnames,x11names}{xcolor}
+%
+\documentclass[
+  11pt,
+]{article}
+\usepackage{amsmath,amssymb}
+\usepackage{setspace}
+\usepackage{iftex}
+\ifPDFTeX
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+  \usepackage{textcomp} % provide euro and other symbols
+\else % if luatex or xetex
+  \usepackage{unicode-math} % this also loads fontspec
+  \defaultfontfeatures{Scale=MatchLowercase}
+  \defaultfontfeatures[\rmfamily]{Ligatures=TeX,Scale=1}
+\fi
+\usepackage{lmodern}
+\ifPDFTeX\else
+  % xetex/luatex font selection
+\fi
+% Use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+\IfFileExists{microtype.sty}{% use microtype if available
+  \usepackage[]{microtype}
+  \UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\makeatletter
+\@ifundefined{KOMAClassName}{% if non-KOMA class
+  \IfFileExists{parskip.sty}{%
+    \usepackage{parskip}
+  }{% else
+    \setlength{\parindent}{0pt}
+    \setlength{\parskip}{6pt plus 2pt minus 1pt}}
+}{% if KOMA class
+  \KOMAoptions{parskip=half}}
+\makeatother
+\usepackage{xcolor}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{color}
+\usepackage{fancyvrb}
+\newcommand{\VerbBar}{|}
+\newcommand{\VERB}{\Verb[commandchars=\\\{\}]}
+\DefineVerbatimEnvironment{Highlighting}{Verbatim}{commandchars=\\\{\}}
+% Add ',fontsize=\small' for more characters per line
+\usepackage{framed}
+\definecolor{shadecolor}{RGB}{248,248,248}
+\newenvironment{Shaded}{\begin{snugshade}}{\end{snugshade}}
+\newcommand{\AlertTok}[1]{\textcolor[rgb]{0.94,0.16,0.16}{#1}}
+\newcommand{\AnnotationTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\AttributeTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{#1}}
+\newcommand{\BaseNTok}[1]{\textcolor[rgb]{0.00,0.00,0.81}{#1}}
+\newcommand{\BuiltInTok}[1]{#1}
+\newcommand{\CharTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\CommentTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textit{#1}}}
+\newcommand{\CommentVarTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\ConstantTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{#1}}
+\newcommand{\ControlFlowTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{\textbf{#1}}}
+\newcommand{\DataTypeTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{#1}}
+\newcommand{\DecValTok}[1]{\textcolor[rgb]{0.00,0.00,0.81}{#1}}
+\newcommand{\DocumentationTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\ErrorTok}[1]{\textcolor[rgb]{0.64,0.00,0.00}{\textbf{#1}}}
+\newcommand{\ExtensionTok}[1]{#1}
+\newcommand{\FloatTok}[1]{\textcolor[rgb]{0.00,0.00,0.81}{#1}}
+\newcommand{\FunctionTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{\textbf{#1}}}
+\newcommand{\ImportTok}[1]{#1}
+\newcommand{\InformationTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\newcommand{\KeywordTok}[1]{\textcolor[rgb]{0.13,0.29,0.53}{\textbf{#1}}}
+\newcommand{\NormalTok}[1]{#1}
+\newcommand{\OperatorTok}[1]{\textcolor[rgb]{0.81,0.36,0.00}{\textbf{#1}}}
+\newcommand{\OtherTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{#1}}
+\newcommand{\PreprocessorTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textit{#1}}}
+\newcommand{\RegionMarkerTok}[1]{#1}
+\newcommand{\SpecialCharTok}[1]{\textcolor[rgb]{0.81,0.36,0.00}{\textbf{#1}}}
+\newcommand{\SpecialStringTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\StringTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\VariableTok}[1]{\textcolor[rgb]{0.00,0.00,0.00}{#1}}
+\newcommand{\VerbatimStringTok}[1]{\textcolor[rgb]{0.31,0.60,0.02}{#1}}
+\newcommand{\WarningTok}[1]{\textcolor[rgb]{0.56,0.35,0.01}{\textbf{\textit{#1}}}}
+\usepackage{longtable,booktabs,array}
+\usepackage{calc} % for calculating minipage widths
+% Correct order of tables after \paragraph or \subparagraph
+\usepackage{etoolbox}
+\makeatletter
+\patchcmd\longtable{\par}{\if@noskipsec\mbox{}\fi\par}{}{}
+\makeatother
+% Allow footnotes in longtable head/foot
+\IfFileExists{footnotehyper.sty}{\usepackage{footnotehyper}}{\usepackage{footnote}}
+\makesavenoteenv{longtable}
+\setlength{\emergencystretch}{3em} % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\setcounter{secnumdepth}{-\maxdimen} % remove section numbering
+\ifLuaTeX
+  \usepackage{selnolig}  % disable illegal ligatures
+\fi
+\usepackage{bookmark}
+\IfFileExists{xurl.sty}{\usepackage{xurl}}{} % add URL line breaks if available
+\urlstyle{same}
+\hypersetup{
+  colorlinks=true,
+  linkcolor={blue},
+  filecolor={Maroon},
+  citecolor={blue},
+  urlcolor={blue},
+  pdfcreator={LaTeX via pandoc}}
+
+\title{goxpyriment: A Go Framework for Behavioral and Cognitive Experiments}
+\author{Christophe Pallier\\
+  \small INSERM--CEA Cognitive Neuroimaging Unit, NeuroSpin, Gif-sur-Yvette, France\\
+  \small \texttt{christophe@pallier.org}}
+\date{}
+
+\begin{document}
+
+\setstretch{1.5}
+\maketitle
+
+\subsection{Abstract}\label{abstract}
+
+We describe \texttt{goxpyriment}, an open-source software framework for
+programming behavioral and cognitive experiments in the Go programming
+language. The library wraps the SDL3 graphics library to provide
+hardware-accelerated, VSYNC-locked stimulus presentation and is designed
+to address two practical limitations of Python-based experiment tools:
+runtime environment complexity that complicates deployment across
+laboratory computers, and unpredictable pause times introduced by
+Python's garbage collector during timing-sensitive sections. Go is a
+compiled language whose garbage collector can be disabled
+programmatically; combined with VSYNC synchronization, this allows
+stimulus onsets and offsets to be aligned to individual display frames.
+\texttt{goxpyriment} exposes a layered package architecture ---
+\texttt{control} (experiment lifecycle), \texttt{stimuli} (visual and
+audio objects), \texttt{io} (window, keyboard, mouse, data files),
+\texttt{design} (trial and block structure), \texttt{clock} (timing
+utilities), and \texttt{triggers} (hardware synchronization with EEG/MEG
+recording systems). The visual stimulus set includes text, geometric
+shapes, images, Gabor patches, drifting sinusoidal gratings, random-dot
+motion clouds, random-dot stereograms, and video sequences. Audio
+support covers WAV playback, procedural tone generation, and
+time-windowed segment extraction with linear ramps. High-precision rapid
+serial visual presentation is handled by dedicated stream functions that
+disable garbage collection and log predicted and actual stimulus onsets.
+An experiment compiles to a single self-contained binary with no runtime
+dependencies, simplifying distribution to collaborators and participant
+testing computers. The framework is released under the GNU General
+Public License v3 and available at
+https://github.com/chrplr/goxpyriment.
+
+\textbf{Keywords:} experiment software, stimulus presentation, timing
+precision, Go, SDL3, behavioral experiments
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\subsection{Introduction}\label{introduction}
+
+Experiment-control software occupies a central position in behavioral
+and cognitive neuroscience: the temporal precision of stimulus delivery
+and response recording, the ergonomics of experiment programming, and
+the ease of deploying experiments to laboratory hardware each affect the
+quality and reproducibility of empirical data. Over the past two
+decades, Python has become the dominant language for experiment
+programming, primarily through two libraries: Expyriment (Krause \&
+Lindemann, 2014) and PsychoPy (Peirce et al., 2019). Before Python,
+MATLAB with the Psychophysics Toolbox (Brainard, 1997; Kleiner et al.,
+2007) was the de facto standard in many laboratories. More recently,
+web-based frameworks such as jsPsych (de Leeuw, 2015; de Leeuw et al.,
+2023) and lab.js (Henninger et al., 2022) have enabled large-scale
+online data collection.
+
+Each class of tool involves tradeoffs. MATLAB offers reliable timing on
+well-configured hardware but is proprietary, expensive, and increasingly
+difficult to maintain across operating-system updates. Python tools
+provide an open, flexible programming environment with a large
+scientific ecosystem, but they introduce two practical difficulties.
+First, deploying an experiment to a computer that does not already have
+a compatible Python environment requires package management (conda, pip,
+venv) and is a frequent source of breakage across operating-system
+versions, hardware architectures, and time. Second, Python's garbage
+collector can introduce unpredictable pause times that corrupt the
+timing of stimulus presentation and response recording during the
+critical trial loop. While techniques exist to mitigate this ---
+pre-allocating stimulus objects, using NumPy arrays to avoid
+Python-level allocation, or timing the experiment around known GC cycles
+--- they add complexity and are not always sufficient. Web-based tools
+trade timing precision for accessibility: browser-mediated stimulus
+presentation on general-purpose operating systems is subject to
+event-loop latency, compositor delays, and monitor polling intervals
+that make sub-frame timing difficult or impossible (Bridges et al.,
+2020; Anwyl-Irvine et al., 2021).
+
+The Go programming language (Donovan \& Kernighan, 2016) offers a
+different point in the design space. Go compiles to native machine code
+for each target platform and produces self-contained binaries with no
+runtime dependencies. Its garbage collector is concurrent and can be
+suspended for the duration of a timing-critical section by calling
+\texttt{debug.SetGCPercent(-1)}, after which it is restored without data
+loss. The language provides strong static typing, explicit error
+handling, and a straightforward concurrency model. These properties make
+it an attractive substrate for a behavioral experiment library that
+prioritizes timing reliability and deployment simplicity over
+flexibility in the scientific computing ecosystem.
+
+\texttt{goxpyriment} is a Go library that provides a high-level API for
+behavioral and cognitive experiments, deliberately modeled on
+Expyriment's design philosophy: an \texttt{Experiment} object owns all
+resources; stimuli are presented by calling \texttt{exp.Show(stim)};
+responses are collected by calling
+\texttt{exp.Keyboard.WaitKeysRT(keys,\ timeout)}; and data are written
+to a CSV-like output file whose metadata header records the experimental
+context. The library uses SDL3 (Simple DirectMedia Layer, version 3) via
+the \texttt{go-sdl3} bindings (Zyko0, 2024) for hardware-accelerated 2D
+rendering and event handling. The SDL3 renderer presents frames
+synchronously with the monitor's vertical retrace signal (VSYNC),
+ensuring that each stimulus onset and offset coincides with a frame
+boundary.
+
+The present article describes the design and capabilities of
+\texttt{goxpyriment}, discusses its timing architecture, and situates it
+relative to existing tools.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\subsection{Software Design and
+Architecture}\label{software-design-and-architecture}
+
+\subsubsection{Package Structure}\label{package-structure}
+
+\texttt{goxpyriment} is organized as a Go module with a layered package
+hierarchy. Packages at lower levels are independent of packages above
+them, which keeps the dependency graph acyclic and allows individual
+packages to be understood and tested in isolation.
+
+\begin{verbatim}
+control/      experiment lifecycle and orchestration
+stimuli/      visual and audio stimulus objects
+io/           SDL window/renderer, keyboard, mouse, data files
+design/       trial/block structure and randomization
+clock/        timing utilities
+geometry/     coordinate conversion helpers
+triggers/     hardware trigger devices (EEG/MEG synchronization)
+\end{verbatim}
+
+User code imports primarily \texttt{control} and \texttt{stimuli}. The
+\texttt{io} package is accessed indirectly through fields of the
+\texttt{Experiment} struct; direct use of \texttt{io} is necessary only
+when implementing custom stimulus types.
+
+\subsubsection{Experiment Lifecycle}\label{experiment-lifecycle}
+
+Every experiment is built around a single \texttt{*control.Experiment}
+value that owns the SDL window and renderer, the default font, the audio
+device, keyboard and mouse handlers, and the output data file. The
+typical entry point is:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{exp }\OperatorTok{:=}\NormalTok{ control}\OperatorTok{.}\NormalTok{NewExperimentFromFlags}\OperatorTok{(}\StringTok{"My Experiment"}\OperatorTok{,}\NormalTok{ control}\OperatorTok{.}\NormalTok{Black}\OperatorTok{,}\NormalTok{ control}\OperatorTok{.}\NormalTok{White}\OperatorTok{,} \DecValTok{32}\OperatorTok{)}
+\ControlFlowTok{defer}\NormalTok{ exp}\OperatorTok{.}\NormalTok{End}\OperatorTok{()}
+\end{Highlighting}
+\end{Shaded}
+
+\texttt{NewExperimentFromFlags} parses two optional command-line flags
+(\texttt{-d} for a windowed 1024×768 developer mode, and \texttt{-s\ N}
+to set the subject ID), initializes SDL and the audio subsystem, opens
+the display window, and creates the data file. \texttt{defer\ exp.End()}
+ensures that the data file is flushed, fonts are released, and SDL is
+shut down in all exit paths, including panics. When the dialog-based
+participant-information collection described below is used, a
+lower-level constructor (\texttt{NewExperiment}) and an explicit
+\texttt{Initialize()} call replace this single-function entry point.
+
+All rendering and event handling must occur on the thread that created
+the SDL window. \texttt{exp.Run(func()\ error\ \{...\})} transfers
+execution to that thread and wraps the user callback in a panic/recover
+guard. Pressing the Escape key or closing the window triggers an
+internal panic with a sentinel value; \texttt{exp.Run} catches this,
+converts it to the \texttt{EndLoop} error, saves the data file, and
+returns cleanly. This mechanism means that individual calls within the
+trial loop do not need explicit error checking for the common case of
+the participant aborting the session.
+
+\subsubsection{Visual Stimuli}\label{visual-stimuli}
+
+All visual stimuli implement the \texttt{VisualStimulus} interface,
+which requires \texttt{Draw(screen)},
+\texttt{Present(screen,\ clear,\ update)}, \texttt{GetPosition()}, and
+\texttt{SetPosition()}. The \texttt{Stimulus} interface additionally
+requires \texttt{Preload()} and \texttt{Unload()} for lifecycle
+management.
+
+GPU textures are allocated lazily on the first \texttt{Draw} call. For
+timing-sensitive code, explicit preloading via
+\texttt{stimuli.PreloadVisualOnScreen(screen,\ stim)} forces texture
+upload before the critical section begins.
+
+The library provides the following visual stimulus types:
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{Text}: \texttt{TextLine} (single rendered line) and
+  \texttt{TextBox} (word-wrapped text in a bounding rectangle). Both
+  accept any \texttt{ttf.Font}; a default Inconsolata font is embedded
+  in the binary.
+\item
+  \textbf{Geometric shapes}: \texttt{FixCross}, \texttt{Circle},
+  \texttt{Rectangle}, \texttt{Line}.
+\item
+  \textbf{Images}: \texttt{Picture} (loaded from file or embedded
+  bytes). Supported formats include PNG, JPEG, and BMP.
+\item
+  \textbf{Gabor patch}: \texttt{GaborPatch} --- a static sinusoidal
+  grating multiplied by a Gaussian envelope. Parameters: sigma,
+  orientation (degrees), spatial wavelength (pixels), phase, aspect
+  ratio, and background color.
+\item
+  \textbf{Drifting grating}: \texttt{PresentMovingGrating} renders a
+  sinusoidal grating of specified spatial frequency (cycles per pixel),
+  temporal frequency (Hz), contrast, and mean luminance in a rectangular
+  aperture.
+\item
+  \textbf{Drifting Gabor patch}: \texttt{PresentMovingGabor} renders a
+  drifting sinusoidal grating windowed by a Gaussian envelope with
+  alpha-blended edges. Orientation, spatial frequency, temporal
+  frequency, contrast, and mean luminance are all configurable.
+\item
+  \textbf{Random-dot cloud}: \texttt{DotCloud} (static) and
+  \texttt{PresentMovingDotCloud} (animated VSYNC-locked loop). In the
+  animated version, each dot moves at a fixed speed in its assigned
+  direction and is respawned at a random position on the cloud boundary
+  when it exits.
+\item
+  \textbf{Random-dot stereogram}: \texttt{RDS} generates side-by-side
+  stereo pairs for depth perception experiments.
+\item
+  \textbf{Visual mask}: \texttt{VisualMask} fills a rectangle with
+  randomly placed dots at a specified density.
+\item
+  \textbf{Composite stimuli}: \texttt{ThermometerDisplay} (a segmented
+  progress bar) and \texttt{ChoiceGrid} (a multiple-choice button grid
+  accepting both mouse clicks and single-character keypresses).
+\item
+  \textbf{Interactive text input}: \texttt{TextInput} renders a labeled
+  text box and collects free-text keyboard input.
+\item
+  \textbf{Video}: MPEG files (via libmpg123) and \texttt{.gv}
+  (LZ4-compressed RGBA sequences) can be played frame-by-frame in a
+  VSYNC-locked loop.
+\end{itemize}
+
+Stimulus positions are specified in a \textbf{center-origin coordinate
+system} where (0, 0) is the screen center and positive Y is upward. The
+conversion to SDL's top-left origin is handled internally.
+
+\subsubsection{Audio Stimuli}\label{audio-stimuli}
+
+The audio subsystem uses SDL3's audio streaming API. The \texttt{Sound}
+type loads WAV files from disk or embedded bytes; \texttt{Tone}
+generates procedural pure tones at runtime. Both implement
+\texttt{AudioPlayable} and can be used in audio streams.
+
+\texttt{Sound.PlaySegment(onset,\ offset,\ rampSec)} plays the portion
+of a loaded WAV between \texttt{onset} and \texttt{offset} (in seconds)
+with optional linear fade-in and fade-out ramps. This is useful for
+presenting isolated phonemes or vowels extracted from longer recordings
+without audible clicks at segment boundaries.
+
+Two embedded feedback sounds --- a buzzer and a ping --- are included in
+the \texttt{assets\_embed} package and accessible through
+\texttt{exp.Audio.PlayBuzzer()} and \texttt{exp.Audio.PlayCorrect()}.
+
+\subsubsection{Input Handling}\label{input-handling}
+
+\texttt{exp.Keyboard} provides both blocking and non-blocking access to
+keyboard events:
+
+\begin{itemize}
+\tightlist
+\item
+  \texttt{Wait()} blocks until any key is pressed.
+\item
+  \texttt{WaitKey(code)} blocks until a specific key is pressed.
+\item
+  \texttt{WaitKeys(codes,\ timeoutMS)} blocks until one of several keys
+  is pressed, with an optional timeout.
+\item
+  \texttt{WaitKeysRT(codes,\ timeoutMS)} additionally returns the
+  reaction time in milliseconds from the moment of the call.
+\item
+  \texttt{Check()} is a non-blocking poll.
+\item
+  \texttt{Clear()} drains all pending key events from the SDL queue.
+\end{itemize}
+
+Reaction time from \texttt{WaitKeysRT} is measured from the moment of
+the call. For maximum precision, the exact VSYNC timestamp can be
+obtained via \texttt{clock.GetTime()} immediately after
+\texttt{exp.Screen.Update()} returns, and the difference to the keypress
+timestamp can be computed manually.
+
+\texttt{exp.Mouse} provides equivalent access to mouse button events and
+cursor position in center-based coordinates.
+
+\subsubsection{Data Collection}\label{data-collection}
+
+\texttt{exp.Data} writes to a file named
+\texttt{\textless{}expname\textgreater{}\_\textless{}subjectID\textgreater{}\_\textless{}timestamp\textgreater{}.xpd}
+in \texttt{\textasciitilde{}/goxpy\_data/}. The format is plain CSV with
+\texttt{\#}-prefixed comment lines forming a structured metadata header.
+The header sections are:
+
+\begin{itemize}
+\tightlist
+\item
+  \texttt{-\/-EXPERIMENT\ INFO}: experiment name, command line, start
+  time, hostname, username, OS, framework version.
+\item
+  \texttt{-\/-PARTICIPANT\ INFO}: key/value pairs collected by the
+  participant-information dialog (see below), if used.
+\item
+  \texttt{-\/-SUBJECT\ INFO}: numeric subject ID.
+\item
+  \texttt{-\/-DISPLAY\ INFO}: monitor ID, name, native resolution, pixel
+  density, refresh rate, bit depth.
+\end{itemize}
+
+\texttt{exp.AddDataVariableNames(names)} writes a column-header line.
+Subject ID is always prepended to each data row automatically.
+\texttt{exp.Data.Add(values...)} appends a row; values are converted to
+strings via \texttt{fmt.Sprint} and fields containing delimiters or
+quotes are escaped. \texttt{exp.Data.Save()} flushes the buffer to disk
+and can be called mid-experiment to protect data against crashes.
+
+\subsubsection{Experimental Design}\label{experimental-design}
+
+The \texttt{design} package provides a three-level
+\texttt{Experiment\ →\ Block\ →\ Trial} hierarchy. Each \texttt{Trial}
+holds a \texttt{map{[}string{]}interface\{\}} of factors that can be set
+and retrieved by name.
+\texttt{Block.AddTrial(trial,\ copies,\ randomPosition)} adds one or
+more copies of a trial; \texttt{Block.ShuffleTrials()} randomizes trial
+order in place.
+
+Randomization utilities include:
+
+\begin{itemize}
+\tightlist
+\item
+  \texttt{ShuffleList(slice)}: in-place Fisher-Yates shuffle (generic,
+  works on any slice type).
+\item
+  \texttt{RandInt(a,\ b)}, \texttt{RandElement(slice)},
+  \texttt{CoinFlip(bias)}, \texttt{RandNorm(a,\ b)}: scalar random
+  sampling functions.
+\item
+  \texttt{MakeMultipliedShuffledList(list,\ n)}: concatenates \texttt{n}
+  shuffled copies of a list.
+\item
+  \texttt{RandIntSequence(first,\ last)}: returns a shuffled integer
+  range.
+\end{itemize}
+
+Between-subjects Latin-square counterbalancing is supported through
+\texttt{exp.AddBWSFactor(name,\ conditions)} and
+\texttt{exp.GetPermutedBWSFactorCondition(name)}, which returns the
+condition assigned to the current subject via a balanced Latin square
+based on subject ID.
+
+\subsubsection{Pre-Experiment Setup
+Dialog}\label{pre-experiment-setup-dialog}
+
+\texttt{control.GetParticipantInfo(title,\ fields)} opens a graphical
+SDL dialog before the experiment window is created. The experimenter
+fills in typed text fields and toggles checkbox fields; pressing Enter
+or clicking OK returns the values as a \texttt{map{[}string{]}string}.
+The dialog supports Tab/Shift-Tab navigation between text fields,
+UTF-8-aware Backspace, and Escape to cancel. All values except
+\texttt{subject\_id} are persisted to
+\texttt{\textasciitilde{}/.cache/goxpyriment/last\_session.json} and
+pre-filled on the next run.
+
+Pre-built field sets cover common needs:
+
+\begin{itemize}
+\tightlist
+\item
+  \texttt{ParticipantFields}: subject ID, age, gender, handedness.
+\item
+  \texttt{MonitorFields}: screen width in centimeters, viewing distance,
+  refresh rate.
+\item
+  \texttt{FullscreenField}: a checkbox that governs whether the
+  experiment runs fullscreen or in a 1024×768 window.
+\end{itemize}
+
+When \texttt{exp.Info} is set before calling \texttt{exp.Initialize()},
+the collected values are automatically written to the
+\texttt{-\/-PARTICIPANT\ INFO} section of the data file header.
+
+\subsubsection{Hardware Triggers}\label{hardware-triggers}
+
+The \texttt{triggers} package provides a uniform \texttt{Trigger}
+interface for sending digital pulses to EEG and MEG recording systems.
+Implementations are provided for the DLP-IO8 USB device (a
+serial-port-based 8-bit digital I/O module) and Linux parallel ports.
+\texttt{triggers.AutoDetectDLPIO8()} searches available serial ports and
+returns a \texttt{NullTrigger} (a no-op implementation of the interface)
+if no device is found, allowing the same experiment code to run with and
+without a recording system attached.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\subsection{Timing Architecture}\label{timing-architecture}
+
+\subsubsection{VSYNC Synchronization}\label{vsync-synchronization}
+
+\texttt{screen.Update()} calls SDL's \texttt{SDL\_RenderPresent}, which
+blocks until the display's vertical retrace when VSYNC is enabled. On a
+60 Hz monitor this is approximately 16.67 ms per frame; on a 144 Hz
+monitor approximately 6.94 ms. Because \texttt{screen.Update()} returns
+only after the frame has been committed to the display pipeline, the
+time of return provides a lower bound on stimulus onset that is accurate
+to within the display's frame period. This is the standard
+synchronization model used by the Psychophysics Toolbox (Brainard, 1997)
+and Expyriment (Krause \& Lindemann, 2014).
+
+For most trial-loop code, \texttt{exp.Show(stim)} --- which calls
+\texttt{Screen.Clear()}, \texttt{stim.Draw(screen)}, and
+\texttt{screen.Update()} in sequence --- provides frame-accurate
+stimulus onset without further action from the programmer.
+
+\subsubsection{High-Precision Streams}\label{high-precision-streams}
+
+For paradigms with dense, high-speed stimulus sequences --- rapid serial
+visual presentation (RSVP), attentional-blink experiments, temporal
+masking --- the standard \texttt{exp.Show} / \texttt{exp.Wait} cycle
+introduces jitter at two points: (1) Go's garbage collector may pause
+execution for several milliseconds during \texttt{exp.Wait}, and (2)
+\texttt{exp.Wait} sleeps in 1 ms increments and does not align wakeup to
+frame boundaries.
+
+The \texttt{stimuli.PresentStreamOfImages} and
+\texttt{stimuli.PresentStreamOfText} functions address both issues. For
+the duration of the stream:
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  Garbage collection is disabled via \texttt{debug.SetGCPercent(-1)} and
+  restored on exit.
+\item
+  The SDL event queue is drained before the first frame to remove any
+  accumulated events.
+\item
+  Each stimulus onset is scheduled as an absolute offset from the stream
+  start; the loop busy-waits at the sub-frame level, calling
+  \texttt{screen.Update()} on each VSYNC until the scheduled onset is
+  reached, then draws and flips.
+\item
+  A \texttt{TimingLog} records the target onset, actual onset, and
+  actual offset for each stimulus element. These logs allow post-hoc
+  verification of presentation timing for each session.
+\end{enumerate}
+
+The analogous \texttt{stimuli.PlayStreamOfSounds} function implements
+the same approach for audio sequences.
+
+\subsubsection{Animated Stimuli}\label{animated-stimuli}
+
+Three functions implement self-contained VSYNC-locked animation loops
+for dynamic stimuli: \texttt{PresentMovingDotCloud},
+\texttt{PresentMovingGrating}, and \texttt{PresentMovingGabor}. Each
+disables garbage collection for the duration of the loop, drains the
+event queue before the first frame, and returns a \texttt{MotionResult}
+containing the interrupt key, mouse button (if any), and reaction time
+from the first frame to the response.
+
+For drifting gratings and Gabors, all spatial parameters (luminance
+tables, Gaussian weights) are precomputed before the loop; only the
+temporal phase advances per frame, requiring minimal computation within
+the VSYNC interval.
+
+\subsubsection{Limitations of the Timing
+Model}\label{limitations-of-the-timing-model}
+
+The VSYNC-based timing model guarantees that stimulus changes occur no
+earlier than the scheduled frame boundary. It does not guarantee that a
+change occurs on a specific frame if the CPU or GPU is busy at that
+moment; a missed frame will delay onset by one frame period. The stream
+functions minimize this risk by keeping the per-frame computation small
+and disabling GC, but workloads that stress the GPU --- large textures,
+many simultaneous draws --- can still cause occasional dropped frames.
+
+Frame-accurate timing applies to stimulus onset and offset. It does not
+apply to keyboard response timestamps: \texttt{exp.Keyboard.WaitKeysRT}
+measures elapsed time from the call site using the system clock, not
+from a hardware interrupt. On modern operating systems without real-time
+scheduling, keyboard event latency is typically on the order of 1--5 ms
+but is not bounded.
+
+No formal timing validation study has yet been published for
+\texttt{goxpyriment}. Such a study, using a photodiode and a hardware
+response box to measure actual stimulus onset and response timing, is a
+priority for future work.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\subsection{Example Experiments}\label{example-experiments}
+
+The repository ships with over forty example experiments in the
+\texttt{examples/} directory, covering a wide range of paradigms. A
+brief selection illustrates the breadth of the library:
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{\texttt{parity\_decision/}}: A simple number-parity judgment
+  task with two conditions, data logging, and a between-subjects mapping
+  counterbalanced via Latin square. This is the recommended starting
+  point for new users.
+\item
+  \textbf{\texttt{Attentional-Blink/}}: A two-target RSVP task using
+  \texttt{PresentStreamOfText} with dense 100 ms SOAs.
+\item
+  \textbf{\texttt{Subliminal-Priming/}}: A masked priming paradigm using
+  \texttt{PresentStreamOfImages} with backward masking; demonstrates
+  per-stimulus timing log analysis.
+\item
+  \textbf{\texttt{Stroop\_task/}}: A classic color-word interference
+  task with audio feedback via \texttt{exp.Audio.PlayBuzzer()}.
+\item
+  \textbf{\texttt{retinotopy/}}: A full retinotopic mapping protocol
+  (rotating wedge, expanding ring, sweeping bars) for fMRI, with trigger
+  output and monitor calibration via \texttt{GetParticipantInfo}.
+\item
+  \textbf{\texttt{Multiple-Object-Tracking/}}: A moving-dot attention
+  task using \texttt{PresentMovingDotCloud}.
+\item
+  \textbf{\texttt{random-dot-stereogram/}}: Cyclopean depth perception
+  using \texttt{RDS}.
+\item
+  \textbf{\texttt{Contrast-Detection-QUEST/}}: Adaptive threshold
+  estimation using the QUEST algorithm with \texttt{PresentMovingGabor}.
+\end{itemize}
+
+\subsubsection{Minimal Working Example}\label{minimal-working-example}
+
+The following code implements a two-alternative parity judgment task in
+approximately 50 lines:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{package}\NormalTok{ main}
+
+\KeywordTok{import} \OperatorTok{(}
+    \StringTok{"log"}
+    \StringTok{"github.com/chrplr/goxpyriment/control"}
+    \StringTok{"github.com/chrplr/goxpyriment/design"}
+    \StringTok{"github.com/chrplr/goxpyriment/stimuli"}
+\OperatorTok{)}
+
+\KeywordTok{func}\NormalTok{ main}\OperatorTok{()} \OperatorTok{\{}
+\NormalTok{    exp }\OperatorTok{:=}\NormalTok{ control}\OperatorTok{.}\NormalTok{NewExperimentFromFlags}\OperatorTok{(}\StringTok{"Parity"}\OperatorTok{,}\NormalTok{ control}\OperatorTok{.}\NormalTok{Black}\OperatorTok{,}\NormalTok{ control}\OperatorTok{.}\NormalTok{White}\OperatorTok{,} \DecValTok{48}\OperatorTok{)}
+    \ControlFlowTok{defer}\NormalTok{ exp}\OperatorTok{.}\NormalTok{End}\OperatorTok{()}
+
+\NormalTok{    exp}\OperatorTok{.}\NormalTok{AddDataVariableNames}\OperatorTok{([]}\DataTypeTok{string}\OperatorTok{\{}\StringTok{"number"}\OperatorTok{,} \StringTok{"parity"}\OperatorTok{,} \StringTok{"key"}\OperatorTok{,} \StringTok{"rt\_ms"}\OperatorTok{,} \StringTok{"correct"}\OperatorTok{\})}
+
+\NormalTok{    numbers }\OperatorTok{:=} \OperatorTok{[]}\KeywordTok{struct} \OperatorTok{\{}
+\NormalTok{        n      }\DataTypeTok{string}
+\NormalTok{        parity }\DataTypeTok{string}
+    \OperatorTok{\}\{}
+        \OperatorTok{\{}\StringTok{"1"}\OperatorTok{,} \StringTok{"odd"}\OperatorTok{\},} \OperatorTok{\{}\StringTok{"2"}\OperatorTok{,} \StringTok{"even"}\OperatorTok{\},} \OperatorTok{\{}\StringTok{"3"}\OperatorTok{,} \StringTok{"odd"}\OperatorTok{\},} \OperatorTok{\{}\StringTok{"4"}\OperatorTok{,} \StringTok{"even"}\OperatorTok{\},}
+        \OperatorTok{\{}\StringTok{"5"}\OperatorTok{,} \StringTok{"odd"}\OperatorTok{\},} \OperatorTok{\{}\StringTok{"6"}\OperatorTok{,} \StringTok{"even"}\OperatorTok{\},} \OperatorTok{\{}\StringTok{"7"}\OperatorTok{,} \StringTok{"odd"}\OperatorTok{\},} \OperatorTok{\{}\StringTok{"8"}\OperatorTok{,} \StringTok{"even"}\OperatorTok{\},}
+    \OperatorTok{\}}
+\NormalTok{    trials }\OperatorTok{:=}\NormalTok{ design}\OperatorTok{.}\NormalTok{MakeMultipliedShuffledList}\OperatorTok{(}\NormalTok{numbers}\OperatorTok{,} \DecValTok{10}\OperatorTok{)}
+\NormalTok{    keys }\OperatorTok{:=} \OperatorTok{[]}\NormalTok{control}\OperatorTok{.}\NormalTok{Keycode}\OperatorTok{\{}\NormalTok{control}\OperatorTok{.}\NormalTok{K\_F}\OperatorTok{,}\NormalTok{ control}\OperatorTok{.}\NormalTok{K\_J}\OperatorTok{\}}
+\NormalTok{    fixation }\OperatorTok{:=}\NormalTok{ stimuli}\OperatorTok{.}\NormalTok{NewFixCross}\OperatorTok{(}\DecValTok{20}\OperatorTok{,} \DecValTok{2}\OperatorTok{,}\NormalTok{ control}\OperatorTok{.}\NormalTok{White}\OperatorTok{)}
+
+\NormalTok{    err }\OperatorTok{:=}\NormalTok{ exp}\OperatorTok{.}\NormalTok{Run}\OperatorTok{(}\KeywordTok{func}\OperatorTok{()} \DataTypeTok{error} \OperatorTok{\{}
+\NormalTok{        exp}\OperatorTok{.}\NormalTok{ShowInstructions}\OperatorTok{(}\StringTok{"F = ODD    J = EVEN}\CharTok{\textbackslash{}n\textbackslash{}n}\StringTok{Press SPACE to start."}\OperatorTok{)}
+\NormalTok{        stimuli}\OperatorTok{.}\NormalTok{PreloadVisualOnScreen}\OperatorTok{(}\NormalTok{exp}\OperatorTok{.}\NormalTok{Screen}\OperatorTok{,}\NormalTok{ fixation}\OperatorTok{)}
+
+        \ControlFlowTok{for}\NormalTok{ \_}\OperatorTok{,}\NormalTok{ t }\OperatorTok{:=} \KeywordTok{range}\NormalTok{ trials }\OperatorTok{\{}
+\NormalTok{            exp}\OperatorTok{.}\NormalTok{Show}\OperatorTok{(}\NormalTok{fixation}\OperatorTok{)}
+\NormalTok{            exp}\OperatorTok{.}\NormalTok{Wait}\OperatorTok{(}\DecValTok{500}\OperatorTok{)}
+\NormalTok{            stim }\OperatorTok{:=}\NormalTok{ stimuli}\OperatorTok{.}\NormalTok{NewTextLine}\OperatorTok{(}\NormalTok{t}\OperatorTok{.}\NormalTok{n}\OperatorTok{,} \DecValTok{0}\OperatorTok{,} \DecValTok{0}\OperatorTok{,}\NormalTok{ control}\OperatorTok{.}\NormalTok{White}\OperatorTok{)}
+\NormalTok{            exp}\OperatorTok{.}\NormalTok{Show}\OperatorTok{(}\NormalTok{stim}\OperatorTok{)}
+\NormalTok{            key}\OperatorTok{,}\NormalTok{ rt}\OperatorTok{,}\NormalTok{ \_ }\OperatorTok{:=}\NormalTok{ exp}\OperatorTok{.}\NormalTok{Keyboard}\OperatorTok{.}\NormalTok{WaitKeysRT}\OperatorTok{(}\NormalTok{keys}\OperatorTok{,} \DecValTok{3000}\OperatorTok{)}
+\NormalTok{            correct }\OperatorTok{:=} \OperatorTok{(}\NormalTok{t}\OperatorTok{.}\NormalTok{parity }\OperatorTok{==} \StringTok{"odd"} \OperatorTok{\&\&}\NormalTok{ key }\OperatorTok{==}\NormalTok{ control}\OperatorTok{.}\NormalTok{K\_F}\OperatorTok{)} \OperatorTok{||}
+                       \OperatorTok{(}\NormalTok{t}\OperatorTok{.}\NormalTok{parity }\OperatorTok{==} \StringTok{"even"} \OperatorTok{\&\&}\NormalTok{ key }\OperatorTok{==}\NormalTok{ control}\OperatorTok{.}\NormalTok{K\_J}\OperatorTok{)}
+\NormalTok{            exp}\OperatorTok{.}\NormalTok{Data}\OperatorTok{.}\NormalTok{Add}\OperatorTok{(}\NormalTok{t}\OperatorTok{.}\NormalTok{n}\OperatorTok{,}\NormalTok{ t}\OperatorTok{.}\NormalTok{parity}\OperatorTok{,}\NormalTok{ key}\OperatorTok{,}\NormalTok{ rt}\OperatorTok{,}\NormalTok{ correct}\OperatorTok{)}
+\NormalTok{            stim}\OperatorTok{.}\NormalTok{Unload}\OperatorTok{()}
+\NormalTok{            exp}\OperatorTok{.}\NormalTok{Blank}\OperatorTok{(}\DecValTok{500}\OperatorTok{)}
+        \OperatorTok{\}}
+        \ControlFlowTok{return}\NormalTok{ control}\OperatorTok{.}\NormalTok{EndLoop}
+    \OperatorTok{\})}
+    \ControlFlowTok{if}\NormalTok{ err }\OperatorTok{!=} \OtherTok{nil} \OperatorTok{\&\&} \OperatorTok{!}\NormalTok{control}\OperatorTok{.}\NormalTok{IsEndLoop}\OperatorTok{(}\NormalTok{err}\OperatorTok{)} \OperatorTok{\{}
+\NormalTok{        log}\OperatorTok{.}\NormalTok{Fatalf}\OperatorTok{(}\StringTok{"error: \%v"}\OperatorTok{,}\NormalTok{ err}\OperatorTok{)}
+    \OperatorTok{\}}
+\OperatorTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\subsection{Comparison with Existing
+Tools}\label{comparison-with-existing-tools}
+
+Table 1 summarizes key properties of \texttt{goxpyriment} alongside four
+widely used experiment frameworks.
+
+\textbf{Table 1.} Comparison of selected experiment frameworks.
+
+\begin{longtable}[]{@{}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 8\tabcolsep) * \real{0.2000}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 8\tabcolsep) * \real{0.2000}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 8\tabcolsep) * \real{0.2000}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 8\tabcolsep) * \real{0.2000}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 8\tabcolsep) * \real{0.2000}}@{}}
+\toprule\noalign{}
+\begin{minipage}[b]{\linewidth}\raggedright
+Property
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+goxpyriment
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+Expyriment
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+PsychoPy
+\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
+jsPsych
+\end{minipage} \\
+\midrule\noalign{}
+\endhead
+\bottomrule\noalign{}
+\endlastfoot
+Language & Go & Python & Python & JavaScript \\
+Execution & Native binary & Interpreter & Interpreter & Browser \\
+Deployment & Single binary & pip/conda env & Standalone app or pip &
+Node.js or CDN \\
+GC control & Explicit disable & No & No & No \\
+VSYNC sync & Yes (SDL3) & Yes (Pygame/SDL2) & Yes (Pyglet/PTB) & Limited
+(rAF) \\
+Hardware triggers & Yes (DLP-IO8, parallel) & Yes (parallel, serial) &
+Yes & No \\
+Stimulus set & Moderate & Moderate & Extensive & Moderate \\
+GUI builder & No & No & Yes (Builder) & No \\
+Online deployment & No & No & Partial (PsychoJS) & Yes \\
+Reference & This paper & Krause \& Lindemann, 2014 & Peirce et al., 2019
+& de Leeuw, 2015 \\
+\end{longtable}
+
+\texttt{goxpyriment} most closely resembles Expyriment in its API
+design: a central experiment object, a \texttt{present()}-based stimulus
+API, a structured trial-loop model, and output to \texttt{.xpd}-format
+files with metadata headers. The primary technical differences are the
+use of Go rather than Python (providing native compilation, explicit GC
+control, and single-binary deployment) and the use of SDL3 rather than
+the older Pygame/SDL2 stack.
+
+PsychoPy offers a substantially larger stimulus set and a graphical
+Builder environment that allows experimenters without programming
+experience to construct experiments; \texttt{goxpyriment} has neither of
+these. However, PsychoPy's greater complexity also makes deployment and
+version management more challenging.
+
+jsPsych enables large-scale online data collection through standard web
+browsers, which \texttt{goxpyriment} does not support. Browser-based
+presentation is subject to timing variability that is not present in
+native desktop applications (Bridges et al., 2020; Anwyl-Irvine et al.,
+2021).
+
+The MATLAB Psychophysics Toolbox (PTB) offers the most mature timing
+validation in the field, with documented sub-frame onset precision on
+calibrated hardware (Kleiner et al., 2007). \texttt{goxpyriment} has not
+yet been subjected to comparable formal validation.
+
+{\Large: TODO:  check timing with photodiode, oscilloscope, ... !!!}
+
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\subsection{Limitations and Future
+Directions}\label{limitations-and-future-directions}
+
+\texttt{goxpyriment} is currently at a beta-stage.
+
+Several limitations should be noted:
+
+\textbf{No formal timing validation.} The timing architecture is
+theoretically sound --- VSYNC synchronization and GC suspension are
+established techniques --- but no published photodiode or
+hardware-response-box measurements of actual onset precision exist for
+this library as of this writing. Users requiring certified timing
+precision should treat claims with appropriate caution until such
+benchmarks are published.
+
+\textbf{No graphical experiment builder.} All experiments are written in
+Go code. This requires programming experience that not all researchers
+have. However, the library is designed with a simple, consistent API that lends
+itself well to use with AI coding assistants.
+
+\textbf{Limited stimulus set relative to PsychoPy.} The current library
+covers the stimuli most commonly needed in cognitive psychology and
+cognitive neuroscience --- text, shapes, images, gratings, Gabors, dot
+clouds, stereograms. It does not yet include, for example, movie stimuli
+from standard video formats (only the custom \texttt{.gv} format and
+MPEG), 3D rendering, or stereoscopic displays.
+
+\textbf{Desktop-only.} There is no support for online data collection
+via a web browser. The support of web assembly (wasm) by go-sld3 is still too premature,
+but when this is corrected, one will be able to compile to a wasm binray that will target browsers.
+
+\textbf{Go ecosystem familiarity.} To say the least, researchers are more accustomed to Python than to Go.
+But Go is a simple language (arguably simpler than Python) and it is backed by excellent documentation and a active ecosystem (out of psychology).
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\subsection{Availability and
+Documentation}\label{availability-and-documentation}
+
+\texttt{goxpyriment} is freely available under the GNU General Public
+License v3 at:
+
+\begin{quote}
+https://github.com/chrplr/goxpyriment
+\end{quote}
+
+\textbf{Prerequisites.} Go 1.25 or later. No other runtime dependencies
+are required; the SDL3, SDL3\_ttf, and libmpg123 binaries are bundled
+via the \texttt{go-sdl3/bin} packages and are loaded at runtime.
+
+\textbf{Building experiments.} Clone the repository, navigate to any
+example directory, and run \texttt{go\ run\ .}. To compile a standalone
+binary for distribution, run \texttt{go\ build\ .} in the experiment
+directory.
+
+\textbf{Documentation.} The repository includes:
+
+\begin{itemize}
+\tightlist
+\item
+  \texttt{docs/GettingStarted.md}: a tutorial for researchers familiar
+  with Expyriment or PsychoPy.
+\item
+  \texttt{docs/UserManual.md}: a concept guide covering all major
+  subsystems.
+\item
+  \texttt{docs/API.md}: a complete public API reference organized by
+  package.
+\end{itemize}
+
+An online documentation site is published at
+https://chrplr.github.io/goxpyriment.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\subsection{Author Contributions}\label{author-contributions}
+
+\textbf{Christophe Pallier}: Conceptualization, Software (original
+conception and architecture, all design decisions, integration and
+testing), Writing --- original draft (conceptualization and framing),
+Writing --- review and editing.
+
+\textbf{Claude Sonnet 4.6 (Anthropic)}: Software (substantial
+implementation of multiple modules, including
+\texttt{control/getinfo.go}, \texttt{io/data.go} extensions,
+\texttt{stimuli/moving\_grating.go},
+\texttt{stimuli/moving\_dotcloud.go}, and portions of
+\texttt{control/experiment.go}; all co-authored \texttt{.go} files carry
+an explicit \texttt{//\ Co-authored\ by\ Claude\ Sonnet\ 4.6} header
+comment), Writing --- original draft (the paper text was drafted
+collaboratively in an interactive session).
+
+Note on AI authorship: consistent with current editorial norms (Nature
+Portfolio, 2023; Springer Nature, 2023), Claude Sonnet 4.6 is listed
+under Author Contributions rather than as a named author, because
+authorship requires the capacity to take accountability for the work.
+Christophe Pallier takes full responsibility for all content, including
+the AI-assisted portions.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\subsection{Open Practices Statement}\label{open-practices-statement}
+
+The source code of \texttt{goxpyriment} is available under the GNU
+General Public License v3 at https://github.com/chrplr/goxpyriment. All
+example experiments described in this article are included in the
+repository. No empirical data are reported in this article.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\subsection{References}\label{references}
+
+Anwyl-Irvine, A. L., Massonnié, J., Flitton, A., Kirkham, N., \&
+Evershed, J. K. (2021). Gorilla in our midst: An online behavioral
+experiment builder. \emph{Behavior Research Methods}, \emph{52}(1),
+388--407. https://doi.org/10.3758/s13428-019-01237-x
+
+Brainard, D. H. (1997). The Psychophysics Toolbox. \emph{Spatial
+Vision}, \emph{10}(4), 433--436. https://doi.org/10.1163/156856897X00357
+
+Bridges, D., Pitiot, A., MacAskill, M. R., \& Peirce, J. W. (2020). The
+timing mega-study: Comparing a range of experiment generators, both
+lab-based and online. \emph{PeerJ}, \emph{8}, e9414.
+https://doi.org/10.7717/peerj.9414
+
+de Leeuw, J. R. (2015). jsPsych: A JavaScript library for creating
+behavioral experiments in a Web browser. \emph{Behavior Research
+Methods}, \emph{47}(1), 1--12. https://doi.org/10.3758/s13428-014-0458-y
+
+de Leeuw, J. R., Gilbert, R. A., \& Luchterhandt, B. (2023). jsPsych:
+Enabling an open-source collaborative ecosystem of behavioral
+experiments. \emph{Journal of Open Source Software}, \emph{8}(85), 5351.
+https://doi.org/10.21105/joss.05351
+
+Donovan, A. A. A., \& Kernighan, B. W. (2016). \emph{The Go programming
+language}. Addison-Wesley.
+
+Henninger, F., Shevchenko, Y., Meijer, R. R., Inzlicht, M., \& Hilbig,
+B. E. (2022). lab.js: A free, open, online study builder. \emph{Behavior
+Research Methods}, \emph{54}(2), 556--573.
+https://doi.org/10.3758/s13428-019-01283-5
+
+Kleiner, M., Brainard, D. H., \& Pelli, D. (2007). What's new in
+Psychtoolbox-3? \emph{Perception}, \emph{36}(ECVP Abstract Supplement),
+14.
+
+Krause, F., \& Lindemann, O. (2014). Expyriment: A Python library for
+cognitive and neuroscientific experiments. \emph{Behavior Research
+Methods}, \emph{46}(2), 416--428.
+https://doi.org/10.3758/s13428-013-0390-6
+
+Peirce, J. W., Gray, J. R., Simpson, S., MacAskill, M. R., Höchenberger,
+R., Sogo, H., Kastman, E., \& Lindeløv, J. K. (2019). PsychoPy2:
+Experiments in behavior made easy. \emph{Behavior Research Methods},
+\emph{51}(1), 195--203. https://doi.org/10.3758/s13428-018-01193-y
+
+Nature Portfolio. (2023). \emph{Tools and technologies: Artificial
+intelligence}.
+https://www.nature.com/nature-portfolio/editorial-policies/ai
+
+Springer Nature. (2023). \emph{Artificial intelligence (AI) policy for
+authors}. https://www.springernature.com/gp/policies/editorial-policies
+
+Zyko0. (2024). \emph{go-sdl3: Go bindings for SDL3}. GitHub.
+https://github.com/Zyko0/go-sdl3
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
+\appendix
+\section{OS Security Warnings When Distributing Compiled
+Experiments}\label{appendix-os-security-warnings-when-distributing-compiled-experiments}
+
+A key advantage of goxpyriment is that a compiled experiment is a single
+self-contained binary that can be copied to any laboratory or
+participant computer without installing Go or any runtime library. In
+practice, both macOS and Windows apply security mechanisms that warn
+users --- or actively block execution --- the first time a binary
+downloaded from the internet or copied from an external drive is run.
+Researchers who plan to distribute compiled experiments to colleagues or
+participant computers should be aware of these mechanisms.
+
+\subsubsection{macOS: GateKeeper}\label{macos-gatekeeper}
+
+Apple's GateKeeper evaluates applications against three tiers of trust:
+
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  \textbf{Unsigned} --- no signature. GateKeeper displays a dialog
+  stating the binary ``is damaged and can't be opened.'' This message is
+  misleading: the file is not corrupted; it lacks a signature.
+\item
+  \textbf{Ad-hoc signed} --- signed with \texttt{codesign\ -\/-sign\ -}
+  at no cost, without an Apple Developer account. GateKeeper shows a
+  one-time warning on first launch but allows the user to proceed.
+\item
+  \textbf{Apple-notarized} --- signed and notarized through Apple's
+  service (requires a paid Apple Developer Program membership,
+  \$99/year). No warning is shown.
+\end{enumerate}
+
+\textbf{Recommended practice for researchers distributing experiments:}
+apply ad-hoc signing before distribution, which changes the user
+experience from a blocking ``damaged'' error to a one-time confirmation
+prompt.
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\ExtensionTok{codesign} \AttributeTok{{-}{-}sign} \AttributeTok{{-}} \AttributeTok{{-}{-}force} \AttributeTok{{-}{-}deep}\NormalTok{ my\_experiment}
+\end{Highlighting}
+\end{Shaded}
+
+\textbf{For recipients running an unsigned binary:} right-click (or
+Control-click) the binary and select ``Open'', then confirm in the
+dialog. This is required only once per binary. Alternatively: System
+Settings → Privacy \& Security → ``Open Anyway''.
+
+\textbf{For command-line binaries transferred via USB or network share}
+(which may have the quarantine attribute set):
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\ExtensionTok{xattr} \AttributeTok{{-}d}\NormalTok{ com.apple.quarantine my\_experiment}
+\FunctionTok{chmod}\NormalTok{ +x my\_experiment}
+\end{Highlighting}
+\end{Shaded}
+
+For a complete packaging guide and a shell script that creates a
+distributable \texttt{.app} bundle with ad-hoc signing, see:
+https://chrplr.github.io/note-about-macos-unsigned-apps/
+
+\subsubsection{Windows: SmartScreen}\label{windows-smartscreen}
+
+Windows SmartScreen (part of Microsoft Defender) evaluates executables
+using a reputation system. An executable without sufficient download
+history --- typical for laboratory software not distributed through the
+Microsoft Store --- triggers a blue dialog: ``Windows protected your PC.
+Microsoft Defender SmartScreen prevented an unrecognized app from
+starting.''
+
+\textbf{To run the experiment:} click ``More info'' in the dialog, then
+``Run anyway''. This confirmation is required once per executable.
+
+Obtaining an Extended Validation (EV) code-signing certificate from a
+commercial certificate authority would suppress this warning
+automatically but involves ongoing cost. For internal laboratory use,
+the ``Run anyway'' procedure is the standard workaround.
+
+\subsubsection{Note on Timing}\label{note-on-timing}
+
+Security prompts on both platforms are presented by the OS before the
+experiment binary is launched. They do not affect the timing of stimulus
+presentation within the experiment itself.
+
+\end{document}
