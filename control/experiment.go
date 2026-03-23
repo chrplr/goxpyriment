@@ -72,6 +72,8 @@ type Experiment struct {
 	WindowHeight    int
 	Fullscreen      bool
 	OutputDirectory string
+	// Info holds the key→value map returned by GetParticipantInfo, if called.
+	Info            map[string]string
 
 	sdlLoader interface{ Unload() }
 	imgLoader interface{ Unload() }
