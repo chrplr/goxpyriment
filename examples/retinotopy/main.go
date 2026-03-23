@@ -1,4 +1,5 @@
 // Copyright (2026) Christophe Pallier <christophe@pallier.org>
+// Co-authored by Claude Sonnet 4.6
 // Distributed under the GNU General Public License v3.
 
 package main
@@ -14,7 +15,6 @@ import (
 	_ "image/png"
 	"log"
 	"strconv"
-	"strings"
 
 	"github.com/chrplr/goxpyriment/clock"
 	"github.com/chrplr/goxpyriment/control"
@@ -489,40 +489,9 @@ func (r *Retinotopy) updateCombinedTexture(patternID, maskID int) {
 	r.CombinedTexture.Update(nil, r.PixelBuffer, WindowWidth*4)
 }
 
-// askFloat shows a TextInput prompt and keeps re-prompting until the user
-// enters a number in [min, max]. Returns control.EndLoop on ESC.
-func askFloat(exp *control.Experiment, prompt string, minVal, maxVal float64) (float64, error) {
-	msg := prompt
-	for {
-		ti := stimuli.NewTextInput(
-			msg,
-			control.Point(0, -120),
-			500,
-			control.Color{R: 20, G: 20, B: 20, A: 255},
-			control.LightGray,
-			control.White,
-		)
-		str, err := ti.Get(exp.Screen, exp.Keyboard)
-		if err != nil {
-			return 0, err
-		}
-		v, parseErr := strconv.ParseFloat(strings.TrimSpace(str), 64)
-		if parseErr != nil || v < minVal || v > maxVal {
-			msg = fmt.Sprintf(
-				"%s\n\nInvalid input %q — please enter a number between %.0f and %.0f.",
-				prompt, str, minVal, maxVal)
-			continue
-		}
-		return v, nil
-	}
-}
-
 func main() {
 	runID := flag.Int("r", 1, "Run ID (1-6)")
-	_ = flag.Bool("F", false, "Force Fullscreen (redundant if -d is not used)")
-
-	exp := control.NewExperimentFromFlags("Retinotopy", BackgroundColor, control.White, 32)
-	defer exp.End()
+	flag.Parse()
 
 	labels := map[int]string{
 		1: "RETBAR1", 2: "RETBAR2", 3: "RETCCW", 4: "RETCW", 5: "RETEXP", 6: "RETCON",
@@ -532,32 +501,42 @@ func main() {
 		log.Fatalf("Invalid run ID: %d", *runID)
 	}
 
+	// ── Step 1: collect participant + monitor info via GUI dialog ─────────────
+	fields := append(control.StandardFields, control.FullscreenField)
+	info, err := control.GetParticipantInfo("Retinotopy", fields)
+	if err != nil {
+		log.Fatalf("Info dialog: %v", err)
+	}
+
+	subjectID, err := strconv.Atoi(info["subject_id"])
+	if err != nil {
+		log.Printf("Warning: subject_id %q is not an integer, defaulting to 0", info["subject_id"])
+		subjectID = 0
+	}
+	widthCm, err := strconv.ParseFloat(info["screen_width_cm"], 64)
+	if err != nil || widthCm < 10 || widthCm > 300 {
+		log.Fatalf("Invalid screen_width_cm %q", info["screen_width_cm"])
+	}
+	distanceCm, err := strconv.ParseFloat(info["viewing_distance_cm"], 64)
+	if err != nil || distanceCm < 20 || distanceCm > 500 {
+		log.Fatalf("Invalid viewing_distance_cm %q", info["viewing_distance_cm"])
+	}
+	fullscreen := info["fullscreen"] == "true"
+	width, height := 0, 0
+	if !fullscreen {
+		width, height = 1024, 768
+	}
+
+	exp := control.NewExperiment("Retinotopy", width, height, fullscreen, BackgroundColor, control.White, 32)
+	exp.SubjectID = subjectID
+	exp.Info = info
+	if err := exp.Initialize(); err != nil {
+		log.Fatal(err)
+	}
+	defer exp.End()
 	exp.Mouse.ShowCursor(false)
 
-	err := exp.Run(func() error {
-		// ── Step 1: collect monitor parameters via TextInput ──────────────────
-		widthCm, err := askFloat(exp,
-			"Monitor physical width (cm)\n\n"+
-				"Measure only the screen surface, not the bezel.\n"+
-				"A 24\" monitor is approximately 53 cm wide.\n\n"+
-				"Press Enter to confirm.",
-			10, 300)
-		if err != nil {
-			return err
-		}
-
-		distanceCm, err := askFloat(exp,
-			fmt.Sprintf(
-				"Viewing distance (cm)\n\n"+
-					"Measure from your eyes to the screen surface.\n"+
-					"A typical lab distance is 57–70 cm.\n"+
-					"(Monitor width: %.1f cm)\n\n"+
-					"Press Enter to confirm.", widthCm),
-			20, 500)
-		if err != nil {
-			return err
-		}
-
+	runErr := exp.Run(func() error {
 		// ── Step 2: compute scaling so max eccentricity = 15° ─────────────────
 		widthPx := exp.Screen.Width
 		heightPx := exp.Screen.Height
@@ -583,28 +562,28 @@ func main() {
 			"Monitor: %s\n\nScaling: %.3f  |  Max eccentricity: %.1f°\n\nPress any key to continue.",
 			mon.String(), scaling, actualEcc)
 		status := stimuli.NewTextBox(statusMsg, 800, control.Point(0, 0), control.White)
-		if err := exp.Show(status); err != nil {
-			return err
+		if err2 := exp.Show(status); err2 != nil {
+			return err2
 		}
-		if _, err := exp.Keyboard.Wait(); err != nil {
-			return err
+		if _, err2 := exp.Keyboard.Wait(); err2 != nil {
+			return err2
 		}
 
 		// ── Step 4: load stimuli and run ──────────────────────────────────────
 		retino := NewRetinotopy(exp, runLabel, scaling)
-		if err := retino.LoadStimuli(exp.SubjectID, *runID); err != nil {
-			return err
+		if err2 := retino.LoadStimuli(exp.SubjectID, *runID); err2 != nil {
+			return err2
 		}
-		if err := retino.Instructions(); err != nil {
-			return err
+		if err2 := retino.Instructions(); err2 != nil {
+			return err2
 		}
-		if err := retino.Run(); err != nil {
-			return err
+		if err2 := retino.Run(); err2 != nil {
+			return err2
 		}
 		return control.EndLoop
 	})
 
-	if err != nil && !control.IsEndLoop(err) {
-		log.Fatal(err)
+	if runErr != nil && !control.IsEndLoop(runErr) {
+		log.Fatal(runErr)
 	}
 }

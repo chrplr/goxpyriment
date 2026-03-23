@@ -22,6 +22,8 @@ octin_college_font/
 /stimuli_extras
 /Stroop_task
 /Visual_Statistical_Learning
+/getinfo_demo
+/retinotopy
 
 # Example binaries (named after their directory — Go convention)
 /examples/attentional-blink/attentional-blink

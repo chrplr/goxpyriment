@@ -87,7 +87,7 @@ type InfoField struct {
 
 All values except `subject_id` are saved to `~/.cache/goxpyriment/last_session.json` on OK and pre-filled on the next run. `subject_id` is always reset.
 
-#### Using the fullscreen checkbox
+#### Using the fullscreen checkbox and persisting to the data file
 
 ```go
 info, err := control.GetParticipantInfo("My Experiment", fields)
@@ -99,10 +99,16 @@ if !fullscreen {
 }
 exp := control.NewExperiment("My Experiment", width, height, fullscreen,
     control.Black, control.White, 32)
+
+// Set Info (and SubjectID) BEFORE Initialize — they are written to the .xpd header automatically
+exp.SubjectID, _ = strconv.Atoi(info["subject_id"])
+exp.Info = info
+
 if err := exp.Initialize(); err != nil { log.Fatal(err) }
 defer exp.End()
-exp.Info = info  // store for later access
 ```
+
+`Initialize()` writes a `--PARTICIPANT INFO` block to the `.xpd` header whenever `exp.Info` is non-nil at that point. No explicit call to `WriteParticipantInfo` is needed.
 
 #### Sentinel error
 
@@ -158,7 +164,7 @@ control.ErrCancelled  // returned when the user cancels the dialog
 | `exp.AddBWSFactor(name string, conditions []interface{})` | Register a between-subjects factor for Latin-square counterbalancing. |
 | `exp.GetPermutedBWSFactorCondition(name string) interface{}` | Return this subject's condition for a BWS factor. |
 | `exp.Design` | `*design.Experiment` — full design object |
-| `exp.Info` | `map[string]string` — values collected by `GetParticipantInfo`, if used |
+| `exp.Info` | `map[string]string` — values from `GetParticipantInfo`; set before `Initialize()` to persist them automatically to the `.xpd` header |
 
 ### Font and Display
 
@@ -458,10 +464,11 @@ exp.Mouse.ShowCursor(show bool) error
 ### DataFile
 
 ```go
-exp.Data.Add(field1, field2, ...)          // append a data row
-exp.Data.AddVariableNames([]string{...})   // write column header
-exp.Data.WriteDisplayInfo(info)            // append display metadata as comments
-exp.Data.WriteEndTime()                    // append end time + duration
+exp.Data.Add(field1, field2, ...)             // append a data row
+exp.Data.AddVariableNames([]string{...})      // write column header
+exp.Data.WriteDisplayInfo(info)               // append display metadata as comments
+exp.Data.WriteParticipantInfo(info)           // append --PARTICIPANT INFO block (called automatically by Initialize when exp.Info is set)
+exp.Data.WriteEndTime()                       // append end time + duration
 ```
 
 Output is written to `~/goxpy_data/<expname>_<subjectID>_<timestamp>.xpd` (a CSV with `#`-prefixed metadata header).

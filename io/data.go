@@ -10,6 +10,7 @@ import (
 	"os/user"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"strings"
 	"time"
 )
@@ -145,6 +146,25 @@ func (df *DataFile) WriteDisplayInfo(info DisplayInfo) {
 	df.WriteComment(fmt.Sprintf("d bits_per_pixel: %d", info.BitsPerPixel))
 	df.WriteComment(fmt.Sprintf("d bits_per_channel: %d", info.BitsPerChannel))
 	df.WriteComment(fmt.Sprintf("d pixel_format: %s", info.PixelFormat))
+}
+
+// WriteParticipantInfo appends collected participant/session fields as comment
+// lines under a --PARTICIPANT INFO section. Keys are written in sorted order so
+// that the header is deterministic regardless of map iteration order.
+// This is called automatically by Experiment.Initialize() when exp.Info is set.
+func (df *DataFile) WriteParticipantInfo(info map[string]string) {
+	if len(info) == 0 {
+		return
+	}
+	keys := make([]string, 0, len(info))
+	for k := range info {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	df.WriteComment("--PARTICIPANT INFO")
+	for _, k := range keys {
+		df.WriteComment(fmt.Sprintf("p %s: %s", k, info[k]))
+	}
 }
 
 // WriteEndTime appends end-time and duration lines to the EXPERIMENT INFO

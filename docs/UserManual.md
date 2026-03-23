@@ -128,18 +128,18 @@ if !fullscreen {
 
 exp := control.NewExperiment("My Experiment", width, height, fullscreen,
     control.Black, control.White, 32)
+
+// Set Info and SubjectID BEFORE Initialize so they are written to the .xpd header
+exp.SubjectID, _ = strconv.Atoi(info["subject_id"])
+exp.Info = info
+
 if err := exp.Initialize(); err != nil {
     log.Fatalf("failed to initialize: %v", err)
 }
 defer exp.End()
-
-// Store for later access anywhere in the experiment
-exp.Info = info
-
-// Optionally log session metadata to the data file header
-exp.AddExperimentInfo("subject_id=" + info["subject_id"])
-exp.AddExperimentInfo("viewing_distance_cm=" + info["viewing_distance_cm"])
 ```
+
+When `exp.Info` is non-nil at the time `Initialize()` is called, the collected key/value pairs are automatically written as a `--PARTICIPANT INFO` block in the `.xpd` metadata header — no extra call is required.
 
 > **Note:** When using `GetParticipantInfo` you will typically call the lower-level `NewExperiment` + `Initialize()` instead of `NewExperimentFromFlags`, so you can pass the fullscreen/windowed choice from the dialog directly.
 

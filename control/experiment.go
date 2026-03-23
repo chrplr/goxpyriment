@@ -304,6 +304,9 @@ func (e *Experiment) Initialize() error {
 		return err
 	}
 	e.Data = dataFile
+	if len(e.Info) > 0 {
+		e.Data.WriteParticipantInfo(e.Info)
+	}
 
 	return nil
 }
