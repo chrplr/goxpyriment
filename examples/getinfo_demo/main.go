@@ -60,7 +60,7 @@ func main() {
 
 	_ = exp.Run(func() error {
 		exp.Show(tb)
-		exp.Keyboard.WaitKey(0)
+		exp.Keyboard.Wait()
 		return control.EndLoop
 	})
 }
