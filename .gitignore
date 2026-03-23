@@ -22,6 +22,8 @@ octin_college_font/
 /stimuli_extras
 /Stroop_task
 /Visual_Statistical_Learning
+/getinfo_demo
+/retinotopy
 
 # Example binaries (named after their directory — Go convention)
 /examples/attentional-blink/attentional-blink
@@ -31,6 +33,7 @@ octin_college_font/
 /examples/Dehaene-Subliminal-Priming/Dehaene-Subliminal-Priming
 /examples/Ebbinghaus-illusion-dynamic/Ebbinghaus-illusion-dynamic
 /examples/Finger-Tapping/Finger-Tapping
+/examples/getinfo_demo/getinfo_demo
 /examples/hemispheric-differences-word-processing/hemispheric-differences-word-processing
 /examples/Hemispheric-differences-word-processing/Hemispheric-differences-word-processing
 /examples/hello_world/hello_world

@@ -1,4 +1,5 @@
 // Copyright (2026) Christophe Pallier <christophe@pallier.org>
+// Co-authored by Claude Sonnet 4.6
 // Distributed under the GNU General Public License v3.
 
 package control
@@ -72,6 +73,8 @@ type Experiment struct {
 	WindowHeight    int
 	Fullscreen      bool
 	OutputDirectory string
+	// Info holds the key→value map returned by GetParticipantInfo, if called.
+	Info            map[string]string
 
 	sdlLoader interface{ Unload() }
 	imgLoader interface{ Unload() }
@@ -301,6 +304,9 @@ func (e *Experiment) Initialize() error {
 		return err
 	}
 	e.Data = dataFile
+	if len(e.Info) > 0 {
+		e.Data.WriteParticipantInfo(e.Info)
+	}
 
 	return nil
 }

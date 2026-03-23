@@ -1,4 +1,5 @@
 // Copyright (2026) Christophe Pallier <christophe@pallier.org>
+// Co-authored by Claude Sonnet 4.6
 // Distributed under the GNU General Public License v3.
 
 // Package io provides the low-level input/output subsystems for goxpyriment:

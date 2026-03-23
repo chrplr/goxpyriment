@@ -7,18 +7,19 @@ This manual explains the key concepts of the library. It assumes you have read t
 ## Table of Contents
 
 1. [The Experiment Object](#1-the-experiment-object)
-2. [The Run Loop and Error Handling](#2-the-run-loop-and-error-handling)
-3. [The Coordinate System](#3-the-coordinate-system)
-4. [The Rendering Model](#4-the-rendering-model)
-5. [Timing Architecture](#5-timing-architecture)
-6. [Input Handling](#6-input-handling)
-7. [Data Collection](#7-data-collection)
-8. [Stimuli: Lifecycle and Preloading](#8-stimuli-lifecycle-and-preloading)
-9. [High-Precision Streams (RSVP)](#9-high-precision-streams-rsvp)
-10. [Audio](#10-audio)
-11. [Experimental Design and Randomization](#11-experimental-design-and-randomization)
-12. [Animated Stimuli](#12-animated-stimuli)
-13. [Putting It All Together](#13-putting-it-all-together)
+2. [Collecting Participant Information](#2-collecting-participant-information)
+3. [The Run Loop and Error Handling](#3-the-run-loop-and-error-handling)
+4. [The Coordinate System](#4-the-coordinate-system)
+5. [The Rendering Model](#5-the-rendering-model)
+6. [Timing Architecture](#6-timing-architecture)
+7. [Input Handling](#7-input-handling)
+8. [Data Collection](#8-data-collection)
+9. [Stimuli: Lifecycle and Preloading](#9-stimuli-lifecycle-and-preloading)
+10. [High-Precision Streams (RSVP)](#10-high-precision-streams-rsvp)
+11. [Audio](#11-audio)
+12. [Experimental Design and Randomization](#12-experimental-design-and-randomization)
+13. [Animated Stimuli](#13-animated-stimuli)
+14. [Putting It All Together](#14-putting-it-all-together)
 
 ---
 
@@ -52,11 +53,99 @@ exp.Data         *io.DataFile         // output data file
 exp.Design       *design.Experiment   // block/trial structure
 exp.SubjectID    int
 exp.DefaultFont  *ttf.Font
+exp.Info         map[string]string    // values collected by GetParticipantInfo, if used
 ```
 
 ---
 
-## 2. The Run Loop and Error Handling
+## 2. Collecting Participant Information
+
+Before the experiment window opens, you can display a graphical setup dialog that lets the experimenter fill in participant demographics, monitor characteristics, and display mode. The dialog returns the collected values as a `map[string]string`.
+
+```go
+fields := append(control.StandardFields, control.FullscreenField)
+info, err := control.GetParticipantInfo("My Experiment", fields)
+if err != nil {
+    log.Fatalf("setup cancelled: %v", err)
+}
+```
+
+Call `GetParticipantInfo` **before** `NewExperiment` or `NewExperimentFromFlags`. It initializes SDL internally, shows the window, and shuts SDL down again before returning, so the subsequent experiment initialization starts from a clean state.
+
+### Pre-built field sets
+
+| Variable | Fields included |
+|---|---|
+| `control.ParticipantFields` | `subject_id`, `age`, `gender`, `handedness` |
+| `control.MonitorFields` | `screen_width_cm`, `viewing_distance_cm`, `refresh_rate_hz` |
+| `control.StandardFields` | `ParticipantFields` + `MonitorFields` combined |
+| `control.FullscreenField` | Checkbox: `fullscreen` (`"true"` / `"false"`) |
+
+### Defining custom fields
+
+```go
+fields := []control.InfoField{
+    {Name: "subject_id", Label: "Subject ID",      Default: ""},
+    {Name: "session",    Label: "Session (1/2/3)", Default: "1"},
+    {Name: "room",       Label: "Testing room",    Default: "Lab A"},
+    {Name: "fullscreen", Label: "Fullscreen mode", Default: "true",
+     Type: control.FieldCheckbox},
+}
+info, err := control.GetParticipantInfo("My Experiment", fields)
+```
+
+Fields of type `FieldText` (the default) render as text input boxes. Fields of type `FieldCheckbox` render as tick-boxes; their value is always `"true"` or `"false"`.
+
+### Dialog interaction
+
+| Action | Effect |
+|---|---|
+| Click a field | Focus it |
+| Type | Append text to the focused field |
+| Backspace | Delete last character |
+| Tab / Shift-Tab | Move focus to next / previous text field |
+| Enter | Confirm (same as clicking OK) |
+| Escape / close window | Cancel — `ErrCancelled` is returned |
+
+### Session persistence
+
+All values except `subject_id` are saved to `~/.cache/goxpyriment/last_session.json` when the experimenter confirms. They are pre-filled on the next run. `subject_id` is always reset — the experimenter must enter it fresh each session.
+
+### Using the results
+
+```go
+info, err := control.GetParticipantInfo("My Experiment", fields)
+if err != nil {
+    log.Fatalf("setup cancelled: %v", err)
+}
+
+// Use the fullscreen checkbox to choose the window mode
+fullscreen := info["fullscreen"] == "true"
+width, height := 0, 0
+if !fullscreen {
+    width, height = 1024, 768
+}
+
+exp := control.NewExperiment("My Experiment", width, height, fullscreen,
+    control.Black, control.White, 32)
+
+// Set Info and SubjectID BEFORE Initialize so they are written to the .xpd header
+exp.SubjectID, _ = strconv.Atoi(info["subject_id"])
+exp.Info = info
+
+if err := exp.Initialize(); err != nil {
+    log.Fatalf("failed to initialize: %v", err)
+}
+defer exp.End()
+```
+
+When `exp.Info` is non-nil at the time `Initialize()` is called, the collected key/value pairs are automatically written as a `--PARTICIPANT INFO` block in the `.xpd` metadata header — no extra call is required.
+
+> **Note:** When using `GetParticipantInfo` you will typically call the lower-level `NewExperiment` + `Initialize()` instead of `NewExperimentFromFlags`, so you can pass the fullscreen/windowed choice from the dialog directly.
+
+---
+
+## 3. The Run Loop and Error Handling
 
 ### The `exp.Run` wrapper
 
@@ -111,7 +200,7 @@ Style B works because if something goes wrong (ESC pressed, window closed), the 
 
 ---
 
-## 3. The Coordinate System
+## 4. The Coordinate System
 
 All stimulus positions use a **center-origin** system:
 
@@ -153,7 +242,7 @@ if err := exp.SetLogicalSize(1920, 1080); err != nil {
 
 ---
 
-## 4. The Rendering Model
+## 5. The Rendering Model
 
 SDL uses a **double-buffered** rendering model. There is an off-screen backbuffer where you draw, and the visible display. You draw to the backbuffer; calling `screen.Update()` (also called a "flip") presents it to the screen, typically synchronized to the vertical retrace (VSYNC).
 
@@ -191,7 +280,7 @@ All rendering must happen inside the `exp.Run` callback — equivalently, on the
 
 ---
 
-## 5. Timing Architecture
+## 6. Timing Architecture
 
 ### Frame cadence
 
@@ -215,7 +304,7 @@ Always use `exp.Wait` for inter-trial and inter-stimulus intervals — it keeps 
 
 ### Sub-millisecond timing is not guaranteed for `exp.Wait`
 
-`exp.Wait` sleeps in 1 ms increments. For coarse delays (ISIs, fixation durations) this is perfectly fine. For frame-accurate stimulus timing — e.g., showing a stimulus for exactly 2 frames — use the stream functions described in [Section 9](#9-high-precision-streams-rsvp).
+`exp.Wait` sleeps in 1 ms increments. For coarse delays (ISIs, fixation durations) this is perfectly fine. For frame-accurate stimulus timing — e.g., showing a stimulus for exactly 2 frames — use the stream functions described in [Section 10](#10-high-precision-streams-rsvp).
 
 ### Disabling garbage collection
 
@@ -230,7 +319,7 @@ You do not need to do this yourself for ordinary trial loops; only for high-spee
 
 ---
 
-## 6. Input Handling
+## 7. Input Handling
 
 ### Keyboard
 
@@ -298,7 +387,7 @@ if key == sdl.K_A { ... }
 
 ---
 
-## 7. Data Collection
+## 8. Data Collection
 
 ### The `.xpd` file
 
@@ -339,7 +428,7 @@ For long experiments it is good practice to call `exp.Data.Save()` after each bl
 
 ---
 
-## 8. Stimuli: Lifecycle and Preloading
+## 9. Stimuli: Lifecycle and Preloading
 
 ### GPU textures are lazily allocated
 
@@ -420,7 +509,7 @@ func (m *MyStimulus) Present(screen *io.Screen, clear, update bool) error {
 
 ---
 
-## 9. High-Precision Streams (RSVP)
+## 10. High-Precision Streams (RSVP)
 
 For paradigms that present stimuli at high speed — RSVP, attentional blink, priming — the standard `exp.Show` / `exp.Wait` cycle is not precise enough. The stream functions provide frame-accurate presentation:
 
@@ -501,7 +590,7 @@ events, logs, err := stimuli.PlayStreamOfSounds(elements)
 
 ---
 
-## 10. Audio
+## 11. Audio
 
 ### Sounds from files or embedded bytes
 
@@ -564,7 +653,7 @@ For fire-and-forget feedback sounds, call `snd.Play()` without `snd.Wait()`.
 
 ---
 
-## 11. Experimental Design and Randomization
+## 12. Experimental Design and Randomization
 
 ### When to use `design.Block` / `design.Trial`
 
@@ -651,7 +740,7 @@ for _, cond := range conditions {
 
 ---
 
-## 12. Animated Stimuli
+## 13. Animated Stimuli
 
 Three functions run self-contained VSYNC-locked animation loops. All three:
 
@@ -725,7 +814,7 @@ result, err := stimuli.PresentMovingGabor(
 
 ---
 
-## 13. Putting It All Together
+## 14. Putting It All Together
 
 Here is a skeleton that illustrates how the concepts compose in a realistic experiment:
 
