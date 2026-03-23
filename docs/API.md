@@ -37,6 +37,81 @@ if err != nil && !control.IsEndLoop(err) {
 }
 ```
 
+### Pre-experiment Setup Dialog
+
+`GetParticipantInfo` opens a graphical SDL window **before** the experiment starts to collect participant demographics, monitor properties, and display preferences. Call it before `NewExperiment` / `NewExperimentFromFlags`.
+
+```go
+fields := append(control.StandardFields, control.FullscreenField)
+info, err := control.GetParticipantInfo("My Experiment", fields)
+if err != nil {
+    log.Fatalf("setup cancelled: %v", err) // user pressed Escape or closed window
+}
+```
+
+#### Types
+
+```go
+// FieldType selects how a field is rendered.
+type FieldType int
+const (
+    FieldText     FieldType = iota // text input box (default)
+    FieldCheckbox                  // tick-box; value is "true" or "false"
+)
+
+// InfoField describes one entry in the dialog.
+type InfoField struct {
+    Name    string    // key in the returned map
+    Label   string    // displayed label
+    Default string    // initial value
+    Type    FieldType // FieldText (default) or FieldCheckbox
+}
+```
+
+#### Pre-built field sets
+
+| Variable | Fields |
+|---|---|
+| `control.ParticipantFields` | `subject_id`, `age`, `gender`, `handedness` |
+| `control.MonitorFields` | `screen_width_cm`, `viewing_distance_cm`, `refresh_rate_hz` |
+| `control.StandardFields` | `ParticipantFields` + `MonitorFields` |
+| `control.FullscreenField` | Checkbox: `fullscreen` (`"true"` / `"false"`) |
+
+#### Function
+
+| Function | Description |
+|---|---|
+| `GetParticipantInfo(title string, fields []InfoField) (map[string]string, error)` | Shows the dialog and returns collected values. Returns `ErrCancelled` if the user closes or presses Escape without confirming. |
+
+#### Session persistence
+
+All values except `subject_id` are saved to `~/.cache/goxpyriment/last_session.json` on OK and pre-filled on the next run. `subject_id` is always reset.
+
+#### Using the fullscreen checkbox
+
+```go
+info, err := control.GetParticipantInfo("My Experiment", fields)
+// ...
+fullscreen := info["fullscreen"] == "true"
+width, height := 0, 0
+if !fullscreen {
+    width, height = 1024, 768
+}
+exp := control.NewExperiment("My Experiment", width, height, fullscreen,
+    control.Black, control.White, 32)
+if err := exp.Initialize(); err != nil { log.Fatal(err) }
+defer exp.End()
+exp.Info = info  // store for later access
+```
+
+#### Sentinel error
+
+```go
+control.ErrCancelled  // returned when the user cancels the dialog
+```
+
+---
+
 ### Constructor Functions
 
 | Function | Description |
@@ -83,6 +158,7 @@ if err != nil && !control.IsEndLoop(err) {
 | `exp.AddBWSFactor(name string, conditions []interface{})` | Register a between-subjects factor for Latin-square counterbalancing. |
 | `exp.GetPermutedBWSFactorCondition(name string) interface{}` | Return this subject's condition for a BWS factor. |
 | `exp.Design` | `*design.Experiment` — full design object |
+| `exp.Info` | `map[string]string` — values collected by `GetParticipantInfo`, if used |
 
 ### Font and Display
 
