@@ -25,7 +25,7 @@
 -->
 
 Goxpyriment relies on the [libsdl](http://libsdl.org) library through the [go-sdl3](https://github.com/Zyko0/go-sdl3) bindings. 
-(While Python is easy, Go is simple: see [go-vs-pyhon](gemini-go-vs-python.md)). 
+(While Python is easy, Go is simple: see [go-vs-pyhon](gemini-about-go-vs-python.md)). 
 
 If you are looking for a simpler, *no-code experiment generator*, check [gostim2](https://chrplr.github.io/gostim2/). 
 
