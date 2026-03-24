@@ -8,7 +8,6 @@
 * [Source code](./examples/) of example experiments (To try them → Jump to [Demos](#demos))
 * [Github.io Page](https://chrplr.github.io/goxpyriment)
 * [Github repository](https://github.com/chrplr/goxpyriment)
-* Please report bugs and suggestions at <https://github.com/chrplr/goxpyriment/issues>
 
 <!--
 ## Features
@@ -35,8 +34,8 @@ As its name suggests, goxpyriment was inspired by [expyriment.org](http://expyri
 
 The code was mostly written with Claude Sonnet 4.6, with some input from Gemini 3
 
-> [!WARNING]
-> This software is new and in beta-testing: although it is certainly possible to use it to implement real experiments in the lab, users should (as always) carefully check their behavior, e.g. with a [bbtk](https://chrplr.github.io/bbtkv3/).
+> :warning: This software is in beta-testing: although it is certainly possible to use it to implement real experiments in the lab, users should (as always) very carefully check their behavior, for example with a [bbtk](https://chrplr.github.io/bbtkv3/).
+> Please report bugs and suggestions at <https://github.com/chrplr/goxpyriment/issues>
 
 Christophe Pallier (Feb./March 2026).
 
@@ -106,7 +105,10 @@ cd examples
 
 This project is licensed under the GNU Public License v3 - see the [LICENSE](LICENSE.txt) file for details.
 
-Christophe Pallier, 2026
+Please cite as:
+
+> Christophe Pallier. (2026). chrplr/goxpyriment: Goxpyriment examples v0.7.13 (v0.7.13). Zenodo. https://doi.org/10.5281/zenodo.19200598
+> :warn: update the version if you use a more recetn one!
 
 ---
 

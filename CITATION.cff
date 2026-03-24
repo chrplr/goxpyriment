@@ -1,0 +1,11 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors:
+  - family-names: "Pallier"
+    given-names: "Christophe"
+    orcid: "https://orcid.org/0000-0002-3324-666X"
+title: "Goxpyriment: a high-level Go framework for building behavioral and psychological experiments"
+version: latest 
+doi: 10.5281/zenodo.19181886
+date-released: 2026-03-24
+url: "https://github.com/chrplr/goxpyriment"
