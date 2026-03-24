@@ -31,14 +31,15 @@ Goxpyriment relies on the [libsdl](http://libsdl.org) library through the [go-sd
 
 As its name suggests, goxpyriment was inspired by [expyriment.org](https://github.com/expyriment/expyriment?tab=readme-ov-file), a nice, light-weight Python library for cognitive and neuroscientic experiments (See Krause, F., & Lindemann, O. (2014). *Behavior Research Methods*, 46(2), 416–428. <https://doi.org/10.3758/s13428-013-0390-6>). The API should feel very familiar to expyriment users.
 
+If you use this softawre in a scientific paper, please cite as:
+
+* Christophe Pallier (2026) chrplr/goxpyriment: Goxpyriment examples v0.7.13 (v0.7.13). Zenodo. https://doi.org/10.5281/zenodo.19200598
+*(updating the version if you use a more recent one!)*
+
 > :warning: This software is in beta-testing: although it is certainly possible to use it to implement real experiments in the lab, users should (as always) very carefully check their behavior, for example with a [bbtk](https://chrplr.github.io/bbtkv3/).
 > Please report bugs and suggestions at <https://github.com/chrplr/goxpyriment/issues>
 
-If you use in a scientific paper, please cite as:
-
-> Christophe Pallier (2026) chrplr/goxpyriment: Goxpyriment examples v0.7.13 (v0.7.13). Zenodo. https://doi.org/10.5281/zenodo.19200598
-> :warn: update the version if you use a more recent one!
-
+[chrplr](https://github.com/chrplr)
 
 ---
 
