@@ -9,6 +9,9 @@
 * [Github.io Page](https://chrplr.github.io/goxpyriment)
 * [Github repository](https://github.com/chrplr/goxpyriment)
 
+If you are looking for a simpler, *no-code experiment generator*, check [Gostim2](https://chrplr.github.io/gostim2/). 
+
+
 <!--
 ## Features
 
@@ -24,20 +27,18 @@
 -->
 
 Goxpyriment relies on the [libsdl](http://libsdl.org) library through the [go-sdl3](https://github.com/Zyko0/go-sdl3) bindings. 
-(While Python is easy, Go is simple: see [go-vs-pyhon](gemini-about-go-vs-python.md)). 
+(While Python is easy, Go is simple: read [Go-vs-Python](gemini-about-go-vs-python.md)). The code was mostly written with Claude Sonnet 4.6, with some input from Gemini 2.5 flash.
 
-If you are looking for a simpler, *no-code experiment generator*, check [gostim2](https://chrplr.github.io/gostim2/). 
-
-As its name suggests, goxpyriment was inspired by [expyriment.org](http://expyriment.org), a nice, light-weight Python library for programming experiments. The API should feel very familiar to expyriment users.
-
-> Krause, F., & Lindemann, O. (2014). Expyriment: A Python library for cognitive and neuroscientific experiments. *Behavior Research Methods*, 46(2), 416–428. <https://doi.org/10.3758/s13428-013-0390-6>
-
-The code was mostly written with Claude Sonnet 4.6, with some input from Gemini 3
+As its name suggests, goxpyriment was inspired by [expyriment.org](https://github.com/expyriment/expyriment?tab=readme-ov-file), a nice, light-weight Python library for cognitive and neuroscientic experiments (See Krause, F., & Lindemann, O. (2014). *Behavior Research Methods*, 46(2), 416–428. <https://doi.org/10.3758/s13428-013-0390-6>). The API should feel very familiar to expyriment users.
 
 > :warning: This software is in beta-testing: although it is certainly possible to use it to implement real experiments in the lab, users should (as always) very carefully check their behavior, for example with a [bbtk](https://chrplr.github.io/bbtkv3/).
 > Please report bugs and suggestions at <https://github.com/chrplr/goxpyriment/issues>
 
-Christophe Pallier (Feb./March 2026).
+If you use in a scientific paper, please cite as:
+
+> Christophe Pallier (2026) chrplr/goxpyriment: Goxpyriment examples v0.7.13 (v0.7.13). Zenodo. https://doi.org/10.5281/zenodo.19200598
+> :warn: update the version if you use a more recent one!
+
 
 ---
 
@@ -104,11 +105,6 @@ cd examples
 ## License
 
 This project is licensed under the GNU Public License v3 - see the [LICENSE](LICENSE.txt) file for details.
-
-Please cite as:
-
-> Christophe Pallier. (2026). chrplr/goxpyriment: Goxpyriment examples v0.7.13 (v0.7.13). Zenodo. https://doi.org/10.5281/zenodo.19200598
-> :warn: update the version if you use a more recetn one!
 
 ---
 
