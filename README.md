@@ -2,7 +2,7 @@
 
 `goxpyriment` is a high-level Go framework for building behavioral and psychological experiments. 
 
-* [Getting Started](docs/GettingStarted.md) — Tutorial for psychologists (Python/Expyriment users)
+* [Getting Started](docs/GettingStarted.md) — Tutorial for psychologists
 * [User Manual](docs/UserManual.md) — Core concepts explained in depth
 * [API Reference](docs/API.md) — Complete function and type reference
 * [Source code](./examples/) of example experiments (To try them → Jump to [Demos](#demos))
