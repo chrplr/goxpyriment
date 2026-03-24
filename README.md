@@ -35,7 +35,7 @@ As its name suggest, goxpyriment was inspired by [expyriment.org](http://expyrim
 
 The code was mostly written with Claude Sonnet 4.6, with some input from Gemini 3
 
-**Note: this software is new and in beta-testing: although it is certainly possible to use it to implement real experiments in the lab, users should (as always) carefully check their behavior, e.g. with [https://chrplr.github.io/bbtkv3/](this). Bugs and suggestions reported at <https://github.com/chrplr/goxpyriment/issues> are welcome.** 
+> :warning: this software is new and in beta-testing: although it is certainly possible to use it to implement real experiments in the lab, users should (as always) carefully check their behavior, e.g. with a [bbtk](https://chrplr.github.io/bbtkv3/]). 
 
 Christophe Pallier (Feb./March 2026).
 
