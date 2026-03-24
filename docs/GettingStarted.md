@@ -244,6 +244,86 @@ All three stream functions return `([]UserEvent, []TimingLog, error)`, making it
 
 ---
 
+## Tutorial 4: Hardware-Precision RT with Event Timestamps
+
+`WaitKeysRT` measures reaction time from the moment the function is called. That works well for a single-stimulus trial, but breaks down when several stimuli appear in sequence and you need RT from a specific onset.
+
+Consider a **masked priming** paradigm: a prime word appears briefly, then a target appears 500 ms later, and you want RT measured from the prime onset — not from when `WaitKeysEventRT` was called. With the standard approach you would need to record a timestamp before the prime and do arithmetic afterward. The event-timestamp API handles this directly.
+
+SDL3 stamps every keyboard event with a hardware-interrupt time (`KeyboardEvent.Timestamp`, nanoseconds). `exp.ShowNS(stim)` returns the SDL nanosecond time captured immediately after the VSYNC flip. Because both values are on the same clock, their difference is hardware-precision RT — no arithmetic needed:
+
+```go
+package main
+
+import (
+    "fmt"
+    "log"
+
+    "github.com/chrplr/goxpyriment/control"
+    "github.com/chrplr/goxpyriment/stimuli"
+)
+
+func main() {
+    exp := control.NewExperimentFromFlags("PrimingRT", control.Black, control.White, 36)
+    defer exp.End()
+
+    exp.AddDataVariableNames([]string{"prime", "target", "key", "rt_prime_ns", "rt_target_ns"})
+
+    primes  := []string{"DOCTOR", "NURSE", "BREAD", "TABLE"}
+    targets := []string{"NURSE", "DOCTOR", "TABLE", "BREAD"}  // related / unrelated pairs
+    responseKeys := []control.Keycode{control.K_F, control.K_J}
+
+    err := exp.Run(func() error {
+        exp.ShowInstructions(
+            "A word will flash, then a second word will appear.\n\n" +
+            "F = Living thing   J = Non-living thing\n\n" +
+            "Respond to the SECOND word as quickly as possible.\n\n" +
+            "Press SPACE to start.",
+        )
+
+        for i := range primes {
+            exp.Blank(500)   // inter-trial interval
+
+            // 1. Show prime — record its VSYNC flip timestamp
+            prime := stimuli.NewTextLine(primes[i], 0, 0, control.Gray)
+            primeOnset, _ := exp.ShowNS(prime)
+            prime.Unload()
+
+            exp.Wait(500)  // prime–target SOA
+
+            // 2. Show target — record its VSYNC flip timestamp
+            target := stimuli.NewTextLine(targets[i], 0, 0, control.White)
+            targetOnset, _ := exp.ShowNS(target)
+            target.Unload()
+
+            // 3. Wait for response — get hardware event timestamp
+            key, eventTS, _ := exp.Keyboard.WaitKeysEventRT(responseKeys, 3000)
+
+            // 4. Compute RTs from each stimulus onset
+            rtFromPrime  := int64(eventTS - primeOnset)   // nanoseconds
+            rtFromTarget := int64(eventTS - targetOnset)  // nanoseconds
+
+            exp.Data.Add(primes[i], targets[i], key, rtFromPrime, rtFromTarget)
+            fmt.Printf("prime RT: %.1f ms   target RT: %.1f ms\n",
+                float64(rtFromPrime)/1e6, float64(rtFromTarget)/1e6)
+        }
+        return control.EndLoop
+    })
+    if err != nil && !control.IsEndLoop(err) {
+        log.Fatalf("experiment error: %v", err)
+    }
+}
+```
+
+Key observations:
+
+- `exp.ShowNS(stim)` is a drop-in replacement for `exp.Show(stim)` — it does the same clear → draw → flip, and additionally returns the nanosecond timestamp of the flip.
+- `WaitKeysEventRT` returns the SDL3 event timestamp (not a polling delta), so subtracting any previously recorded `ShowNS` onset gives a physically meaningful RT.
+- Both timestamps are in SDL nanoseconds (divide by `1e6` for milliseconds). Storing raw nanoseconds in the data file and converting offline is the recommended practice.
+- `WaitPressEventRT` provides the same capability for mouse responses.
+
+---
+
 ## Strength: "Vibe-Coding" with AI
 
 `goxpyriment` is designed to be **AI-friendly**. Because the API is linear and consistent, tools like Claude, Gemini, or ChatGPT can write entire experiments for you.

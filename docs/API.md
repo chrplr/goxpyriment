@@ -138,6 +138,7 @@ control.ErrCancelled  // returned when the user cancels the dialog
 | Method | Description |
 |---|---|
 | `exp.Show(stim VisualStimulus) error` | Clear → draw → flip. The standard one-call stimulus presentation. |
+| `exp.ShowNS(stim VisualStimulus) (uint64, error)` | Clear → draw → flip, and return the SDL nanosecond timestamp captured immediately after the VSYNC flip. Use with `WaitKeysEventRT` for hardware-precision RT measurement. |
 | `exp.ShowInstructions(text string) error` | Display centered text and wait for spacebar. |
 | `exp.Blank(ms int) error` | Clear and flip screen, then wait `ms` milliseconds. |
 | `exp.Wait(ms int) error` | Wait `ms` ms while pumping SDL events (ESC-abortable). |
@@ -150,8 +151,20 @@ control.ErrCancelled  // returned when the user cancels the dialog
 |---|---|
 | `exp.Keyboard` | `*io.Keyboard` — see Keyboard section |
 | `exp.Mouse` | `*io.Mouse` — see Mouse section |
-| `exp.PollEvents(handle func(sdl.Event) bool) EventState` | Process all pending SDL events; optionally forward to a handler. |
+| `exp.PollEvents(handle func(sdl.Event) bool) EventState` | Process all pending SDL events; optionally forward to a handler. Returns `EventState` including nanosecond timestamps. |
 | `exp.HandleEvents() (Keycode, uint32, error)` | Convenience wrapper: returns `(key, mouseButton, error)`. |
+
+`EventState` now includes SDL event timestamps:
+
+```go
+type EventState struct {
+    LastKey            sdl.Keycode
+    LastMouseButton    uint32
+    LastKeyTimestamp   uint64  // SDL nanosecond timestamp of the last key event
+    LastMouseTimestamp uint64  // SDL nanosecond timestamp of the last mouse event
+    QuitRequested      bool
+}
+```
 
 ### Design and Data
 
@@ -432,6 +445,7 @@ screen.MousePosition() (float32, float32)              // current cursor in cent
 screen.Clear() error                                   // fill with background color
 screen.Update() error                                  // present (VSYNC-blocks)
 screen.Flip() error                                    // alias for Update
+screen.FlipNS() (uint64, error)                        // present + return SDL nanosecond timestamp after flip
 screen.FrameDuration() time.Duration                   // nominal frame duration (falls back to 60 Hz)
 screen.SetLogicalSize(w, h int32) error
 screen.SetVSync(vsync int) error
@@ -439,25 +453,39 @@ screen.DisplayInfo() io.DisplayInfo                    // monitor properties
 screen.Destroy()
 ```
 
+`FlipNS()` returns `sdl.TicksNS()` captured immediately after `SDL_RenderPresent`. This timestamp is on the same nanosecond clock as SDL3 event timestamps, so `int64(event.Timestamp - onsetNS)` gives hardware-precision reaction time without any polling latency.
+
 ### Keyboard
 
 ```go
-key, err := exp.Keyboard.Wait()                              // any key
-key, err := exp.Keyboard.WaitKey(control.K_SPACE)           // specific key
-key, err := exp.Keyboard.WaitKeys(keys, timeoutMS)           // first of several keys (−1 = no timeout)
-key, rt, err := exp.Keyboard.WaitKeysRT(keys, timeoutMS)     // with reaction time in ms
-key, err := exp.Keyboard.Check()                             // non-blocking poll
-exp.Keyboard.Clear()                                         // drain SDL event queue
+key, err := exp.Keyboard.Wait()                                   // any key
+key, err := exp.Keyboard.WaitKey(control.K_SPACE)                // specific key
+key, err := exp.Keyboard.WaitKeys(keys, timeoutMS)                // first of several keys (−1 = no timeout)
+key, rt, err := exp.Keyboard.WaitKeysRT(keys, timeoutMS)          // with RT in ms from call site
+key, ts, err := exp.Keyboard.WaitKeysEventRT(keys, timeoutMS)     // with SDL event timestamp (nanoseconds)
+key, err := exp.Keyboard.Check()                                  // non-blocking poll
+exp.Keyboard.Clear()                                              // drain SDL event queue
 ```
 
 `WaitKeys` and `WaitKeysRT` return `0, nil` on timeout; return `sdl.EndLoop` on ESC or window close.
 
+**`WaitKeysEventRT`** returns the SDL3 `KeyboardEvent.Timestamp` field — the nanosecond time at which the hardware key-down event was generated, on the same clock as `sdl.TicksNS()` and `Screen.FlipNS()`. This allows computing reaction time from any specific stimulus onset without manual arithmetic:
+
+```go
+onset, _ := exp.ShowNS(stim1)    // nanoseconds at VSYNC flip
+exp.Wait(500)
+exp.ShowNS(stim2)
+key, eventTS, _ := exp.Keyboard.WaitKeysEventRT(responseKeys, -1)
+rtToStim1 := int64(eventTS - onset)  // nanoseconds
+```
+
 ### Mouse
 
 ```go
-x, y := exp.Mouse.Position()                 // current position (center coords)
-btn, err := exp.Mouse.WaitPress()            // block until button pressed
-btn, err := exp.Mouse.Check()               // non-blocking poll
+x, y := exp.Mouse.Position()                              // current position (center coords)
+btn, err := exp.Mouse.WaitPress()                         // block until button pressed
+btn, ts, err := exp.Mouse.WaitPressEventRT(timeoutMS)     // with SDL event timestamp (nanoseconds)
+btn, err := exp.Mouse.Check()                             // non-blocking poll
 exp.Mouse.ShowCursor(show bool) error
 ```
 

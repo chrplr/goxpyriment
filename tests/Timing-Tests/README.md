@@ -7,14 +7,15 @@ perceptual experiments.
 
 ## Equipment
 
-| Test | Display | Photodiode | Oscilloscope | DLP-IO8-G |
-|------|---------|-----------|-------------|-----------|
-| `frames`  | ✓ | ✓ | optional | optional |
-| `flash`   | ✓ | ✓ | optional | optional |
-| `av`      | ✓ | ✓ | ✓ | optional |
-| `jitter`  | ✓ | — | — | — |
-| `square`  | — | — | ✓ | **required** |
-| `sound`   | — | — | ✓ (optional) | optional |
+| Test | Display | Photodiode | Oscilloscope | DLP-IO8-G | Keyboard / response box |
+|------|---------|-----------|-------------|-----------|------------------------|
+| `frames`  | ✓ | ✓ | optional | optional | — |
+| `flash`   | ✓ | ✓ | optional | optional | — |
+| `av`      | ✓ | ✓ | ✓ | optional | — |
+| `jitter`  | ✓ | — | — | — | — |
+| `square`  | — | — | ✓ | **required** | — |
+| `sound`   | — | — | ✓ (optional) | optional | — |
+| `rt`      | ✓ | optional | optional | optional | **required** |
 
 **Photodiode** — tape it to the corner of your monitor where the bright stimulus
 appears. Connect its output to oscilloscope channel 1.
@@ -33,9 +34,9 @@ oscilloscope channel 3 so you can measure the actual acoustic onset.
 
 ```bash
 # From the repo root (go.work takes care of module resolution):
-go run examples/Timing-Tests/main.go -test jitter -d
-go run examples/Timing-Tests/main.go -test frames -d -cycles 120
-go run examples/Timing-Tests/main.go -test square -period-ms 100 -duty 50 -duration-s 30
+go run tests/Timing-Tests/main.go -test jitter -d
+go run tests/Timing-Tests/main.go -test frames -d -cycles 120
+go run tests/Timing-Tests/main.go -test square -period-ms 100 -duty 50 -duration-s 30
 ```
 
 Add `-d` for a windowed 1024×768 window (developer mode).
@@ -237,6 +238,57 @@ Prints two statistics tables at the end:
 go run main.go -test sound -cycles 300 -freq-hz 1000 -tone-ms 50 -iti-ms 450
 # quick check (30 tones, ~15 s):
 go run main.go -test sound -cycles 30 -iti-ms 450 -d
+```
+
+---
+
+### `rt` — SDL event-timestamp RT precision test
+
+Measures keyboard reaction time using SDL3 hardware event timestamps for
+`-cycles` trials (default 60). Each trial:
+
+1. The screen goes blank for a jittered ITI (`-iti-ms` ± 50 %, default 1000 ms).
+2. The screen flashes white for one frame; `Screen.FlipNS()` records the SDL
+   nanosecond tick immediately after `SDL_RenderPresent` returns.
+3. The participant presses any key; `WaitKeysEventRT` returns the SDL3
+   `KeyboardEvent.Timestamp` — the nanosecond time of the hardware interrupt,
+   not a polling-time delta.
+4. `RT = eventTimestamp − onsetNS` (nanoseconds; stored and printed in ms).
+
+Because both timestamps come from the same `SDL_GetTicksNS()` clock, this RT
+is free of polling latency on the response side. The remaining jitter reflects
+OS keyboard scheduling (typically < 2 ms on Linux with standard kernel).
+
+**For validation with a hardware response box:**
+Connect a USB response box that presents as a keyboard. Its internal timestamping
+and the SDL event timestamp should agree within 1–2 ms; the gap between them
+characterizes the OS keyboard-event pipeline delay.
+
+**Optional trigger output:**
+If a DLP-IO8-G is connected, a trigger pulse is sent on `-trigger-pin` just
+before each flash. Combine with a photodiode on channel 1 and the trigger on
+channel 2 to measure the actual display onset latency (trigger → light pulse
+rising edge), which can then be subtracted from the RT to obtain the true
+stimulus-onset to button-press interval.
+
+**Output file columns:**
+`trial, onset_ns, event_ts_ns, rt_ns, rt_ms`
+
+Prints statistics at the end:
+
+```
+── RT (ms, event-timestamp method) ─────────────
+  n       : 60
+  mean    : 287.4 ms
+  SD      :  42.1 ms
+  min/max : 198.3 / 401.2 ms
+  p5/p95  : 221.7 / 358.9 ms
+```
+
+```bash
+go run main.go -test rt -cycles 60 -iti-ms 1000 -d
+# With trigger output for photodiode validation:
+go run main.go -test rt -cycles 60 -trigger-pin 1 -trigger-ms 5
 ```
 
 ---

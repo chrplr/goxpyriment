@@ -11,6 +11,7 @@
 //	jitter  Pure frame-interval statistics (no external device needed)
 //	square  DLP-IO8 square-wave trigger (oscilloscope only)
 //	sound   Long regular tone stream, onset-jitter statistics
+//	rt      SDL event-timestamp RT precision test (keyboard or response box)
 //
 // See README.md for full usage, equipment setup, and interpretation.
 //
@@ -26,6 +27,10 @@
 //	-trigger-ms  int  Trigger pulse duration in ms (default 5)
 //	-cycles int       Number of cycles / flashes (default 60)
 //	-d                Developer mode: windowed 1024×768
+//
+// Per-test flags — rt:
+//
+//	-iti-ms float     Mean inter-trial interval ms (jittered ±50 %; default 1000)
 //
 // Per-test flags — frames / flash:
 //
@@ -65,6 +70,7 @@ import (
 	"fmt"
 	"log"
 	"math"
+	"math/rand"
 	"runtime/debug"
 	"sort"
 	"time"
@@ -653,6 +659,94 @@ func runSound(exp *control.Experiment, trig triggers.Trigger) error {
 	})
 }
 
+// ── Test: rt ──────────────────────────────────────────────────────────────────
+
+// runRT measures keyboard reaction time using SDL3 event timestamps.
+//
+// Each trial: a white flash appears for one frame; the participant presses any
+// key as fast as possible. RT is computed as event.Timestamp − onset_ns, where
+// onset_ns is the SDL nanosecond tick captured by Screen.FlipNS() immediately
+// after SDL_RenderPresent returns.
+//
+// Because both timestamps come from the same SDL nanosecond clock (SDL_GetTicksNS),
+// RT reflects the interval between actual display output and the hardware
+// keyboard interrupt — without any polling latency on the response side.
+//
+// Use with a hardware response box connected as a USB keyboard for ground-truth
+// RT validation. Compare against the photodiode onset (frames test) to obtain
+// the full stimulus-onset → button-press chain in nanoseconds.
+func runRT(exp *control.Experiment, trig triggers.Trigger) error {
+	nTrials := *fCycles
+	meanItiMs := *fItiMs
+	fmt.Printf("rt: %d trials  mean ITI %.0f ms  press any key each flash\n", nTrials, meanItiMs)
+
+	exp.AddDataVariableNames([]string{
+		"trial",
+		"onset_ns", "event_ts_ns", "rt_ns", "rt_ms",
+	})
+
+	var rtValues []float64 // milliseconds for statistics
+
+	return exp.Run(func() error {
+		instructions := stimuli.NewTextLine(
+			"Press any key as fast as possible when the screen flashes white.",
+			0, 50, control.White,
+		)
+		hint := stimuli.NewTextLine("(press SPACE to start)", 0, -50, control.Gray)
+		exp.Screen.Clear()
+		instructions.Draw(exp.Screen)
+		hint.Draw(exp.Screen)
+		exp.Screen.Update()
+		exp.Keyboard.WaitKey(control.K_SPACE)
+
+		oldGC := debug.SetGCPercent(-1)
+		defer debug.SetGCPercent(oldGC)
+
+		for i := 0; i < nTrials; i++ {
+			// Jittered ITI: meanItiMs ± 50 %
+			jitter := (rand.Float64() - 0.5) * meanItiMs
+			itiDur := time.Duration((meanItiMs+jitter)*float64(time.Millisecond))
+			exp.Screen.Clear()
+			exp.Screen.Update()
+			time.Sleep(itiDur)
+
+			// Optional trigger pulse just before the onset flip.
+			_, isNull := trig.(triggers.NullTrigger)
+			if !isNull {
+				_ = trig.SetHigh(*fTriggerPin)
+			}
+
+			// Flash: draw white screen and flip, capturing SDL nanosecond onset.
+			exp.Screen.Renderer.SetDrawColor(255, 255, 255, 255)
+			exp.Screen.Renderer.Clear()
+			onsetNS, _ := exp.Screen.FlipNS()
+
+			if !isNull {
+				go func() {
+					time.Sleep(time.Duration(*fTriggerMs) * time.Millisecond)
+					_ = trig.SetLow(*fTriggerPin)
+				}()
+			}
+
+			// Wait for keypress — returns SDL event timestamp (nanoseconds).
+			_, eventTS, err := exp.Keyboard.WaitKeysEventRT(nil, 5000)
+			if control.IsEndLoop(err) {
+				return control.EndLoop
+			}
+
+			rtNS := int64(eventTS - onsetNS)
+			rtMs := float64(rtNS) / 1e6
+			rtValues = append(rtValues, rtMs)
+
+			exp.Data.Add(i, onsetNS, eventTS, rtNS, fmt.Sprintf("%.3f", rtMs))
+			fmt.Printf("trial %3d  RT = %.1f ms\n", i, rtMs)
+		}
+
+		printStats("RT (ms, event-timestamp method)", computeStats(rtValues, 0), 0)
+		return control.EndLoop
+	})
+}
+
 // ── main ──────────────────────────────────────────────────────────────────────
 
 func main() {
@@ -696,8 +790,10 @@ func main() {
 		runErr = runSquare(exp, trig)
 	case "sound":
 		runErr = runSound(exp, trig)
+	case "rt":
+		runErr = runRT(exp, trig)
 	default:
-		log.Fatalf("unknown test %q — choose from: frames flash av jitter square sound", *fTest)
+		log.Fatalf("unknown test %q — choose from: frames flash av jitter square sound rt", *fTest)
 	}
 
 	if runErr != nil && !control.IsEndLoop(runErr) {

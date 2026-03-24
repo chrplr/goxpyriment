@@ -389,21 +389,43 @@ keyboard events:
   is pressed, with an optional timeout.
 \item
   \texttt{WaitKeysRT(codes,\ timeoutMS)} additionally returns the
-  reaction time in milliseconds from the moment of the call.
+  reaction time in milliseconds measured from the moment of the call.
+\item
+  \texttt{WaitKeysEventRT(codes,\ timeoutMS)} returns the SDL3 event
+  timestamp in nanoseconds (\texttt{KeyboardEvent.Timestamp}, populated
+  at hardware-interrupt time via \texttt{SDL\_GetTicksNS()}) rather than
+  a polling-time delta.
 \item
   \texttt{Check()} is a non-blocking poll.
 \item
   \texttt{Clear()} drains all pending key events from the SDL queue.
 \end{itemize}
 
-Reaction time from \texttt{WaitKeysRT} is measured from the moment of
-the call. For maximum precision, the exact VSYNC timestamp can be
-obtained via \texttt{clock.GetTime()} immediately after
-\texttt{exp.Screen.Update()} returns, and the difference to the keypress
-timestamp can be computed manually.
+The companion method \texttt{exp.ShowNS(stim)} performs the standard
+clear → draw → flip sequence and captures \texttt{SDL\_GetTicksNS()}
+immediately after \texttt{SDL\_RenderPresent} returns. Because
+\texttt{ShowNS} and \texttt{WaitKeysEventRT} both use the same SDL
+nanosecond clock, reaction time from any recorded stimulus onset reduces
+to a single subtraction with no intervening arithmetic:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{onset}\OperatorTok{,}\NormalTok{ \_ }\OperatorTok{:=}\NormalTok{ exp}\OperatorTok{.}\NormalTok{ShowNS}\OperatorTok{(}\NormalTok{prime}\OperatorTok{)}
+\NormalTok{exp}\OperatorTok{.}\NormalTok{Wait}\OperatorTok{(}\DecValTok{500}\OperatorTok{)}
+\NormalTok{exp}\OperatorTok{.}\NormalTok{ShowNS}\OperatorTok{(}\NormalTok{target}\OperatorTok{)}
+\NormalTok{key}\OperatorTok{,}\NormalTok{ eventTS}\OperatorTok{,}\NormalTok{ \_ }\OperatorTok{:=}\NormalTok{ exp}\OperatorTok{.}\NormalTok{Keyboard}\OperatorTok{.}\NormalTok{WaitKeysEventRT}\OperatorTok{(}\NormalTok{keys}\OperatorTok{,} \DecValTok{3000}\OperatorTok{)}
+\NormalTok{rtFromPrime }\OperatorTok{:=} \DataTypeTok{int64}\OperatorTok{(}\NormalTok{eventTS }\OperatorTok{-}\NormalTok{ onset}\OperatorTok{)}  \CommentTok{// nanoseconds}
+\end{Highlighting}
+\end{Shaded}
+
+This is particularly useful for multi-stimulus paradigms (e.g., masked
+priming, SOA-based designs) where the response is collected after a
+sequence of stimuli and RT must be anchored to a specific onset.
 
 \texttt{exp.Mouse} provides equivalent access to mouse button events and
-cursor position in center-based coordinates.
+cursor position in center-based coordinates, including a
+\texttt{WaitPressEventRT} method that follows the same event-timestamp
+convention.
 
 \subsubsection{Data Collection}\label{data-collection}
 
@@ -596,12 +618,16 @@ functions minimize this risk by keeping the per-frame computation small
 and disabling GC, but workloads that stress the GPU --- large textures,
 many simultaneous draws --- can still cause occasional dropped frames.
 
-Frame-accurate timing applies to stimulus onset and offset. It does not
-apply to keyboard response timestamps: \texttt{exp.Keyboard.WaitKeysRT}
-measures elapsed time from the call site using the system clock, not
-from a hardware interrupt. On modern operating systems without real-time
-scheduling, keyboard event latency is typically on the order of 1--5 ms
-but is not bounded.
+Frame-accurate timing applies to stimulus onset and offset. The
+\texttt{WaitKeysRT} function measures elapsed time from the call site
+using the system clock, which introduces polling latency. The
+\texttt{WaitKeysEventRT} function instead returns the SDL3
+\texttt{KeyboardEvent.Timestamp} field, which is populated by the OS
+input subsystem at hardware-interrupt time (nanoseconds since SDL
+initialization). This removes polling latency from response timestamps;
+however, the underlying keyboard interrupt scheduling on non-real-time
+operating systems still introduces some jitter, typically on the order
+of 1--5 ms.
 
 No formal timing validation study has yet been published for
 \texttt{goxpyriment}. Such a study, using a photodiode and a hardware

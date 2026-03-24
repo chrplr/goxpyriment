@@ -23,9 +23,11 @@ import (
 // EventState provides a convenient summary of the last processed input events.
 // It is updated by Experiment.PollEvents.
 type EventState struct {
-	LastKey         sdl.Keycode
-	LastMouseButton uint32
-	QuitRequested   bool
+	LastKey              sdl.Keycode
+	LastMouseButton      uint32
+	LastKeyTimestamp     uint64 // SDL3 event timestamp in nanoseconds (same clock as TicksNS)
+	LastMouseTimestamp   uint64 // SDL3 event timestamp in nanoseconds
+	QuitRequested        bool
 }
 
 // ---------------------------------------------------------------------------
@@ -171,6 +173,29 @@ func (e *Experiment) Show(v stimuli.VisualStimulus) error {
 	return err
 }
 
+// ShowNS presents a visual stimulus (clear + draw + flip) and returns the
+// SDL3 nanosecond timestamp captured immediately after the VSYNC flip.
+//
+// The timestamp is on the same clock as SDL3 event timestamps, so the
+// reaction time from this stimulus onset is simply:
+//
+//	onset, _ := exp.ShowNS(stim)
+//	key, eventTS, _ := exp.Keyboard.WaitKeysEventRT(keys, -1)
+//	rtNS := int64(eventTS - onset)
+func (e *Experiment) ShowNS(v stimuli.VisualStimulus) (uint64, error) {
+	if err := v.Present(e.Screen, true, false); err != nil {
+		if IsEndLoop(err) {
+			panic(exitPanic{err: err})
+		}
+		return 0, err
+	}
+	ts, err := e.Screen.FlipNS()
+	if err != nil {
+		return 0, err
+	}
+	return ts, nil
+}
+
 // ShowInstructions displays a centered text block and waits for the
 // participant to press the spacebar before returning. This replaces the
 // common three-line pattern:
@@ -277,11 +302,19 @@ func (e *Experiment) Initialize() error {
 			state := e.PollEvents(nil)
 			return state.LastKey, state.QuitRequested
 		},
+		PollKeysWithTS: func() (sdl.Keycode, uint64, bool) {
+			state := e.PollEvents(nil)
+			return state.LastKey, state.LastKeyTimestamp, state.QuitRequested
+		},
 	}
 	e.Mouse = &io.Mouse{
 		PollButtons: func() (uint32, bool) {
 			state := e.PollEvents(nil)
 			return state.LastMouseButton, state.QuitRequested
+		},
+		PollButtonsWithTS: func() (uint32, uint64, bool) {
+			state := e.PollEvents(nil)
+			return state.LastMouseButton, state.LastMouseTimestamp, state.QuitRequested
 		},
 	}
 
@@ -337,7 +370,9 @@ func (e *Experiment) PollEvents(handle func(ev sdl.Event) bool) EventState {
 	// QuitRequested is intentionally sticky: once ESC or window-close is
 	// received, it stays true so the experiment can unwind gracefully.
 	e.event.LastKey = 0
+	e.event.LastKeyTimestamp = 0
 	e.event.LastMouseButton = 0
+	e.event.LastMouseTimestamp = 0
 
 	var ev sdl.Event
 	for pollEvent(&ev) {
@@ -345,16 +380,19 @@ func (e *Experiment) PollEvents(handle func(ev sdl.Event) bool) EventState {
 		case sdl.EVENT_QUIT:
 			e.event.QuitRequested = true
 		case sdl.EVENT_KEY_DOWN:
-			k := ev.KeyboardEvent().Key
-			if k == sdl.K_ESCAPE {
+			ke := ev.KeyboardEvent()
+			if ke.Key == sdl.K_ESCAPE {
 				e.event.QuitRequested = true
 			}
 			if e.event.LastKey == 0 {
-				e.event.LastKey = k
+				e.event.LastKey = ke.Key
+				e.event.LastKeyTimestamp = ke.Timestamp
 			}
 		case sdl.EVENT_MOUSE_BUTTON_DOWN:
 			if e.event.LastMouseButton == 0 {
-				e.event.LastMouseButton = uint32(ev.MouseButtonEvent().Button)
+				me := ev.MouseButtonEvent()
+				e.event.LastMouseButton = uint32(me.Button)
+				e.event.LastMouseTimestamp = me.Timestamp
 			}
 		}
 
