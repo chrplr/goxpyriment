@@ -16,6 +16,11 @@ type Mouse struct {
 	// PollButtons is injected by the control layer to avoid direct SDL polling
 	// that discards non-mouse events. It returns (button, quitRequested).
 	PollButtons func() (uint32, bool)
+
+	// PollButtonsWithTS is like PollButtons but also returns the SDL3 event
+	// timestamp (nanoseconds). Injected by the control layer; used by
+	// WaitPressEventRT.
+	PollButtonsWithTS func() (uint32, uint64, bool)
 }
 
 // ShowCursor shows or hides the mouse cursor.
@@ -63,6 +68,67 @@ func (m *Mouse) WaitPress() (uint32, error) {
 			}
 			if event.Type == sdl.EVENT_QUIT {
 				return 0, sdl.EndLoop
+			}
+		}
+	}
+}
+
+// WaitPressEventRT blocks until a mouse button is pressed and returns both
+// the button index and the SDL3 event timestamp in nanoseconds (same reference
+// clock as sdl.TicksNS() and Screen.FlipNS()).
+//
+// Pass timeoutMS = -1 for no timeout. On timeout, returns (0, 0, nil).
+// On quit, returns sdl.EndLoop.
+func (m *Mouse) WaitPressEventRT(timeoutMS int) (uint32, uint64, error) {
+	start := sdl.Ticks()
+
+	if m.PollButtonsWithTS != nil {
+		for {
+			if timeoutMS >= 0 {
+				if int(sdl.Ticks()-start) >= timeoutMS {
+					return 0, 0, nil
+				}
+			}
+			btn, ts, quit := m.PollButtonsWithTS()
+			if quit {
+				return 0, 0, sdl.EndLoop
+			}
+			if btn != 0 {
+				return btn, ts, nil
+			}
+			time.Sleep(1 * time.Millisecond)
+		}
+	}
+
+	// Fallback: direct SDL event polling.
+	for {
+		var event sdl.Event
+		if timeoutMS < 0 {
+			if sdl.WaitEvent(&event) == nil {
+				if event.Type == sdl.EVENT_MOUSE_BUTTON_DOWN {
+					me := event.MouseButtonEvent()
+					return uint32(me.Button), me.Timestamp, nil
+				}
+				if event.Type == sdl.EVENT_QUIT {
+					return 0, 0, sdl.EndLoop
+				}
+			}
+		} else {
+			elapsed := int(sdl.Ticks() - start)
+			remaining := timeoutMS - elapsed
+			if remaining <= 0 {
+				return 0, 0, nil
+			}
+			if sdl.WaitEventTimeout(&event, int32(remaining)) {
+				if event.Type == sdl.EVENT_MOUSE_BUTTON_DOWN {
+					me := event.MouseButtonEvent()
+					return uint32(me.Button), me.Timestamp, nil
+				}
+				if event.Type == sdl.EVENT_QUIT {
+					return 0, 0, sdl.EndLoop
+				}
+			} else if int(sdl.Ticks()-start) >= timeoutMS {
+				return 0, 0, nil
 			}
 		}
 	}

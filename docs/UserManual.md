@@ -306,6 +306,22 @@ Always use `exp.Wait` for inter-trial and inter-stimulus intervals — it keeps 
 
 `exp.Wait` sleeps in 1 ms increments. For coarse delays (ISIs, fixation durations) this is perfectly fine. For frame-accurate stimulus timing — e.g., showing a stimulus for exactly 2 frames — use the stream functions described in [Section 10](#10-high-precision-streams-rsvp).
 
+### Nanosecond event timestamps
+
+SDL3 timestamps every input event at hardware-interrupt time using `SDL_GetTicksNS()`. These timestamps are not affected by when your code polls the event queue, so they reflect the actual moment of the keypress or button click with nanosecond precision.
+
+`exp.ShowNS(stim)` calls the usual clear → draw → flip sequence and then captures `sdl.TicksNS()` immediately after the VSYNC flip. `exp.Keyboard.WaitKeysEventRT(keys, timeout)` returns the SDL event's own timestamp rather than a polling-time delta. Because both values are on the same SDL clock, their difference gives hardware-precision reaction time:
+
+```go
+onset, _ := exp.ShowNS(stim1)   // nanoseconds at VSYNC flip
+exp.Wait(500)
+exp.ShowNS(stim2)
+key, eventTS, _ := exp.Keyboard.WaitKeysEventRT(responseKeys, -1)
+rtToStim1 := int64(eventTS - onset)  // nanoseconds, no arithmetic needed
+```
+
+This is especially useful when you need RT relative to a specific stimulus in a multi-stimulus sequence — something that `WaitKeysRT` cannot express directly, since it measures from the call site rather than from a recorded onset.
+
 ### Disabling garbage collection
 
 Go's garbage collector can pause execution for several milliseconds at unpredictable times. The stream and animation functions disable it during the critical loop:
@@ -336,8 +352,11 @@ err := exp.Keyboard.WaitKey(control.K_SPACE)
 // Returns 0 on timeout, sdl.EndLoop on ESC/quit
 key, err := exp.Keyboard.WaitKeys([]control.Keycode{control.K_F, control.K_J}, 3000)
 
-// Same, but also returns reaction time in milliseconds
+// Same, but also returns reaction time in milliseconds from the call site
 key, rt, err := exp.Keyboard.WaitKeysRT([]control.Keycode{control.K_F, control.K_J}, 3000)
+
+// Hardware-precision version: returns the SDL event's nanosecond timestamp
+key, eventTS, err := exp.Keyboard.WaitKeysEventRT([]control.Keycode{control.K_F, control.K_J}, 3000)
 
 // Non-blocking poll — returns 0 if nothing pressed
 key, err := exp.Keyboard.Check()
@@ -346,21 +365,36 @@ key, err := exp.Keyboard.Check()
 exp.Keyboard.Clear()
 ```
 
-Reaction time from `WaitKeysRT` is measured from the moment the call is made, not from when the stimulus was shown. To measure RT from stimulus onset:
+**`WaitKeysRT` vs `WaitKeysEventRT`:**
+
+`WaitKeysRT` measures elapsed time from the moment the call is made (using `sdl.Ticks()`, millisecond granularity). In a single-stimulus trial this is a good approximation of RT from stimulus onset, but it accumulates any delay between `Show()` returning and `WaitKeysRT` being called.
+
+`WaitKeysEventRT` returns the SDL3 event's own `Timestamp` field — the nanosecond time at which the hardware key-down event was generated. Combined with `exp.ShowNS(stim)`, which records the nanosecond time of the VSYNC flip, reaction time is simply:
 
 ```go
-exp.Show(target)         // stimulus appears on this VSYNC
-key, rt, _ := exp.Keyboard.WaitKeysRT(responseKeys, 3000)
-// rt is ms from Show() return to keypress — includes ~1 frame of rendering latency
+onset, _ := exp.ShowNS(target)   // nanoseconds at VSYNC flip
+key, eventTS, _ := exp.Keyboard.WaitKeysEventRT(responseKeys, 3000)
+rtNS := int64(eventTS - onset)   // nanoseconds; divide by 1e6 for ms
 ```
 
-For maximum RT precision, record `clock.GetTime()` just after `exp.Screen.Update()` returns (the exact VSYNC moment) and compute the delta yourself.
+This form is also the only correct approach when multiple stimuli are presented in sequence and you need RT relative to a specific one:
+
+```go
+onset1, _ := exp.ShowNS(prime)   // prime appears
+exp.Wait(500)
+exp.ShowNS(target)               // target appears 500 ms later
+key, eventTS, _ := exp.Keyboard.WaitKeysEventRT(responseKeys, 3000)
+rtToPrime := int64(eventTS - onset1)  // RT from prime onset
+```
 
 ### Mouse
 
 ```go
 // Block until any button
 btn, err := exp.Mouse.WaitPress()
+
+// Hardware-precision version: returns the SDL event's nanosecond timestamp
+btn, eventTS, err := exp.Mouse.WaitPressEventRT(3000)
 
 // Non-blocking poll
 btn, err := exp.Mouse.Check()

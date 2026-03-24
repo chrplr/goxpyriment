@@ -265,6 +265,24 @@ func (s *Screen) Flip() error {
 	return s.Update()
 }
 
+// FlipNS presents the backbuffer (like Flip) and immediately captures the
+// SDL nanosecond timestamp after the flip completes.
+//
+// The returned timestamp is in the same nanosecond reference frame as SDL3
+// event timestamps (sdl.TicksNS()), so it can be directly subtracted from
+// the Timestamp field of a KeyboardEvent or MouseButtonEvent to compute
+// a hardware-precision reaction time:
+//
+//	onset, _ := screen.FlipNS()
+//	key, eventTS, _ := kb.WaitKeysEventRT(keys, -1)
+//	rtNS := int64(eventTS - onset)
+func (s *Screen) FlipNS() (uint64, error) {
+	if err := s.Update(); err != nil {
+		return 0, err
+	}
+	return sdl.TicksNS(), nil
+}
+
 // SetVSync toggles vertical synchronization.
 // vsync: 1 to enable, 0 to disable, -1 for adaptive vsync.
 func (s *Screen) SetVSync(vsync int) error {

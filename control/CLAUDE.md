@@ -31,7 +31,7 @@ exp.Run(func() error {
 | `Data` | `*io.DataFile` | `.xpd` experiment data file |
 | `Design` | `*design.Experiment` | Trial/block structure |
 | `Info` | `map[string]string` | Participant metadata (from `GetParticipantInfo`) |
-| `SubjectID` | `string` | Set by `-s` flag or `GetParticipantInfo` |
+| `SubjectID` | `int` | Set by `-s` flag or `GetParticipantInfo` |
 | `DefaultFont` | `*ttf.Font` | Passed to stimuli that omit an explicit font |
 | `DefaultFontSize` | `int` | Font size used at init |
 | `BackgroundColor` | `sdl.Color` | Screen background |
