@@ -149,7 +149,7 @@ func NewExperimentFromFlags(name string, bg, fg sdl.Color, fontSize float32) *Ex
 	if err := exp.Initialize(); err != nil {
 		log.Fatalf("failed to initialize experiment: %v", err)
 	}
-	_ = exp.ShowSplash(true)
+	// _ = exp.ShowSplash(true)
 	return exp
 }
 
