@@ -1,24 +1,32 @@
 # goxpyriment
 
-`goxpyriment` is a high-level Go framework for building behavioral and psychological experiments.
+`goxpyriment` is a high-level Go framework for building behavioral and psychological experiments. 
 
-* [Documentation site](https://chrplr.github.io/goxpyriment)
-* [Github repository](https://github.com/chrplr/goxpyriment)
-* [Getting Started](docs/GettingStarted.md) — Tutorial for psychologists (Python/Expyriment users)
-* [User Manual](docs/UserManual.md) — Core concepts explained in depth
-* [API Reference](docs/API.md) — Complete function and type reference
-* Report bugs and suggestions at <https://github.com/chrplr/goxpyriment/issues>
 
 
 **Just want to run demo experiments?** → Jump to [Demos](#demos).
 
-**Want to write your own experiment?** Goxpyriment is well suited to "vibe-coding" psychology experiments — but humans enjoy coding with it too:
+**Want to write your own experiment?** 
 
 1. Install Go on your machine (see <https://go.dev/doc/install>).
 2. Clone this repository (`git clone https://github.com/chrplr/goxpyriment.git` or [download ZIP](https://github.com/chrplr/goxpyriment/archive/refs/heads/main.zip)).
-3. Fire your favorite AI coding agent (gemini-cli, claude, cursor...) inside the `goxpyriment` folder and ask it to review the provided examples; then prompt it to program your experiment, describing it in plain language (stimuli, design, etc.).
-4. Once the code is created, e.g. in `my_experiment/`, test it by running `go run my_experiment/main.go` in the terminal.
-5. Optionally, build installers for Windows, macOS, and Linux to distribute to colleagues — no Python or libraries needed on their machines (see <https://github.com/chrplr/retinotopy-go> for an example).
+3. Browse [./examples/](./examples/) to see source code of experiments and the documentation :
+   * [Getting Started](docs/GettingStarted.md) — Tutorial for psychologists (Python/Expyriment users)
+   * [User Manual](docs/UserManual.md) — Core concepts explained in depth
+   * [API Reference](docs/API.md) — Complete function and type reference
+4. Create a folder for your experiment and write its source code in `main.go`, which you can test by running `go run main.go`. 
+ *vibe-coding:* You can start an AI coding agent, e.g., Claude, Gemini, etc., inside the `goxpyriment` folder and ask it to add a new experiment to the `examples` folder (this will lead it to read the existing examples) and describe the experiment (stimuli, design, etc.) in plain language.
+5. Once satisfied with the code, compile your experiment into an executable with `go build .`, Voilà!
+6. If you want to distribute your code to colleagues using another operating system (Windows, macOS, Linux) and/or architecture (x86_64 or arm64), you can cross-compile, for example to produce code running on a Raspberry-Pi:
+```
+env GOOS=linux GOARCH=arm64 go build .
+```
+
+---
+
+* [Github.io Page](https://chrplr.github.io/goxpyriment)
+* [Github repository](https://github.com/chrplr/goxpyriment)
+* Report bugs and suggestions at <https://github.com/chrplr/goxpyriment/issues>
 
 Goxpyriment relies on the [libsdl](http://libsdl.org) library through the [go-sdl3](https://github.com/Zyko0/go-sdl3) bindings. Its API is largely inspired by [expyriment.org](http://expyriment.org):
 
@@ -47,14 +55,17 @@ Christophe Pallier, March 2026
 
 ### Demos
 
-You can download [here](https://github.com/chrplr/goxpyriment/releases) ready-to-run [examples of experiments](examples/README.md) created with goxpyriment (and check their [source code](examples/) if you want).
-
 * **Windows:** Download [`goxpyriment-examples-windows-x86_64-setup.exe`](https://github.com/chrplr/goxpyriment/releases/latest/download/goxpyriment-examples-windows-x86_64-setup.exe). Execute it; Defender may block you: click "more info" then "Run anyway". By default, experiments are installed in `AppData\Local\Goxpyriment examples\bin` in your user folder. As `AppData` is a hidden folder, select `View > Show > Hidden items` in File Explorer to navigate there.
 * **macOS:** Download [`goxpyriment-examples-macos-arm64-app.zip`](https://github.com/chrplr/goxpyriment/releases/latest/download/goxpyriment-examples-macos-arm64-app.zip), extract it, and drag the `.app` files into a folder of your choice (e.g. `Applications/goxpyriment-examples`).
 
   > [!WARNING]
   > macOS may show a security warning the first time you open each app. See [macOS installation and security](https://chrplr.github.io/note-about-macos-unsigned-apps) for an explanation and step-by-step instructions to bypass it.
 * **Linux:** Download [`goxpyriment-examples-linux-x86_64-appimages.tar.gz`](https://github.com/chrplr/goxpyriment/releases/latest/download/goxpyriment-examples-linux-x86_64-appimages.tar.gz) and untar it (`tar xzf`). The applications are ready to run.
+
+The source code of [these demos](examples/README.md) can be browsed at  [./examples/](./examples/).
+
+* Report bugs and suggestions at <https://github.com/chrplr/goxpyriment/issues>
+
 
 ### Install Go and the library to compile source code
 
