@@ -29,13 +29,14 @@ Goxpyriment relies on the [libsdl](http://libsdl.org) library through the [go-sd
 
 If you are looking for a simpler, *no-code experiment generator*, check [gostim2](http://github.com/chrplr/gostim2) 
 
-As its name suggest, goxpyriment was inspired by [expyriment.org](http://expyriment.org), a nice, light-weight Python library for progamming experiment. The API should feel very familiar to expyriment users.
+As its name suggests, goxpyriment was inspired by [expyriment.org](http://expyriment.org), a nice, light-weight Python library for programming experiments. The API should feel very familiar to expyriment users.
 
 > Krause, F., & Lindemann, O. (2014). Expyriment: A Python library for cognitive and neuroscientific experiments. *Behavior Research Methods*, 46(2), 416–428. <https://doi.org/10.3758/s13428-013-0390-6>
 
 The code was mostly written with Claude Sonnet 4.6, with some input from Gemini 3
 
-> :warning: this software is new and in beta-testing: although it is certainly possible to use it to implement real experiments in the lab, users should (as always) carefully check their behavior, e.g. with a [bbtk](https://chrplr.github.io/bbtkv3/]). 
+> [!WARNING]
+> This software is new and in beta-testing: although it is certainly possible to use it to implement real experiments in the lab, users should (as always) carefully check their behavior, e.g. with a [bbtk](https://chrplr.github.io/bbtkv3/).
 
 Christophe Pallier (Feb./March 2026).
 
@@ -47,8 +48,10 @@ Christophe Pallier (Feb./March 2026).
 2. Clone this repository (`git clone https://github.com/chrplr/goxpyriment.git` or [download ZIP](https://github.com/chrplr/goxpyriment/archive/refs/heads/main.zip)).
 3. Browse [./examples/](./examples/) to see source code of experiments and the documentation :
 4. Create a folder for your experiment and start coding in a `main.go` file. You can test it by running `go run main.go`. 
-> :bulb: *vibe-coding:* Launch an AI coding agent, e.g., Claude, Gemini, etc., inside the `goxpyriment` folder and ask it to add a new experiment to the `examples` folder (this will lead it to read the existing examples) and describe the experiment (stimuli, design, etc.) in plain language. Enjoy. Recommendation: save the prompt ina `description.md` file.
-5. Once satisfied with the code, compile your experiment into an executable with `go build .`. This executable will run on any machine with the same OS an architecture. 
+> [!TIP]
+> *Vibe-coding:* Launch an AI coding agent (Claude, Gemini, etc.) inside the `goxpyriment` folder and ask it to add a new experiment to the `examples` folder — this leads the agent to read the existing examples for context. Describe the experiment (stimuli, design, etc.) in plain language and enjoy.
+> Recommendation: save your prompt in a `description.md` file alongside the code.
+5. Once satisfied with the code, compile your experiment into an executable with `go build .`. This executable will run on any machine with the same OS and architecture. 
 6. If you need to distribute your experiment to colleagues who use another operating system or architecture, you can [cross-compile](https://golangcookbook.com/chapters/running/cross-compiling/). For example, to produce code for a [Raspberry-Pi](https://en.wikipedia.org/wiki/Raspberry_Pi):
 ```
 env GOOS=linux GOARCH=arm64 go build .
@@ -74,7 +77,7 @@ Most examples accept `-d` (windowed 1024×768 developer mode) and `-s <id>` (sub
 
 The source code of [these demos](examples/README.md) can be browsed at  [./examples/](./examples/).
 
-If [Go](https://go.dev) is installed on your computer, and you have ran `go get github.com/chrplr/goxpyriment`, you can run any example directly from a clone of the goxpyriment repository, for example:
+If [Go](https://go.dev) is installed on your computer, and you have run `go get github.com/chrplr/goxpyriment`, you can run any example directly from a clone of the goxpyriment repository, for example:
 
 ```bash
 go run ./examples/parity_decision/ -d -s 1
