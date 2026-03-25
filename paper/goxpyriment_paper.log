@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.26 (TeX Live 2025/dev/Debian) (preloaded format=pdflatex 2026.2.15)  23 MAR 2026 09:02
+This is pdfTeX, Version 3.141592653-2.6-1.40.26 (TeX Live 2025/dev/Debian) (preloaded format=pdflatex 2026.2.15)  25 MAR 2026 07:06
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -665,11 +665,11 @@ tPosition()\T1/lmr/m/n/10.95 (+20) . The \T1/lmtt/m/n/10.95 Stimulus
 
 [6]
 LaTeX Font Info:    Trying to load font information for TS1+lmtt on input line 
-441.
+463.
  (/usr/share/texmf/tex/latex/lm/ts1lmtt.fd
 File: ts1lmtt.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
 )
-Underfull \hbox (badness 2903) in paragraph at lines 440--447
+Underfull \hbox (badness 2903) in paragraph at lines 462--469
 \T1/lmtt/m/n/10.95 Block.AddTrial(trial, copies, randomPosition) \T1/lmr/m/n/10
 .95 (+20) adds one or more copies of a trial;
  []
@@ -681,7 +681,9 @@ Underfull \hbox (badness 2903) in paragraph at lines 440--447
 [8]
 
 [9]
-Overfull \hbox (42.01631pt too wide) in paragraph at lines 634--637
+
+[10]
+Overfull \hbox (42.01631pt too wide) in paragraph at lines 660--663
 []\T1/lmtt/b/n/10.95 Stroop_task/\T1/lmr/m/n/10.95 (-20) : A clas-sic color-wor
 d in-ter-fer-ence task with au-dio feed-back via \T1/lmtt/m/n/10.95 exp.Audio.P
 layBuzzer()\T1/lmr/m/n/10.95 (-20) . 
@@ -689,14 +691,31 @@ layBuzzer()\T1/lmr/m/n/10.95 (-20) .
 
 
 
-[10]
+[11]
+Underfull \vbox (badness 10000) detected at line 733
+ []
 
-[11] [12]
+
+Overfull \vbox (0.62431pt too high) detected at line 733
+ []
+
+
+
+[12]
 
 [13]
+! Undefined control sequence.
+l.820 predictability \citep
+                           {pike2012go}. It has far less ``moving parts''
+? 
+
 
 [14]
-Underfull \hbox (badness 1292) in paragraph at lines 869--878
+
+[15]
+
+[16]
+Underfull \hbox (badness 1292) in paragraph at lines 958--967
 \T1/lmr/m/n/10.95 (+20) ules, in-clud-ing \T1/lmtt/m/n/10.95 control/getinfo.go
 \T1/lmr/m/n/10.95 (+20) , \T1/lmtt/m/n/10.95 io/data.go \T1/lmr/m/n/10.95 (+20)
  ex-ten-sions, \T1/lmtt/m/n/10.95 stimuli/moving_grating.go\T1/lmr/m/n/10.95 (+
@@ -704,9 +723,7 @@ Underfull \hbox (badness 1292) in paragraph at lines 869--878
  []
 
 
-
-[15]
-Underfull \hbox (badness 1158) in paragraph at lines 904--906
+Underfull \hbox (badness 1158) in paragraph at lines 993--995
 []\T1/lmr/m/n/10.95 (+20) Brainard, D. H. (1997). The Psy-chophysics Tool-box. 
 \T1/lmr/m/it/10.95 (+20) Spa-tial Vi-sion\T1/lmr/m/n/10.95 (+20) , \T1/lmr/m/it
 /10.95 (+20) 10\T1/lmr/m/n/10.95 (+20) (4), 433--436.
@@ -714,15 +731,15 @@ Underfull \hbox (badness 1158) in paragraph at lines 904--906
 
 
 
-[16]
-Overfull \hbox (16.53648pt too wide) in paragraph at lines 943--946
+[17]
+Overfull \hbox (16.53648pt too wide) in paragraph at lines 1032--1035
 []\T1/lmr/m/n/10.95 (-20) Nature Port-fo-lio. (2023). \T1/lmr/m/it/10.95 (-20) 
 Tools and tech-nolo-gies: Ar-ti-fi-cial in-tel-li-gence\T1/lmr/m/n/10.95 (-20) 
 . https://www.nature.com/nature-
  []
 
 
-Overfull \hbox (114.47643pt too wide) in paragraph at lines 947--949
+Overfull \hbox (114.47643pt too wide) in paragraph at lines 1036--1038
 []\T1/lmr/m/n/10.95 (-20) Springer Na-ture. (2023). \T1/lmr/m/it/10.95 (-20) Ar
 -ti-fi-cial in-tel-li-gence (AI) pol-icy for au-thors\T1/lmr/m/n/10.95 (-20) . 
 https://www.springernature.com/gp/policies/editorial-
@@ -730,32 +747,38 @@ https://www.springernature.com/gp/policies/editorial-
 
 
 
-[17]
+[18]
 
-[18] (./goxpyriment_paper.aux)
+[19]
+
+[20] (./goxpyriment_paper.aux)
  ***********
 LaTeX2e <2024-11-01> patch level 2
 L3 programming layer <2025-01-18>
  ***********
+
+
+LaTeX Warning: Label(s) may have changed. Rerun to get cross-references right.
+
  ) 
 Here is how much of TeX's memory you used:
- 14784 strings out of 473197
- 231133 string characters out of 5718605
- 708515 words of memory out of 5000000
- 37618 multiletter control sequences out of 15000+600000
- 608711 words of font info for 142 fonts, out of 8000000 for 9000
+ 14804 strings out of 473197
+ 231363 string characters out of 5718605
+ 706515 words of memory out of 5000000
+ 37622 multiletter control sequences out of 15000+600000
+ 609543 words of font info for 149 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
- 83i,7n,93p,1014b,598s stack positions out of 10000i,1000n,20000p,200000b,200000s
+ 83i,7n,93p,1014b,528s stack positions out of 10000i,1000n,20000p,200000b,200000s
 </usr/share/texmf/fonts/type1/public/lm/lmbx10.pfb></usr/share/texmf/fonts/ty
 pe1/public/lm/lmbx12.pfb></usr/share/texmf/fonts/type1/public/lm/lmr10.pfb></us
 r/share/texmf/fonts/type1/public/lm/lmr12.pfb></usr/share/texmf/fonts/type1/pub
 lic/lm/lmr17.pfb></usr/share/texmf/fonts/type1/public/lm/lmri10.pfb></usr/share
 /texmf/fonts/type1/public/lm/lmtk10.pfb></usr/share/texmf/fonts/type1/public/lm
-/lmtt10.pfb>
-Output written on goxpyriment_paper.pdf (18 pages, 285606 bytes).
+/lmtt10.pfb></usr/share/texmf/fonts/type1/public/lm/lmtti10.pfb>
+Output written on goxpyriment_paper.pdf (20 pages, 300822 bytes).
 PDF statistics:
- 271 PDF objects out of 1000 (max. 8388607)
- 230 compressed objects within 3 object streams
- 56 named destinations out of 1000 (max. 500000)
- 26857 words of extra memory for PDF output out of 29859 (max. 10000000)
+ 289 PDF objects out of 1000 (max. 8388607)
+ 244 compressed objects within 3 object streams
+ 59 named destinations out of 1000 (max. 500000)
+ 26865 words of extra memory for PDF output out of 29859 (max. 10000000)
 

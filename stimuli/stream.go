@@ -21,16 +21,19 @@ type VisualStreamElement struct {
 
 // UserEvent captures input data during the stream presentation.
 type UserEvent struct {
-	Event     sdl.Event     // The raw SDL event (Keyboard or Mouse)
-	Timestamp time.Duration // Time relative to the start of the stream
+	Event       sdl.Event     // The raw SDL event (Keyboard or Mouse)
+	Timestamp   time.Duration // Time relative to the start of the stream (Go clock, millisecond precision)
+	TimestampNS uint64        // SDL3 hardware event timestamp in nanoseconds (same clock as Screen.FlipNS)
 }
 
 // TimingLog provides post-hoc verification of the actual presentation times.
 type TimingLog struct {
 	Index        int
 	TargetOn     time.Duration
-	ActualOnset  time.Duration
-	ActualOffset time.Duration
+	ActualOnset  time.Duration // Go-clock time of first-frame draw (stream-relative)
+	ActualOffset time.Duration // Go-clock time after last on-frame (stream-relative)
+	OnsetNS      uint64        // SDL3 nanosecond timestamp of the VSYNC flip that turned the stimulus on
+	OffsetNS     uint64        // SDL3 nanosecond timestamp of the VSYNC flip that turned the stimulus off
 }
 
 // PresentStreamOfImages displays a sequence of stimuli with high precision.
@@ -71,6 +74,7 @@ func PresentStreamOfImages(screen *io.Screen, elements []VisualStreamElement, x,
 		el.Stimulus.SetPosition(sdl.FPoint{X: x, Y: y})
 
 		actualOnset := time.Since(streamStartTime)
+		var onsetNS uint64
 
 		// --- STIMULUS ON ---
 		for f := 0; f < framesOn; f++ {
@@ -80,21 +84,39 @@ func PresentStreamOfImages(screen *io.Screen, elements []VisualStreamElement, x,
 			if err := el.Stimulus.Draw(screen); err != nil {
 				return userEvents, timingLogs, err
 			}
-			if err := screen.Update(); err != nil { // VSYNC blocks here
-				return userEvents, timingLogs, err
+			if f == 0 {
+				// Capture the SDL nanosecond timestamp of the actual VSYNC flip.
+				ts, err := screen.FlipNS()
+				if err != nil {
+					return userEvents, timingLogs, err
+				}
+				onsetNS = ts
+			} else {
+				if err := screen.Update(); err != nil { // VSYNC blocks here
+					return userEvents, timingLogs, err
+				}
 			}
 			userEvents = collectEvents(streamStartTime, userEvents)
 		}
 
 		actualOffset := time.Since(streamStartTime)
+		var offsetNS uint64
 
 		// --- STIMULUS OFF (ISI / Blank screen) ---
 		for f := 0; f < framesOff; f++ {
 			if err := screen.Clear(); err != nil {
 				return userEvents, timingLogs, err
 			}
-			if err := screen.Update(); err != nil {
-				return userEvents, timingLogs, err
+			if f == 0 {
+				ts, err := screen.FlipNS()
+				if err != nil {
+					return userEvents, timingLogs, err
+				}
+				offsetNS = ts
+			} else {
+				if err := screen.Update(); err != nil {
+					return userEvents, timingLogs, err
+				}
 			}
 			userEvents = collectEvents(streamStartTime, userEvents)
 		}
@@ -104,6 +126,8 @@ func PresentStreamOfImages(screen *io.Screen, elements []VisualStreamElement, x,
 			TargetOn:     el.DurationOn,
 			ActualOnset:  actualOnset,
 			ActualOffset: actualOffset,
+			OnsetNS:      onsetNS,
+			OffsetNS:     offsetNS,
 		})
 	}
 
@@ -270,16 +294,25 @@ func PlayStreamOfSounds(elements []SoundStreamElement) ([]UserEvent, []TimingLog
 }
 
 // collectEvents drains the SDL event queue without blocking, appending any
-// keyboard or mouse button events to logs with timestamps relative to baseTime.
+// keyboard or mouse button events to logs. Each UserEvent carries both a
+// Go-clock stream-relative timestamp (Timestamp) and the SDL3 hardware event
+// timestamp in nanoseconds (TimestampNS), which is on the same clock as
+// Screen.FlipNS() and can be used for sub-millisecond RT computation.
 func collectEvents(baseTime time.Time, logs []UserEvent) []UserEvent {
 	var event sdl.Event
 	for sdl.PollEvent(&event) {
 		switch event.Type {
-		case sdl.EVENT_KEY_DOWN, sdl.EVENT_KEY_UP,
-			sdl.EVENT_MOUSE_BUTTON_DOWN, sdl.EVENT_MOUSE_BUTTON_UP:
+		case sdl.EVENT_KEY_DOWN, sdl.EVENT_KEY_UP:
 			logs = append(logs, UserEvent{
-				Event:     event,
-				Timestamp: time.Since(baseTime),
+				Event:       event,
+				Timestamp:   time.Since(baseTime),
+				TimestampNS: event.KeyboardEvent().Timestamp,
+			})
+		case sdl.EVENT_MOUSE_BUTTON_DOWN, sdl.EVENT_MOUSE_BUTTON_UP:
+			logs = append(logs, UserEvent{
+				Event:       event,
+				Timestamp:   time.Since(baseTime),
+				TimestampNS: event.MouseButtonEvent().Timestamp,
 			})
 		}
 	}

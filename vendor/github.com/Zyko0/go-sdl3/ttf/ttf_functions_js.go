@@ -2132,14 +2132,15 @@ func initialize() {
 	}
 
 	iRenderText_Blended_Wrapped = func(font *Font, str string, length uintptr, fg uint32, wrapWidth int32) *sdl.Surface {
+		panic("not implemented on js")
 		internal.StackSave()
 		defer internal.StackRestore()
 		_font, ok := internal.GetJSPointer(font)
 		if !ok {
-			panic("nil font")
+			_font = internal.StackAlloc(int(unsafe.Sizeof(*font)))
 		}
 		_str := internal.StringOnJSStack(str)
-		_length := int32(length)
+		_length := internal.NewBigInt(length)
 		_fg := int32(fg)
 		_wrapWidth := int32(wrapWidth)
 		ret := js.Global().Get("Module").Call(
@@ -2150,6 +2151,7 @@ func initialize() {
 			_fg,
 			_wrapWidth,
 		)
+
 		_obj := internal.NewObject[sdl.Surface](ret)
 		return _obj
 	}

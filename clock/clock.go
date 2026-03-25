@@ -20,6 +20,16 @@ func GetTime() int64 {
 	return time.Since(startTime).Milliseconds()
 }
 
+// GetTimeNS returns nanoseconds elapsed since the package's shared zero point.
+//
+// NOTE: uses time.Since() (Go monotonic clock), not sdl.TicksNS().
+// These two clocks have different origins; do not subtract GetTimeNS() from
+// SDL event timestamps (Screen.FlipNS, WaitKeysEventRT) to compute reaction
+// times. Use the SDL-based functions for RT measurement.
+func GetTimeNS() int64 {
+	return time.Since(startTime).Nanoseconds()
+}
+
 // Clock provides a simple timing abstraction relative to a start reference.
 // It can be used to measure durations and to sleep until a target offset.
 type Clock struct {
@@ -44,6 +54,15 @@ func (c *Clock) Now() time.Duration {
 // NowMillis returns the elapsed time in milliseconds since the clock's start reference.
 func (c *Clock) NowMillis() int64 {
 	return c.Now().Milliseconds()
+}
+
+// NowNanos returns nanoseconds elapsed since the clock's start reference.
+//
+// NOTE: uses time.Since() (Go monotonic clock), not sdl.TicksNS().
+// Do not subtract NowNanos() from SDL event timestamps to compute reaction
+// times. Use Screen.FlipNS + Keyboard.WaitKeysEventRT for that purpose.
+func (c *Clock) NowNanos() int64 {
+	return c.Now().Nanoseconds()
 }
 
 // Sleep sleeps for the given duration.

@@ -810,6 +810,69 @@ yet been subjected to comparable formal validation.
 
 \begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
 
+\subsection{Why Go?}\label{why-go}
+
+The choice of Go as the implementation language for \texttt{goxpyriment}
+warrants explicit justification, as the behavioral research community is
+more used to use Python-based tools.
+
+Go was designed with a deliberate emphasis on simplicity and
+predictability \citep{pike2012go}. It has far less ``moving parts''
+than Python.  Here are features that make Go attractive for a
+timing-sensitive experimental framework.
+
+\textbf{Static typing and compile-time safety.} Go is statically typed:
+type errors, missing methods, and incorrect function signatures are
+caught at compile time rather than at runtime. In Python, dynamic typing
+allows such errors to surface only during an ongoing experiment,
+potentially corrupting a data-collection session mid-run. Compile-time
+feedback provides an important safety net.
+
+\textbf{Explicit garbage-collection control.} Go exposes a runtime API
+for suspending and resuming the garbage collector
+(\texttt{debug.SetGCPercent}). \texttt{goxpyriment} uses this mechanism
+in its VSYNC-locked stimulus presentation loops: GC is disabled for the
+duration of a timing-critical sequence and restored immediately
+afterward (see Timing Architecture). Python provides no equivalent
+facility.
+
+\textbf{Native concurrency.} Go provides lightweight concurrency through
+goroutines and channels. This is relevant for behavioral
+experiments that must coordinate multiple concurrent processes ---
+stimulus rendering, response monitoring, hardware trigger dispatch, and
+audio playback --- with precise timing. Python's concurrency primitives,
+including the Global Interpreter Lock and the \texttt{asyncio}
+framework, impose architectural constraints that complicate
+low-latency multi-threaded coordination.
+
+\textbf{Suitability for AI-assisted development.} Researchers in the
+behavioral sciences are not always experienced programmers, and
+AI-powered coding assistants have become a practical tool for writing
+and maintaining experiment code. Go's properties appear to be
+particularly favorable in this context. Because the language has few
+synonymous constructs and a strict type system, the solution space
+explored by a language model is narrower and more constrained than in
+Python. Errors introduced by the model --- such as calling a
+non-existent method or passing an argument of the wrong type --- are
+caught at compile time before any code is executed.  This makes Go an attractive
+choice for a library intended to be used by researchers who rely on AI
+coding assistants to bridge gaps in their programming experience.
+
+\textbf{Single-binary deployment.} A Go program compiles to a single
+statically linked executable with no external runtime dependencies.
+Distributing an experiment requires copying one file; there is no need
+to manage virtual environments, package versions, or interpreter
+installations across laboratory computers. This substantially reduces
+the operational overhead of running experiments on multiple machines or
+sharing materials with collaborators.
+
+Taken together, these properties make Go well suited to the requirements
+of a low-level behavioral experiment framework: predictable runtime
+behavior, precise timing control, simple deployment, and a type system
+that catches errors before they can affect data quality.
+
+\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+
 \subsection{Limitations and Future
 Directions}\label{limitations-and-future-directions}
 
@@ -841,8 +904,7 @@ MPEG), 3D rendering, or stereoscopic displays.
 via a web browser. The support of web assembly (wasm) by go-sld3 is still too premature,
 but when this is corrected, one will be able to compile to a wasm binray that will target browsers.
 
-\textbf{Go ecosystem familiarity.} To say the least, researchers are more accustomed to Python than to Go.
-But Go is a simple language (arguably simpler than Python) and it is backed by excellent documentation and a active ecosystem (out of psychology).
+\textbf{No eye-tracker support.} \texttt{goxpyriment} currently provides no interface to eye-tracking hardware. Eye-tracking is widely used in cognitive psychology, reading research, and clinical assessment, so this is a notable gap. We plan to address it in a future release, with initial support targeting the SR Research EyeLink~1000 --- one of the most common laboratory eye-trackers --- via its C SDK. A clean abstraction layer will be designed from the outset so that additional devices (e.g.\ Tobii, SMI) can be integrated without changes to experiment code.
 
 \begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
 

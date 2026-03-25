@@ -73,6 +73,65 @@ func (m *Mouse) WaitPress() (uint32, error) {
 	}
 }
 
+// WaitPressRT blocks until a mouse button is pressed (or a timeout occurs)
+// and returns the button index and the reaction time in milliseconds measured
+// from the moment WaitPressRT was called. This mirrors Keyboard.WaitKeysRT.
+//
+// Pass timeoutMS = -1 for no timeout. On timeout, returns (0, 0, nil).
+// On quit, returns sdl.EndLoop.
+func (m *Mouse) WaitPressRT(timeoutMS int) (uint32, int64, error) {
+	start := sdl.Ticks()
+
+	if m.PollButtons != nil {
+		for {
+			if timeoutMS >= 0 {
+				if int(sdl.Ticks()-start) >= timeoutMS {
+					return 0, 0, nil
+				}
+			}
+			btn, quit := m.PollButtons()
+			if quit {
+				return 0, 0, sdl.EndLoop
+			}
+			if btn != 0 {
+				return btn, int64(sdl.Ticks() - start), nil
+			}
+			time.Sleep(1 * time.Millisecond)
+		}
+	}
+
+	// Fallback: direct SDL event polling.
+	for {
+		var event sdl.Event
+		if timeoutMS < 0 {
+			if sdl.WaitEvent(&event) == nil {
+				if event.Type == sdl.EVENT_MOUSE_BUTTON_DOWN {
+					return uint32(event.MouseButtonEvent().Button), int64(sdl.Ticks() - start), nil
+				}
+				if event.Type == sdl.EVENT_QUIT {
+					return 0, 0, sdl.EndLoop
+				}
+			}
+		} else {
+			elapsed := int(sdl.Ticks() - start)
+			remaining := timeoutMS - elapsed
+			if remaining <= 0 {
+				return 0, 0, nil
+			}
+			if sdl.WaitEventTimeout(&event, int32(remaining)) {
+				if event.Type == sdl.EVENT_MOUSE_BUTTON_DOWN {
+					return uint32(event.MouseButtonEvent().Button), int64(sdl.Ticks() - start), nil
+				}
+				if event.Type == sdl.EVENT_QUIT {
+					return 0, 0, sdl.EndLoop
+				}
+			} else if int(sdl.Ticks()-start) >= timeoutMS {
+				return 0, 0, nil
+			}
+		}
+	}
+}
+
 // WaitPressEventRT blocks until a mouse button is pressed and returns both
 // the button index and the SDL3 event timestamp in nanoseconds (same reference
 // clock as sdl.TicksNS() and Screen.FlipNS()).

@@ -194,11 +194,16 @@ type DisplayInfo struct {
 	Name           string  // monitor name reported by the OS
 	NativeW        int32   // native display width in pixels
 	NativeH        int32   // native display height in pixels
-	PixelDensity   float32 // HiDPI scale (1.0 = standard, 2.0 = Retina-style)
+	PixelDensity   float32 // HiDPI scale from display mode (1.0 = standard, 2.0 = Retina-style)
+	ContentScale   float32 // OS content-scale factor (logical→physical; may differ from PixelDensity)
 	RefreshRate    float32 // nominal refresh rate in Hz
 	BitsPerPixel   uint8   // total bits per pixel (e.g. 32)
 	BitsPerChannel uint8   // bits per colour channel (e.g. 8 for sRGB, 10 for HDR)
 	PixelFormat    string  // human-readable pixel format name (e.g. "SDL_PIXELFORMAT_XRGB8888")
+	BoundsX        int32   // display desktop origin X in screen coordinates
+	BoundsY        int32   // display desktop origin Y in screen coordinates
+	BoundsW        int32   // display desktop width in screen coordinates
+	BoundsH        int32   // display desktop height in screen coordinates
 }
 
 // DisplayInfo queries the display properties for the screen's current window.
@@ -220,6 +225,15 @@ func (s *Screen) DisplayInfo() DisplayInfo {
 			info.BitsPerPixel = details.BitsPerPixel
 			info.BitsPerChannel = details.Rbits
 		}
+	}
+	if scale, err := id.ContentScale(); err == nil {
+		info.ContentScale = scale
+	}
+	if bounds, err := id.Bounds(); err == nil && bounds != nil {
+		info.BoundsX = bounds.X
+		info.BoundsY = bounds.Y
+		info.BoundsW = bounds.W
+		info.BoundsH = bounds.H
 	}
 	return info
 }

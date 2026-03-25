@@ -4,12 +4,11 @@ package dxt
 
 import (
 	"fmt"
+	. "github.com/robroyd/dds/decoder/dxt/internal"
 	"image"
 	"image/color"
 	"image/draw"
 	"io"
-
-	. "github.com/robroyd/dds/decoder/dxt/internal"
 )
 
 type (

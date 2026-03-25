@@ -142,10 +142,12 @@ func (df *DataFile) WriteDisplayInfo(info DisplayInfo) {
 	df.WriteComment(fmt.Sprintf("d name: %s", info.Name))
 	df.WriteComment(fmt.Sprintf("d native_resolution: %dx%d", info.NativeW, info.NativeH))
 	df.WriteComment(fmt.Sprintf("d pixel_density: %.2f", info.PixelDensity))
+	df.WriteComment(fmt.Sprintf("d content_scale: %.2f", info.ContentScale))
 	df.WriteComment(fmt.Sprintf("d refresh_rate_hz: %.4f", info.RefreshRate))
 	df.WriteComment(fmt.Sprintf("d bits_per_pixel: %d", info.BitsPerPixel))
 	df.WriteComment(fmt.Sprintf("d bits_per_channel: %d", info.BitsPerChannel))
 	df.WriteComment(fmt.Sprintf("d pixel_format: %s", info.PixelFormat))
+	df.WriteComment(fmt.Sprintf("d bounds: %d,%d %dx%d", info.BoundsX, info.BoundsY, info.BoundsW, info.BoundsH))
 }
 
 // WriteParticipantInfo appends collected participant/session fields as comment

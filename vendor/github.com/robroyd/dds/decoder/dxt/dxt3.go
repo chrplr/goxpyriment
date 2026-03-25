@@ -1,9 +1,8 @@
 package dxt
 
 import (
-	"image/color"
-
 	. "github.com/robroyd/dds/decoder/dxt/internal"
+	"image/color"
 )
 
 type dxt3 struct {

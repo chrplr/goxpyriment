@@ -102,9 +102,9 @@ func main() {
 	// Wait for F or J; return key, rt (ms), error.
 	// Keyboard.Clear() must be called by the caller BEFORE showing the probe,
 	// not here — otherwise fast responses made just after stimulus onset are lost.
-	waitYesNo := func() (control.Keycode, int64, error) {
-		key, rt, err := exp.Keyboard.WaitKeysRT([]control.Keycode{YesKey, NoKey}, -1)
-		return key, rt, err
+	waitYesNo := func(onsetNS uint64) (control.Keycode, int64, error) {
+		key, eventTS, err := exp.Keyboard.WaitKeysEventRT([]control.Keycode{YesKey, NoKey}, -1)
+		return key, int64(eventTS-onsetNS) / 1_000_000, err
 	}
 
 	showFeedback := func(correct bool) error {
@@ -378,7 +378,7 @@ func waitInterruption(exp *control.Experiment, timeout int) error {
 	}
 }
 
-func runExp1(exp *control.Experiment, trials []trialExp1, digitStim map[int]*stimuli.TextLine, fixation *stimuli.FixCross, blank *stimuli.BlankScreen, waitYesNo func() (control.Keycode, int64, error), showFeedback func(bool) error, logData bool) error {
+func runExp1(exp *control.Experiment, trials []trialExp1, digitStim map[int]*stimuli.TextLine, fixation *stimuli.FixCross, blank *stimuli.BlankScreen, waitYesNo func(uint64) (control.Keycode, int64, error), showFeedback func(bool) error, logData bool) error {
 	return exp.Run(func() error {
 		for i, t := range trials {
 			// Blank
@@ -415,10 +415,11 @@ func runExp1(exp *control.Experiment, trials []trialExp1, digitStim map[int]*sti
 
 			// Probe
 			exp.Keyboard.Clear() // discard any stale keys before probe onset
-			if err := exp.Show(digitStim[t.Probe]); err != nil {
+			onsetNS, err := exp.ShowNS(digitStim[t.Probe])
+			if err != nil {
 				return err
 			}
-			key, rt, err := waitYesNo()
+			key, rt, err := waitYesNo(onsetNS)
 			if err != nil {
 				return err
 			}
@@ -435,7 +436,7 @@ func runExp1(exp *control.Experiment, trials []trialExp1, digitStim map[int]*sti
 	})
 }
 
-func runExp2(exp *control.Experiment, blocks [][]trialExp2, digitStim map[int]*stimuli.TextLine, fixation *stimuli.FixCross, blank *stimuli.BlankScreen, waitYesNo func() (control.Keycode, int64, error), showFeedback func(bool) error, logData bool) error {
+func runExp2(exp *control.Experiment, blocks [][]trialExp2, digitStim map[int]*stimuli.TextLine, fixation *stimuli.FixCross, blank *stimuli.BlankScreen, waitYesNo func(uint64) (control.Keycode, int64, error), showFeedback func(bool) error, logData bool) error {
 	return exp.Run(func() error {
 		for blockIdx, block := range blocks {
 			setSize := len(block[0].PositiveSet)
@@ -468,10 +469,11 @@ func runExp2(exp *control.Experiment, blocks [][]trialExp2, digitStim map[int]*s
 
 				// Test digit
 				exp.Keyboard.Clear() // discard any stale keys before probe onset
-				if err := exp.Show(digitStim[t.Probe]); err != nil {
+				onsetNS, err := exp.ShowNS(digitStim[t.Probe])
+				if err != nil {
 					return err
 				}
-				key, rt, err := waitYesNo()
+				key, rt, err := waitYesNo(onsetNS)
 				if err != nil {
 					return err
 				}

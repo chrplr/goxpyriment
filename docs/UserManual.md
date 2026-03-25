@@ -393,6 +393,9 @@ rtToPrime := int64(eventTS - onset1)  // RT from prime onset
 // Block until any button
 btn, err := exp.Mouse.WaitPress()
 
+// RT in milliseconds from call site (mirrors Keyboard.WaitKeysRT)
+btn, rt, err := exp.Mouse.WaitPressRT(3000)
+
 // Hardware-precision version: returns the SDL event's nanosecond timestamp
 btn, eventTS, err := exp.Mouse.WaitPressEventRT(3000)
 
@@ -407,6 +410,33 @@ exp.Mouse.ShowCursor(false)
 ```
 
 Button values: `control.BUTTON_LEFT`, `control.BUTTON_RIGHT`.
+
+### Multi-device input — `WaitAnyEventRT`
+
+If you want to accept a response from _either_ the keyboard or the mouse (or both), use `exp.WaitAnyEventRT` instead of calling `Keyboard` and `Mouse` separately:
+
+```go
+onset, _ := exp.ShowNS(stim)
+
+// Accept F or J key, or any mouse button click, up to 3 s
+ev, err := exp.WaitAnyEventRT(
+    []control.Keycode{control.K_F, control.K_J},
+    true,   // catchMouse
+    3000,
+)
+
+rtNS := int64(ev.TimestampNS - onset)  // hardware-precision RT, nanoseconds
+rtMs := rtNS / 1_000_000
+
+switch ev.Device {
+case io.DeviceKeyboard:
+    fmt.Printf("key %d, RT %d ms\n", ev.Key, rtMs)
+case io.DeviceMouse:
+    fmt.Printf("mouse button %d, RT %d ms\n", ev.Button, rtMs)
+}
+```
+
+Pass `keys = nil` to accept any key. Pass `catchMouse = false` to ignore the mouse. On timeout, returns a zero `InputEvent` with `nil` error.
 
 ### Key codes
 
@@ -586,12 +616,34 @@ events, logs, err := stimuli.PresentStreamOfImages(exp.Screen, elements, 0, 0)
 
 ### Reading events from the stream
 
+Each `UserEvent` carries two timestamps:
+
+- `Timestamp` — a `time.Duration` relative to stream start, Go monotonic clock, millisecond precision. Useful for quick inspection.
+- `TimestampNS` — the SDL3 hardware event timestamp in nanoseconds, same clock as `Screen.FlipNS`. Use this for sub-millisecond RT computation.
+
 ```go
 for _, ev := range events {
     if ev.Event.Type == sdl.EVENT_KEY_DOWN {
         key := ev.Event.KeyboardEvent().Key
-        t   := ev.Timestamp.Milliseconds()  // ms from stream start
+        t   := ev.Timestamp.Milliseconds()  // ms from stream start (coarse)
         fmt.Printf("key %d pressed at %d ms\n", key, t)
+    }
+}
+```
+
+### Computing RT from stream events
+
+Because `UserEvent.TimestampNS` and `TimingLog.OnsetNS` are on the same SDL nanosecond clock, reaction time from a specific stimulus is exact:
+
+```go
+for _, ev := range events {
+    if ev.Event.Type == sdl.EVENT_KEY_DOWN {
+        for _, l := range logs {
+            if ev.TimestampNS >= l.OnsetNS && (l.OffsetNS == 0 || ev.TimestampNS < l.OffsetNS) {
+                rtNS := int64(ev.TimestampNS - l.OnsetNS)
+                fmt.Printf("RT from stimulus %d: %d ms\n", l.Index, rtNS/1_000_000)
+            }
+        }
     }
 }
 ```
@@ -605,6 +657,8 @@ for i, l := range logs {
         i, l.TargetOn.Milliseconds(), l.ActualOnset.Milliseconds(), jitter)
 }
 ```
+
+`OnsetNS` and `OffsetNS` give the SDL3 nanosecond timestamps of the actual VSYNC flips that turned each stimulus on and off. These are zero for stimuli that had zero frames in their on or off period.
 
 Jitter below ±1 frame (±8–17 ms depending on monitor) is normal and expected. Larger jitter indicates system load or GPU driver issues.
 
@@ -848,7 +902,75 @@ result, err := stimuli.PresentMovingGabor(
 
 ---
 
-## 14. Putting It All Together
+## 14. Gamma Correction and Luminance Linearity
+
+### The gamma problem
+
+Standard monitors apply a power-law transfer function when converting digital RGB values to physical luminance:
+
+```
+L(V) = k · (V/255)^γ      γ ≈ 2.2 for sRGB/LCD
+```
+
+This means equal steps in RGB values do **not** produce equal steps in physical luminance (cd/m²). For example, with γ = 2.2:
+
+| RGB value | Physical luminance (% of max) |
+|---|---|
+| 0 | 0% |
+| 64 | 4.9% |
+| 128 | 21.6% |
+| 192 | 52.2% |
+| 255 | 100% |
+
+This matters in psychophysics experiments where luminance values are specified as physical quantities (e.g. contrast masks, threshold estimation, magnitude estimation).
+
+### Inverse-gamma LUT
+
+goxpyriment corrects for this by pre-computing a 256-entry look-up table (LUT) per channel. For each desired linear luminance value `v` (0–255), the LUT stores the digital value required to achieve it:
+
+```
+LUT[v] = 255 · (v/255)^(1/γ)
+```
+
+Applying the LUT before sending a color to the renderer means the monitor's forward gamma converts it back to the intended linear value.
+
+### Enabling gamma correction
+
+```go
+// After exp.Initialize() and before the trial loop:
+exp.SetGamma(2.2)   // typical sRGB monitor
+
+// Or with per-channel calibration (from photometer measurements):
+exp.GammaCorrector = io.NewGammaCorrector(2.1, 2.2, 2.3)
+```
+
+Then wrap every color with `exp.CorrectColor`:
+
+```go
+// Specify colors in linear luminance space (0–255).
+// exp.CorrectColor maps them to the physical digital values.
+disk := stimuli.NewFilledCircle(exp.CorrectColor(control.RGB(128, 128, 128)), radius)
+```
+
+When `SetGamma` has not been called, `CorrectColor` is a no-op that returns the color unchanged, so it is safe to always call it.
+
+### Measuring your monitor's gamma
+
+The most accurate approach is photometer-based: measure luminance at several RGB levels, fit the model L(V) = k·(V/255)^γ, and pass the resulting γ to `SetGamma`. Without a photometer, γ = 2.2 is a reasonable default for modern sRGB displays.
+
+### Practical example
+
+The `examples/Magnitude-Estimation-Luminosity` example accepts a `-gamma` flag:
+
+```bash
+go run main.go -gamma 2.2
+```
+
+With the flag set, the 7 luminance levels (10, 25, 50, 100, 150, 200, 255) are treated as linear targets and corrected before display, so they produce physically uniform luminance steps.
+
+---
+
+## 15. Putting It All Together
 
 Here is a skeleton that illustrates how the concepts compose in a realistic experiment:
 

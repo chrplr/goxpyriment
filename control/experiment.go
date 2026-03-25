@@ -7,6 +7,7 @@ package control
 import (
 	"flag"
 	"log"
+	"time"
 
 	"github.com/Zyko0/go-sdl3/bin/binimg"
 	"github.com/Zyko0/go-sdl3/bin/binsdl"
@@ -77,6 +78,9 @@ type Experiment struct {
 	OutputDirectory string
 	// Info holds the key→value map returned by GetParticipantInfo, if called.
 	Info            map[string]string
+	// GammaCorrector, when non-nil, is applied by CorrectColor.
+	// Set via SetGamma or by assigning io.NewGammaCorrector(...) directly.
+	GammaCorrector  *io.GammaCorrector
 
 	sdlLoader interface{ Unload() }
 	imgLoader interface{ Unload() }
@@ -194,6 +198,93 @@ func (e *Experiment) ShowNS(v stimuli.VisualStimulus) (uint64, error) {
 		return 0, err
 	}
 	return ts, nil
+}
+
+// WaitAnyEventRT blocks until a matching input event arrives from any device
+// and returns an InputEvent carrying the SDL3 hardware nanosecond timestamp.
+//
+// keys filters keyboard events: pass nil to accept any key.
+// catchMouse controls whether mouse button presses are accepted.
+// timeoutMS is the maximum wait in milliseconds; pass -1 for no timeout.
+//
+// On timeout, returns a zero InputEvent and nil error.
+// On ESC or window-close, returns sdl.EndLoop.
+//
+// Because TimestampNS is on the same SDL3 nanosecond clock as ShowNS, reaction
+// time is simply:
+//
+//	onset, _ := exp.ShowNS(stim)
+//	ev, _ := exp.WaitAnyEventRT(keys, true, -1)
+//	rtNS := int64(ev.TimestampNS - onset)
+func (e *Experiment) WaitAnyEventRT(keys []sdl.Keycode, catchMouse bool, timeoutMS int) (io.InputEvent, error) {
+	start := sdl.Ticks()
+	for {
+		if timeoutMS >= 0 {
+			if int(sdl.Ticks()-start) >= timeoutMS {
+				return io.InputEvent{}, nil
+			}
+		}
+
+		state := e.PollEvents(nil)
+		if state.QuitRequested {
+			return io.InputEvent{}, sdl.EndLoop
+		}
+
+		if state.LastKey != 0 {
+			key := state.LastKey
+			if key == sdl.K_ESCAPE {
+				return io.InputEvent{}, sdl.EndLoop
+			}
+			matched := keys == nil
+			if !matched {
+				for _, kc := range keys {
+					if key == kc {
+						matched = true
+						break
+					}
+				}
+			}
+			if matched {
+				return io.InputEvent{
+					Device:      io.DeviceKeyboard,
+					Key:         key,
+					TimestampNS: state.LastKeyTimestamp,
+				}, nil
+			}
+		}
+
+		if catchMouse && state.LastMouseButton != 0 {
+			return io.InputEvent{
+				Device:      io.DeviceMouse,
+				Button:      state.LastMouseButton,
+				TimestampNS: state.LastMouseTimestamp,
+			}, nil
+		}
+
+		time.Sleep(1 * time.Millisecond)
+	}
+}
+
+// SetGamma installs a uniform inverse-gamma corrector on the experiment.
+// Call once after Initialize(), before the trial loop.
+// A gamma of 2.2 is typical for sRGB monitors.
+//
+// After calling SetGamma, pass all stimulus colors through CorrectColor so
+// that linear luminance values are mapped to the physical digital values
+// required by the monitor.
+func (e *Experiment) SetGamma(gamma float64) {
+	e.GammaCorrector = io.NewGammaCorrectorUniform(gamma)
+}
+
+// CorrectColor applies the experiment's GammaCorrector (if set) to c and
+// returns the corrected color. When GammaCorrector is nil (the default),
+// c is returned unchanged, so callers can always call CorrectColor without
+// first checking whether gamma correction is enabled.
+func (e *Experiment) CorrectColor(c sdl.Color) sdl.Color {
+	if e.GammaCorrector == nil {
+		return c
+	}
+	return e.GammaCorrector.CorrectColor(c)
 }
 
 // ShowInstructions displays a centered text block and waits for the

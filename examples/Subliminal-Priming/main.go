@@ -311,7 +311,8 @@ func buildLeadingBlankStream(maskPool []*stimuli.Canvas, blank stimuli.VisualSti
 // timingEntry records the intended vs actual duration for one stream item.
 type timingEntry struct {
 	intendedMs int
-	actualMs   float64
+	actualMs   float64 // actual on-screen duration in ms, computed from SDL VSYNC timestamps
+	onsetNS    uint64  // SDL3 nanosecond timestamp of the VSYNC flip that turned this item on
 	isTarget   bool
 }
 
@@ -355,7 +356,6 @@ func runStream(exp *control.Experiment, items []streamItem, header stimuli.Visua
 	}
 
 	timings := make([]timingEntry, 0, len(items))
-	streamStart := time.Now()
 
 	for _, item := range items {
 		dur := time.Duration(item.durationMs) * time.Millisecond
@@ -365,7 +365,7 @@ func runStream(exp *control.Experiment, items []streamItem, header stimuli.Visua
 		}
 		item.stim.SetPosition(sdl.FPoint{X: 0, Y: 0})
 
-		onset := time.Since(streamStart)
+		var onsetNS uint64
 		for f := 0; f < frames; f++ {
 			if err := screen.Clear(); err != nil {
 				return 0, err
@@ -378,8 +378,17 @@ func runStream(exp *control.Experiment, items []streamItem, header stimuli.Visua
 					return 0, err
 				}
 			}
-			if err := screen.Update(); err != nil { // VSYNC blocks here
-				return 0, err
+			if f == 0 {
+				// Capture the SDL nanosecond timestamp of the actual VSYNC flip.
+				ts, err := screen.FlipNS()
+				if err != nil {
+					return 0, err
+				}
+				onsetNS = ts
+			} else {
+				if err := screen.Update(); err != nil { // VSYNC blocks here
+					return 0, err
+				}
 			}
 			// Poll events every frame so ESC is responsive.
 			for sdl.PollEvent(&ev) {
@@ -391,8 +400,17 @@ func runStream(exp *control.Experiment, items []streamItem, header stimuli.Visua
 				}
 			}
 		}
-		actualMs := float64(time.Since(streamStart)-onset) / float64(time.Millisecond)
-		timings = append(timings, timingEntry{item.durationMs, actualMs, item.isTarget})
+		timings = append(timings, timingEntry{intendedMs: item.durationMs, onsetNS: onsetNS, isTarget: item.isTarget})
+	}
+
+	// Compute actual durations from consecutive VSYNC flip timestamps.
+	// This gives sub-millisecond precision instead of the Go-clock estimate.
+	for i := range timings {
+		if i+1 < len(timings) {
+			timings[i].actualMs = float64(timings[i+1].onsetNS-timings[i].onsetNS) / 1e6
+		} else {
+			timings[i].actualMs = float64(sdl.TicksNS()-timings[i].onsetNS) / 1e6
+		}
 	}
 
 	printTimingSummary(timings, frameDuration)
@@ -623,11 +641,13 @@ func main() {
 					return err
 				}
 
-				// Post-trial seen/unseen response (also records RT from prompt onset).
-				if err := exp.Show(seenPrompt); err != nil {
+				// Post-trial seen/unseen response (RT from prompt VSYNC flip).
+				onsetNS, err := exp.ShowNS(seenPrompt)
+				if err != nil {
 					return err
 				}
-				key, rt, err := exp.Keyboard.WaitKeysRT([]control.Keycode{control.K_S, sdl.K_U}, -1)
+				key, eventTS, err := exp.Keyboard.WaitKeysEventRT([]control.Keycode{control.K_S, sdl.K_U}, -1)
+				rt := int64(eventTS-onsetNS) / 1_000_000
 				if err != nil {
 					return err
 				}

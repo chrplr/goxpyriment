@@ -70,11 +70,12 @@ func main() {
 
 			// Stimulus
 			stim := stimuli.NewTextLine(t.word, 0, 0, t.color)
-			exp.Show(stim)
+			onsetNS, _ := exp.ShowNS(stim)
 
 			// Wait for response
 			responseKeys := []control.Keycode{control.K_R, control.K_G, control.K_B, control.K_Y}
-			key, rt, _ := exp.Keyboard.WaitKeysRT(responseKeys, -1)
+			key, eventTS, _ := exp.Keyboard.WaitKeysEventRT(responseKeys, -1)
+			rt := int64(eventTS-onsetNS) / 1_000_000
 
 			var resp string
 			switch key {

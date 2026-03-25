@@ -5,6 +5,8 @@
 package io
 
 import (
+	"time"
+
 	"github.com/Zyko0/go-sdl3/sdl"
 )
 
@@ -46,6 +48,36 @@ func (g *GamePad) WaitPress() (sdl.GamepadButton, error) {
 				return 0, sdl.EndLoop
 			}
 		}
+	}
+}
+
+// WaitPressEventRT blocks until a button is pressed on this gamepad and
+// returns both the button and the SDL3 event timestamp in nanoseconds (same
+// clock as Screen.FlipNS and Keyboard.WaitKeysEventRT).
+//
+// Pass timeoutMS = -1 for no timeout. On timeout, returns (0, 0, nil).
+// On quit, returns sdl.EndLoop.
+func (g *GamePad) WaitPressEventRT(timeoutMS int) (sdl.GamepadButton, uint64, error) {
+	start := sdl.Ticks()
+	for {
+		if timeoutMS >= 0 {
+			if int(sdl.Ticks()-start) >= timeoutMS {
+				return 0, 0, nil
+			}
+		}
+		var event sdl.Event
+		for sdl.PollEvent(&event) {
+			switch event.Type {
+			case sdl.EVENT_GAMEPAD_BUTTON_DOWN:
+				ge := event.GamepadButtonEvent()
+				if ge.Which == g.ID {
+					return sdl.GamepadButton(ge.Button), ge.Timestamp, nil
+				}
+			case sdl.EVENT_QUIT:
+				return 0, 0, sdl.EndLoop
+			}
+		}
+		time.Sleep(1 * time.Millisecond)
 	}
 }
 

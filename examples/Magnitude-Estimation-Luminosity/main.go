@@ -20,11 +20,17 @@
 //	-dist  float   Viewing distance in cm (default 60). Used to compute disk diameter.
 //	-d             Development mode: windowed 1024×768.
 //
-// NOTE ON GAMMA: SDL renders 8-bit RGB values through the monitor's gamma LUT.
-// The luminance levels (10, 25, 50, 100, 150, 200, 255) are therefore not
-// linearly spaced in physical luminance (cd/m²). For a true linear mapping
-// you would need to apply an inverse-gamma correction to the RGB values or
-// use a photometer to measure actual luminance.
+// NOTE ON GAMMA: Standard monitors apply a power-law transfer function
+// L(V) = k·(V/255)^γ (γ ≈ 2.2 for sRGB), so equal steps in the RGB values
+// (10, 25, 50, 100, 150, 200, 255) do NOT produce equal steps in physical
+// luminance (cd/m²). Use the -gamma flag to enable inverse-gamma correction:
+//
+//	go run main.go -gamma 2.2
+//
+// With this flag, each luminance level is treated as a linear luminance target
+// (0–255) and mapped to the physical digital value needed to reproduce it on a
+// monitor with the given gamma. Measure your monitor's actual gamma with a
+// photometer for accurate psychophysics.
 
 package main
 
@@ -109,9 +115,15 @@ func getPositiveNumber(exp *control.Experiment, startMs int64) (float64, int64, 
 
 func main() {
 	distCM := flag.Float64("dist", 60.0, "Viewing distance in cm")
+	gammaVal := flag.Float64("gamma", 0, "Monitor gamma for inverse-gamma correction (0 = disabled, typical 2.2)")
 	bg := control.RGB(bgGray, bgGray, bgGray) // mid-gray background
 	exp := control.NewExperimentFromFlags("Magnitude Estimation – Luminance", bg, control.Black, 24)
 	defer exp.End()
+
+	if *gammaVal > 0 {
+		exp.SetGamma(*gammaVal)
+		log.Printf("Gamma correction enabled: γ=%.2f", *gammaVal)
+	}
 
 	if err := exp.SetLogicalSize(scrW, scrH); err != nil {
 		log.Printf("warning: set logical size: %v", err)
@@ -151,9 +163,10 @@ func main() {
 		}
 
 		// ── Pre-create one Circle per luminance level ─────────────────────────
+		// exp.CorrectColor is a no-op when gamma correction is disabled.
 		disks := make(map[uint8]*stimuli.Circle, len(luminanceLevels))
 		for _, lum := range luminanceLevels {
-			disks[lum] = stimuli.NewCircle(radius, control.RGB(lum, lum, lum))
+			disks[lum] = stimuli.NewCircle(radius, exp.CorrectColor(control.RGB(lum, lum, lum)))
 		}
 
 		fix := stimuli.NewFixCross(20, 2, control.Black)

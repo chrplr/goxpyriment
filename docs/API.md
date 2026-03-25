@@ -189,6 +189,35 @@ type EventState struct {
 | `exp.SetLogicalSize(w, h int32) error` | Set device-independent logical resolution. |
 | `exp.SetOutputDirectory(dir string)` | Override default data file directory (`~/goxpy_data`). |
 
+### Gamma Correction
+
+Standard monitors apply a power-law transfer function L(V) = k·(V/255)^γ (γ ≈ 2.2 for sRGB displays). Equal steps in RGB values do **not** produce equal steps in physical luminance. Use `SetGamma` to enable inverse-gamma correction.
+
+| Method | Description |
+|---|---|
+| `exp.SetGamma(gamma float64)` | Install a uniform inverse-gamma corrector. Call once after `Initialize()`. |
+| `exp.CorrectColor(c sdl.Color) sdl.Color` | Apply gamma correction to a color. Returns `c` unchanged when no corrector is set. |
+| `exp.GammaCorrector` | `*io.GammaCorrector` — set directly for per-channel calibration. |
+
+```go
+// Uniform gamma (typical sRGB monitor)
+exp.SetGamma(2.2)
+
+// Per-channel gamma (from photometer measurements)
+exp.GammaCorrector = io.NewGammaCorrector(2.1, 2.2, 2.3)
+
+// Use in trial loop — specify colors in linear luminance space (0–255)
+disk := stimuli.NewFilledCircle(exp.CorrectColor(control.RGB(128, 128, 128)), radius)
+```
+
+The `io.GammaCorrector` type is also available directly:
+
+```go
+gc := io.NewGammaCorrectorUniform(2.2)
+corrected := gc.CorrectColor(sdl.Color{R: 128, G: 128, B: 128, A: 255})
+// corrected.R ≈ 186 — the physical digital value for 50% luminance on γ=2.2
+```
+
 ### Colors, Types, and Constants
 
 ```go
@@ -357,15 +386,34 @@ Stream functions disable GC, lock every onset and offset to a VSYNC boundary, an
 
 ```go
 type UserEvent struct {
-    Event     sdl.Event     // raw SDL event
-    Timestamp time.Duration // time relative to stream start
+    Event       sdl.Event     // raw SDL event (KeyboardEvent, MouseButtonEvent, …)
+    Timestamp   time.Duration // time relative to stream start (Go clock, ms precision)
+    TimestampNS uint64        // SDL3 hardware event timestamp, nanoseconds (same clock as Screen.FlipNS)
 }
 
 type TimingLog struct {
     Index        int
     TargetOn     time.Duration
-    ActualOnset  time.Duration
-    ActualOffset time.Duration
+    ActualOnset  time.Duration // Go-clock time of first-frame draw (stream-relative)
+    ActualOffset time.Duration // Go-clock time after last on-frame (stream-relative)
+    OnsetNS      uint64        // SDL3 nanosecond timestamp of the VSYNC flip that turned the stimulus on
+    OffsetNS     uint64        // SDL3 nanosecond timestamp of the VSYNC flip that turned it off
+}
+```
+
+`UserEvent.TimestampNS` and `TimingLog.OnsetNS`/`OffsetNS` are all on the SDL3 nanosecond clock, so reaction times measured during a stream can be computed with full hardware precision:
+
+```go
+for _, ev := range events {
+    if ev.Event.Type == sdl.EVENT_KEY_DOWN {
+        // Find the stimulus that was on-screen when the key was pressed
+        for _, l := range logs {
+            if ev.TimestampNS >= l.OnsetNS && ev.TimestampNS < l.OffsetNS {
+                rtNS := int64(ev.TimestampNS - l.OnsetNS)
+                fmt.Printf("RT from stimulus %d: %d ms\n", l.Index, rtNS/1_000_000)
+            }
+        }
+    }
 }
 ```
 
@@ -484,10 +532,60 @@ rtToStim1 := int64(eventTS - onset)  // nanoseconds
 ```go
 x, y := exp.Mouse.Position()                              // current position (center coords)
 btn, err := exp.Mouse.WaitPress()                         // block until button pressed
+btn, rt, err := exp.Mouse.WaitPressRT(timeoutMS)          // with RT in ms from call site
 btn, ts, err := exp.Mouse.WaitPressEventRT(timeoutMS)     // with SDL event timestamp (nanoseconds)
 btn, err := exp.Mouse.Check()                             // non-blocking poll
 exp.Mouse.ShowCursor(show bool) error
 ```
+
+`WaitPressRT` mirrors `Keyboard.WaitKeysRT`: reaction time is measured in milliseconds from the call site. `WaitPressEventRT` returns the SDL3 hardware event timestamp in nanoseconds, suitable for use with `ShowNS`.
+
+### GamePad
+
+```go
+pads, err := io.GetGamePads()                                  // enumerate connected gamepads
+defer pads[0].Close()
+
+btn, err := pads[0].WaitPress()                                // block until any button
+btn, ts, err := pads[0].WaitPressEventRT(timeoutMS)            // with SDL event timestamp (nanoseconds)
+```
+
+`WaitPressEventRT` returns the `GamepadButtonEvent.Timestamp` field — same nanosecond clock as `Screen.FlipNS` and keyboard/mouse event timestamps.
+
+### Unified Input — `WaitAnyEventRT`
+
+When the response device is not fixed in advance (keyboard _or_ mouse click), use the method on `Experiment`:
+
+```go
+// Accept F or J key, or any mouse button, timeout after 3 s
+ev, err := exp.WaitAnyEventRT(
+    []control.Keycode{control.K_F, control.K_J},
+    true,   // catchMouse
+    3000,
+)
+```
+
+Returns an `io.InputEvent`:
+
+```go
+type InputEvent struct {
+    Device        io.DeviceKind     // DeviceKeyboard | DeviceMouse | DeviceGamepad
+    Key           sdl.Keycode       // non-zero for keyboard events
+    Button        uint32            // non-zero for mouse events
+    GamepadButton sdl.GamepadButton // non-zero for gamepad events
+    TimestampNS   uint64            // SDL3 hardware timestamp, nanoseconds
+}
+```
+
+`TimestampNS` is on the same clock as `ShowNS`, so RT computation is identical regardless of device:
+
+```go
+onset, _ := exp.ShowNS(stim)
+ev, _ := exp.WaitAnyEventRT(keys, true, -1)
+rtNS := int64(ev.TimestampNS - onset)
+```
+
+Pass `keys = nil` to accept any key. Pass `catchMouse = false` to ignore the mouse. On timeout, returns a zero `InputEvent` and `nil` error. On ESC or quit, returns `sdl.EndLoop`.
 
 ### DataFile
 
@@ -562,15 +660,19 @@ Import: `github.com/chrplr/goxpyriment/clock`
 ```go
 clock.Wait(ms int)                    // block for ms milliseconds
 clock.GetTime() int64                 // ms since package first used
+clock.GetTimeNS() int64               // nanoseconds since package first used
 
 c := clock.NewClock()                 // clock relative to "now"
 c.NowMillis() int64                   // ms elapsed
+c.NowNanos() int64                    // nanoseconds elapsed
 c.Now() time.Duration
 c.Reset()                             // restart reference
 c.SleepUntil(target time.Duration)    // sleep until target offset (returns immediately if past)
 ```
 
 > **Note:** Prefer `exp.Wait(ms)` over `clock.Wait(ms)` in experiment code — `exp.Wait` pumps SDL events and detects ESC.
+
+> **Clock domains:** `GetTimeNS()` and `NowNanos()` use the Go monotonic clock (`time.Since`). SDL event timestamps from `Screen.FlipNS`, `WaitKeysEventRT`, `WaitPressEventRT`, and `WaitAnyEventRT` use `sdl.TicksNS()`. The two clocks have different origins and **must not be subtracted from each other** for reaction-time computation. Use the SDL-based functions exclusively for RT measurement.
 
 ---
 

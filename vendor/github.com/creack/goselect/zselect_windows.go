@@ -2,10 +2,8 @@
 
 package goselect
 
-import (
-	"syscall"
-	"unsafe"
-)
+import "unsafe"
+import "syscall"
 
 var _ unsafe.Pointer
 
