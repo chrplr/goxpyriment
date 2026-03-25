@@ -192,9 +192,13 @@ func main() {
 			}
 
 			currentKnownCount := 2
+			needsFlash := true // flash before the very first guess and after every error
 			for step := 2; step < 16; step++ {
-				// A. Flash sequence up to currentKnownCount
-				flashSequence(exp, dots, fixation, target, indices[:currentKnownCount])
+				// A. Flash sequence only at trial start or after an error.
+				// On a correct streak the subject continues directly to the next guess.
+				if needsFlash {
+					flashSequence(exp, dots, fixation, target, indices[:currentKnownCount])
+				}
 
 				// B. Wait for guess
 				targetIdx := indices[step]
@@ -207,19 +211,23 @@ func main() {
 					trialIdx+1, seq.Name, step+1, targetIdx, clickIdx, isCorrect, rt,
 				)
 
-				// D. Feedback / Restart logic
+				// D. Feedback / advance logic
 				if isCorrect {
-					// Play "Ping" for correct answer
+					// Correct: brief feedback, then ask for the next location immediately
+					// (no re-flash — subject continues in the streak).
 					stimuli.PlayPing(exp.AudioDevice)
-					// Briefly flash the correct one as feedback
 					drawEnvironment(exp, dots, fixation, target, targetIdx)
 					exp.Wait(300)
 					currentKnownCount++
+					needsFlash = false
 				} else {
-					// Play "Buzzer" for incorrect answer
+					// Error: show the correct location, then re-flash the full sequence
+					// (including the just-corrected item) before the next guess.
 					stimuli.PlayBuzzer(exp.AudioDevice)
-					// Incorrect: show correct one in red? or just move on after restart
+					drawEnvironment(exp, dots, fixation, target, targetIdx)
+					exp.Wait(500)
 					currentKnownCount = step + 1
+					needsFlash = true
 				}
 
 				drawEnvironment(exp, dots, fixation, target, -1)

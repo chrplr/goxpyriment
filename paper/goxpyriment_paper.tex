@@ -3,11 +3,10 @@
 \PassOptionsToPackage{hyphens}{url}
 \PassOptionsToPackage{dvipsnames,svgnames,x11names}{xcolor}
 %
-\documentclass[
-  11pt,
-]{article}
+\documentclass[11pt]{article}
 \usepackage{amsmath,amssymb}
 \usepackage{setspace}
+\usepackage[pdftex]{graphicx}
 \usepackage{iftex}
 \ifPDFTeX
   \usepackage[T1]{fontenc}
@@ -805,6 +804,9 @@ validation in the field, with documented sub-frame onset precision on
 calibrated hardware (Kleiner et al., 2007). \texttt{goxpyriment} has not
 yet been subjected to comparable formal validation.
 
+
+\section{Timing}
+
 {\Large: TODO:  check timing with photodiode, oscilloscope, ... !!!}
 
 
@@ -876,7 +878,8 @@ that catches errors before they can affect data quality.
 \subsection{Limitations and Future
 Directions}\label{limitations-and-future-directions}
 
-\texttt{goxpyriment} is currently at a beta-stage.
+\texttt{goxpyriment} is currently at the beta-stage.  Although we belive that is can already be used to implement real experiments in the lab, users should (as always) very carefully check their behavior, for example with a Black Box Tool Kit (see \href{https://chrplr.github.io/bbtkv3/}{bbtvk3 softawre}).
+
 
 Several limitations should be noted:
 
@@ -905,6 +908,18 @@ via a web browser. The support of web assembly (wasm) by go-sld3 is still too pr
 but when this is corrected, one will be able to compile to a wasm binray that will target browsers.
 
 \textbf{No eye-tracker support.} \texttt{goxpyriment} currently provides no interface to eye-tracking hardware. Eye-tracking is widely used in cognitive psychology, reading research, and clinical assessment, so this is a notable gap. We plan to address it in a future release, with initial support targeting the SR Research EyeLink~1000 --- one of the most common laboratory eye-trackers --- via its C SDK. A clean abstraction layer will be designed from the outset so that additional devices (e.g.\ Tobii, SMI) can be integrated without changes to experiment code.
+
+\section{AI assisted coding}
+
+AI excells at programming, but human guidance is still necessay as exemplified by Fig.~\ref{kanizsaAI} (generated in Feb. 2026)
+
+\begin{figure}[h]
+\includegraphics[width=0.3\textwidth]{Kanizsa_rect_AI.png}
+\caption{Asked to write a program displaying Kanizsa's illusory rectangle, an AI produced the result above, explaining: ``I have changed the Kanizsa example to make things robust and more visible [...] A darker gray rectangle is drawn at the center, clearly visible against the light-gray background.''}
+\label{kanizsaAI}
+\end{figure}
+
+
 
 \begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
 

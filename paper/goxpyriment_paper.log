@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.26 (TeX Live 2025/dev/Debian) (preloaded format=pdflatex 2026.2.15)  25 MAR 2026 07:06
+This is pdfTeX, Version 3.141592653-2.6-1.40.26 (TeX Live 2025/dev/Debian) (preloaded format=pdflatex 2026.2.15)  25 MAR 2026 10:00
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -105,6 +105,30 @@ LaTeX Font Info:    Overwriting math alphabet `\mathfrak' in version `bold'
 (/usr/share/texlive/texmf-dist/tex/latex/setspace/setspace.sty
 Package: setspace 2022/12/04 v6.7b set line spacing
 )
+(/usr/share/texlive/texmf-dist/tex/latex/graphics/graphicx.sty
+Package: graphicx 2021/09/16 v1.2d Enhanced LaTeX Graphics (DPC,SPQR)
+
+(/usr/share/texlive/texmf-dist/tex/latex/graphics/keyval.sty
+Package: keyval 2022/05/29 v1.15 key=value parser (DPC)
+\KV@toks@=\toks22
+)
+(/usr/share/texlive/texmf-dist/tex/latex/graphics/graphics.sty
+Package: graphics 2024/08/06 v1.4g Standard LaTeX Graphics (DPC,SPQR)
+
+(/usr/share/texlive/texmf-dist/tex/latex/graphics/trig.sty
+Package: trig 2023/12/02 v1.11 sin cos tan (DPC)
+)
+(/usr/share/texlive/texmf-dist/tex/latex/graphics-cfg/graphics.cfg
+File: graphics.cfg 2016/06/04 v1.11 sample graphics configuration
+)
+Package graphics Info: Driver file: pdftex.def on input line 106.
+
+(/usr/share/texlive/texmf-dist/tex/latex/graphics-def/pdftex.def
+File: pdftex.def 2024/04/13 v1.2c Graphics/color driver for pdftex
+))
+\Gin@req@height=\dimen151
+\Gin@req@width=\dimen152
+)
 (/usr/share/texlive/texmf-dist/tex/generic/iftex/iftex.sty
 Package: iftex 2024/12/12 v1.0g TeX engine tests
 )
@@ -113,8 +137,8 @@ Package: fontenc 2021/04/29 v2.0v Standard LaTeX package
 )
 (/usr/share/texlive/texmf-dist/tex/latex/base/inputenc.sty
 Package: inputenc 2024/02/08 v1.3d Input encoding file
-\inpenc@prehook=\toks22
-\inpenc@posthook=\toks23
+\inpenc@prehook=\toks23
+\inpenc@posthook=\toks24
 )
 (/usr/share/texlive/texmf-dist/tex/latex/base/textcomp.sty
 Package: textcomp 2024/04/24 v2.1b Standard LaTeX package
@@ -161,10 +185,6 @@ tim
 (/usr/share/texlive/texmf-dist/tex/latex/microtype/microtype.sty
 Package: microtype 2025/02/11 v3.2a Micro-typographical refinements (RS)
 
-(/usr/share/texlive/texmf-dist/tex/latex/graphics/keyval.sty
-Package: keyval 2022/05/29 v1.15 key=value parser (DPC)
-\KV@toks@=\toks24
-)
 (/usr/share/texlive/texmf-dist/tex/latex/etoolbox/etoolbox.sty
 Package: etoolbox 2025/02/11 v2.5l e-TeX tools for LaTeX (JAW)
 \etb@tempcnta=\count282
@@ -177,7 +197,7 @@ LaTeX Info: Redefining \leftprotrusion on input line 1088.
 \MT@prot@toks=\toks26
 LaTeX Info: Redefining \rightprotrusion on input line 1107.
 LaTeX Info: Redefining \textls on input line 1449.
-\MT@outer@kern=\dimen151
+\MT@outer@kern=\dimen153
 LaTeX Info: Redefining \microtypecontext on input line 2053.
 LaTeX Info: Redefining \textmicrotypecontext on input line 2070.
 \MT@listname@count=\count284
@@ -216,9 +236,6 @@ File: color.cfg 2016/01/02 v1.6 sample color configuration
 )
 Package xcolor Info: Driver file: pdftex.def on input line 274.
 
-(/usr/share/texlive/texmf-dist/tex/latex/graphics-def/pdftex.def
-File: pdftex.def 2024/04/13 v1.2c Graphics/color driver for pdftex
-)
 (/usr/share/texlive/texmf-dist/tex/latex/graphics/mathcolor.ltx)
 Package xcolor Info: Model `cmy' substituted by `cmy0' on input line 1349.
 Package xcolor Info: Model `hsb' substituted by `rgb' on input line 1353.
@@ -248,14 +265,14 @@ Package: ifvtex 2019/10/25 v1.7 ifvtex legacy package. Use iftex instead.
 \Gm@cnth=\count285
 \Gm@cntv=\count286
 \c@Gm@tempcnt=\count287
-\Gm@bindingoffset=\dimen152
-\Gm@wd@mp=\dimen153
-\Gm@odd@mp=\dimen154
-\Gm@even@mp=\dimen155
-\Gm@layoutwidth=\dimen156
-\Gm@layoutheight=\dimen157
-\Gm@layouthoffset=\dimen158
-\Gm@layoutvoffset=\dimen159
+\Gm@bindingoffset=\dimen154
+\Gm@wd@mp=\dimen155
+\Gm@odd@mp=\dimen156
+\Gm@even@mp=\dimen157
+\Gm@layoutwidth=\dimen158
+\Gm@layoutheight=\dimen159
+\Gm@layouthoffset=\dimen160
+\Gm@layoutvoffset=\dimen161
 \Gm@dimlist=\toks27
 )
 (/usr/share/texlive/texmf-dist/tex/latex/fancyvrb/fancyvrb.sty
@@ -270,10 +287,10 @@ Package: fancyvrb 2024/01/20 4.5c verbatim text (tvz,hv)
 (/usr/share/texlive/texmf-dist/tex/latex/framed/framed.sty
 Package: framed 2011/10/22 v 0.96: framed or shaded text with page breaks
 \OuterFrameSep=\skip55
-\fb@frw=\dimen160
-\fb@frh=\dimen161
-\FrameRule=\dimen162
-\FrameSep=\dimen163
+\fb@frw=\dimen162
+\fb@frh=\dimen163
+\FrameRule=\dimen164
+\FrameSep=\dimen165
 )
 (/usr/share/texlive/texmf-dist/tex/latex/tools/longtable.sty
 Package: longtable 2024-10-27 v4.22 Multi-page Table package (DPC)
@@ -282,7 +299,7 @@ Package: longtable 2024-10-27 v4.22 Multi-page Table package (DPC)
 \LTpre=\skip58
 \LTpost=\skip59
 \LTchunksize=\count291
-\LTcapwidth=\dimen164
+\LTcapwidth=\dimen166
 \LT@head=\box56
 \LT@firsthead=\box57
 \LT@foot=\box58
@@ -296,29 +313,29 @@ Package: longtable 2024-10-27 v4.22 Multi-page Table package (DPC)
 )
 (/usr/share/texlive/texmf-dist/tex/latex/booktabs/booktabs.sty
 Package: booktabs 2020/01/12 v1.61803398 Publication quality tables
-\heavyrulewidth=\dimen165
-\lightrulewidth=\dimen166
-\cmidrulewidth=\dimen167
-\belowrulesep=\dimen168
-\belowbottomsep=\dimen169
-\aboverulesep=\dimen170
-\abovetopsep=\dimen171
-\cmidrulesep=\dimen172
-\cmidrulekern=\dimen173
-\defaultaddspace=\dimen174
+\heavyrulewidth=\dimen167
+\lightrulewidth=\dimen168
+\cmidrulewidth=\dimen169
+\belowrulesep=\dimen170
+\belowbottomsep=\dimen171
+\aboverulesep=\dimen172
+\abovetopsep=\dimen173
+\cmidrulesep=\dimen174
+\cmidrulekern=\dimen175
+\defaultaddspace=\dimen176
 \@cmidla=\count296
 \@cmidlb=\count297
-\@aboverulesep=\dimen175
-\@belowrulesep=\dimen176
+\@aboverulesep=\dimen177
+\@belowrulesep=\dimen178
 \@thisruleclass=\count298
 \@lastruleclass=\count299
-\@thisrulewidth=\dimen177
+\@thisrulewidth=\dimen179
 )
 (/usr/share/texlive/texmf-dist/tex/latex/tools/array.sty
 Package: array 2024/10/17 v2.6g Tabular extension package (FMi)
-\col@sep=\dimen178
+\col@sep=\dimen180
 \ar@mcellbox=\box61
-\extrarowheight=\dimen179
+\extrarowheight=\dimen181
 \NC@list=\toks29
 \extratabsurround=\skip60
 \backup@length=\skip61
@@ -328,8 +345,8 @@ Package: array 2024/10/17 v2.6g Tabular extension package (FMi)
 Package: calc 2023/07/08 v4.3 Infix arithmetic (KKT,FJ)
 \calc@Acount=\count300
 \calc@Bcount=\count301
-\calc@Adimen=\dimen180
-\calc@Bdimen=\dimen181
+\calc@Adimen=\dimen182
+\calc@Bdimen=\dimen183
 \calc@Askip=\skip62
 \calc@Bskip=\skip63
 LaTeX Info: Redefining \setlength on input line 80.
@@ -340,7 +357,7 @@ LaTeX Info: Redefining \addtolength on input line 81.
 (/usr/share/texlive/texmf-dist/tex/latex/footnotehyper/footnotehyper.sty
 Package: footnotehyper 2021/08/13 v1.1e hyperref aware footnote.sty (JFB)
 \FNH@notes=\box63
-\FNH@width=\dimen182
+\FNH@width=\dimen184
 \FNH@toks=\toks30
 )
 (/usr/share/texlive/texmf-dist/tex/latex/bookmark/bookmark.sty
@@ -384,7 +401,7 @@ Package: gettitlestring 2019/12/15 v1.6 Cleanup title references (HO)
 Package: stringenc 2019/11/29 v1.12 Convert strings between diff. encodings (HO
 )
 )
-\@linkdim=\dimen183
+\@linkdim=\dimen185
 \Hy@linkcounter=\count304
 \Hy@pagecounter=\count305
 
@@ -418,7 +435,7 @@ Package hyperref Info: Bookmarks ON on input line 4424.
 Package: url 2013/09/16  ver 3.4  Verb mode for urls, etc.
 )
 LaTeX Info: Redefining \url on input line 4763.
-\XeTeXLinkMargin=\dimen184
+\XeTeXLinkMargin=\dimen186
 
 (/usr/share/texlive/texmf-dist/tex/generic/bitset/bitset.sty
 Package: bitset 2019/12/09 v1.3 Handle bit-vector datatype (HO)
@@ -428,8 +445,8 @@ Package: bigintcalc 2019/12/15 v1.5 Expandable calculations on big integers (HO
 )
 ))
 \Fld@menulength=\count308
-\Field@Width=\dimen185
-\Fld@charsize=\dimen186
+\Field@Width=\dimen187
+\Fld@charsize=\dimen188
 Package hyperref Info: Hyper figures OFF on input line 6042.
 Package hyperref Info: Link nesting OFF on input line 6047.
 Package hyperref Info: Hyper index ON on input line 6050.
@@ -478,9 +495,9 @@ File: bkm-pdftex.def 2023-12-10 v1.31 bookmark driver for pdfTeX and luaTeX (HO
 (/usr/share/texlive/texmf-dist/tex/latex/xurl/xurl.sty
 Package: xurl 2022/01/09 v 0.10 modify URL breaks
 )
-Package hyperref Info: Option `colorlinks' set `true' on input line 109.
+Package hyperref Info: Option `colorlinks' set `true' on input line 108.
 LaTeX Font Info:    Trying to load font information for T1+lmr on input line 11
-7.
+6.
 
 (/usr/share/texmf/tex/latex/lm/t1lmr.fd
 File: t1lmr.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
@@ -493,38 +510,61 @@ File: l3backend-pdftex.def 2024-05-08 L3 backend support: PDF output (pdfTeX)
 (./goxpyriment_paper.aux)
 \openout1 = `goxpyriment_paper.aux'.
 
-LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 117.
-LaTeX Font Info:    ... okay on input line 117.
-LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 117.
-LaTeX Font Info:    ... okay on input line 117.
-LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 117.
-LaTeX Font Info:    ... okay on input line 117.
-LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 117.
-LaTeX Font Info:    ... okay on input line 117.
-LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 117.
-LaTeX Font Info:    ... okay on input line 117.
-LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 117.
-LaTeX Font Info:    ... okay on input line 117.
-LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 117.
-LaTeX Font Info:    ... okay on input line 117.
-LaTeX Font Info:    Checking defaults for PD1/pdf/m/n on input line 117.
-LaTeX Font Info:    ... okay on input line 117.
-LaTeX Font Info:    Checking defaults for PU/pdf/m/n on input line 117.
-LaTeX Font Info:    ... okay on input line 117.
-LaTeX Info: Redefining \microtypecontext on input line 117.
-Package microtype Info: Applying patch `item' on input line 117.
-Package microtype Info: Applying patch `toc' on input line 117.
-Package microtype Info: Applying patch `eqnum' on input line 117.
-Package microtype Info: Applying patch `footnote' on input line 117.
-Package microtype Info: Applying patch `verbatim' on input line 117.
-LaTeX Info: Redefining \microtypesetup on input line 117.
+LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 116.
+LaTeX Font Info:    ... okay on input line 116.
+LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 116.
+LaTeX Font Info:    ... okay on input line 116.
+LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 116.
+LaTeX Font Info:    ... okay on input line 116.
+LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 116.
+LaTeX Font Info:    ... okay on input line 116.
+LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 116.
+LaTeX Font Info:    ... okay on input line 116.
+LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 116.
+LaTeX Font Info:    ... okay on input line 116.
+LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 116.
+LaTeX Font Info:    ... okay on input line 116.
+LaTeX Font Info:    Checking defaults for PD1/pdf/m/n on input line 116.
+LaTeX Font Info:    ... okay on input line 116.
+LaTeX Font Info:    Checking defaults for PU/pdf/m/n on input line 116.
+LaTeX Font Info:    ... okay on input line 116.
+
+(/usr/share/texlive/texmf-dist/tex/context/base/mkii/supp-pdf.mkii
+[Loading MPS to PDF converter (version 2006.09.02).]
+\scratchcounter=\count316
+\scratchdimen=\dimen189
+\scratchbox=\box65
+\nofMPsegments=\count317
+\nofMParguments=\count318
+\everyMPshowfont=\toks31
+\MPscratchCnt=\count319
+\MPscratchDim=\dimen190
+\MPnumerator=\count320
+\makeMPintoPDFobject=\count321
+\everyMPtoPDFconversion=\toks32
+) (/usr/share/texlive/texmf-dist/tex/latex/epstopdf-pkg/epstopdf-base.sty
+Package: epstopdf-base 2020-01-24 v2.11 Base part for package epstopdf
+Package epstopdf-base Info: Redefining graphics rule for `.eps' on input line 4
+85.
+
+(/usr/share/texlive/texmf-dist/tex/latex/latexconfig/epstopdf-sys.cfg
+File: epstopdf-sys.cfg 2010/07/13 v1.3 Configuration of (r)epstopdf for TeX Liv
+e
+))
+LaTeX Info: Redefining \microtypecontext on input line 116.
+Package microtype Info: Applying patch `item' on input line 116.
+Package microtype Info: Applying patch `toc' on input line 116.
+Package microtype Info: Applying patch `eqnum' on input line 116.
+Package microtype Info: Applying patch `footnote' on input line 116.
+Package microtype Info: Applying patch `verbatim' on input line 116.
+LaTeX Info: Redefining \microtypesetup on input line 116.
 Package microtype Info: Generating PDF output.
 Package microtype Info: Character protrusion enabled (level 2).
 Package microtype Info: Using protrusion set `basicmath'.
 Package microtype Info: Automatic font expansion enabled (level 2),
 (microtype)             stretch: 20, shrink: 20, step: 1, non-selected.
 Package microtype Info: Using default expansion set `alltext-nott'.
-LaTeX Info: Redefining \showhyphens on input line 117.
+LaTeX Info: Redefining \showhyphens on input line 116.
 Package microtype Info: No adjustment of tracking.
 Package microtype Info: No adjustment of interword spacing.
 Package microtype Info: No adjustment of character kerning.
@@ -532,20 +572,6 @@ Package microtype Info: No adjustment of character kerning.
 (/usr/share/texlive/texmf-dist/tex/latex/microtype/mt-cmr.cfg
 File: mt-cmr.cfg 2013/05/19 v2.2 microtype config. file: Computer Modern Roman 
 (RS)
-)
-(/usr/share/texlive/texmf-dist/tex/context/base/mkii/supp-pdf.mkii
-[Loading MPS to PDF converter (version 2006.09.02).]
-\scratchcounter=\count316
-\scratchdimen=\dimen187
-\scratchbox=\box65
-\nofMPsegments=\count317
-\nofMParguments=\count318
-\everyMPshowfont=\toks31
-\MPscratchCnt=\count319
-\MPscratchDim=\dimen188
-\MPnumerator=\count320
-\makeMPintoPDFobject=\count321
-\everyMPtoPDFconversion=\toks32
 )
 *geometry* driver: auto-detecting
 *geometry* detected driver: pdftex
@@ -581,37 +607,37 @@ File: mt-cmr.cfg 2013/05/19 v2.2 microtype config. file: Computer Modern Roman
 * \@reversemarginfalse
 * (1in=72.27pt=25.4mm, 1cm=28.453pt)
 
-Package hyperref Info: Link coloring ON on input line 117.
+Package hyperref Info: Link coloring ON on input line 116.
 LaTeX Font Info:    Trying to load font information for OT1+lmr on input line 1
-21.
+20.
 (/usr/share/texmf/tex/latex/lm/ot1lmr.fd
 File: ot1lmr.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
 )
 LaTeX Font Info:    Trying to load font information for OML+lmm on input line 1
-21.
+20.
 
 (/usr/share/texmf/tex/latex/lm/omllmm.fd
 File: omllmm.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
 )
 LaTeX Font Info:    Trying to load font information for OMS+lmsy on input line 
-121.
+120.
 
 (/usr/share/texmf/tex/latex/lm/omslmsy.fd
 File: omslmsy.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
 )
 LaTeX Font Info:    Trying to load font information for OMX+lmex on input line 
-121.
+120.
 
 (/usr/share/texmf/tex/latex/lm/omxlmex.fd
 File: omxlmex.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
 )
 LaTeX Font Info:    External font `lmex10' loaded for size
-(Font)              <12> on input line 121.
+(Font)              <12> on input line 120.
 LaTeX Font Info:    External font `lmex10' loaded for size
-(Font)              <8> on input line 121.
+(Font)              <8> on input line 120.
 LaTeX Font Info:    External font `lmex10' loaded for size
-(Font)              <6> on input line 121.
-LaTeX Font Info:    Trying to load font information for U+msa on input line 121
+(Font)              <6> on input line 120.
+LaTeX Font Info:    Trying to load font information for U+msa on input line 120
 .
 
 (/usr/share/texlive/texmf-dist/tex/latex/amsfonts/umsa.fd
@@ -620,7 +646,7 @@ File: umsa.fd 2013/01/14 v3.01 AMS symbols A
 (/usr/share/texlive/texmf-dist/tex/latex/microtype/mt-msa.cfg
 File: mt-msa.cfg 2006/02/04 v1.1 microtype config. file: AMS symbols (a) (RS)
 )
-LaTeX Font Info:    Trying to load font information for U+msb on input line 121
+LaTeX Font Info:    Trying to load font information for U+msb on input line 120
 .
 
 (/usr/share/texlive/texmf-dist/tex/latex/amsfonts/umsb.fd
@@ -630,7 +656,7 @@ File: umsb.fd 2013/01/14 v3.01 AMS symbols B
 File: mt-msb.cfg 2005/06/01 v1.0 microtype config. file: AMS symbols (b) (RS)
 )
 LaTeX Font Info:    Trying to load font information for T1+lmtt on input line 1
-21.
+20.
 
 (/usr/share/texmf/tex/latex/lm/t1lmtt.fd
 File: t1lmtt.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
@@ -645,13 +671,13 @@ dvips/lm/lm-ec.enc}]
 
 [3]
 LaTeX Font Info:    Font shape `T1/lmtt/bx/n' in size <10.95> not available
-(Font)              Font shape `T1/lmtt/b/n' tried instead on input line 261.
+(Font)              Font shape `T1/lmtt/b/n' tried instead on input line 260.
 LaTeX Font Info:    Trying to load font information for TS1+lmr on input line 2
-67.
+66.
  (/usr/share/texmf/tex/latex/lm/ts1lmr.fd
 File: ts1lmr.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
 )
-Underfull \hbox (badness 2150) in paragraph at lines 288--294
+Underfull \hbox (badness 2150) in paragraph at lines 287--293
 \T1/lmtt/m/n/10.95 Present(screen, clear, update)\T1/lmr/m/n/10.95 (+20) , \T1/
 lmtt/m/n/10.95 GetPosition()\T1/lmr/m/n/10.95 (+20) , and \T1/lmtt/m/n/10.95 Se
 tPosition()\T1/lmr/m/n/10.95 (+20) . The \T1/lmtt/m/n/10.95 Stimulus
@@ -665,11 +691,11 @@ tPosition()\T1/lmr/m/n/10.95 (+20) . The \T1/lmtt/m/n/10.95 Stimulus
 
 [6]
 LaTeX Font Info:    Trying to load font information for TS1+lmtt on input line 
-463.
+462.
  (/usr/share/texmf/tex/latex/lm/ts1lmtt.fd
 File: ts1lmtt.fd 2015/05/01 v1.6.1 Font defs for Latin Modern
 )
-Underfull \hbox (badness 2903) in paragraph at lines 462--469
+Underfull \hbox (badness 2903) in paragraph at lines 461--468
 \T1/lmtt/m/n/10.95 Block.AddTrial(trial, copies, randomPosition) \T1/lmr/m/n/10
 .95 (+20) adds one or more copies of a trial;
  []
@@ -683,7 +709,7 @@ Underfull \hbox (badness 2903) in paragraph at lines 462--469
 [9]
 
 [10]
-Overfull \hbox (42.01631pt too wide) in paragraph at lines 660--663
+Overfull \hbox (42.01631pt too wide) in paragraph at lines 659--662
 []\T1/lmtt/b/n/10.95 Stroop_task/\T1/lmr/m/n/10.95 (-20) : A clas-sic color-wor
 d in-ter-fer-ence task with au-dio feed-back via \T1/lmtt/m/n/10.95 exp.Audio.P
 layBuzzer()\T1/lmr/m/n/10.95 (-20) . 
@@ -692,11 +718,11 @@ layBuzzer()\T1/lmr/m/n/10.95 (-20) .
 
 
 [11]
-Underfull \vbox (badness 10000) detected at line 733
+Underfull \vbox (badness 10000) detected at line 732
  []
 
 
-Overfull \vbox (0.62431pt too high) detected at line 733
+Overfull \vbox (0.62431pt too high) detected at line 732
  []
 
 
@@ -705,7 +731,7 @@ Overfull \vbox (0.62431pt too high) detected at line 733
 
 [13]
 ! Undefined control sequence.
-l.820 predictability \citep
+l.822 predictability \citep
                            {pike2012go}. It has far less ``moving parts''
 ? 
 
@@ -713,9 +739,19 @@ l.820 predictability \citep
 [14]
 
 [15]
+<Kanizsa_rect_AI.png, id=107, 1088.065pt x 984.67876pt>
+File: Kanizsa_rect_AI.png Graphic file (type png)
+<use Kanizsa_rect_AI.png>
+Package pdftex.def Info: Kanizsa_rect_AI.png  used on input line 917.
+(pdftex.def)             Requested size: 141.61081pt x 128.14795pt.
+
+
+LaTeX Warning: `h' float specifier changed to `ht'.
+
+
 
 [16]
-Underfull \hbox (badness 1292) in paragraph at lines 958--967
+Underfull \hbox (badness 1292) in paragraph at lines 972--981
 \T1/lmr/m/n/10.95 (+20) ules, in-clud-ing \T1/lmtt/m/n/10.95 control/getinfo.go
 \T1/lmr/m/n/10.95 (+20) , \T1/lmtt/m/n/10.95 io/data.go \T1/lmr/m/n/10.95 (+20)
  ex-ten-sions, \T1/lmtt/m/n/10.95 stimuli/moving_grating.go\T1/lmr/m/n/10.95 (+
@@ -723,7 +759,9 @@ Underfull \hbox (badness 1292) in paragraph at lines 958--967
  []
 
 
-Underfull \hbox (badness 1158) in paragraph at lines 993--995
+
+[17 <./Kanizsa_rect_AI.png>]
+Underfull \hbox (badness 1158) in paragraph at lines 1007--1009
 []\T1/lmr/m/n/10.95 (+20) Brainard, D. H. (1997). The Psy-chophysics Tool-box. 
 \T1/lmr/m/it/10.95 (+20) Spa-tial Vi-sion\T1/lmr/m/n/10.95 (+20) , \T1/lmr/m/it
 /10.95 (+20) 10\T1/lmr/m/n/10.95 (+20) (4), 433--436.
@@ -731,15 +769,15 @@ Underfull \hbox (badness 1158) in paragraph at lines 993--995
 
 
 
-[17]
-Overfull \hbox (16.53648pt too wide) in paragraph at lines 1032--1035
+[18]
+Overfull \hbox (16.53648pt too wide) in paragraph at lines 1046--1049
 []\T1/lmr/m/n/10.95 (-20) Nature Port-fo-lio. (2023). \T1/lmr/m/it/10.95 (-20) 
 Tools and tech-nolo-gies: Ar-ti-fi-cial in-tel-li-gence\T1/lmr/m/n/10.95 (-20) 
 . https://www.nature.com/nature-
  []
 
 
-Overfull \hbox (114.47643pt too wide) in paragraph at lines 1036--1038
+Overfull \hbox (114.47643pt too wide) in paragraph at lines 1050--1052
 []\T1/lmr/m/n/10.95 (-20) Springer Na-ture. (2023). \T1/lmr/m/it/10.95 (-20) Ar
 -ti-fi-cial in-tel-li-gence (AI) pol-icy for au-thors\T1/lmr/m/n/10.95 (-20) . 
 https://www.springernature.com/gp/policies/editorial-
@@ -747,26 +785,22 @@ https://www.springernature.com/gp/policies/editorial-
 
 
 
-[18]
-
 [19]
 
-[20] (./goxpyriment_paper.aux)
+[20]
+
+[21] (./goxpyriment_paper.aux)
  ***********
 LaTeX2e <2024-11-01> patch level 2
 L3 programming layer <2025-01-18>
  ***********
-
-
-LaTeX Warning: Label(s) may have changed. Rerun to get cross-references right.
-
  ) 
 Here is how much of TeX's memory you used:
- 14804 strings out of 473197
- 231363 string characters out of 5718605
- 706515 words of memory out of 5000000
- 37622 multiletter control sequences out of 15000+600000
- 609543 words of font info for 149 fonts, out of 8000000 for 9000
+ 15187 strings out of 473197
+ 237809 string characters out of 5718605
+ 714857 words of memory out of 5000000
+ 37980 multiletter control sequences out of 15000+600000
+ 609637 words of font info for 150 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
  83i,7n,93p,1014b,528s stack positions out of 10000i,1000n,20000p,200000b,200000s
 </usr/share/texmf/fonts/type1/public/lm/lmbx10.pfb></usr/share/texmf/fonts/ty
@@ -775,10 +809,10 @@ r/share/texmf/fonts/type1/public/lm/lmr12.pfb></usr/share/texmf/fonts/type1/pub
 lic/lm/lmr17.pfb></usr/share/texmf/fonts/type1/public/lm/lmri10.pfb></usr/share
 /texmf/fonts/type1/public/lm/lmtk10.pfb></usr/share/texmf/fonts/type1/public/lm
 /lmtt10.pfb></usr/share/texmf/fonts/type1/public/lm/lmtti10.pfb>
-Output written on goxpyriment_paper.pdf (20 pages, 300822 bytes).
+Output written on goxpyriment_paper.pdf (21 pages, 311443 bytes).
 PDF statistics:
- 289 PDF objects out of 1000 (max. 8388607)
- 244 compressed objects within 3 object streams
- 59 named destinations out of 1000 (max. 500000)
- 26865 words of extra memory for PDF output out of 29859 (max. 10000000)
+ 308 PDF objects out of 1000 (max. 8388607)
+ 260 compressed objects within 3 object streams
+ 63 named destinations out of 1000 (max. 500000)
+ 26886 words of extra memory for PDF output out of 29859 (max. 10000000)
 
