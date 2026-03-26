@@ -180,14 +180,15 @@ func printStats(label string, s stats, targetMs float64) {
 // ── Screen fill helper ─────────────────────────────────────────────────────────
 
 // fillGray fills the screen with a uniform gray level (0–255) and presents it.
-// Returns the time just before and just after RenderPresent (the VSYNC wait).
-func fillGray(exp *control.Experiment, level byte) (tBefore, tAfter int64) {
+// Returns the time just before and just after RenderPresent (the VSYNC wait),
+// in milliseconds with sub-millisecond precision (3 decimal places).
+func fillGray(exp *control.Experiment, level byte) (tBefore, tAfter float64) {
 	r := exp.Screen.Renderer
 	r.SetDrawColor(level, level, level, 255)
 	r.Clear()
-	tBefore = clock.GetTime()
+	tBefore = float64(clock.GetTimeNS()) / 1e6
 	exp.Screen.Update() // blocks until VSYNC
-	tAfter = clock.GetTime()
+	tAfter = float64(clock.GetTimeNS()) / 1e6
 	return
 }
 
@@ -237,7 +238,7 @@ func runFrames(exp *control.Experiment, trig triggers.Trigger) error {
 	})
 
 	var intervals []float64
-	var prevT int64
+	var prevT float64
 	frame := 0
 	// warmupIntervals counts frame-to-frame transitions to skip; each transition
 	// spans one frame, so we need warmup * 2 (dark+bright) * fFramesPerPhase ticks.
@@ -273,14 +274,14 @@ func runFrames(exp *control.Experiment, trig triggers.Trigger) error {
 
 					var intervalMs float64
 					if prevT > 0 {
-						intervalMs = float64(tA - prevT)
+						intervalMs = tA - prevT
 						if frame >= warmupTicks {
 							intervals = append(intervals, intervalMs)
 						}
 					}
 					prevT = tA
 
-					exp.Data.Add(cycle, phase, frame, tB, tA, fmt.Sprintf("%.3f", intervalMs), triggered)
+					exp.Data.Add(cycle, phase, frame, fmt.Sprintf("%.3f", tB), fmt.Sprintf("%.3f", tA), fmt.Sprintf("%.3f", intervalMs), triggered)
 					frame++
 
 					// Check for ESC / quit.
@@ -311,7 +312,7 @@ func runFlash(exp *control.Experiment, trig triggers.Trigger) error {
 	})
 
 	var flashIntervals []float64
-	var prevFlashT int64
+	var prevFlashT float64
 
 	return exp.Run(func() error {
 		oldGC := debug.SetGCPercent(-1)
@@ -337,13 +338,13 @@ func runFlash(exp *control.Experiment, trig triggers.Trigger) error {
 
 			var intervalMs float64
 			if prevFlashT > 0 {
-				intervalMs = float64(tA - prevFlashT)
+				intervalMs = tA - prevFlashT
 				if flash >= *fWarmup {
 					flashIntervals = append(flashIntervals, intervalMs)
 				}
 			}
 			prevFlashT = tA
-			exp.Data.Add(flash, tB, tA, fmt.Sprintf("%.3f", intervalMs))
+			exp.Data.Add(flash, fmt.Sprintf("%.3f", tB), fmt.Sprintf("%.3f", tA), fmt.Sprintf("%.3f", intervalMs))
 		}
 
 		printStats("Flash intervals", computeStats(flashIntervals, expectedMs), expectedMs)
@@ -376,10 +377,10 @@ func runAV(exp *control.Experiment, trig triggers.Trigger) error {
 
 	return exp.Run(func() error {
 		for trial := 0; trial < *fCycles; trial++ {
-			var tVisB, tVisA, tAudioQ int64
+			var tVisB, tVisA, tAudioQ float64
 
 			if audioFirst {
-				tAudioQ = clock.GetTime()
+				tAudioQ = float64(clock.GetTimeNS()) / 1e6
 				_ = tone.Play()
 				time.Sleep(soaDur)
 				_ = trig.SetHigh(*fTriggerPin)
@@ -396,12 +397,12 @@ func runAV(exp *control.Experiment, trig triggers.Trigger) error {
 					_ = trig.SetLow(*fTriggerPin)
 				}()
 				time.Sleep(soaDur)
-				tAudioQ = clock.GetTime()
+				tAudioQ = float64(clock.GetTimeNS()) / 1e6
 				_ = tone.Play()
 			}
 
-			soaActual := float64(tAudioQ - tVisA)
-			exp.Data.Add(trial, tVisB, tVisA, tAudioQ,
+			soaActual := tAudioQ - tVisA
+			exp.Data.Add(trial, fmt.Sprintf("%.3f", tVisB), fmt.Sprintf("%.3f", tVisA), fmt.Sprintf("%.3f", tAudioQ),
 				fmt.Sprintf("%.1f", *fSoaMs),
 				fmt.Sprintf("%.1f", soaActual))
 
@@ -433,7 +434,7 @@ func runJitter(exp *control.Experiment) error {
 	exp.AddDataVariableNames([]string{"frame", "t_before_ms", "t_after_ms", "interval_ms"})
 
 	var intervals []float64
-	var prevT int64
+	var prevT float64
 
 	return exp.Run(func() error {
 		oldGC := debug.SetGCPercent(-1)
@@ -448,13 +449,13 @@ func runJitter(exp *control.Experiment) error {
 
 			var intervalMs float64
 			if prevT > 0 {
-				intervalMs = float64(tA - prevT)
+				intervalMs = tA - prevT
 				if frame >= *fWarmup {
 					intervals = append(intervals, intervalMs)
 				}
 			}
 			prevT = tA
-			exp.Data.Add(frame, tB, tA, fmt.Sprintf("%.3f", intervalMs))
+			exp.Data.Add(frame, fmt.Sprintf("%.3f", tB), fmt.Sprintf("%.3f", tA), fmt.Sprintf("%.3f", intervalMs))
 			frame++
 
 			state := exp.PollEvents(nil)
