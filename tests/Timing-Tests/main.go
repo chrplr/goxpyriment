@@ -122,6 +122,7 @@ type stats struct {
 	mean, sd, minV, maxV, p5, p95 float64
 	late05, late1                 int // count > 0.5 ms and > 1 ms from target
 	n                             int
+	vals                          []float64 // raw values, kept for histogram
 }
 
 func computeStats(deltas []float64, targetMs float64) stats {
@@ -162,7 +163,7 @@ func computeStats(deltas []float64, targetMs float64) stats {
 	sort.Float64s(sorted)
 	p5 := sorted[n*5/100]
 	p95 := sorted[n*95/100]
-	return stats{mean, sd, mn, mx, p5, p95, late05, late1, n}
+	return stats{mean, sd, mn, mx, p5, p95, late05, late1, n, deltas}
 }
 
 func printStats(label string, s stats, targetMs float64) {
@@ -175,6 +176,58 @@ func printStats(label string, s stats, targetMs float64) {
 	fmt.Printf("  p5/p95  : %.3f / %.3f ms\n", s.p5, s.p95)
 	fmt.Printf("  >0.5 ms : %d (%.1f %%)\n", s.late05, 100*float64(s.late05)/float64(s.n))
 	fmt.Printf("  >1.0 ms : %d (%.1f %%)\n", s.late1, 100*float64(s.late1)/float64(s.n))
+	printHistogram(s.vals)
+}
+
+// printHistogram prints a 10-bin ASCII histogram of vals to stdout.
+// Each bar shows the bin range, count, and a proportional bar of '*' characters.
+func printHistogram(vals []float64) {
+	const nBins = 10
+	const barWidth = 40 // max bar length in characters
+	n := len(vals)
+	if n == 0 {
+		return
+	}
+	mn, mx := vals[0], vals[0]
+	for _, v := range vals {
+		if v < mn {
+			mn = v
+		}
+		if v > mx {
+			mx = v
+		}
+	}
+	binW := (mx - mn) / nBins
+	if binW == 0 {
+		binW = 1
+	}
+	counts := make([]int, nBins)
+	for _, v := range vals {
+		b := int((v - mn) / binW)
+		if b >= nBins {
+			b = nBins - 1
+		}
+		counts[b]++
+	}
+	maxCount := 0
+	for _, c := range counts {
+		if c > maxCount {
+			maxCount = c
+		}
+	}
+	fmt.Printf("  histogram (%d bins):\n", nBins)
+	for i := 0; i < nBins; i++ {
+		lo := mn + float64(i)*binW
+		hi := lo + binW
+		bar := ""
+		if maxCount > 0 {
+			stars := counts[i] * barWidth / maxCount
+			for j := 0; j < stars; j++ {
+				bar += "*"
+			}
+		}
+		fmt.Printf("  [%7.3f, %7.3f) ms : %5d  %s\n", lo, hi, counts[i], bar)
+	}
 }
 
 // ── Screen fill helper ─────────────────────────────────────────────────────────
