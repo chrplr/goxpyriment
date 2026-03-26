@@ -662,6 +662,36 @@ for i, l := range logs {
 
 Jitter below ±1 frame (±8–17 ms depending on monitor) is normal and expected. Larger jitter indicates system load or GPU driver issues.
 
+### Platform timing notes
+
+`PresentStreamOfImages` provides the best timing accuracy that the operating system and display driver allow. The characteristics differ by platform:
+
+**Linux**
+
+- Without a compositing window manager (e.g. a plain X11 session with no compositor), SDL3's `Present()` blocks until the next VSYNC boundary. Onset jitter is typically **< 1 ms**.
+- With a Wayland compositor or an X11 compositing WM (KWin, Mutter, Picom), the compositor controls buffer swaps. Onset jitter is typically **1–3 ms**; the compositor may add one frame (~17 ms at 60 Hz) of fixed latency.
+- For the most reliable timing on Linux, disable the compositor or use a plain X11 session.
+
+**macOS (Metal)**
+
+- The macOS WindowServer compositor is **always active** — exclusive fullscreen does not bypass it. SDL3 submits each frame to the compositor, which forwards it to the display at the next VSYNC.
+- `FlipNS()` captures `sdl.TicksNS()` immediately after `Present()` returns; this reflects when the frame was *submitted to the compositor*, not when photons reached the screen. The additional compositor latency is typically **0–1 frames** (~0–17 ms at 60 Hz) and is consistent across trials, so it does not inflate RT variance but does add a fixed bias.
+- Onset jitter (as measured by the Go monotonic clock) is typically **2–5 ms** on macOS, owing to Metal's internal frame-pacing algorithm.
+
+**Windows**
+
+- In **exclusive fullscreen** mode (`fullscreen=true`), the DWM (Desktop Window Manager) compositor is bypassed. Timing behaviour is similar to Linux without a compositor — jitter is typically **< 1 ms**.
+- In **windowed mode**, DWM is always active and adds approximately one frame of compositor latency. Jitter is typically **1–3 ms**.
+- For the most reliable timing on Windows, always run in fullscreen mode.
+
+**What `OnsetNS` measures**
+
+`TimingLog.OnsetNS` is recorded immediately after `screen.FlipNS()` returns, not at the moment photons reach the screen. On top of the compositor latency noted above, there is additional hardware pipeline latency (GPU scan-out, cable propagation, display panel response) of typically **0–2 frames**. This latency is constant across trials and does not affect within-experiment RT precision, but it must be accounted for if absolute (photodiode-verified) onset times are required.
+
+**Minimum duration**
+
+Because presentation is VSYNC-locked, durations shorter than one frame period (e.g. < 16.7 ms at 60 Hz) are rounded up to the nearest whole frame. A stimulus requested for 50 ms on a 60 Hz display is shown for exactly **3 frames (50.0 ms)**; one requested for 60 ms is shown for **4 frames (66.7 ms)**.
+
 ### Audio stream
 
 The same model applies to sounds:

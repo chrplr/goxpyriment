@@ -177,8 +177,9 @@ func (df *DataFile) WriteEndTime() {
 	h := int(d.Hours())
 	m := int(d.Minutes()) % 60
 	s := int(d.Seconds()) % 60
-	df.WriteComment(fmt.Sprintf("e end_time: %s", end.Format("20060102-150405")))
-	df.WriteComment(fmt.Sprintf("e duration: %02d:%02d:%02d", h, m, s))
+	ms := int(d.Milliseconds()) % 1000
+	df.WriteComment(fmt.Sprintf("e end_time: %s", end.Format("20060102-150405.000")))
+	df.WriteComment(fmt.Sprintf("e duration: %02d:%02d:%02d.%03d", h, m, s, ms))
 }
 
 // AddVariableNames appends variable names and writes a header comment.

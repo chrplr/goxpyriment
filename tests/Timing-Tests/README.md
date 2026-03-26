@@ -16,6 +16,7 @@ perceptual experiments.
 | `square`  | — | — | ✓ | **required** | — |
 | `sound`   | — | — | ✓ (optional) | optional | — |
 | `rt`      | ✓ | optional | optional | optional | **required** |
+| `drain`   | — | — | — | — | — |
 
 **Photodiode** — tape it to the corner of your monitor where the bright stimulus
 appears. Connect its output to oscilloscope channel 1.
@@ -292,6 +293,95 @@ go run main.go -test rt -cycles 60 -trigger-pin 1 -trigger-ms 5
 ```
 
 ---
+
+### `drain` — audio pipeline latency (self-contained)
+
+Measures how long it takes the SDL audio pipeline to consume a tone of a given
+nominal duration. No external equipment is needed.
+
+For each tone duration in the fixed set **25, 50, 100, 200, 500 ms**, the test
+repeats `-drain-reps` trials (default 10). Each trial:
+
+1. Calls `tone.Play()`, which puts the pre-generated PCM data into the SDL audio
+   stream bound to the device.
+2. Polls `stream.Queued()` in a 0.5 ms sleep loop until the device has consumed
+   all queued bytes (`Queued() == 0`).
+3. Records `drain_ms` — the wall-clock elapsed time from `Play()` to drain
+   completion.
+
+The **audio pipeline latency** is `mean(drain_ms) − nominal_ms`.  It represents
+the combined delay of the SDL audio conversion pipeline and the hardware DAC
+buffer.  The **SD** of `drain_ms` captures trial-to-trial jitter in the audio
+scheduler, which is the quantity that matters for precise auditory stimulus
+timing.
+
+> **Note:** `drain_ms` measures when the last byte leaves the SDL software
+> queue, *not* when the last sample reaches the speaker. The DAC/amplifier adds
+> a further constant (typically sub-millisecond) delay that is not captured
+> here. For absolute acoustic-onset latency, use the `av` test with an
+> oscilloscope.
+
+A typical run on a 44100 Hz, 512-sample device prints:
+
+```
+  25 ms  rep  0:  drain=37.1 ms  overhead=+12.1 ms
+  25 ms  rep  1:  drain=37.3 ms  overhead=+12.3 ms
+  …
+── Drain time for 25 ms tone (latency = mean − target) ────────
+  n       : 10
+  target  : 25.000 ms
+  mean    : 37.2 ms
+  SD      :  0.3 ms
+  …
+  pipeline latency ≈ 12.2 ms
+```
+
+A latency of ~11.6 ms at 512 samples / 44100 Hz is the theoretical minimum
+(`512 / 44100 × 1000`); larger values indicate OS mixing overhead
+(PulseAudio / PipeWire).
+
+**Output file columns:**
+`duration_ms, rep, drain_ms, overhead_ms`
+
+```bash
+go run main.go -test drain -d
+go run main.go -test drain -drain-reps 20 -freq-hz 1000 -audio-frames 256
+```
+
+---
+
+## Flags reference
+
+### Common flags
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `-test` | *(required)* | Sub-test to run |
+| `-d` | false | Windowed 1024×768 developer mode |
+| `-port` | auto | Serial port for DLP-IO8-G |
+| `-trigger-pin` | 1 | Output pin on DLP-IO8-G |
+| `-trigger-ms` | 5 | Trigger pulse duration (ms) |
+| `-cycles` | 60 | Number of cycles / flashes / trials |
+| `-hz` | 60.0 | Expected display refresh rate (Hz). Run `jitter` first, then pass the measured value here so frame-interval targets are exact. |
+| `-warmup` | 10 | Frames discarded from statistics at the start of visual tests to avoid GPU pipeline warm-up bias. |
+| `-audio-frames` | SDL default | Hardware audio buffer size in sample frames (e.g. 256, 512, 2048). |
+
+### Per-test flags
+
+| Flag | Applies to | Default | Description |
+|------|-----------|---------|-------------|
+| `-level-a` | frames, flash | 0 | Dark luminance 0–255 |
+| `-level-b` | frames, flash | 255 | Bright luminance 0–255 |
+| `-frames-per-phase` | frames | 2 | Frames at each luminance level |
+| `-isi-frames` | flash | 60 | Dark frames between flashes |
+| `-soa-ms` | av | 0 | Visual-to-audio SOA (ms); negative = audio first |
+| `-iti-ms` | av, sound, rt | 1000 | Inter-trial/inter-stimulus interval (ms) |
+| `-freq-hz` | av, sound, drain | 1000 | Tone frequency (Hz) |
+| `-tone-ms` | av, sound | 50 | Tone duration (ms) |
+| `-duration-s` | jitter, square | 10 | Measurement duration (seconds) |
+| `-period-ms` | square | 100 | Square-wave period (ms) |
+| `-duty` | square | 50 | Duty cycle (%) |
+| `-drain-reps` | drain | 10 | Repetitions per tone duration |
 
 ## Audio buffer size
 

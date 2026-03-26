@@ -7,8 +7,11 @@ package control
 import (
 	"encoding/json"
 	"errors"
+	"flag"
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"unicode/utf8"
 
 	"github.com/Zyko0/go-sdl3/bin/binsdl"
@@ -18,12 +21,32 @@ import (
 	"github.com/chrplr/goxpyriment/assets_embed"
 )
 
+// sharedSDLLoader and sharedTTFLoader hold SDL/TTF dylib handles loaded by
+// GetParticipantInfo so that Initialize() can reuse them instead of loading a
+// second copy. On macOS, loading the same dylib from two different temp paths
+// causes duplicate Objective-C class registrations and a silent crash.
+var (
+	sharedSDLLoader interface{ Unload() }
+	sharedTTFLoader interface{ Unload() }
+)
+
+// consumeSharedLoaders returns any SDL and TTF loader handles cached by
+// GetParticipantInfo and resets the package-level cache. Returns nil, nil
+// when GetParticipantInfo was not called beforehand.
+func consumeSharedLoaders() (sdl, ttf interface{ Unload() }) {
+	sdl, ttf = sharedSDLLoader, sharedTTFLoader
+	sharedSDLLoader, sharedTTFLoader = nil, nil
+	return
+}
+
 // FieldType distinguishes between a text input and a checkbox field.
 type FieldType int
 
 const (
 	FieldText     FieldType = iota // rendered as a text input box
 	FieldCheckbox                  // rendered as a tick-box; value is "true" or "false"
+	FieldNumber                    // rendered as a text box; validated as a positive number on submit
+	FieldSelect                    // rendered as a row of clickable option buttons; value is the selected option
 )
 
 // InfoField describes one entry in the GetParticipantInfo dialog.
@@ -31,7 +54,8 @@ type InfoField struct {
 	Name    string    // key returned in the result map
 	Label   string    // human-readable label displayed next to the field
 	Default string    // initial value; use "true"/"false" for FieldCheckbox
-	Type    FieldType // FieldText (default) or FieldCheckbox
+	Type    FieldType // FieldText (default), FieldCheckbox, FieldNumber, or FieldSelect
+	Options []string  // choices for FieldSelect; first entry used if Default is empty
 }
 
 // Pre-built field sets for common use cases.
@@ -46,9 +70,9 @@ var (
 
 	// MonitorFields collects display and viewing-setup characteristics.
 	MonitorFields = []InfoField{
-		{Name: "screen_width_cm", Label: "Screen width (cm)", Default: "53"},
-		{Name: "viewing_distance_cm", Label: "Viewing distance (cm)", Default: "57"},
-		{Name: "refresh_rate_hz", Label: "Refresh rate (Hz)", Default: "60"},
+		{Name: "screen_width_cm", Label: "Screen width (cm)", Default: "53", Type: FieldNumber},
+		{Name: "viewing_distance_cm", Label: "Viewing distance (cm)", Default: "57", Type: FieldNumber},
+		{Name: "refresh_rate_hz", Label: "Refresh rate (Hz)", Default: "60", Type: FieldNumber},
 	}
 
 	// FullscreenField adds a fullscreen / windowed toggle.
@@ -68,6 +92,12 @@ var (
 // cancels the dialog without confirming.
 var ErrCancelled = errors.New("info dialog cancelled")
 
+// headlessFlag skips the participant-info dialog when -headless is passed on
+// the command line. GetParticipantInfo returns field defaults (plus any cached
+// values from the last interactive session) without opening a window.
+// Registered at package-init time so it is available before flag.Parse().
+var headlessFlag = flag.Bool("headless", false, "skip the participant info dialog and use field defaults")
+
 // GetParticipantInfo opens a graphical SDL dialog before the experiment starts,
 // lets the experimenter fill in the provided fields, and returns the collected
 // values as a map[field.Name → value].
@@ -80,13 +110,51 @@ var ErrCancelled = errors.New("info dialog cancelled")
 // pre-filled automatically. "subject_id" is always reset to its default.
 // All other values are saved on OK.
 //
+// When the -headless flag is set, the dialog is skipped entirely: each field
+// receives its cached value (or its Default if no cache entry exists).
+//
 // Returns ErrCancelled if the user presses Escape, clicks Cancel, or closes
 // the window without confirming.
 func GetParticipantInfo(title string, fields []InfoField) (map[string]string, error) {
-	sdlLoader := binsdl.Load()
-	defer sdlLoader.Unload()
-	ttfLoader := binttf.Load()
-	defer ttfLoader.Unload()
+	// Headless mode: return defaults (+ cache) without opening any window.
+	// SDL is not loaded here; Initialize() will load it normally.
+	if *headlessFlag {
+		cache := loadInfoCache()
+		values := make(map[string]string, len(fields))
+		for _, f := range fields {
+			if cached, ok := cache[f.Name]; ok && f.Name != "subject_id" {
+				values[f.Name] = cached
+			} else {
+				values[f.Name] = f.Default
+			}
+		}
+		// Ensure FieldSelect values are valid options.
+		for _, f := range fields {
+			if f.Type == FieldSelect && len(f.Options) > 0 {
+				valid := false
+				for _, opt := range f.Options {
+					if values[f.Name] == opt {
+						valid = true
+						break
+					}
+				}
+				if !valid {
+					values[f.Name] = f.Options[0]
+				}
+			}
+		}
+		return values, nil
+	}
+
+	// Load SDL/TTF dylibs once and cache them for reuse by Initialize().
+	// On macOS, loading two separate copies of the same dylib (from different
+	// temp paths) registers duplicate Objective-C classes and causes a crash.
+	if sharedSDLLoader == nil {
+		sharedSDLLoader = binsdl.Load()
+	}
+	if sharedTTFLoader == nil {
+		sharedTTFLoader = binttf.Load()
+	}
 
 	if err := sdl.Init(sdl.INIT_VIDEO | sdl.INIT_EVENTS); err != nil {
 		return nil, err
@@ -116,37 +184,65 @@ func GetParticipantInfo(title string, fields []InfoField) (map[string]string, er
 	}
 
 	// Split fields by type for layout and event handling.
-	var textIdx  []int // positions in fields where Type == FieldText
-	var checkIdx []int // positions in fields where Type == FieldCheckbox
+	var textIdx   []int // positions in fields where Type == FieldText or FieldNumber
+	var selectIdx []int // positions in fields where Type == FieldSelect
+	var checkIdx  []int // positions in fields where Type == FieldCheckbox
 	for i, f := range fields {
-		if f.Type == FieldCheckbox {
+		switch f.Type {
+		case FieldCheckbox:
 			checkIdx = append(checkIdx, i)
-		} else {
+		case FieldSelect:
+			selectIdx = append(selectIdx, i)
+		default:
 			textIdx = append(textIdx, i)
+		}
+	}
+
+	// For FieldSelect, ensure the initial value is one of the declared options.
+	for _, fi := range selectIdx {
+		f := fields[fi]
+		if len(f.Options) == 0 {
+			continue
+		}
+		valid := false
+		for _, opt := range f.Options {
+			if values[f.Name] == opt {
+				valid = true
+				break
+			}
+		}
+		if !valid {
+			values[f.Name] = f.Options[0]
 		}
 	}
 
 	// ── Geometry ─────────────────────────────────────────────────────────────
 	const (
-		winW      = 620
-		margin    = 30
-		boxW      = winW - 2*margin
-		boxH      = 28
-		rowH      = 58 // label + box + gap per text field
-		labelH    = 20 // approximate text height at 18 pt
-		checkRowH = 32 // height per checkbox row
-		headerH   = 58 // title + separator
-		footerH   = 65 // OK / Cancel strip
+		winW        = 620
+		margin      = 30
+		boxW        = winW - 2*margin
+		boxH        = 28
+		rowH        = 58 // label + box + gap per text field
+		selectRowH  = 58 // label + button row + gap per select field
+		labelH      = 20 // approximate text height at 18 pt
+		checkRowH   = 32 // height per checkbox row
+		headerH     = 58 // title + separator
+		footerH     = 65 // OK / Cancel strip
 	)
 
-	winH := headerH + len(textIdx)*rowH + len(checkIdx)*checkRowH + footerH
+	winH := headerH + len(textIdx)*rowH + len(selectIdx)*selectRowH + len(checkIdx)*checkRowH + footerH
 
-	window, renderer, err := sdl.CreateWindowAndRenderer(title, winW, winH, 0)
+	// SDL_WINDOW_HIGH_PIXEL_DENSITY + logical presentation keep the dialog
+	// correct on HiDPI displays: SDL maps the fixed logical size to however
+	// many physical pixels the display uses. Coordinates remain in the
+	// logical [0,winW]×[0,winH] space throughout the event and draw code.
+	window, renderer, err := sdl.CreateWindowAndRenderer(title, winW, winH, sdl.WINDOW_HIGH_PIXEL_DENSITY)
 	if err != nil {
 		return nil, err
 	}
 	defer window.Destroy()
 	defer renderer.Destroy()
+	renderer.SetLogicalPresentation(int32(winW), int32(winH), sdl.LOGICAL_PRESENTATION_STRETCH)
 
 	window.StartTextInput()
 	defer window.StopTextInput()
@@ -198,9 +294,14 @@ func GetParticipantInfo(title string, fields []InfoField) (map[string]string, er
 		return float32(headerH + ti*rowH + labelH + 4)
 	}
 
+	// selY returns the Y of the button row for the si-th select field.
+	selY := func(si int) float32 {
+		return float32(headerH + len(textIdx)*rowH + si*selectRowH + labelH + 4)
+	}
+
 	// cbY returns the Y of the checkbox for the ci-th checkbox field.
 	cbY := func(ci int) float32 {
-		return float32(headerH + len(textIdx)*rowH + ci*checkRowH + 6)
+		return float32(headerH + len(textIdx)*rowH + len(selectIdx)*selectRowH + ci*checkRowH + 6)
 	}
 
 	okBtn := sdl.FRect{
@@ -214,6 +315,25 @@ func GetParticipantInfo(title string, fields []InfoField) (map[string]string, er
 	focusTI := -1
 	if len(textIdx) > 0 {
 		focusTI = 0
+	}
+
+	// invalidFields tracks FieldNumber fields whose current value is not a
+	// positive number. Populated on submit; cleared when the field is edited.
+	invalidFields := map[string]bool{}
+
+	// validateForm checks all FieldNumber fields and returns true if all pass.
+	validateForm := func() bool {
+		invalidFields = map[string]bool{}
+		for _, f := range fields {
+			if f.Type == FieldNumber {
+				v := strings.TrimSpace(values[f.Name])
+				n, err := strconv.ParseFloat(v, 64)
+				if err != nil || n <= 0 {
+					invalidFields[f.Name] = true
+				}
+			}
+		}
+		return len(invalidFields) == 0
 	}
 
 	// ── Event loop ────────────────────────────────────────────────────────────
@@ -253,11 +373,30 @@ func GetParticipantInfo(title string, fields []InfoField) (map[string]string, er
 					}
 				}
 
+				// Click on a select option → select it.
+				for si, fi := range selectIdx {
+					y := selY(si)
+					f := fields[fi]
+					nOpts := len(f.Options)
+					if nOpts == 0 {
+						continue
+					}
+					btnW := float32(boxW-(nOpts-1)*4) / float32(nOpts)
+					for oi, opt := range f.Options {
+						bx := float32(margin) + float32(oi)*(btnW+4)
+						if mx >= bx && mx <= bx+btnW && my >= y && my <= y+boxH {
+							values[f.Name] = opt
+						}
+					}
+				}
+
 				// OK button.
 				if mx >= okBtn.X && mx <= okBtn.X+okBtn.W &&
 					my >= okBtn.Y && my <= okBtn.Y+okBtn.H {
-					saveInfoCache(values, fields)
-					return values, nil
+					if validateForm() {
+						saveInfoCache(values, fields)
+						return values, nil
+					}
 				}
 
 				// Cancel button.
@@ -270,6 +409,7 @@ func GetParticipantInfo(title string, fields []InfoField) (map[string]string, er
 				if focusTI >= 0 && focusTI < len(textIdx) {
 					fi := textIdx[focusTI]
 					values[fields[fi].Name] += ev.TextInputEvent().Text
+					delete(invalidFields, fields[fi].Name)
 				}
 
 			case sdl.EVENT_KEY_DOWN:
@@ -279,8 +419,10 @@ func GetParticipantInfo(title string, fields []InfoField) (map[string]string, er
 					return nil, ErrCancelled
 
 				case sdl.K_RETURN, sdl.K_KP_ENTER:
-					saveInfoCache(values, fields)
-					return values, nil
+					if validateForm() {
+						saveInfoCache(values, fields)
+						return values, nil
+					}
 
 				case sdl.K_BACKSPACE:
 					if focusTI >= 0 && focusTI < len(textIdx) {
@@ -330,9 +472,12 @@ func GetParticipantInfo(title string, fields []InfoField) (map[string]string, er
 			box := sdl.FRect{X: float32(margin), Y: y, W: float32(boxW), H: boxH}
 			renderer.SetDrawColor(colWhite.R, colWhite.G, colWhite.B, colWhite.A)
 			renderer.RenderFillRect(&box)
-			if focusTI == ti {
+			switch {
+			case invalidFields[f.Name]:
+				renderer.SetDrawColor(colRed.R, colRed.G, colRed.B, colRed.A)
+			case focusTI == ti:
 				renderer.SetDrawColor(colFocus.R, colFocus.G, colFocus.B, colFocus.A)
-			} else {
+			default:
 				renderer.SetDrawColor(colBorder.R, colBorder.G, colBorder.B, colBorder.A)
 			}
 			renderer.RenderRect(&box)
@@ -343,6 +488,35 @@ func GetParticipantInfo(title string, fields []InfoField) (map[string]string, er
 				display = "…" + display[len(display)-59:]
 			}
 			renderText(display, float32(margin)+6, y+4, colBlack)
+		}
+
+		// Select fields
+		for si, fi := range selectIdx {
+			f := fields[fi]
+			y := selY(si)
+			nOpts := len(f.Options)
+			renderText(f.Label+":", float32(margin), y-float32(labelH)-2, colBlack)
+			if nOpts > 0 {
+				btnW := float32(boxW-(nOpts-1)*4) / float32(nOpts)
+				for oi, opt := range f.Options {
+					bx := float32(margin) + float32(oi)*(btnW+4)
+					btn := sdl.FRect{X: bx, Y: y, W: btnW, H: boxH}
+					selected := values[f.Name] == opt
+					if selected {
+						renderer.SetDrawColor(colFocus.R, colFocus.G, colFocus.B, colFocus.A)
+					} else {
+						renderer.SetDrawColor(colWhite.R, colWhite.G, colWhite.B, colWhite.A)
+					}
+					renderer.RenderFillRect(&btn)
+					renderer.SetDrawColor(colBorder.R, colBorder.G, colBorder.B, colBorder.A)
+					renderer.RenderRect(&btn)
+					tc := colBlack
+					if selected {
+						tc = colWhite
+					}
+					renderCentered(opt, btn, tc)
+				}
+			}
 		}
 
 		// Checkbox fields

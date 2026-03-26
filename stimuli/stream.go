@@ -39,6 +39,27 @@ type TimingLog struct {
 // PresentStreamOfImages displays a sequence of stimuli with high precision.
 // It preloads textures, disables GC, and aligns presentation to the monitor's VSYNC.
 // Each stimulus is centered on (x, y) in screen-center coordinates.
+//
+// # Timing accuracy
+//
+// Onset jitter and compositor latency depend on the platform:
+//
+//   - Linux (no compositor): < 1 ms jitter; VSYNC blocks directly in the driver.
+//   - Linux (Wayland / compositing WM): 1–3 ms jitter; compositor may add one
+//     frame (~17 ms at 60 Hz) of fixed latency.
+//   - macOS (Metal): WindowServer compositor is always active; 2–5 ms jitter;
+//     0–1 frames of fixed compositor latency on top of TimingLog.OnsetNS.
+//   - Windows exclusive fullscreen: < 1 ms jitter; DWM bypassed.
+//   - Windows windowed (DWM): 1–3 ms jitter; one frame of compositor latency.
+//
+// TimingLog.OnsetNS is the SDL3 nanosecond timestamp captured immediately
+// after Present() returns — it reflects GPU submission time, not photon
+// emission. Hardware pipeline latency (scan-out + panel response) adds a
+// further 0–2 frames that is constant across trials.
+//
+// Durations are rounded to the nearest whole frame. A 50 ms stimulus on a
+// 60 Hz display is shown for exactly 3 frames (50.0 ms); 60 ms becomes 4
+// frames (66.7 ms).
 func PresentStreamOfImages(screen *io.Screen, elements []VisualStreamElement, x, y float32) ([]UserEvent, []TimingLog, error) {
 	// 1. Pre-load all stimuli into GPU memory (Textures)
 	for _, el := range elements {

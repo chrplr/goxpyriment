@@ -75,6 +75,10 @@ type Experiment struct {
 	WindowWidth     int
 	WindowHeight    int
 	Fullscreen      bool
+	// ScreenNumber selects the target monitor (0 = primary display).
+	// Set before calling Initialize(). Use control.ListDisplays() to
+	// enumerate available displays.
+	ScreenNumber    int
 	OutputDirectory string
 	// Info holds the key→value map returned by GetParticipantInfo, if called.
 	Info            map[string]string
@@ -233,7 +237,11 @@ func (e *Experiment) WaitAnyEventRT(keys []sdl.Keycode, catchMouse bool, timeout
 		if state.LastKey != 0 {
 			key := state.LastKey
 			if key == sdl.K_ESCAPE {
-				return io.InputEvent{}, sdl.EndLoop
+				return io.InputEvent{
+					Device:      io.DeviceKeyboard,
+					Key:         sdl.K_ESCAPE,
+					TimestampNS: state.LastKeyTimestamp,
+				}, sdl.EndLoop
 			}
 			matched := keys == nil
 			if !matched {
@@ -357,9 +365,22 @@ func (e *Experiment) SetOutputDirectory(dir string) {
 // It must be called exactly once before using the experiment, and `End`
 // should be deferred immediately after successful initialization.
 func (e *Experiment) Initialize() error {
-	e.sdlLoader = binsdl.Load()
+	// Reuse loaders cached by GetParticipantInfo (if it was called first) to
+	// avoid loading a second copy of the SDL dylib on macOS, which triggers
+	// duplicate Objective-C class registrations and a silent crash.
+	cachedSDL, cachedTTF := consumeSharedLoaders()
+	if cachedSDL != nil {
+		e.sdlLoader = cachedSDL
+	} else {
+		e.sdlLoader = binsdl.Load()
+	}
+	// imgLoader has no shared counterpart: GetParticipantInfo does not use images.
 	e.imgLoader = binimg.Load()
-	e.ttfLoader = binttf.Load()
+	if cachedTTF != nil {
+		e.ttfLoader = cachedTTF
+	} else {
+		e.ttfLoader = binttf.Load()
+	}
 
 	if err := sdl.Init(sdl.INIT_VIDEO | sdl.INIT_EVENTS | sdl.INIT_AUDIO); err != nil {
 		return err
@@ -383,7 +404,7 @@ func (e *Experiment) Initialize() error {
 	e.AudioDevice = dev
 	e.Audio = &AudioManager{Device: dev}
 
-	screen, err := io.NewScreen(e.Name, e.WindowWidth, e.WindowHeight, e.BackgroundColor, e.Fullscreen)
+	screen, err := io.NewScreen(e.Name, e.WindowWidth, e.WindowHeight, e.BackgroundColor, e.Fullscreen, e.ScreenNumber)
 	if err != nil {
 		return err
 	}
@@ -442,8 +463,6 @@ var pollEvent = sdl.PollEvent
 // getTicks is a hook for sdl.Ticks to allow unit testing.
 var getTicks = sdl.Ticks
 
-// sdlDelay is a hook for sdl.Delay to allow unit testing.
-var sdlDelay = sdl.Delay
 
 // ---------------------------------------------------------------------------
 // Event handling

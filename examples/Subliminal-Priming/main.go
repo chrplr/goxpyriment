@@ -556,12 +556,10 @@ func main() {
 		"You will see a rapid stream of shapes and blank screens.\n\n" +
 		"Occasionally, a 4-letter word flashes briefly.\n" +
 		"Try to silently read each word you notice.\n\n" +
-		"• Visible trials: the word appears surrounded by blank screens.\n" +
-		"• Masked trials:  the word is sandwiched between shapes (often invisible).\n\n" +
 		"After each stream, report whether you saw a word:\n" +
 		"   [S] = Seen   [U] = Unseen\n\n" +
 		"Press SPACE to begin."
-	instr := stimuli.NewTextBox(instrText, 800, control.FPoint{X: 0, Y: 0}, control.White)
+	instr := stimuli.NewTextBox(instrText, 1600, control.FPoint{X: 0, Y: 0}, control.White)
 	if err := exp.Show(instr); err != nil {
 		if control.IsEndLoop(err) {
 			return

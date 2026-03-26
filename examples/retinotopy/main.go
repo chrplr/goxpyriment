@@ -490,22 +490,41 @@ func (r *Retinotopy) updateCombinedTexture(patternID, maskID int) {
 }
 
 func main() {
-	runID := flag.Int("r", 1, "Run ID (1-6)")
+	cliRunID := flag.Int("r", 1, "default Run ID (1-6) shown in the UI")
 	flag.Parse()
 
-	labels := map[int]string{
-		1: "RETBAR1", 2: "RETBAR2", 3: "RETCCW", 4: "RETCW", 5: "RETEXP", 6: "RETCON",
-	}
-	runLabel, ok := labels[*runID]
-	if !ok {
-		log.Fatalf("Invalid run ID: %d", *runID)
+	runLabels := []string{"RETBAR1", "RETBAR2", "RETCCW", "RETCW", "RETEXP", "RETCON"}
+	defaultRunLabel := "RETBAR1"
+	if *cliRunID >= 1 && *cliRunID <= 6 {
+		defaultRunLabel = runLabels[*cliRunID-1]
 	}
 
 	// ── Step 1: collect participant + monitor info via GUI dialog ─────────────
-	fields := append(control.StandardFields, control.FullscreenField)
+	runField := control.InfoField{
+		Name:    "run_id",
+		Label:   "Run",
+		Default: defaultRunLabel,
+		Type:    control.FieldSelect,
+		Options: runLabels,
+	}
+	fields := make([]control.InfoField, 0, len(control.StandardFields)+2)
+	fields = append(fields, control.StandardFields...)
+	fields = append(fields, runField, control.FullscreenField)
 	info, err := control.GetParticipantInfo("Retinotopy", fields)
 	if err != nil {
 		log.Fatalf("Info dialog: %v", err)
+	}
+
+	runLabel := info["run_id"]
+	runID := 0
+	for i, l := range runLabels {
+		if l == runLabel {
+			runID = i + 1
+			break
+		}
+	}
+	if runID == 0 {
+		log.Fatalf("Invalid run selected: %s", runLabel)
 	}
 
 	subjectID, err := strconv.Atoi(info["subject_id"])
@@ -571,7 +590,7 @@ func main() {
 
 		// ── Step 4: load stimuli and run ──────────────────────────────────────
 		retino := NewRetinotopy(exp, runLabel, scaling)
-		if err2 := retino.LoadStimuli(exp.SubjectID, *runID); err2 != nil {
+		if err2 := retino.LoadStimuli(exp.SubjectID, runID); err2 != nil {
 			return err2
 		}
 		if err2 := retino.Instructions(); err2 != nil {

@@ -495,14 +495,32 @@ based on subject ID.
 Dialog}\label{pre-experiment-setup-dialog}
 
 \texttt{control.GetParticipantInfo(title,\ fields)} opens a graphical
-SDL dialog before the experiment window is created. The experimenter
-fills in typed text fields and toggles checkbox fields; pressing Enter
-or clicking OK returns the values as a \texttt{map{[}string{]}string}.
+SDL dialog before the experiment window is created (Figure~\ref{fig:getinfo}).
+The experimenter fills in typed text fields, toggles checkbox fields, and
+selects from discrete option sets; pressing Enter or clicking OK returns
+the collected values as a \texttt{map{[}string{]}string}.
 The dialog supports Tab/Shift-Tab navigation between text fields,
 UTF-8-aware Backspace, and Escape to cancel. All values except
 \texttt{subject\_id} are persisted to
 \texttt{\textasciitilde{}/.cache/goxpyriment/last\_session.json} and
 pre-filled on the next run.
+
+Three field types are available. \textbf{Text fields} accept free keyboard
+input (e.g.\ subject ID, session note). \textbf{Checkbox fields} toggle a
+boolean value (e.g.\ fullscreen mode). \textbf{Select fields}
+(\texttt{FieldSelect}) present a horizontal row of labelled buttons;
+clicking a button highlights it and records the corresponding value
+(e.g.\ stimulus condition, run type). This makes it practical for the
+experimenter or participant to choose among a small fixed set of options
+without typing, which reduces setup errors when launching an experiment
+from a desktop shortcut or file manager.
+
+Programs that use \texttt{GetParticipantInfo} also accept a
+\texttt{-headless} command-line flag. When present, the dialog is skipped
+entirely and field defaults (or values previously saved to the cache) are
+used without opening any window. This is convenient for scripted or
+automated runs (e.g.\ continuous integration checks or batch stimulus
+generation) where interactive input is not possible.
 
 Pre-built field sets cover common needs:
 
@@ -517,6 +535,21 @@ Pre-built field sets cover common needs:
   \texttt{FullscreenField}: a checkbox that governs whether the
   experiment runs fullscreen or in a 1024×768 window.
 \end{itemize}
+
+\begin{figure}[h]
+\centering
+% Insert screenshot: GetParticipantInfo dialog for Number-Comparison
+% (stimulus group select widget shown)
+\fbox{\rule{0pt}{4cm}\rule{8cm}{0pt}}
+\caption{The \texttt{GetParticipantInfo} dialog for the
+\texttt{Number-Comparison} example. The \emph{Stimulus group} row shows
+a \texttt{FieldSelect} widget: clicking one of the four labelled buttons
+(Digits, Regular, Irregular, Random) highlights it in blue and records
+the selection. Text and checkbox fields appear above and below the
+select row. All values are pre-filled from the previous session's
+cache.}
+\label{fig:getinfo}
+\end{figure}
 
 When \texttt{exp.Info} is set before calling \texttt{exp.Initialize()},
 the collected values are automatically written to the
@@ -809,6 +842,94 @@ yet been subjected to comparable formal validation.
 
 {\Large: TODO:  check timing with photodiode, oscilloscope, ... !!!}
 
+\subsection{Timing Verification Suite}\label{timing-tests}
+
+The repository ships with a dedicated timing verification suite,
+\texttt{tests/Timing-Tests/}, that can be used to characterize the
+timing properties of \texttt{goxpyriment} on a given laboratory
+computer before running participants. The suite is a separate Go module
+located under \texttt{tests/} at the repository root and is invoked as
+
+\begin{verbatim}
+go run tests/Timing-Tests/main.go -test <name> [flags]
+\end{verbatim}
+
+Eight sub-tests are available, selected with the \texttt{-test} flag:
+
+\begin{description}
+\item[\texttt{jitter}] Flips a gray screen continuously for a
+  configurable duration (default 10 s) and records the wall-clock
+  interval between consecutive \texttt{SDL\_RenderPresent} returns.
+  No external equipment is needed. Prints a summary including mean frame
+  interval, SD, min/max, and the number of intervals deviating more than
+  0.5 ms and 1.0 ms from the mean. The measured mean is reported as an
+  estimated refresh rate and recommended as input to the \texttt{-hz}
+  flag of the subsequent visual tests.
+
+\item[\texttt{frames}] Alternates between a dark and a bright full-screen
+  fill for a configurable number of frames per phase (\texttt{-frames-per-phase},
+  default 2) over \texttt{-cycles} complete cycles. A trigger pulse is
+  sent on a DLP-IO8-G output pin at every dark→bright transition. A
+  photodiode attached to the bright region of the display should show a
+  square wave whose period matches $\texttt{frames-per-phase} \times
+  T_{\text{frame}}$; aligning the trigger and photodiode channels on an
+  oscilloscope reveals the USB-serial trigger delay ($\approx$ 1--2 ms).
+
+\item[\texttt{flash}] Presents a single bright frame every
+  \texttt{-isi-frames} dark frames. Use this to verify that the
+  OS/driver combination can reliably present a one-frame stimulus: if
+  the photodiode pulse width equals one frame period ($\approx$ 16.7 ms
+  at 60 Hz), single-frame precision is confirmed; double-width pulses
+  indicate a double-buffering defect.
+
+\item[\texttt{av}] Pairs a bright flash with a pure sine tone on each
+  trial, with a configurable visual-to-audio SOA. Connecting the
+  audio line-out and a photodiode to two oscilloscope channels yields the
+  actual acoustic-onset latency (SDL \texttt{PutData} call to speaker),
+  which is the quantity needed to align audio and visual events in
+  sub-frame experiments.
+
+\item[\texttt{square}] Drives a square wave on a DLP-IO8-G pin for a
+  configurable duration, period, and duty cycle, requiring no display.
+  Use this to characterize the USB-serial trigger jitter in isolation
+  before attributing display-trigger misalignment to the display.
+
+\item[\texttt{sound}] Plays a long isochronous tone stream (default: 300
+  tones $\times$ 50 ms on / 450 ms ISI $\approx$ 2.5 min) and logs
+  the onset time of each tone relative to the scheduled target. Reports
+  onset error and inter-onset interval statistics; a cumulative drift in
+  onset error indicates that the wall clock and the audio clock diverge
+  over time. An optional DLP-IO8-G trigger per tone, combined with an
+  oscilloscope and the audio line-out, yields the software-to-DAC
+  latency for each tone.
+
+\item[\texttt{rt}] Measures keyboard reaction time using SDL3 hardware
+  event timestamps. Each trial presents a one-frame white flash;
+  $\mathrm{RT} = \mathtt{KeyboardEvent.Timestamp} - \mathtt{FlipNS()}$,
+  where both times come from the same \texttt{SDL\_GetTicksNS()} clock.
+  This removes polling latency from the response side; the residual
+  jitter reflects OS keyboard scheduling (typically $<$ 2 ms on Linux).
+
+\item[\texttt{drain}] Measures audio pipeline latency without any
+  external equipment. For each of five fixed tone durations (25, 50,
+  100, 200, 500 ms), it repeats \texttt{-drain-reps} trials. Each trial
+  calls \texttt{Play()}, then polls \texttt{stream.Queued()} in a
+  0.5 ms sleep loop until the SDL audio stream is empty.  The elapsed
+  time from \texttt{Play()} to drain completion equals the nominal tone
+  duration plus the hardware-buffer pipeline latency. The SD across reps
+  measures trial-to-trial jitter in the audio scheduler. This test
+  requires no microphone or oscilloscope and is suitable for a quick
+  pre-experiment sanity check on any machine.
+\end{description}
+
+All sub-tests accept a \texttt{-hz} flag (default 60.0) that sets the
+expected display refresh rate for computing frame-interval targets; the
+recommended workflow is to run \texttt{jitter} first and pass the
+measured value to the subsequent visual tests.  A \texttt{-warmup}
+flag (default 10 frames) discards the initial frames from statistics to
+avoid GPU pipeline warm-up bias.  Each run writes an \texttt{.xpd} file
+to \texttt{\textasciitilde{}/goxpy\_data/} that can be loaded into
+Python for further analysis.
 
 \begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
 
@@ -887,9 +1008,12 @@ Several limitations should be noted:
 theoretically sound --- VSYNC synchronization and GC suspension are
 established techniques --- but no published photodiode or
 hardware-response-box measurements of actual onset precision exist for
-this library as of this writing. Users requiring certified timing
-precision should treat claims with appropriate caution until such
-benchmarks are published.
+this library as of this writing. The \texttt{tests/Timing-Tests/} suite
+(Section~\ref{timing-tests}) provides the tools needed to perform such
+measurements on a given laboratory computer, and a formal validation
+study using a photodiode and a hardware response box is a priority for
+future work. Users requiring certified timing precision should treat
+claims with appropriate caution until such benchmarks are published.
 
 \textbf{No graphical experiment builder.} All experiments are written in
 Go code. This requires programming experience that not all researchers

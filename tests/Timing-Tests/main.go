@@ -3,7 +3,7 @@
 //
 // Timing-Tests — hardware timing verification suite
 //
-// Provides five independent sub-tests, selected with -test <name>:
+// Provides eight independent sub-tests, selected with -test <name>:
 //
 //	frames  Alternating luminance (photodiode test)
 //	flash   Single-frame white flashes (minimum-duration test)
@@ -12,6 +12,7 @@
 //	square  DLP-IO8 square-wave trigger (oscilloscope only)
 //	sound   Long regular tone stream, onset-jitter statistics
 //	rt      SDL event-timestamp RT precision test (keyboard or response box)
+//	drain   Audio pipeline latency: time from PutData() to stream empty (no external device)
 //
 // See README.md for full usage, equipment setup, and interpretation.
 //
@@ -38,6 +39,10 @@
 //	-level-b int      Bright luminance 0–255 (default 255)
 //	-frames-per-phase int  Frames at each luminance (default 2)   [frames]
 //	-isi-frames int   Frames between flashes (default 60)         [flash]
+//	-hz float         Expected display refresh rate in Hz (default 60); run
+//	                  -test jitter first to measure the true value, then pass
+//	                  it here so that frame-interval targets are exact
+//	-warmup int       Frames discarded from statistics at start (default 10)
 //
 // Per-test flags — av:
 //
@@ -62,6 +67,11 @@
 //	-tone-ms int      Duration of each tone in ms (default 50)
 //	-iti-ms float     Silence between tones (ISI) in ms (default 450)
 //	-freq-hz float    Tone frequency in Hz (default 1000)
+//
+// Per-test flags — drain:
+//
+//	-freq-hz float    Tone frequency in Hz (default 1000)
+//	-drain-reps int   Repetitions per tone duration (default 10)
 
 package main
 
@@ -101,6 +111,9 @@ var (
 	fPeriodMs       = flag.Float64("period-ms", 100, "Square-wave period ms [square test]")
 	fDuty           = flag.Float64("duty", 50, "Duty cycle 0–100 %% [square test]")
 	fAudioFrames    = flag.Int("audio-frames", 0, "Audio hardware buffer size in sample frames (0=SDL default). Must be set before SDL audio opens; e.g. 256, 512, 1024.")
+	fHz             = flag.Float64("hz", 60.0, "Expected display refresh rate in Hz; used to compute frame-interval targets [frames / flash]")
+	fWarmup         = flag.Int("warmup", 10, "Frames to discard at the start of visual tests before recording statistics")
+	fDrainReps      = flag.Int("drain-reps", 10, "Repetitions per tone duration [drain test]")
 )
 
 // ── Statistics helper ──────────────────────────────────────────────────────────
@@ -140,7 +153,10 @@ func computeStats(deltas []float64, targetMs float64) stats {
 			late1++
 		}
 	}
-	sd := math.Sqrt(sqSum / float64(n))
+	sd := 0.0
+	if n > 1 {
+		sd = math.Sqrt(sqSum / float64(n-1))
+	}
 	sorted := make([]float64, n)
 	copy(sorted, deltas)
 	sort.Float64s(sorted)
@@ -208,9 +224,13 @@ func setupTrigger() (triggers.Trigger, string) {
 // runFrames alternates between two luminance levels for *fCycles complete cycles.
 // A trigger pulse is sent on each transition to the bright phase.
 func runFrames(exp *control.Experiment, trig triggers.Trigger) error {
-	fmt.Printf("frames: level-a=%d level-b=%d frames-per-phase=%d cycles=%d\n",
-		*fLevelA, *fLevelB, *fFramesPerPhase, *fCycles)
+	targetFrameMs := 1000.0 / *fHz
+	targetMs := float64(*fFramesPerPhase) * targetFrameMs
+	fmt.Printf("frames: level-a=%d level-b=%d frames-per-phase=%d cycles=%d hz=%.2f warmup=%d\n",
+		*fLevelA, *fLevelB, *fFramesPerPhase, *fCycles, *fHz, *fWarmup)
 
+	exp.Data.WriteComment(fmt.Sprintf("test=frames level-a=%d level-b=%d frames-per-phase=%d cycles=%d hz=%.2f warmup=%d",
+		*fLevelA, *fLevelB, *fFramesPerPhase, *fCycles, *fHz, *fWarmup))
 	exp.AddDataVariableNames([]string{
 		"cycle", "phase", "frame",
 		"t_before_ms", "t_after_ms", "interval_ms", "trigger",
@@ -218,10 +238,15 @@ func runFrames(exp *control.Experiment, trig triggers.Trigger) error {
 
 	var intervals []float64
 	var prevT int64
-	totalFrames := *fCycles * 2 * *fFramesPerPhase
 	frame := 0
+	// warmupIntervals counts frame-to-frame transitions to skip; each transition
+	// spans one frame, so we need warmup * 2 (dark+bright) * fFramesPerPhase ticks.
+	warmupTicks := *fWarmup * 2 * *fFramesPerPhase
 
 	return exp.Run(func() error {
+		oldGC := debug.SetGCPercent(-1)
+		defer debug.SetGCPercent(oldGC)
+
 		for cycle := 0; cycle < *fCycles; cycle++ {
 			for phase := 0; phase < 2; phase++ {
 				level := byte(*fLevelA)
@@ -249,11 +274,13 @@ func runFrames(exp *control.Experiment, trig triggers.Trigger) error {
 					var intervalMs float64
 					if prevT > 0 {
 						intervalMs = float64(tA - prevT)
-						intervals = append(intervals, intervalMs)
+						if frame >= warmupTicks {
+							intervals = append(intervals, intervalMs)
+						}
 					}
 					prevT = tA
 
-					exp.Data.Add(cycle, phase, frame, tB, tA, fmt.Sprintf("%.1f", intervalMs), triggered)
+					exp.Data.Add(cycle, phase, frame, tB, tA, fmt.Sprintf("%.3f", intervalMs), triggered)
 					frame++
 
 					// Check for ESC / quit.
@@ -264,8 +291,7 @@ func runFrames(exp *control.Experiment, trig triggers.Trigger) error {
 				}
 			}
 		}
-		_ = totalFrames
-		printStats("Frame intervals", computeStats(intervals, float64(*fFramesPerPhase)*16.67), 16.67)
+		printStats("Frame intervals", computeStats(intervals, targetMs), targetMs)
 		return control.EndLoop
 	})
 }
@@ -274,9 +300,12 @@ func runFrames(exp *control.Experiment, trig triggers.Trigger) error {
 
 // runFlash presents a single bright frame every *fIsiFrames dark frames.
 func runFlash(exp *control.Experiment, trig triggers.Trigger) error {
-	fmt.Printf("flash: level-a=%d level-b=%d isi-frames=%d cycles=%d\n",
-		*fLevelA, *fLevelB, *fIsiFrames, *fCycles)
+	expectedMs := float64(*fIsiFrames+1) * 1000.0 / *fHz
+	fmt.Printf("flash: level-a=%d level-b=%d isi-frames=%d cycles=%d hz=%.2f warmup=%d\n",
+		*fLevelA, *fLevelB, *fIsiFrames, *fCycles, *fHz, *fWarmup)
 
+	exp.Data.WriteComment(fmt.Sprintf("test=flash level-a=%d level-b=%d isi-frames=%d cycles=%d hz=%.2f warmup=%d",
+		*fLevelA, *fLevelB, *fIsiFrames, *fCycles, *fHz, *fWarmup))
 	exp.AddDataVariableNames([]string{
 		"flash_num", "t_before_ms", "t_after_ms", "interval_ms",
 	})
@@ -285,6 +314,9 @@ func runFlash(exp *control.Experiment, trig triggers.Trigger) error {
 	var prevFlashT int64
 
 	return exp.Run(func() error {
+		oldGC := debug.SetGCPercent(-1)
+		defer debug.SetGCPercent(oldGC)
+
 		for flash := 0; flash < *fCycles; flash++ {
 			// ISI: dark frames
 			for f := 0; f < *fIsiFrames; f++ {
@@ -306,13 +338,14 @@ func runFlash(exp *control.Experiment, trig triggers.Trigger) error {
 			var intervalMs float64
 			if prevFlashT > 0 {
 				intervalMs = float64(tA - prevFlashT)
-				flashIntervals = append(flashIntervals, intervalMs)
+				if flash >= *fWarmup {
+					flashIntervals = append(flashIntervals, intervalMs)
+				}
 			}
 			prevFlashT = tA
-			exp.Data.Add(flash, tB, tA, fmt.Sprintf("%.1f", intervalMs))
+			exp.Data.Add(flash, tB, tA, fmt.Sprintf("%.3f", intervalMs))
 		}
 
-		expectedMs := float64(*fIsiFrames+1) * 16.67
 		printStats("Flash intervals", computeStats(flashIntervals, expectedMs), expectedMs)
 		return control.EndLoop
 	})
@@ -393,15 +426,19 @@ func runAV(exp *control.Experiment, trig triggers.Trigger) error {
 
 // runJitter measures raw frame-interval variance by repeatedly flipping a gray screen.
 func runJitter(exp *control.Experiment) error {
-	nFrames := int(*fDurationS * 60) // approximate; actual count depends on refresh rate
-	fmt.Printf("jitter: ~%d frames over %.1f s (ESC to stop early)\n", nFrames, *fDurationS)
+	nFrames := int(*fDurationS * *fHz) // approximate; actual count depends on refresh rate
+	fmt.Printf("jitter: ~%d frames over %.1f s  warmup=%d  (ESC to stop early)\n", nFrames, *fDurationS, *fWarmup)
 
+	exp.Data.WriteComment(fmt.Sprintf("test=jitter duration-s=%.1f hz=%.2f warmup=%d", *fDurationS, *fHz, *fWarmup))
 	exp.AddDataVariableNames([]string{"frame", "t_before_ms", "t_after_ms", "interval_ms"})
 
 	var intervals []float64
 	var prevT int64
 
 	return exp.Run(func() error {
+		oldGC := debug.SetGCPercent(-1)
+		defer debug.SetGCPercent(oldGC)
+
 		level := byte(128)
 		deadline := time.Now().Add(time.Duration(*fDurationS * float64(time.Second)))
 		frame := 0
@@ -412,7 +449,9 @@ func runJitter(exp *control.Experiment) error {
 			var intervalMs float64
 			if prevT > 0 {
 				intervalMs = float64(tA - prevT)
-				intervals = append(intervals, intervalMs)
+				if frame >= *fWarmup {
+					intervals = append(intervals, intervalMs)
+				}
 			}
 			prevT = tA
 			exp.Data.Add(frame, tB, tA, fmt.Sprintf("%.3f", intervalMs))
@@ -424,13 +463,16 @@ func runJitter(exp *control.Experiment) error {
 			}
 		}
 
-		// Estimate frame rate from mean interval.
-		s := computeStats(intervals, 16.67)
+		// Compute stats using the measured mean as target so that >0.5 ms / >1.0 ms
+		// counts reflect deviation from actual frame rate, not a hardcoded 60 Hz assumption.
+		s := computeStats(intervals, 16.67) // first pass to obtain mean
 		estimatedHz := 0.0
 		if s.mean > 0 {
 			estimatedHz = 1000.0 / s.mean
+			s = computeStats(intervals, s.mean) // recompute late counts against actual mean
 		}
-		fmt.Printf("\nEstimated refresh rate: %.2f Hz\n", estimatedHz)
+		fmt.Printf("\nEstimated refresh rate: %.3f Hz  (use -hz %.2f for frames/flash targets)\n",
+			estimatedHz, estimatedHz)
 		printStats("Frame intervals", s, s.mean)
 		return control.EndLoop
 	})
@@ -562,6 +604,9 @@ func runSound(exp *control.Experiment, trig triggers.Trigger) error {
 	}
 	fmt.Println()
 
+	exp.Data.WriteComment(fmt.Sprintf("test=sound cycles=%d freq-hz=%.0f tone-ms=%d iti-ms=%.0f soa-ms=%d",
+		nTones, *fFreqHz, *fToneMs, *fItiMs, soa.Milliseconds()))
+
 	tone := stimuli.NewTone(*fFreqHz, *fToneMs, 0.8)
 	if err := tone.PreloadDevice(exp.AudioDevice); err != nil {
 		return fmt.Errorf("sound: preload tone: %w", err)
@@ -680,6 +725,7 @@ func runRT(exp *control.Experiment, trig triggers.Trigger) error {
 	meanItiMs := *fItiMs
 	fmt.Printf("rt: %d trials  mean ITI %.0f ms  press any key each flash\n", nTrials, meanItiMs)
 
+	exp.Data.WriteComment(fmt.Sprintf("test=rt cycles=%d iti-ms=%.0f", nTrials, meanItiMs))
 	exp.AddDataVariableNames([]string{
 		"trial",
 		"onset_ns", "event_ts_ns", "rt_ns", "rt_ms",
@@ -747,6 +793,99 @@ func runRT(exp *control.Experiment, trig triggers.Trigger) error {
 	})
 }
 
+// ── Test: drain ───────────────────────────────────────────────────────────────
+
+// runDrain measures audio pipeline latency without any external equipment.
+//
+// For each tone duration in a fixed set (25, 50, 100, 200, 500 ms) it repeats
+// *fDrainReps trials.  Each trial:
+//  1. Calls tone.Play() (which queues PCM data into the SDL audio stream).
+//  2. Polls stream.Queued() in a tight loop until the device has consumed all
+//     queued bytes (Queued returns 0).
+//  3. Records drain_ms = elapsed wall-clock time from Play() to drain complete.
+//
+// The audio pipeline latency is drain_ms − nominal_ms.  It reflects the
+// hardware-buffer delay between PutData() and the last sample exiting the DAC.
+// The SD of drain_ms across reps captures trial-to-trial jitter in the audio
+// scheduler — without needing a microphone or oscilloscope.
+func runDrain(exp *control.Experiment) error {
+	durations := []int{25, 50, 100, 200, 500} // nominal tone durations in ms
+	reps := *fDrainReps
+	freqHz := *fFreqHz
+
+	fmt.Printf("drain: freq=%.0f Hz  reps=%d  durations=%v ms\n", freqHz, reps, durations)
+	exp.Data.WriteComment(fmt.Sprintf("test=drain freq-hz=%.0f reps=%d durations_ms=%v",
+		freqHz, reps, durations))
+	exp.AddDataVariableNames([]string{
+		"duration_ms", "rep", "drain_ms", "overhead_ms",
+	})
+
+	return exp.Run(func() error {
+		status := stimuli.NewTextLine(
+			fmt.Sprintf("Audio drain test: %.0f Hz tone, %d reps — please wait…", freqHz, reps),
+			0, 0, control.White)
+		if err := exp.Show(status); err != nil {
+			return err
+		}
+
+		oldGC := debug.SetGCPercent(-1)
+		defer debug.SetGCPercent(oldGC)
+
+		for _, durMs := range durations {
+			tone := stimuli.NewTone(freqHz, durMs, 0.8)
+			if err := tone.PreloadDevice(exp.AudioDevice); err != nil {
+				return fmt.Errorf("drain: preload tone %d ms: %w", durMs, err)
+			}
+
+			var drainVals []float64
+			for rep := 0; rep < reps; rep++ {
+				// Brief silence between reps so stream is fully empty before Play().
+				time.Sleep(50 * time.Millisecond)
+
+				tPlay := time.Now()
+				_ = tone.Play()
+
+				// Spin-poll until the device has consumed all queued bytes.
+				for {
+					queued, err := tone.Stream.Queued()
+					if err != nil || queued <= 0 {
+						break
+					}
+					time.Sleep(500 * time.Microsecond)
+				}
+				drainMs := float64(time.Since(tPlay).Nanoseconds()) / 1e6
+				overheadMs := drainMs - float64(durMs)
+				drainVals = append(drainVals, drainMs)
+
+				exp.Data.Add(
+					durMs, rep,
+					fmt.Sprintf("%.3f", drainMs),
+					fmt.Sprintf("%.3f", overheadMs),
+				)
+				fmt.Printf("  %3d ms  rep %2d:  drain=%.1f ms  overhead=%+.1f ms\n",
+					durMs, rep, drainMs, overheadMs)
+
+				state := exp.PollEvents(nil)
+				if state.QuitRequested {
+					tone.Unload()
+					return control.EndLoop
+				}
+			}
+
+			tone.Unload()
+			// Report drain_ms statistics with nominal duration as the target.
+			// mean − target = audio pipeline latency; SD = drain-time jitter.
+			s := computeStats(drainVals, float64(durMs))
+			fmt.Printf("\n")
+			printStats(fmt.Sprintf("Drain time for %d ms tone (latency = mean − target)", durMs),
+				s, float64(durMs))
+			fmt.Printf("  pipeline latency ≈ %.1f ms\n", s.mean-float64(durMs))
+		}
+
+		return control.EndLoop
+	})
+}
+
 // ── main ──────────────────────────────────────────────────────────────────────
 
 func main() {
@@ -763,7 +902,7 @@ func main() {
 	defer exp.End()
 
 	if *fTest == "" {
-		log.Fatal("usage: go run main.go -test <frames|flash|av|jitter|square|sound> [flags]")
+		log.Fatal("usage: go run main.go -test <frames|flash|av|jitter|square|sound|rt|drain> [flags]")
 	}
 
 	// Log actual audio device format so the user can verify the buffer size.
@@ -792,8 +931,10 @@ func main() {
 		runErr = runSound(exp, trig)
 	case "rt":
 		runErr = runRT(exp, trig)
+	case "drain":
+		runErr = runDrain(exp)
 	default:
-		log.Fatalf("unknown test %q — choose from: frames flash av jitter square sound rt", *fTest)
+		log.Fatalf("unknown test %q — choose from: frames flash av jitter square sound rt drain", *fTest)
 	}
 
 	if runErr != nil && !control.IsEndLoop(runErr) {

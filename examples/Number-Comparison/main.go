@@ -35,6 +35,7 @@ import (
 	"log"
 	"math"
 	"math/rand"
+	"strconv"
 
 	"github.com/chrplr/goxpyriment/assets_embed"
 	"github.com/chrplr/goxpyriment/control"
@@ -201,17 +202,49 @@ func keyLabel(k control.Keycode) string {
 // ── main ──────────────────────────────────────────────────────────────────────
 
 func main() {
-	groupFlag := flag.String("group", "digits", "stimulus group: digits | regular | irregular | random")
-	// -d and -s are parsed by NewExperimentFromFlags
-	exp := control.NewExperimentFromFlags("Number Comparison", control.Gray, control.Black, 32)
-	defer exp.End()
+	cliGroup := flag.String("group", "digits", "default stimulus group shown in the UI")
+	flag.Parse()
 
-	group := *groupFlag
-	switch group {
-	case "digits", "regular", "irregular", "random":
-	default:
-		log.Fatalf("unknown -group %q; choose digits, regular, irregular, or random", group)
+	groups := []string{"digits", "regular", "irregular", "random"}
+	defaultGroup := "digits"
+	for _, g := range groups {
+		if g == *cliGroup {
+			defaultGroup = *cliGroup
+			break
+		}
 	}
+
+	fields := []control.InfoField{
+		{Name: "subject_id", Label: "Subject ID", Default: ""},
+		{
+			Name:    "group",
+			Label:   "Stimulus group",
+			Default: defaultGroup,
+			Type:    control.FieldSelect,
+			Options: groups,
+		},
+		control.FullscreenField,
+	}
+	info, err := control.GetParticipantInfo("Number Comparison", fields)
+	if err != nil {
+		log.Fatalf("dialog: %v", err)
+	}
+
+	subjectID, _ := strconv.Atoi(info["subject_id"])
+	group := info["group"]
+	fullscreen := info["fullscreen"] == "true"
+	width, height := 0, 0
+	if !fullscreen {
+		width, height = 1024, 768
+	}
+
+	exp := control.NewExperiment("Number Comparison", width, height, fullscreen, control.Gray, control.Black, 32)
+	exp.SubjectID = subjectID
+	exp.Info = info
+	if err := exp.Initialize(); err != nil {
+		log.Fatal(err)
+	}
+	defer exp.End()
 
 	if err := exp.SetLogicalSize(1368, 1024); err != nil {
 		log.Printf("warning: SetLogicalSize: %v", err)

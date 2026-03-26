@@ -9,6 +9,7 @@ package design
 import (
 	"fmt"
 	"math/rand"
+	"reflect"
 
 	"github.com/chrplr/goxpyriment/stimuli"
 )
@@ -65,7 +66,7 @@ func (t *Trial) Compare(other *Trial) bool {
 		return false
 	}
 	for k, v := range t.Factors {
-		if other.Factors[k] != v {
+		if !reflect.DeepEqual(other.Factors[k], v) {
 			return false
 		}
 	}

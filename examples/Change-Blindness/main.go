@@ -134,14 +134,14 @@ func main() {
 	})
 
 	instrText := fmt.Sprintf(
-		"Change Blindness — Flicker Paradigm\n\n"+
+		"CHANGE BLINDNESS\n\n"+
 			"A 5×5 grid of colored squares will flicker.\n"+
 			"Between flickers, one square silently changes color.\n\n"+
 			"Press SPACE as soon as you spot the changing square.\n"+
 			"Each trial lasts up to 10 seconds.\n\n"+
 			"There will be %d trials.\n\n"+
 			"Press SPACE to begin.", NTrials)
-	instructions := stimuli.NewTextBox(instrText, 750, control.FPoint{X: 0, Y: 0}, control.DefaultTextColor)
+	instructions := stimuli.NewTextBox(instrText, 1024, control.FPoint{X: 0, Y: 0}, control.DefaultTextColor)
 
 	err := exp.Run(func() error {
 		// Instructions screen

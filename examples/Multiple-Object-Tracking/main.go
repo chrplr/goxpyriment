@@ -521,7 +521,7 @@ func showInstructions(exp *control.Experiment, totalTrials int) error {
 			"Press any key to begin.  ESC to quit.",
 		totalTrials,
 	)
-	box := stimuli.NewTextBox(text, 700, control.FPoint{X: 0, Y: 0}, control.White)
+	box := stimuli.NewTextBox(text, 1600, control.FPoint{X: 0, Y: 0}, control.White)
 	_ = exp.Screen.Clear()
 	_ = box.Draw(exp.Screen)
 	_ = exp.Screen.Update()

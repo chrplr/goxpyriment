@@ -23,6 +23,67 @@ type Keyboard struct {
 	PollKeysWithTS func() (sdl.Keycode, uint64, bool)
 }
 
+// waitSDLKeyEvent is the shared fallback SDL event loop used by WaitKeys and
+// WaitKeysEventRT when no injected callback is available. It blocks until a
+// matching key, ESC, quit, or timeout.
+//
+// Return values:
+//   - (keycode, ts, nil)       — a key in keys was pressed (or any key if keys==nil)
+//   - (K_ESCAPE, ts, EndLoop)  — ESC was pressed
+//   - (0, 0, EndLoop)          — window-close quit event
+//   - (0, 0, nil)              — timeout
+//
+// The hardware event timestamp ts is always populated when a key is returned.
+func waitSDLKeyEvent(keys []sdl.Keycode, start uint64, timeoutMS int) (sdl.Keycode, uint64, error) {
+	for {
+		var event sdl.Event
+		var hasEvent bool
+
+		if timeoutMS < 0 {
+			if sdl.WaitEvent(&event) == nil {
+				hasEvent = true
+			}
+		} else {
+			elapsed := int(sdl.Ticks() - start)
+			remaining := timeoutMS - elapsed
+			if remaining <= 0 {
+				return 0, 0, nil
+			}
+			if sdl.WaitEventTimeout(&event, int32(remaining)) {
+				hasEvent = true
+			} else {
+				if int(sdl.Ticks()-start) >= timeoutMS {
+					return 0, 0, nil
+				}
+				continue
+			}
+		}
+
+		if !hasEvent {
+			continue
+		}
+
+		switch event.Type {
+		case sdl.EVENT_QUIT:
+			return 0, 0, sdl.EndLoop
+		case sdl.EVENT_KEY_DOWN:
+			ke := event.KeyboardEvent()
+			keycode, ts := ke.Key, ke.Timestamp
+			if keycode == sdl.K_ESCAPE {
+				return sdl.K_ESCAPE, ts, sdl.EndLoop
+			}
+			if keys == nil {
+				return keycode, ts, nil
+			}
+			for _, kc := range keys {
+				if keycode == kc {
+					return keycode, ts, nil
+				}
+			}
+		}
+	}
+}
+
 // Wait blocks until any key is pressed and returns its SDL keycode.
 // If the ESC key or a quit event is received, it returns sdl.EndLoop.
 func (k *Keyboard) Wait() (sdl.Keycode, error) {
@@ -39,13 +100,12 @@ func (k *Keyboard) Wait() (sdl.Keycode, error) {
 func (k *Keyboard) WaitKeys(keys []sdl.Keycode, timeoutMS int) (sdl.Keycode, error) {
 	start := sdl.Ticks()
 
-	// If a callback is injected (by control.Experiment), use it to avoid
-	// discarding mouse events by directly draining the SDL queue.
+	// Injected path: use the control-layer callback to avoid discarding
+	// non-keyboard events while draining the SDL queue.
 	if k.PollKeys != nil {
 		for {
 			if timeoutMS >= 0 {
-				elapsed := int(sdl.Ticks() - start)
-				if elapsed >= timeoutMS {
+				if int(sdl.Ticks()-start) >= timeoutMS {
 					return 0, nil
 				}
 			}
@@ -54,7 +114,6 @@ func (k *Keyboard) WaitKeys(keys []sdl.Keycode, timeoutMS int) (sdl.Keycode, err
 			if quit {
 				return 0, sdl.EndLoop
 			}
-
 			if keycode != 0 {
 				if keycode == sdl.K_ESCAPE {
 					return sdl.K_ESCAPE, sdl.EndLoop
@@ -73,51 +132,9 @@ func (k *Keyboard) WaitKeys(keys []sdl.Keycode, timeoutMS int) (sdl.Keycode, err
 		}
 	}
 
-	// Fallback behavior if no callback is injected
-	for {
-		var event sdl.Event
-		var hasEvent bool
-		if timeoutMS < 0 {
-			if sdl.WaitEvent(&event) == nil {
-				hasEvent = true
-			}
-		} else {
-			elapsed := int(sdl.Ticks() - start)
-			remaining := timeoutMS - elapsed
-			if remaining <= 0 {
-				return 0, nil // Timeout
-			}
-			if sdl.WaitEventTimeout(&event, int32(remaining)) {
-				hasEvent = true
-			} else {
-				// Possibly timeout or error, check again in the loop
-				if int(sdl.Ticks()-start) >= timeoutMS {
-					return 0, nil
-				}
-				continue
-			}
-		}
-
-		if hasEvent {
-			if event.Type == sdl.EVENT_KEY_DOWN {
-				keycode := event.KeyboardEvent().Key
-				if keycode == sdl.K_ESCAPE {
-					return 0, sdl.EndLoop
-				}
-				if keys == nil {
-					return keycode, nil
-				}
-				for _, k := range keys {
-					if keycode == k {
-						return keycode, nil
-					}
-				}
-			}
-			if event.Type == sdl.EVENT_QUIT {
-				return 0, sdl.EndLoop
-			}
-		}
-	}
+	// Fallback: direct SDL event polling when no callback is injected.
+	key, _, err := waitSDLKeyEvent(keys, start, timeoutMS)
+	return key, err
 }
 
 // Check polls for keyboard events without blocking and returns the first key
@@ -152,6 +169,11 @@ func (k *Keyboard) WaitKey(key sdl.Keycode) error {
 // occurs) and also returns the reaction time in milliseconds measured from
 // the moment WaitKeysRT was called.
 //
+// The RT is a wall-clock elapsed time (sdl.Ticks delta), NOT a hardware event
+// timestamp. For stimulus-onset-locked RT with nanosecond precision, use
+// WaitKeysEventRT instead, which returns the SDL3 KeyboardEvent.Timestamp
+// directly and can be subtracted from a Screen.FlipNS() onset value.
+//
 // This bundles the common three-line pattern:
 //
 //	startTime := clock.GetTime()
@@ -183,6 +205,8 @@ func (k *Keyboard) WaitKeysRT(keys []sdl.Keycode, timeoutMS int) (sdl.Keycode, i
 func (k *Keyboard) WaitKeysEventRT(keys []sdl.Keycode, timeoutMS int) (sdl.Keycode, uint64, error) {
 	start := sdl.Ticks()
 
+	// Injected path: use the control-layer callback which carries the SDL3
+	// hardware event timestamp.
 	if k.PollKeysWithTS != nil {
 		for {
 			if timeoutMS >= 0 {
@@ -212,50 +236,7 @@ func (k *Keyboard) WaitKeysEventRT(keys []sdl.Keycode, timeoutMS int) (sdl.Keyco
 	}
 
 	// Fallback: direct SDL event polling when no callback is injected.
-	// The event timestamp is read directly from the KeyboardEvent struct.
-	for {
-		var event sdl.Event
-		var hasEvent bool
-		if timeoutMS < 0 {
-			if sdl.WaitEvent(&event) == nil {
-				hasEvent = true
-			}
-		} else {
-			elapsed := int(sdl.Ticks() - start)
-			remaining := timeoutMS - elapsed
-			if remaining <= 0 {
-				return 0, 0, nil
-			}
-			if sdl.WaitEventTimeout(&event, int32(remaining)) {
-				hasEvent = true
-			} else {
-				if int(sdl.Ticks()-start) >= timeoutMS {
-					return 0, 0, nil
-				}
-				continue
-			}
-		}
-		if hasEvent {
-			if event.Type == sdl.EVENT_KEY_DOWN {
-				ke := event.KeyboardEvent()
-				keycode, ts := ke.Key, ke.Timestamp
-				if keycode == sdl.K_ESCAPE {
-					return 0, ts, sdl.EndLoop
-				}
-				if keys == nil {
-					return keycode, ts, nil
-				}
-				for _, kc := range keys {
-					if keycode == kc {
-						return keycode, ts, nil
-					}
-				}
-			}
-			if event.Type == sdl.EVENT_QUIT {
-				return 0, 0, sdl.EndLoop
-			}
-		}
-	}
+	return waitSDLKeyEvent(keys, start, timeoutMS)
 }
 
 // Clear drains all pending keyboard (and other) events from SDL's event queue.

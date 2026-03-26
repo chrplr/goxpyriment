@@ -10,6 +10,7 @@ import (
 
 	"github.com/Zyko0/go-sdl3/sdl"
 	"github.com/Zyko0/go-sdl3/ttf"
+	"github.com/chrplr/goxpyriment/io"
 )
 
 // Default Experiment settings
@@ -135,4 +136,21 @@ func FontFromMemory(data []byte, size float32) (*ttf.Font, error) {
 // FontFromFile opens a TTF font from a file path at the given point size.
 func FontFromFile(path string, size float32) (*ttf.Font, error) {
 	return ttf.OpenFont(path, size)
+}
+
+// DisplayInfo is re-exported from io so callers need not import that package.
+type DisplayInfo = io.DisplayInfo
+
+// ListDisplays returns metadata for all connected displays, ordered so that
+// index 0 is the primary display. Assign an index to exp.ScreenNumber before
+// calling Initialize() (or before NewExperimentFromFlags) to open the
+// experiment window on a specific monitor.
+//
+//	displays, _ := control.ListDisplays()
+//	for i, d := range displays {
+//	    fmt.Printf("display %d: %s (%dx%d)\n", i, d.Name, d.NativeW, d.NativeH)
+//	}
+//	exp.ScreenNumber = 1 // secondary monitor
+func ListDisplays() ([]DisplayInfo, error) {
+	return io.ListDisplays()
 }

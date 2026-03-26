@@ -49,7 +49,8 @@ func (p *Picture) preload(screen *io.Screen) error {
 		if err != nil {
 			return err
 		}
-		surface, err = img.LoadIO(ioStream, true)
+		defer ioStream.Close()
+		surface, err = img.LoadIO(ioStream, false)
 		if err != nil {
 			return err
 		}

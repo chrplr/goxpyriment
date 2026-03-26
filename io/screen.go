@@ -19,6 +19,7 @@
 package io
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/Zyko0/go-sdl3/sdl"
@@ -67,24 +68,88 @@ type Screen struct {
 	LogicalSize  *sdl.FPoint // If not nil, use this for CenterToSDL
 }
 
+// displayByIndex resolves a 0-based display index to an SDL DisplayID.
+// Index 0 always refers to the primary display.
+// Returns an error if index is out of range.
+func displayByIndex(index int) (sdl.DisplayID, error) {
+	if index == 0 {
+		return sdl.GetPrimaryDisplay(), nil
+	}
+	displays, err := sdl.GetDisplays()
+	if err != nil {
+		return 0, fmt.Errorf("enumerate displays: %w", err)
+	}
+	if index < 0 || index >= len(displays) {
+		return 0, fmt.Errorf("display index %d out of range [0, %d)", index, len(displays))
+	}
+	return displays[index], nil
+}
+
+// ListDisplays returns metadata for all connected displays, ordered so that
+// index 0 is the primary display. Pass an index to NewScreen (or set
+// Experiment.ScreenNumber) to open the window on a specific monitor.
+func ListDisplays() ([]DisplayInfo, error) {
+	displays, err := sdl.GetDisplays()
+	if err != nil {
+		return nil, fmt.Errorf("enumerate displays: %w", err)
+	}
+	infos := make([]DisplayInfo, len(displays))
+	for i, id := range displays {
+		infos[i] = DisplayInfo{ID: uint32(id)}
+		if name, err := id.Name(); err == nil {
+			infos[i].Name = name
+		}
+		if mode, err := id.CurrentDisplayMode(); err == nil && mode != nil {
+			infos[i].NativeW = mode.W
+			infos[i].NativeH = mode.H
+			infos[i].RefreshRate = mode.RefreshRate
+		}
+		if scale, err := id.ContentScale(); err == nil {
+			infos[i].ContentScale = scale
+		}
+		if bounds, err := id.Bounds(); err == nil && bounds != nil {
+			infos[i].BoundsX = bounds.X
+			infos[i].BoundsY = bounds.Y
+			infos[i].BoundsW = bounds.W
+			infos[i].BoundsH = bounds.H
+		}
+	}
+	return infos, nil
+}
+
 // NewScreen initializes a new SDL window and renderer.
 //
 // width and height specify the logical experiment resolution. When fullscreen
 // is true, or when width/height are 0, the physical window is created at the
 // desktop's native resolution in exclusive fullscreen and the renderer is
 // configured with a logical size matching the requested resolution (if > 0).
-func NewScreen(title string, width, height int, bgColor sdl.Color, fullscreen bool) (*Screen, error) {
-	// Exclusive fullscreen path: mimic tests/set_fullscreen/go_example/main.go.
-	// When fullscreen is requested OR no explicit size is provided (0x0),
-	// we ask SDL to create a fullscreen window at the native resolution
-	// and then create a renderer for it.
+//
+// displayIndex selects which monitor to use (0 = primary display). Pass a
+// value ≥ 1 to target a secondary monitor — useful in lab settings where the
+// experimenter and participant use different screens. Use ListDisplays() to
+// enumerate available displays and their properties.
+func NewScreen(title string, width, height int, bgColor sdl.Color, fullscreen bool, displayIndex int) (*Screen, error) {
+	target, err := displayByIndex(displayIndex)
+	if err != nil {
+		return nil, err
+	}
+
 	if fullscreen || (width == 0 && height == 0) {
-		window, err := sdl.CreateWindow(
-			title,
-			0, 0,
-			sdl.WINDOW_HIGH_PIXEL_DENSITY|sdl.WINDOW_FULLSCREEN,
-		)
+		// Create the window first without fullscreen so we can position it
+		// on the target display before enabling exclusive fullscreen.
+		window, err := sdl.CreateWindow(title, 0, 0, sdl.WINDOW_HIGH_PIXEL_DENSITY)
 		if err != nil {
+			return nil, err
+		}
+
+		if displayIndex != 0 {
+			if bounds, err := target.Bounds(); err == nil && bounds != nil {
+				window.SetPosition(bounds.X, bounds.Y)
+			}
+		}
+
+		if err := window.SetFullscreen(true); err != nil {
+			window.Destroy()
 			return nil, err
 		}
 
@@ -109,10 +174,19 @@ func NewScreen(title string, width, height int, bgColor sdl.Color, fullscreen bo
 		}, nil
 	}
 
-	// Windowed path: create a hidden window+renderer pair and show it.
+	// Windowed path: create a hidden window+renderer pair, optionally move to
+	// the target display, then show it.
 	window, renderer, err := sdl.CreateWindowAndRenderer(title, width, height, sdl.WINDOW_HIDDEN)
 	if err != nil {
 		return nil, err
+	}
+
+	if displayIndex != 0 {
+		if bounds, err := target.Bounds(); err == nil && bounds != nil {
+			x := bounds.X + (bounds.W-int32(width))/2
+			y := bounds.Y + (bounds.H-int32(height))/2
+			window.SetPosition(x, y)
+		}
 	}
 
 	s := &Screen{
