@@ -159,6 +159,12 @@ func NewScreen(title string, width, height int, bgColor sdl.Color, fullscreen bo
 			return nil, err
 		}
 
+		if err := renderer.SetVSync(1); err != nil {
+			renderer.Destroy()
+			window.Destroy()
+			return nil, err
+		}
+
 		// Query the actual physical pixel dimensions.
 		w, h, err := window.SizeInPixels()
 		if err != nil {
@@ -178,6 +184,12 @@ func NewScreen(title string, width, height int, bgColor sdl.Color, fullscreen bo
 	// the target display, then show it.
 	window, renderer, err := sdl.CreateWindowAndRenderer(title, width, height, sdl.WINDOW_HIDDEN)
 	if err != nil {
+		return nil, err
+	}
+
+	if err := renderer.SetVSync(1); err != nil {
+		renderer.Destroy()
+		window.Destroy()
 		return nil, err
 	}
 
