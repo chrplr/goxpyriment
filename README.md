@@ -28,9 +28,9 @@ If you are looking for a simpler, *no-code experiment generator*, check [Gostim2
 
 ## How to write your own experiment, in a nutshell 
 
-1. Install Go on your machine (see <https://go.dev/doc/install>).
+1. Install [Git](https://git-scm.com/install/) and [Go](https://go.dev/doc/install) on your machine (for detailed instructions, see [Windows](README-Install-Go-Development-Envir-on-Windows.md) or [macOS](README-Install-Go-Development-Envir-on-macOS.md)).
 2. Clone this repository (`git clone https://github.com/chrplr/goxpyriment.git` or [download ZIP](https://github.com/chrplr/goxpyriment/archive/refs/heads/main.zip)).
-3. Browse [./examples/](./examples/) to see source code of experiments and the documentation :
+3. Browse [./examples/](./examples/) to see teh source code of experiments and the documentation
 4. Create a folder for your experiment and start coding in a `main.go` file. You can test it by running `go run main.go`. 
 > [!TIP]
 > *Vibe-coding:* Launch an AI coding agent (Claude, Gemini, etc.) inside the `goxpyriment` folder and ask it to add a new experiment to the `examples` folder — this leads the agent to read the existing examples for context. Describe the experiment (stimuli, design, etc.) in plain language and enjoy.
@@ -41,11 +41,8 @@ If you are looking for a simpler, *no-code experiment generator*, check [Gostim2
 env GOOS=linux GOARCH=arm64 go build .
 ```
 
----
-
-## Beta-testing
-
-> :warning: This software is in beta-testing, that is, I am waiting for report from the battle-ground. 
+> [!WARNING] 
+> This software is in beta-testing, that is, I am waiting for more reports from the battleground before releasing v1.0.0.  
 > Although it is certainly possible to use it to implement real experiments in the lab, users should (as always) very carefully check their behavior, for example with a [bbtk](https://chrplr.github.io/bbtkv3/).
 > Please report bugs and suggestions at <https://github.com/chrplr/goxpyriment/issues>
 
@@ -66,7 +63,7 @@ Goxpyriment relies on the [libsdl](http://libsdl.org) library through the [go-sd
 As its name suggests, goxpyriment was inspired by [expyriment.org](https://github.com/expyriment/expyriment?tab=readme-ov-file), a nice, light-weight Python library for cognitive and neuroscientic experiments (See Krause, F., & Lindemann, O. (2014). *Behavior Research Methods*, 46(2), 416–428. <https://doi.org/10.3758/s13428-013-0390-6>). The API should feel very familiar to expyriment users.
 
 
-[chrplr](https://github.com/chrplr)
+[ChrPlr](https://github.com/chrplr), March 2026.
 
 
 ---
