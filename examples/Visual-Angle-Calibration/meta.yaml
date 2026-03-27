@@ -1,0 +1,3 @@
+category: demo
+description: Draws concentric rings at 2°, 5°, and 10° of visual angle for a quick sanity-check of the `units.Monitor` calibration
+reference: ""

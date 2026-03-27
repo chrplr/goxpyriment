@@ -37,12 +37,13 @@
 package main
 
 import (
+	"bytes"
+	_ "embed"
 	"encoding/csv"
-	"flag"
 	"fmt"
+	stdlio "io"
 	"log"
 	"math/rand"
-	"os"
 	"runtime/debug"
 	"strconv"
 	"strings"
@@ -96,6 +97,9 @@ var soaTable = []struct {
 	{133, 7},
 }
 
+//go:embed assets/words.tsv
+var wordsData []byte
+
 // ── Word loading ──────────────────────────────────────────────────────────────
 
 type wordEntry struct {
@@ -103,17 +107,11 @@ type wordEntry struct {
 	nLetters int
 }
 
-// loadWords reads words.tsv and returns the word list and a lexicon set.
-func loadWords(path string) ([]wordEntry, map[string]bool, error) {
-	f, err := os.Open(path)
-	if err != nil {
-		return nil, nil, err
-	}
-	defer f.Close()
-
-	r := csv.NewReader(f)
-	r.Comma = '\t'
-	records, err := r.ReadAll()
+// loadWords reads words TSV data from r and returns the word list and a lexicon set.
+func loadWords(r stdlio.Reader) ([]wordEntry, map[string]bool, error) {
+	cr := csv.NewReader(r)
+	cr.Comma = '\t'
+	records, err := cr.ReadAll()
 	if err != nil {
 		return nil, nil, err
 	}
@@ -667,15 +665,43 @@ func runExp2(exp *control.Experiment, trials []trial) error {
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 func main() {
-	expNum := flag.Int("exp", 1, "Experiment number: 1 (subjective report) or 2 (lexical decision)")
+	fields := []control.InfoField{
+		{Name: "subject_id", Label: "Subject ID", Default: ""},
+		{
+			Name:    "experiment",
+			Label:   "Experiment",
+			Default: "1",
+			Type:    control.FieldSelect,
+			Options: []string{"1", "2"},
+		},
+		control.FullscreenField,
+	}
+	info, err := control.GetParticipantInfo("Temporal Integration — Word Recognition", fields)
+	if err != nil {
+		log.Fatalf("dialog: %v", err)
+	}
 
-	exp := control.NewExperimentFromFlags(
+	subjectID, _ := strconv.Atoi(info["subject_id"])
+	expNum, _ := strconv.Atoi(info["experiment"])
+	fullscreen := info["fullscreen"] == "true"
+	width, height := 0, 0
+	if !fullscreen {
+		width, height = 1024, 768
+	}
+
+	exp := control.NewExperiment(
 		"Temporal Integration — Word Recognition",
+		width, height, fullscreen,
 		control.Black, control.White, fontSizePt,
 	)
+	exp.SubjectID = subjectID
+	exp.Info = info
+	if err := exp.Initialize(); err != nil {
+		log.Fatal(err)
+	}
 	defer exp.End()
 
-	allWords, lexicon, err := loadWords("words.tsv")
+	allWords, lexicon, err := loadWords(bytes.NewReader(wordsData))
 	if err != nil {
 		log.Fatalf("loading words.tsv: %v", err)
 	}
@@ -684,7 +710,7 @@ func main() {
 
 	var trials []trial
 
-	switch *expNum {
+	switch expNum {
 	case 1:
 		words4 := byLength(allWords, 4)
 		words6 := byLength(allWords, 6)
@@ -712,14 +738,14 @@ func main() {
 			len(wt), len(pw), len(wt)+len(pw))
 
 	default:
-		log.Fatalf("unknown experiment %d — use -exp 1 or -exp 2", *expNum)
+		log.Fatalf("unknown experiment %d", expNum)
 	}
 
 	design.ShuffleList(trials)
 
 	var runErr error
 	if err := exp.Run(func() error {
-		switch *expNum {
+		switch expNum {
 		case 1:
 			runErr = runExp1(exp, trials)
 		case 2:

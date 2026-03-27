@@ -1,0 +1,3 @@
+category: experiment
+description: 2-IFC adaptive staircase estimating the contrast detection threshold for a Gabor patch; converges on the 82 % correct point
+reference: Watson & Pelli (1983)

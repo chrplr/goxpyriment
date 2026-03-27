@@ -1,0 +1,3 @@
+category: experiment
+description: HCP retinotopic mapping paradigm (ported from Python); flickering wedge/ring/bar stimuli for visual cortex mapping; run type selected via GetParticipantInfo UI
+reference: ""

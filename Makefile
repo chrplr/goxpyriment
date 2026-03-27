@@ -1,4 +1,4 @@
-.PHONY: all examples tests pdfs docs serve deploy clean help
+.PHONY: all examples update-readme tests pdfs docs serve deploy clean help
 
 EXAMPLES := $(shell find examples -maxdepth 2 -name main.go \
                | xargs -I{} dirname {} | sort)
@@ -18,6 +18,10 @@ examples:
 	  echo "Building $$name..."; \
 	  (cd $$dir && CGO_ENABLED=0 go build -o "$(CURDIR)/examples/_build/$$name" .); \
 	done
+
+# Regenerate the examples/README.md tables from per-example meta.yaml files.
+update-readme:
+	@cd examples && go run ./cmd/gen-readme/
 
 # Build and run a single example: make run-hello_world
 run-%:
@@ -65,8 +69,9 @@ clean:
 help:
 	@echo "Available targets:"
 	@echo "  all       Build all examples (default)"
-	@echo "  examples  Build all examples to examples/_build/"
-	@echo "  run-NAME  Build and run a single example (e.g. make run-parity_decision)"
+	@echo "  examples       Build all examples to examples/_build/"
+	@echo "  update-readme  Regenerate examples/README.md tables from meta.yaml files"
+	@echo "  run-NAME       Build and run a single example (e.g. make run-parity_decision)"
 	@echo "  tests     Build test binaries"
 	@echo "  pdfs      Generate PDF docs via pandoc + xelatex"
 	@echo "  docs      Build MkDocs HTML site to site/"

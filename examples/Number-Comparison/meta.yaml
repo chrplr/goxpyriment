@@ -1,0 +1,3 @@
+category: experiment
+description: Compare numerical magnitudes of digits and dot patterns; stimulus group (digits / regular / irregular / random) selected via GetParticipantInfo UI
+reference: Buckley & Gillman (1974)
