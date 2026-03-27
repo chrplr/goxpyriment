@@ -1,4 +1,4 @@
-.PHONY: all examples tests pdfs docs serve deploy clean
+.PHONY: all examples tests pdfs docs serve deploy clean help
 
 EXAMPLES := $(shell find examples -maxdepth 2 -name main.go \
                | xargs -I{} dirname {} | sort)
@@ -57,3 +57,20 @@ deploy: pdfs
 
 clean:
 	rm -rf examples/_build/ site/
+
+# ---------------------------------------------------------------------------
+# Help
+# ---------------------------------------------------------------------------
+
+help:
+	@echo "Available targets:"
+	@echo "  all       Build all examples (default)"
+	@echo "  examples  Build all examples to examples/_build/"
+	@echo "  run-NAME  Build and run a single example (e.g. make run-parity_decision)"
+	@echo "  tests     Build test binaries"
+	@echo "  pdfs      Generate PDF docs via pandoc + xelatex"
+	@echo "  docs      Build MkDocs HTML site to site/"
+	@echo "  serve     Live-reload docs preview at http://127.0.0.1:8000"
+	@echo "  deploy    Generate PDFs and push docs to GitHub Pages"
+	@echo "  clean     Remove examples/_build/ and site/"
+	@echo "  help      Show this message"

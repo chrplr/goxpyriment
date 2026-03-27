@@ -70,8 +70,8 @@ var (
 
 	// MonitorFields collects display and viewing-setup characteristics.
 	MonitorFields = []InfoField{
-		{Name: "screen_width_cm", Label: "Screen width (cm)", Default: "53", Type: FieldNumber},
-		{Name: "viewing_distance_cm", Label: "Viewing distance (cm)", Default: "57", Type: FieldNumber},
+		{Name: "screen_width_cm", Label: "Screen width (cm)", Default: "30", Type: FieldNumber},
+		{Name: "viewing_distance_cm", Label: "Viewing distance (cm)", Default: "50", Type: FieldNumber},
 		{Name: "refresh_rate_hz", Label: "Refresh rate (Hz)", Default: "60", Type: FieldNumber},
 	}
 

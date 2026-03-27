@@ -3,7 +3,13 @@
 \PassOptionsToPackage{hyphens}{url}
 \PassOptionsToPackage{dvipsnames,svgnames,x11names}{xcolor}
 %
-\documentclass{sn-jnl}
+%\documentclass{sn-jnl}
+\documentclass[doc,a4paper,biblatex]{apa7}
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage[style=apa, backend=biber]{biblatex}
+\usepackage{booktabs}
+\usepackage{longtable}
 \usepackage{amsmath,amssymb}
 \usepackage{setspace}
 \usepackage{graphicx}
@@ -77,53 +83,74 @@
   pdfcreator={LaTeX via pandoc}}
 
 \title{Goxpyriment: A Go Framework for Behavioral and Cognitive Experiments}
-\author*[1,2]{Christophe Pallier}\email{christophe@pallier.org}
-\author[2]{Julie Bonnaire}
-\author[2]{Marie-France Fourcade}
-
-\affil[1]{EMR 9003, Centre National de la Rercheche Scientifique, Gif-sur-Yvette, France's}
-\affil[2]{ISNERM-CEA Cognitive Neuroimaging Unit, NeuroSpin, Gif-sur-Yvette, France}
+\shorttitle{Let's Go}
+%\author*[1,2]{Christophe Pallier}\email{christophe@pallier.org}
+%\author[2]{Julie Bonnaire}
+%\author[2]{Marie-France Fourcade}
 
 
+\keywords{experiment software, stimulus presentation, timing precision, Go, SDL3, behavioral experiments}
+\authornote{Correspondence concerning this article should be addressed to Chrisophe@Pallier.org}
 
-\begin{document}
+
+\authorsnames{Christophe Pallier, Julie Bonnaire, Marie-France Fourcade}
+\authorsaffiliations{Cognitive Neuroimaging Unit, INSERM, NeuroSpin, CEA, Gif-sur-Yvette, France}
+
+\addbibresource{biblio.bib}
 
 
-\maketitle
 
-\subsection{Abstract}\label{abstract}
+\abstract{
+We describe \texttt{Goxpyriment}, an new open-source software
+framework for programming behavioral and cognitive experiments in the
+Go programming language. The library is designed to address several
+limitations of Python-based experiment tools: runtime environment
+complexity that complicates deployment across laboratories.  Go being
+a compiled language that can ebbed assets (graphic or audio files,
+lists of stimuli, etc.), experiments compiles to a single self-contained
+binary with no runtime dependencies, simplifying distribution to
+collaborators and participant testing computers.
 
-We describe \texttt{goxpyriment}, an open-source software framework for
-programming behavioral and cognitive experiments in the Go programming
-language. The library wraps the SDL3 graphics library to provide
-hardware-accelerated, VSYNC-locked stimulus presentation and is designed
-to address two practical limitations of Python-based experiment tools:
-runtime environment complexity that complicates deployment across
-laboratory computers, and unpredictable pause times introduced by
-Python's garbage collector during timing-sensitive sections. Go is a
-compiled language whose garbage collector can be disabled
-programmatically; combined with VSYNC synchronization, this allows
-stimulus onsets and offsets to be aligned to individual display frames.
-\texttt{goxpyriment} exposes a layered package architecture ---
-\texttt{control} (experiment lifecycle), \texttt{stimuli} (visual and
-audio objects), \texttt{io} (window, keyboard, mouse, data files),
-\texttt{design} (trial and block structure), \texttt{clock} (timing
-utilities), and \texttt{triggers} (hardware synchronization with EEG/MEG
-recording systems). The visual stimulus set includes text, geometric
-shapes, images, Gabor patches, drifting sinusoidal gratings, random-dot
-motion clouds, random-dot stereograms, and video sequences. Audio
-support covers WAV playback, procedural tone generation, and
-time-windowed segment extraction with linear ramps. High-precision rapid
-serial visual presentation is handled by dedicated stream functions that
-disable garbage collection and log predicted and actual stimulus onsets.
-An experiment compiles to a single self-contained binary with no runtime
-dependencies, simplifying distribution to collaborators and participant
-testing computers. The framework is released under the GNU General
+While Python's garbage collector can introduced unpredictable pause
+times during timing-sensitive sections, Go's garbage collector can be
+disabled programmatically; combined with VSYNC synchronization, this
+allows stimulus onsets and offsets to be aligned to individual display
+frames more raliabilty than in Python (althoug the operating system
+can still introduces some latencies). As Go is much faster than
+Python, experiments that hae to load heavy ressources to prepare the
+stimuli feels much snappier (x10 to x100 faster). Goexpyriment relies
+on version 3 of the SDL library. This means that the programmer can
+tap low-level functions, such as the GPU functions, for maximal
+performance.
+
+The programming interface (API) of Goexperiment is inspired from the
+Expyriment framework \parencite{krause2014}.  The visual stimulus set includes text,
+geometric shapes, images, Gabor patches, drifting sinusoidal gratings,
+random-dot motion clouds, random-dot stereograms, and video
+sequences. Audio support covers WAV playback, procedural tone
+generation, and time-windowed segment extraction with linear
+ramps. High-precision rapid serial visual presentation is handled by
+dedicated stream functions that disable garbage collection and log
+predicted and actual stimulus onsets.
+
+The Goexpyriment library, althougth designed for human programmer, is
+particurily well suited for AI coding development.  This is because
+Go, as a simple, strongly typed language, constrains the AI assistant
+in a useful manner. Goexpyriment web site provides many examples of experiments which were
+ ``vibe-coded''.
+
+The framework is released under the GNU General
 Public License v3 and available at
 https://github.com/chrplr/goxpyriment.
+}
 
-\textbf{Keywords:} experiment software, stimulus presentation, timing
-precision, Go, SDL3, behavioral experiments
+\begin{document}
+\maketitle
+
+%\subsection{Abstract}\label{abstract}
+%\textbf{Keywords:} experiment software, stimulus presentation, timing precision, Go, SDL3, behavioral experiments
+
+
 
 \begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
 
@@ -135,12 +162,9 @@ and response recording, the ergonomics of experiment programming, and
 the ease of deploying experiments to laboratory hardware each affect the
 quality and reproducibility of empirical data. Over the past two
 decades, Python has become the dominant language for experiment
-programming, primarily through two libraries: Expyriment (Krause \&
-Lindemann, 2014) and PsychoPy (Peirce et al., 2019). Before Python,
-MATLAB with the Psychophysics Toolbox (Brainard, 1997; Kleiner et al.,
-2007) was the de facto standard in many laboratories. More recently,
-web-based frameworks such as jsPsych (de Leeuw, 2015; de Leeuw et al.,
-2023) and lab.js (Henninger et al., 2022) have enabled large-scale
+programming, primarily through two libraries: Expyriment \parencite{krause2014} and PsychoPy \parencite{peirce2019}. Before Python,
+MATLAB with the Psychophysics Toolbox \parencite{brainard1997, kleiner2007} was the de facto standard in many laboratories. More recently,
+web-based frameworks such as jsPsych \parencite{deleeuw2015, deleeuw2023} and lab.js \parencite{henninger2022} have enabled large-scale
 online data collection.
 
 Each class of tool involves tradeoffs. MATLAB offers reliable timing on
@@ -161,10 +185,9 @@ Python-level allocation, or timing the experiment around known GC cycles
 trade timing precision for accessibility: browser-mediated stimulus
 presentation on general-purpose operating systems is subject to
 event-loop latency, compositor delays, and monitor polling intervals
-that make sub-frame timing difficult or impossible (Bridges et al.,
-2020; Anwyl-Irvine et al., 2021).
+that make sub-frame timing difficult or impossible \parencite{bridges2020, anwylirvine2021}.
 
-The Go programming language (Donovan \& Kernighan, 2016) offers a
+The Go programming language \parencite{donovan2016} offers a
 different point in the design space. Go compiles to native machine code
 for each target platform and produces self-contained binaries with no
 runtime dependencies. Its garbage collector is concurrent and can be
@@ -184,7 +207,7 @@ responses are collected by calling
 \texttt{exp.Keyboard.WaitKeysRT(keys,\ timeout)}; and data are written
 to a CSV-like output file whose metadata header records the experimental
 context. The library uses SDL3 (Simple DirectMedia Layer, version 3) via
-the \texttt{go-sdl3} bindings (Zyko0, 2024) for hardware-accelerated 2D
+the \texttt{go-sdl3} bindings \parencite{zyko02024} for hardware-accelerated 2D
 rendering and event handling. The SDL3 renderer presents frames
 synchronously with the monitor's vertical retrace signal (VSYNC),
 ensuring that each stimulus onset and offset coincides with a frame
@@ -468,7 +491,7 @@ based on subject ID.
 Dialog}\label{pre-experiment-setup-dialog}
 
 \texttt{control.GetParticipantInfo(title,\ fields)} opens a graphical
-SDL dialog before the experiment window is created (Figure~\ref{fig:getinfo}).
+SDL dialog before the experiment window is created (Figure~\ref{fig:getinfo} and \ref{fig:getinfo2}).
 The experimenter fills in typed text fields, toggles checkbox fields, and
 selects from discrete option sets; pressing Enter or clicking OK returns
 the collected values as a \texttt{map{[}string{]}string}.
@@ -511,9 +534,7 @@ Pre-built field sets cover common needs:
 
 \begin{figure}[h]
 \centering
-% Insert screenshot: GetParticipantInfo dialog for Number-Comparison
-% (stimulus group select widget shown)
-\fbox{\rule{0pt}{4cm}\rule{8cm}{0pt}}
+\includegraphics[width=0.3\textwidth]{UI2.png}
 \caption{The \texttt{GetParticipantInfo} dialog for the
 \texttt{Number-Comparison} example. The \emph{Stimulus group} row shows
 a \texttt{FieldSelect} widget: clicking one of the four labelled buttons
@@ -523,6 +544,23 @@ select row. All values are pre-filled from the previous session's
 cache.}
 \label{fig:getinfo}
 \end{figure}
+
+\begin{figure}[h]
+\centering
+% Insert screenshot: GetParticipantInfo dialog for Number-Comparison
+% (stimulus group select widget shown)
+\includegraphics[width=0.3\textwidth]{UI1.png}
+\caption{The \texttt{GetParticipantInfo} dialog for the
+\texttt{Retinotopy} example. The \emph{Stimulus group} row shows
+a \texttt{FieldSelect} widget: clicking one of the four labelled buttons
+(Digits, Regular, Irregular, Random) highlights it in blue and records
+the selection. Text and checkbox fields appear above and below the
+select row. All values are pre-filled from the previous session's
+cache.}
+\label{fig:getinfo2}
+\end{figure}
+
+
 
 When \texttt{exp.Info} is set before calling \texttt{exp.Initialize()},
 the collected values are automatically written to the
@@ -552,8 +590,8 @@ monitor approximately 6.94 ms. Because \texttt{screen.Update()} returns
 only after the frame has been committed to the display pipeline, the
 time of return provides a lower bound on stimulus onset that is accurate
 to within the display's frame period. This is the standard
-synchronization model used by the Psychophysics Toolbox (Brainard, 1997)
-and Expyriment (Krause \& Lindemann, 2014).
+synchronization model used by the Psychophysics Toolbox \parencite{brainard1997}
+and Expyriment \parencite{krause2014}.
 
 For most trial-loop code, \texttt{exp.Show(stim)} --- which calls
 \texttt{Screen.Clear()}, \texttt{stim.Draw(screen)}, and
@@ -781,8 +819,7 @@ Yes & No \\
 Stimulus set & Moderate & Moderate & Extensive & Moderate \\
 GUI builder & No & No & Yes (Builder) & No \\
 Online deployment & No & No & Partial (PsychoJS) & Yes \\
-Reference & This paper & Krause \& Lindemann, 2014 & Peirce et al., 2019
-& de Leeuw, 2015 \\
+Reference & This paper & \parencite{krause2014} & \parencite{peirce2019} & \parencite{deleeuw2015} \\
 \end{longtable}
 
 \texttt{goxpyriment} most closely resembles Expyriment in its API
@@ -802,12 +839,11 @@ version management more challenging.
 jsPsych enables large-scale online data collection through standard web
 browsers, which \texttt{goxpyriment} does not support. Browser-based
 presentation is subject to timing variability that is not present in
-native desktop applications (Bridges et al., 2020; Anwyl-Irvine et al.,
-2021).
+native desktop applications \parencite{bridges2020, anwylirvine2021}.
 
 The MATLAB Psychophysics Toolbox (PTB) offers the most mature timing
 validation in the field, with documented sub-frame onset precision on
-calibrated hardware (Kleiner et al., 2007). \texttt{goxpyriment} has not
+calibrated hardware \parencite{kleiner2007}. \texttt{goxpyriment} has not
 yet been subjected to comparable formal validation.
 
 
@@ -1181,8 +1217,7 @@ an explicit \texttt{//\ Co-authored\ by\ Claude\ Sonnet\ 4.6} header
 comment), Writing --- original draft (the paper text was drafted
 collaboratively in an interactive session).
 
-Note on AI authorship: consistent with current editorial norms (Nature
-Portfolio, 2023; Springer Nature, 2023), Claude Sonnet 4.6 is listed
+Note on AI authorship: consistent with current editorial norms \parencite{natureportfolio2023, springernature2023}, Claude Sonnet 4.6 is listed
 under Author Contributions rather than as a named author, because
 authorship requires the capacity to take accountability for the work.
 Christophe Pallier takes full responsibility for all content, including
@@ -1199,61 +1234,7 @@ repository. No empirical data are reported in this article.
 
 \begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
 
-\subsection{References}\label{references}
-
-Anwyl-Irvine, A. L., Massonnié, J., Flitton, A., Kirkham, N., \&
-Evershed, J. K. (2021). Gorilla in our midst: An online behavioral
-experiment builder. \emph{Behavior Research Methods}, \emph{52}(1),
-388--407. https://doi.org/10.3758/s13428-019-01237-x
-
-Brainard, D. H. (1997). The Psychophysics Toolbox. \emph{Spatial
-Vision}, \emph{10}(4), 433--436. https://doi.org/10.1163/156856897X00357
-
-Bridges, D., Pitiot, A., MacAskill, M. R., \& Peirce, J. W. (2020). The
-timing mega-study: Comparing a range of experiment generators, both
-lab-based and online. \emph{PeerJ}, \emph{8}, e9414.
-https://doi.org/10.7717/peerj.9414
-
-de Leeuw, J. R. (2015). jsPsych: A JavaScript library for creating
-behavioral experiments in a Web browser. \emph{Behavior Research
-Methods}, \emph{47}(1), 1--12. https://doi.org/10.3758/s13428-014-0458-y
-
-de Leeuw, J. R., Gilbert, R. A., \& Luchterhandt, B. (2023). jsPsych:
-Enabling an open-source collaborative ecosystem of behavioral
-experiments. \emph{Journal of Open Source Software}, \emph{8}(85), 5351.
-https://doi.org/10.21105/joss.05351
-
-Donovan, A. A. A., \& Kernighan, B. W. (2016). \emph{The Go programming
-language}. Addison-Wesley.
-
-Henninger, F., Shevchenko, Y., Meijer, R. R., Inzlicht, M., \& Hilbig,
-B. E. (2022). lab.js: A free, open, online study builder. \emph{Behavior
-Research Methods}, \emph{54}(2), 556--573.
-https://doi.org/10.3758/s13428-019-01283-5
-
-Kleiner, M., Brainard, D. H., \& Pelli, D. (2007). What's new in
-Psychtoolbox-3? \emph{Perception}, \emph{36}(ECVP Abstract Supplement),
-14.
-
-Krause, F., \& Lindemann, O. (2014). Expyriment: A Python library for
-cognitive and neuroscientific experiments. \emph{Behavior Research
-Methods}, \emph{46}(2), 416--428.
-https://doi.org/10.3758/s13428-013-0390-6
-
-Peirce, J. W., Gray, J. R., Simpson, S., MacAskill, M. R., Höchenberger,
-R., Sogo, H., Kastman, E., \& Lindeløv, J. K. (2019). PsychoPy2:
-Experiments in behavior made easy. \emph{Behavior Research Methods},
-\emph{51}(1), 195--203. https://doi.org/10.3758/s13428-018-01193-y
-
-Nature Portfolio. (2023). \emph{Tools and technologies: Artificial
-intelligence}.
-https://www.nature.com/nature-portfolio/editorial-policies/ai
-
-Springer Nature. (2023). \emph{Artificial intelligence (AI) policy for
-authors}. https://www.springernature.com/gp/policies/editorial-policies
-
-Zyko0. (2024). \emph{go-sdl3: Go bindings for SDL3}. GitHub.
-https://github.com/Zyko0/go-sdl3
+\printbibliography
 
 \begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
 
