@@ -5,7 +5,7 @@
 * [Getting Started](docs/GettingStarted.md) — Tutorial for psychologists
 * [User Manual](docs/UserManual.md) — Core concepts explained in depth
 * [API Reference](docs/API.md) — Complete function and type reference
-* [Examples](./examples/README.md) — source code, descriptions, and pre-built binaries for all experiments
+* [Demos](./examples/README.md) — source code, descriptions, and pre-built binaries for many experiments
 * [Github.io Page](https://chrplr.github.io/goxpyriment)
 * [Github repository](https://github.com/chrplr/goxpyriment)
 
@@ -24,21 +24,6 @@ If you are looking for a simpler, *no-code experiment generator*, check [Gostim2
 - **Input handling:** keyboard (blocking/non-blocking, multi-key, timeout, reaction-time measurement) and mouse (position, button detection); hardware trigger devices (serial/USB DLP-IO8, parallel port) via the separate `triggers` package.
 - **Data collection:** trial data logged to `.xpd` files (CSV with metadata header) with automatic subject ID, timestamp, and display-info fields.
 
-Goxpyriment relies on the [libsdl](http://libsdl.org) library through the [go-sdl3](https://github.com/Zyko0/go-sdl3) bindings. 
-(While Python is easy, Go is simple: read [Go-vs-Python](gemini-about-go-vs-python.md)). The code was mostly written using Claude Sonnet 4.6, with some input from Gemini 2.5 flash.
-
-As its name suggests, goxpyriment was inspired by [expyriment.org](https://github.com/expyriment/expyriment?tab=readme-ov-file), a nice, light-weight Python library for cognitive and neuroscientic experiments (See Krause, F., & Lindemann, O. (2014). *Behavior Research Methods*, 46(2), 416–428. <https://doi.org/10.3758/s13428-013-0390-6>). The API should feel very familiar to expyriment users.
-
-If you use this softawre in a scientific paper, please cite as:
-
-* Christophe Pallier (2026) chrplr/goxpyriment: Goxpyriment examples v0.7.13 (v0.7.13). Zenodo. https://doi.org/10.5281/zenodo.19200598
-*(updating the version if you use a more recent one!)*
-
-> :warning: This software is in beta-testing: although it is certainly possible to use it to implement real experiments in the lab, users should (as always) very carefully check their behavior, for example with a [bbtk](https://chrplr.github.io/bbtkv3/).
-> Please report bugs and suggestions at <https://github.com/chrplr/goxpyriment/issues>
-
-[chrplr](https://github.com/chrplr)
-
 ---
 
 ## How to write your own experiment, in a nutshell 
@@ -56,16 +41,33 @@ If you use this softawre in a scientific paper, please cite as:
 env GOOS=linux GOARCH=arm64 go build .
 ```
 
+---
 
-### Demos
+## Beta-testing
 
-Pre-built binaries and source-code listings for all experiments are in **[examples/README.md](examples/README.md)**.
-
-> :memo: Report bugs and suggestions at <https://github.com/chrplr/goxpyriment/issues>
+> :warning: This software is in beta-testing, that is, I am waiting for report from the battle-ground. 
+> Although it is certainly possible to use it to implement real experiments in the lab, users should (as always) very carefully check their behavior, for example with a [bbtk](https://chrplr.github.io/bbtkv3/).
+> Please report bugs and suggestions at <https://github.com/chrplr/goxpyriment/issues>
 
 ## License
 
 This project is licensed under the GNU Public License v3 - see the [LICENSE](LICENSE.txt) file for details.
+
+If you use it, please cite as:
+
+* Christophe Pallier (2026) chrplr/goxpyriment: Goxpyriment examples v0.7.13 (v0.7.13). Zenodo. https://doi.org/10.5281/zenodo.19200598
+*(updating the version if you use a more recent one!)*
+
+## Origin of the project
+
+Goxpyriment relies on the [libsdl](http://libsdl.org) library through the [go-sdl3](https://github.com/Zyko0/go-sdl3) bindings. 
+(While Python is easy, Go is simple: read [Go-vs-Python](gemini-about-go-vs-python.md)). The code was mostly written using Claude Sonnet 4.6, with some input from Gemini 2.5 flash.
+
+As its name suggests, goxpyriment was inspired by [expyriment.org](https://github.com/expyriment/expyriment?tab=readme-ov-file), a nice, light-weight Python library for cognitive and neuroscientic experiments (See Krause, F., & Lindemann, O. (2014). *Behavior Research Methods*, 46(2), 416–428. <https://doi.org/10.3758/s13428-013-0390-6>). The API should feel very familiar to expyriment users.
+
+
+[chrplr](https://github.com/chrplr)
+
 
 ---
 
