@@ -1,6 +1,6 @@
 # Examples
 
-This directory contains self-contained programs built with the goxpyriment framework. Each subdirectory has its own `main.go` and a `README.md` (or `description.md`) with full details.
+[This directory](./) contains self-contained programs built with the goxpyriment framework. Each subdirectory has its own `main.go` and a `README.md` (or `description.md`) with full details.
 
 ## Download pre-built binaries
 
