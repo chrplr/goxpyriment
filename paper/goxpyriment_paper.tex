@@ -1039,6 +1039,111 @@ example directory, and run \texttt{go\ run\ .}. To compile a standalone
 binary for distribution, run \texttt{go\ build\ .} in the experiment
 directory.
 
+\subsubsection{Distributing Compiled Experiments}\label{distributing}
+
+Once an experiment compiles, distributing it requires copying a single
+file: the compiled binary has no runtime dependencies and no installer.
+The recipient needs only to mark the file executable and run it.
+
+\textbf{Cross-compilation.} Go can target any supported platform from
+any host by setting two environment variables before building:
+
+\begin{verbatim}
+# Windows 64-bit, from Linux or macOS
+GOOS=windows GOARCH=amd64 go build -o myexperiment.exe .
+
+# macOS Apple Silicon, from Linux or Windows
+GOOS=darwin  GOARCH=arm64 go build -o myexperiment-mac .
+
+# Linux ARM64 (e.g. Raspberry Pi), from any platform
+GOOS=linux   GOARCH=arm64 go build -o myexperiment-rpi .
+\end{verbatim}
+
+This works without any additional toolchain because \texttt{goxpyriment}
+sets \texttt{CGO\_ENABLED=0}: the SDL3 and SDL3\_ttf native libraries
+are bundled as pre-compiled objects in the \texttt{go-sdl3/bin} package
+and are extracted at runtime, so no C compiler or cross-compilation
+sysroot is needed.
+
+\textbf{Windows: SmartScreen warning.} When a user downloads a
+\texttt{.exe} file from the internet and tries to run it, Windows
+Defender SmartScreen may display a ``Windows protected your PC''
+warning, because the executable has not been digitally signed.
+To proceed the user clicks \textbf{More info} and then
+\textbf{Run anyway}. This prompt appears only on first launch and only
+for files with the ``downloaded from the internet'' mark of origin; files
+copied from a USB drive or an internal network share bypass the check.
+
+\textbf{macOS: Gatekeeper.}
+macOS includes a security system called \textbf{Gatekeeper} that checks
+whether applications have been signed with an Apple-issued certificate
+and submitted to Apple for notarization (a process that requires a paid
+Apple Developer account, \$99/year). Applications distributed outside
+the Mac App Store that are not notarized receive a quarantine attribute
+when downloaded, which triggers Gatekeeper on first launch.
+
+Two dialogs may appear, depending on how the user attempts to open the
+application.
+
+\begin{enumerate}
+\tightlist
+\item \textbf{``App is damaged'' dialog}
+  (Figure~\ref{fig:gatekeeper-damaged}).
+  This alarming message appears when double-clicking an unsigned
+  \texttt{.app} bundle. Despite the wording, the application has not
+  been corrupted. \textbf{Workaround:} right-click (or Control-click)
+  the \texttt{.app}, choose \textbf{Open} from the contextual menu, then
+  click \textbf{Open} in the confirmation dialog. The exception is
+  remembered; subsequent double-clicks launch the app normally.
+
+\item \textbf{Privacy \& Security panel}
+  (Figure~\ref{fig:gatekeeper-privacy}).
+  After a blocked launch attempt, macOS records the blocked app in
+  \textbf{System Settings → Privacy \& Security}. Scrolling to the
+  blocked-app entry and clicking \textbf{Open Anyway} (followed by the
+  administrator password) has the same effect as the right-click method.
+\end{enumerate}
+
+For plain command-line binaries (not \texttt{.app} bundles), the
+right-click workaround does not apply. Instead, the quarantine attribute
+can be removed with:
+
+\begin{verbatim}
+xattr -d com.apple.quarantine ./myexperiment
+chmod +x ./myexperiment
+./myexperiment
+\end{verbatim}
+
+\textbf{Linux.} Linux binaries compiled with \texttt{go build} require
+no installation: copy the binary to the target machine, mark it
+executable (\texttt{chmod +x}), and run it. For broader distribution,
+the AppImage format (\url{https://appimage.org}) encapsulates a binary
+and its required shared libraries into a single portable file that runs
+on most Linux distributions without root access; the \texttt{goxpyriment}
+repository includes scripts for building AppImages automatically.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.55\textwidth]{macos-gatekeeper-damaged.png}
+\caption{The macOS Gatekeeper ``damaged'' dialog that appears when
+double-clicking an unsigned \texttt{.app} bundle downloaded from the
+internet. The application is not corrupted; the message reflects the
+absence of an Apple notarization certificate. Right-clicking the app
+and selecting \emph{Open}, then confirming in the second dialog,
+bypasses the restriction permanently for that binary.}
+\label{fig:gatekeeper-damaged}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{macos-gatekeeper-privacy.png}
+\caption{The Privacy \& Security pane in macOS System Settings showing
+a blocked unsigned application. Clicking \emph{Open Anyway} and
+supplying the administrator password grants a permanent exception for
+that binary.}
+\label{fig:gatekeeper-privacy}
+\end{figure}
+
 \textbf{Documentation.} The repository includes:
 
 \begin{itemize}

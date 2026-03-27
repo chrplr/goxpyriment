@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.26 (TeX Live 2025/dev/Debian) (preloaded format=pdflatex 2026.2.15)  26 MAR 2026 15:29
+This is pdfTeX, Version 3.141592653-2.6-1.40.26 (TeX Live 2025/dev/Debian) (preloaded format=pdflatex 2026.2.15)  27 MAR 2026 07:03
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -933,24 +933,35 @@ Underfull \vbox (badness 10000) has occurred while \output is active []
 Underfull \vbox (badness 10000) has occurred while \output is active []
 
  [15]
-Underfull \hbox (badness 7133) in paragraph at lines 1069--1078
-[]\OT1/cmr/bx/n/10.03749 Claude Son-net 4.6 (Anthropic)\OT1/cmr/m/n/10 : Soft-w
-are (sub-stan-tial imple-men-ta-
- []
-
-
-Underfull \hbox (badness 1960) in paragraph at lines 1069--1078
-\OT1/cmr/m/n/10 tion of mul-ti-ple mod-ules, includ-ing \OT1/cmtt/m/n/10.03749 
-control/getinfo.go\OT1/cmr/m/n/10 , \OT1/cmtt/m/n/10.03749 io/data.go \OT1/cmr/
-m/n/10 exten-
- []
-
-
 
 
 Underfull \vbox (badness 10000) has occurred while \output is active []
 
  [16 <./Kanizsa_rect_AI.png>]
+Underfull \hbox (badness 3724) in paragraph at lines 1062--1067
+[]\OT1/cmr/m/n/10 This works with-out any addi-tional toolchain because \OT1/cm
+tt/m/n/10.03749 goxpyriment \OT1/cmr/m/n/10 sets
+ []
+
+<macos-gatekeeper-damaged.png, id=133, 548.0475pt x 521.95pt>
+File: macos-gatekeeper-damaged.png Graphic file (type png)
+<use macos-gatekeeper-damaged.png>
+Package pdftex.def Info: macos-gatekeeper-damaged.png  used on input line 1127.
+
+(pdftex.def)             Requested size: 204.60114pt x 194.86266pt.
+
+LaTeX Warning: `h' float specifier changed to `ht'.
+
+<macos-gatekeeper-privacy.png, id=134, 2842.62pt x 1039.885pt>
+File: macos-gatekeeper-privacy.png Graphic file (type png)
+<use macos-gatekeeper-privacy.png>
+Package pdftex.def Info: macos-gatekeeper-privacy.png  used on input line 1139.
+
+(pdftex.def)             Requested size: 372.0pt x 136.07835pt.
+
+LaTeX Warning: `h' float specifier changed to `ht'.
+
+
 Underfull \vbox (badness 10000) has occurred while \output is active []
 
 
@@ -959,34 +970,63 @@ Underfull \vbox (badness 10000) has occurred while \output is active []
 Underfull \vbox (badness 10000) has occurred while \output is active []
 
  [17]
-Underfull \hbox (badness 7468) in paragraph at lines 1143--1146
-[]\OT1/cmr/m/n/10 Nature Port-fo-lio. (2023). \OT1/cmr/m/it/10.03749 Tools and 
-tech-nolo-gies: Arti-fi-cial intel-li-gence\OT1/cmr/m/n/10 .
- []
-
-
-Underfull \hbox (badness 5637) in paragraph at lines 1147--1149
-[]\OT1/cmr/m/n/10 Springer Nature. (2023). \OT1/cmr/m/it/10.03749 Arti-fi-cial 
-intel-li-gence (AI) pol-icy for authors\OT1/cmr/m/n/10 .
- []
-
-
-Underfull \hbox (badness 10000) in paragraph at lines 1150--1152
-[]\OT1/cmr/m/n/10 Zyko0. (2024). \OT1/cmr/m/it/10.03749 go-sdl3: Go bind-ings f
-or SDL3\OT1/cmr/m/n/10 . GitHub.
- []
-
-
 
 
 Underfull \vbox (badness 10000) has occurred while \output is active []
 
- [18]
+ [18 <./macos-gatekeeper-damaged.png> <./macos-gatekeeper-privacy.png>]
+Underfull \hbox (badness 7133) in paragraph at lines 1174--1183
+[]\OT1/cmr/bx/n/10.03749 Claude Son-net 4.6 (Anthropic)\OT1/cmr/m/n/10 : Soft-w
+are (sub-stan-tial imple-men-ta-
+ []
+
+
+Underfull \hbox (badness 1960) in paragraph at lines 1174--1183
+\OT1/cmr/m/n/10 tion of mul-ti-ple mod-ules, includ-ing \OT1/cmtt/m/n/10.03749 
+control/getinfo.go\OT1/cmr/m/n/10 , \OT1/cmtt/m/n/10.03749 io/data.go \OT1/cmr/
+m/n/10 exten-
+ []
+
+
+Underfull \vbox (badness 10000) has occurred while \output is active []
+
+
 
 
 Underfull \vbox (badness 10000) has occurred while \output is active []
 
  [19]
+Underfull \hbox (badness 7468) in paragraph at lines 1248--1251
+[]\OT1/cmr/m/n/10 Nature Port-fo-lio. (2023). \OT1/cmr/m/it/10.03749 Tools and 
+tech-nolo-gies: Arti-fi-cial intel-li-gence\OT1/cmr/m/n/10 .
+ []
+
+
+Underfull \hbox (badness 5637) in paragraph at lines 1252--1254
+[]\OT1/cmr/m/n/10 Springer Nature. (2023). \OT1/cmr/m/it/10.03749 Arti-fi-cial 
+intel-li-gence (AI) pol-icy for authors\OT1/cmr/m/n/10 .
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 1255--1257
+[]\OT1/cmr/m/n/10 Zyko0. (2024). \OT1/cmr/m/it/10.03749 go-sdl3: Go bind-ings f
+or SDL3\OT1/cmr/m/n/10 . GitHub.
+ []
+
+
+Underfull \vbox (badness 10000) has occurred while \output is active []
+
+
+
+
+Underfull \vbox (badness 10000) has occurred while \output is active []
+
+ [20]
+
+
+Underfull \vbox (badness 10000) has occurred while \output is active []
+
+ [21]
 (./goxpyriment_paper.aux)
  ***********
 LaTeX2e <2024-11-01> patch level 2
@@ -998,13 +1038,13 @@ LaTeX Font Warning: Some font shapes were not available, defaults substituted.
 
  ) 
 Here is how much of TeX's memory you used:
- 13997 strings out of 473197
- 217612 string characters out of 5718605
- 670253 words of memory out of 5000000
- 36937 multiletter control sequences out of 15000+600000
- 578571 words of font info for 111 fonts, out of 8000000 for 9000
+ 14026 strings out of 473197
+ 218272 string characters out of 5718605
+ 670932 words of memory out of 5000000
+ 36958 multiletter control sequences out of 15000+600000
+ 578911 words of font info for 112 fonts, out of 8000000 for 9000
  1151 hyphenation exceptions out of 8191
- 90i,8n,93p,773b,586s stack positions out of 10000i,1000n,20000p,200000b,200000s
+ 90i,8n,93p,773b,591s stack positions out of 10000i,1000n,20000p,200000b,200000s
 </usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmbsy10.pfb></u
 sr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx10.pfb></usr/sha
 re/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx12.pfb></usr/share/tex
@@ -1021,12 +1061,12 @@ cmr8.pfb></usr/share/texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmr9.pfb
 /texlive/texmf-dist/fonts/type1/public/amsfonts/cm/cmti8.pfb></usr/share/texliv
 e/texmf-dist/fonts/type1/public/amsfonts/cm/cmtt10.pfb></usr/share/texlive/texm
 f-dist/fonts/type1/public/amsfonts/cm/cmtt8.pfb></usr/share/texmf/fonts/type1/p
-ublic/cm-super/sfrm1000.pfb></usr/share/texmf/fonts/type1/public/cm-super/sftt1
-000.pfb>
-Output written on goxpyriment_paper.pdf (19 pages, 302725 bytes).
+ublic/cm-super/sfbx1000.pfb></usr/share/texmf/fonts/type1/public/cm-super/sfrm1
+000.pfb></usr/share/texmf/fonts/type1/public/cm-super/sftt1000.pfb>
+Output written on goxpyriment_paper.pdf (21 pages, 507094 bytes).
 PDF statistics:
- 350 PDF objects out of 1000 (max. 8388607)
- 286 compressed objects within 3 object streams
- 63 named destinations out of 1000 (max. 500000)
- 270 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 378 PDF objects out of 1000 (max. 8388607)
+ 307 compressed objects within 4 object streams
+ 70 named destinations out of 1000 (max. 500000)
+ 288 words of extra memory for PDF output out of 10000 (max. 10000000)
 

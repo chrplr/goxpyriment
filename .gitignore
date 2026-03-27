@@ -4,84 +4,14 @@ goxpy_data/
 xpd_results/
 octin_college_font/
 
-# Go binaries
-/goxpyriment
-/main
-
-# Root-level compiled binaries
-/Attention-Posner-Task
-/attentional-blink
-/canvas_demo
-/card_game
-/Dehaene-Subliminal-Priming
-/get-display-info
-/Mental-Logic-Card-Game
-/Perception-of-Temporal-Patterns
-/Psychological-Refractory-Period
-/Simon_task
-/stimuli_extras
-/Stroop_task
-/Visual_Statistical_Learning
-/getinfo_demo
-/retinotopy
-
-# Example binaries (named after their directory — Go convention)
-/examples/attentional-blink/attentional-blink
-/examples/canvas_demo/canvas_demo
-/examples/card_game/card_game
-/examples/Contrast-Detection-QUEST/Contrast-Detection-QUEST
-/examples/Dehaene-Subliminal-Priming/Dehaene-Subliminal-Priming
-/examples/Ebbinghaus-illusion-dynamic/Ebbinghaus-illusion-dynamic
-/examples/Finger-Tapping/Finger-Tapping
-/examples/getinfo_demo/getinfo_demo
-/examples/hemispheric-differences-word-processing/hemispheric-differences-word-processing
-/examples/Hemispheric-differences-word-processing/Hemispheric-differences-word-processing
-/examples/hello_world/hello_world
-/examples/kanizsa-square/kanizsa-square
-/examples/lexical_decision/lexical_decision
-/examples/Letter-size-illusion/Letter-size-illusion
-/examples/lilac_chaser/lilac_chaser
-/examples/LoT-geometry/LoT-geometry
-/examples/Magnitude-Estimation-Luminosity/Magnitude-Estimation-Luminosity
-/examples/Memory-for-binary-sequences/Memory-for-binary-sequences
-/examples/Memory-Iconic-Sperling/Memory-Iconic-Sperling
-/examples/Memory_span/Memory_span
-/examples/Mental-Logic-Card-Game/Mental-Logic-Card-Game
-/examples/Motion-Blur/Motion-Blur
-/examples/mouse_audio_feedback/mouse_audio_feedback
-/examples/Multiple-Object-Tracking/mot
-/examples/New-letter-size-illusion/New-letter-size-illusion
-/examples/parity_decision/parity_decision
-/examples/Perception-of-Temporal-Patterns/Perception-of-Temporal-Patterns
-/examples/play_two_videos/play_two_videos
-/examples/play_videos/play_videos
-/examples/Posner_task_simple/Posner_task_simple
-/examples/posner_task/posner_task
-/examples/Psychological-Refractory-Period/Psychological-Refractory-Period
-/examples/Pylyshyn-Multiple-Objects-Tracking/mot
-/examples/random-dot-stereogram/random-dot-stereogram
-/examples/retinotopy/retinotopy
-/examples/Sensory-Threshold-Estimation-Auditory/Sensory-Threshold-Estimation-Auditory
-/examples/Shepard-mental-rotation/Shepard-mental-rotation
-/examples/Simon_task/Simon_task
-/examples/simple_example/simple_example
-/examples/simple_reaction_times/simple_reaction_times
-/examples/Sperling-iconic-memory/Sperling-iconic-memory
-/examples/Sternberg_memory_search/Sternberg_memory_search
-/examples/stimuli_extras/stimuli_extras
-/examples/stroop_task/stroop_task
-/examples/Stroop_task/Stroop_task
-/examples/text_input/text_input
+# Compiled binaries
+examples/_build/
 /tests/test_audio/test_audio
 /tests/test_fullscreen/test_fullscreen
 /tests/test_playgv/test_playgv
 /tests/test_stream_images/test_stream_images
 /tests/test_stream_text/test_stream_text
 /tests/Timing-Tests/Timing-Tests
-/examples/Trubutschek_Unconscious_Working_Memory/Trubutschek_Unconscious_Working_Memory
-/examples/Visual-Angle-Calibration/Visual-Angle-Calibration
-/examples/Visual_Statistical_Learning/vsl
-/examples/Visual_Statistical_Learning/Visual_Statistical_Learning
 
 # General binary patterns
 *.exe

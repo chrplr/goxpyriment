@@ -2,30 +2,48 @@
 
 This directory contains self-contained programs built with the goxpyriment framework. Each subdirectory has its own `main.go` and a `README.md` (or `description.md`) with full details.
 
-## Building and Running
+## Download pre-built binaries
 
-You can build all examples at once or individually using the provided `Makefile`.
+Pre-built binaries for all examples are published with each [GitHub release](https://github.com/chrplr/goxpyriment/releases/latest):
 
-To build all examples:
+* **Windows (x86-64):** Download [`goxpyriment-examples-windows-x86_64.zip`](https://github.com/chrplr/goxpyriment/releases/latest/download/goxpyriment-examples-windows-x86_64.zip), extract it, and run any `.exe` directly. Windows Defender may warn on first launch — click "More info" then "Run anyway".
+
+* **macOS (Apple Silicon):** Download [`goxpyriment-examples-macos-arm64.zip`](https://github.com/chrplr/goxpyriment/releases/latest/download/goxpyriment-examples-macos-arm64.zip), extract it, and move the `.app` bundles to a folder of your choice (e.g. `~/Applications/goxpyriment`).
+
+  > [!WARNING]
+  > These binaries are unsigned. macOS will show a security warning on first launch. Right-click the app → **Open**, or run `xattr -dr com.apple.quarantine <AppName>.app` in Terminal. See [macOS installation and security](https://chrplr.github.io/note-about-macos-unsigned-apps) for step-by-step instructions.
+
+* **Linux (x86-64):** Download [`goxpyriment-examples-linux-x86_64-appimages.tar.gz`](https://github.com/chrplr/goxpyriment/releases/latest/download/goxpyriment-examples-linux-x86_64-appimages.tar.gz), extract with `tar xzf`, and run the `.AppImage` files directly (no install needed).
+
+A good place to start: `Memory_span`, `Change-Blindness`, `retinotopy`.
+
+Most programs accept `-d` (windowed 1024×768 developer mode) and `-s <id>` (subject ID written to the `.xpd` data file).
+
+## Building from source
+
+If [Go](https://go.dev) is installed, you can run any example directly from a clone of the repository:
+
 ```bash
-make all
+go run ./examples/parity_decision/ -d -s 1
 ```
 
-To build a specific example (e.g., `hello_world`):
+Or build and run from inside the example directory:
+
 ```bash
-make hello_world
+cd examples/hello_world
+go run .            # fullscreen by default
+go run . -d         # windowed 1024×768 (developer mode)
+go run . -d -s 1    # windowed, subject ID = 1
+go build .          # build a standalone binary
 ```
 
-To remove all compiled binaries:
-```bash
-make clean
-```
+To build all examples at once (binaries go to `examples/_build/`):
 
-Alternatively, you can run an example directly without building:
 ```bash
-go run hello_world/main.go
+make examples       # from the repo root
+# or, from inside the examples/ directory:
+bash build.sh
 ```
-
 
 Programs that open a **GetParticipantInfo** dialog collect all setup interactively (subject ID, monitor dimensions, fullscreen toggle, and any experiment-specific options). Pass `-headless` on the command line to skip the dialog and use field defaults — useful for scripted runs and automated testing. Programs that do not use the dialog still accept `-d` for windowed development mode and `-s <id>` for a subject ID.
 

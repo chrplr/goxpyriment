@@ -5,14 +5,13 @@
 * [Getting Started](docs/GettingStarted.md) — Tutorial for psychologists
 * [User Manual](docs/UserManual.md) — Core concepts explained in depth
 * [API Reference](docs/API.md) — Complete function and type reference
-* [Source code](./examples/) of example experiments (To try them → Jump to [Demos](#demos))
+* [Examples](./examples/README.md) — source code, descriptions, and pre-built binaries for all experiments
 * [Github.io Page](https://chrplr.github.io/goxpyriment)
 * [Github repository](https://github.com/chrplr/goxpyriment)
 
 If you are looking for a simpler, *no-code experiment generator*, check [Gostim2](https://chrplr.github.io/gostim2/). 
 
 
-<!--
 ## Features
 
 - **Visual stimuli:** text (single-line `TextLine` and word-wrapped `TextBox`), shapes (rectangles, circles, lines, filled polygons), fixation crosses, images (`Picture`), Gabor patches, drifting sinusoidal gratings, random-dot clouds, random-dot stereograms, off-screen canvases, visual masks, thermometer displays, stimulus circles, visual multiple-choice grids (`ChoiceGrid`), and text input boxes.
@@ -24,7 +23,6 @@ If you are looking for a simpler, *no-code experiment generator*, check [Gostim2
 - **Randomization:** shuffled sequences, random draws, truncated normal sampling, and constrained shuffling (maximum consecutive repetitions, minimum gap between repetitions).
 - **Input handling:** keyboard (blocking/non-blocking, multi-key, timeout, reaction-time measurement) and mouse (position, button detection); hardware trigger devices (serial/USB DLP-IO8, parallel port) via the separate `triggers` package.
 - **Data collection:** trial data logged to `.xpd` files (CSV with metadata header) with automatic subject ID, timestamp, and display-info fields.
--->
 
 Goxpyriment relies on the [libsdl](http://libsdl.org) library through the [go-sdl3](https://github.com/Zyko0/go-sdl3) bindings. 
 (While Python is easy, Go is simple: read [Go-vs-Python](gemini-about-go-vs-python.md)). The code was mostly written using Claude Sonnet 4.6, with some input from Gemini 2.5 flash.
@@ -61,45 +59,7 @@ env GOOS=linux GOARCH=arm64 go build .
 
 ### Demos
 
-#### Binaries
-
-* **Windows:** Download [`goxpyriment-examples-windows-x86_64-setup.exe`](https://github.com/chrplr/goxpyriment/releases/latest/download/goxpyriment-examples-windows-x86_64-setup.exe). Execute it; Defender may block you: click "more info" then "Run anyway". By default, experiments are installed in `AppData\Local\Goxpyriment examples\bin` in your user folder. As `AppData` is a hidden folder, select `View > Show > Hidden items` in File Explorer to navigate there.
-* **macOS:** Download [`goxpyriment-examples-macos-arm64-app.zip`](https://github.com/chrplr/goxpyriment/releases/latest/download/goxpyriment-examples-macos-arm64-app.zip), extract it, and drag the `.app` files into a folder of your choice (e.g. `Applications/goxpyriment-examples`).
-
-  > [!WARNING]
-  > macOS may show a security warning the first time you open each app. See [macOS installation and security](https://chrplr.github.io/note-about-macos-unsigned-apps) for an explanation and step-by-step instructions to bypass it.
-* **Linux:** Download [`goxpyriment-examples-linux-x86_64-appimages.tar.gz`](https://github.com/chrplr/goxpyriment/releases/latest/download/goxpyriment-examples-linux-x86_64-appimages.tar.gz) and untar it (`tar xzf`). The applications are ready to run.
-
-There are many programs, my suggestion is to start with `Memory_span`, `Change_Blindess`, `retinotopy`,... 
-
-Most examples accept `-d` (windowed 1024×768 developer mode) and `-s <id>` (subject ID written to the `.xpd` data file).
-
-#### Source code
-
-The source code of [these demos](examples/README.md) can be browsed at  [./examples/](./examples/).
-
-If [Go](https://go.dev) is installed on your computer, and you have run `go get github.com/chrplr/goxpyriment`, you can run any example directly from a clone of the goxpyriment repository, for example:
-
-```bash
-go run ./examples/parity_decision/ -d -s 1
-```
-
-Or:
-
-```bash
-cd examples/hello_world
-go run .            # fullscreen by default
-go run . -d         # windowed 1024×768 (developer mode)
-go run . -d -s 1    # windowed, subject ID = 1
-go build .          # build a standalone binary
-```
-
-To build all examples at once:
-
-```bash
-cd examples
-./build.sh
-```
+Pre-built binaries and source-code listings for all experiments are in **[examples/README.md](examples/README.md)**.
 
 > :memo: Report bugs and suggestions at <https://github.com/chrplr/goxpyriment/issues>
 
