@@ -83,6 +83,7 @@ import (
     "log"
 
     "github.com/chrplr/goxpyriment/control"
+    "github.com/chrplr/goxpyriment/design"
     "github.com/chrplr/goxpyriment/stimuli"
 )
 
@@ -97,9 +98,10 @@ func main() {
             "Is the number EVEN or ODD?\n\nPress F for Even, J for Odd.",
         )
 
-        numbers := []int{1, 2, 3, 4, 5, 6}
+        numbers := []int{1, 2, 3, 4, 5, 6, 7, 8}
+        trials  := design.MakeMultipliedShuffledList(numbers, 4) // 32 trials, randomized
 
-        for _, n := range numbers {
+        for _, n := range trials {
             exp.Blank(1000)
 
             stim := stimuli.NewTextLine(fmt.Sprint(n), 0, 0, control.White)
@@ -149,7 +151,6 @@ import (
     "log"
     "time"
 
-    "github.com/Zyko0/go-sdl3/sdl"
     "github.com/chrplr/goxpyriment/control"
     "github.com/chrplr/goxpyriment/stimuli"
 )
@@ -185,16 +186,8 @@ func main() {
         }
 
         // Did the participant press SPACE during the stream?
-        detected := false
-        rtMs     := int64(0)
-        for _, ev := range events {
-            if ev.Event.Type == sdl.EVENT_KEY_DOWN &&
-                ev.Event.KeyboardEvent().Key == control.K_SPACE {
-                detected = true
-                rtMs = ev.Timestamp.Milliseconds()
-                break
-            }
-        }
+        ev, detected := stimuli.FirstKeyPress(events, control.K_SPACE)
+        rtMs := ev.Timestamp.Milliseconds()
 
         // Optional: inspect timing quality (jitter in ms per word).
         for i, l := range logs {

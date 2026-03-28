@@ -417,6 +417,18 @@ for _, ev := range events {
 }
 ```
 
+#### Searching event lists
+
+| Function | Description |
+|---|---|
+| `FirstKeyPress(events []UserEvent, key sdl.Keycode) (UserEvent, bool)` | Returns the first `KEY_DOWN` event matching `key` from the slice, plus a found flag. |
+
+```go
+if ev, ok := stimuli.FirstKeyPress(events, sdl.K_SPACE); ok {
+    fmt.Printf("Space pressed at %d ms\n", ev.Timestamp.Milliseconds())
+}
+```
+
 #### Visual Streams
 
 ```go

@@ -1,0 +1,12 @@
+# Core dependency (pulls in numpy, sounddevice, and other backends automatically)
+psychopy>=2023.1.0
+
+# Required for drain test
+sounddevice>=0.4.6
+
+# Required for DLP-IO8-G trigger output (frames, flash, av, square, sound, rt)
+pyserial>=3.5
+
+# Optional: hardware-interrupt-level key/flip timestamps (Linux, macOS, Windows)
+# Strongly recommended for the rt test to match goxpyriment's SDL3 nanosecond precision.
+# psychtoolbox>=3.0.19

@@ -631,6 +631,16 @@ for _, ev := range events {
 }
 ```
 
+Use `stimuli.FirstKeyPress` to find the first matching key-down event without writing a loop:
+
+```go
+if ev, ok := stimuli.FirstKeyPress(events, sdl.K_SPACE); ok {
+    fmt.Printf("Space pressed at %d ms\n", ev.Timestamp.Milliseconds())
+}
+```
+
+Both `ev.Timestamp` (Go clock, ms precision) and `ev.TimestampNS` (SDL3 hardware, nanoseconds) are available on the returned `UserEvent`.
+
 ### Computing RT from stream events
 
 Because `UserEvent.TimestampNS` and `TimingLog.OnsetNS` are on the same SDL nanosecond clock, reaction time from a specific stimulus is exact:
