@@ -20,7 +20,7 @@ This example prompts the participant for their name and displays it back on scre
 go run main.go
 
 # Windowed (development / testing)
-go run main.go -d
+go run main.go -w
 ```
 
 ### Flags
@@ -28,7 +28,8 @@ go run main.go -d
 | Flag | Default | Description |
 |------|---------|-------------|
 | `-s` | `0` | Participant ID (integer) |
-| `-d` | off | Development mode: windowed 1024×768 |
+| `-w` | off | Windowed mode (1024×768 window instead of fullscreen) |
+| `-d N` | -1 | Display ID: monitor index where window/fullscreen opens (-1 = primary) |
 
 ---
 

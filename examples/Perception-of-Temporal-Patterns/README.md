@@ -17,8 +17,8 @@ Metrics recorded: number of presentations before reproduction, and reproduction 
 
 ```bash
 go run main.go                   # fullscreen, default tone
-go run main.go -d                # windowed (development)
-go run main.go -d -s 1           # windowed, subject ID 1
+go run main.go -w                # windowed
+go run main.go -w -s 1           # windowed, subject ID 1
 go run main.go -sound cymbal     # use cymbal sound instead of tone
 ```
 
@@ -26,7 +26,8 @@ go run main.go -sound cymbal     # use cymbal sound instead of tone
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `-d` | off | Development mode: windowed 1024×768 |
+| `-w` | off | Windowed mode (1024×768 window instead of fullscreen) |
+| `-d N` | -1 | Display ID: monitor index where window/fullscreen opens (-1 = primary) |
 | `-s` | `0` | Participant ID |
 | `-sound` | `tone` | Sound type: `tone` or `cymbal` |
 

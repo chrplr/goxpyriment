@@ -17,8 +17,8 @@ Eight trials are run: two for each target count N ∈ {4, 5, 6, 7}, in random or
 
 ```bash
 go run main.go              # fullscreen
-go run main.go -d           # windowed (development)
-go run main.go -d -s 1      # windowed, subject ID 1
+go run main.go -w           # windowed
+go run main.go -w -s 1      # windowed, subject ID 1
 go run main.go -speed 80    # custom dot speed (px/s)
 ```
 
@@ -26,7 +26,8 @@ go run main.go -speed 80    # custom dot speed (px/s)
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `-d` | off | Development mode: windowed 1024×768 |
+| `-w` | off | Windowed mode (1024×768 window instead of fullscreen) |
+| `-d N` | -1 | Display ID: monitor index where window/fullscreen opens (-1 = primary) |
 | `-s` | `0` | Participant ID |
 | `-speed` | `50` | Dot speed in pixels per second |
 | `-disksize` | `20` | Radius of each circle in pixels |

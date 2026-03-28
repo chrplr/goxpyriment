@@ -122,7 +122,7 @@ control.ErrCancelled  // returned when the user cancels the dialog
 
 | Function | Description |
 |---|---|
-| `NewExperimentFromFlags(name string, bg, fg Color, fontSize float32) *Experiment` | Creates and fully initializes an experiment from `-d` (windowed 1024×768) and `-s N` (subject ID) command-line flags. Calls `log.Fatal` on error. **This is the preferred entry point.** |
+| `NewExperimentFromFlags(name string, bg, fg Color, fontSize float32) *Experiment` | Creates and fully initializes an experiment from `-w` (windowed 1024×768), `-d N` (display index, -1 = primary), and `-s N` (subject ID) command-line flags. Calls `log.Fatal` on error. **This is the preferred entry point.** |
 | `NewExperiment(name string, width, height int, fullscreen bool, bg, fg Color, fontSize float32) *Experiment` | Lower-level constructor; call `Initialize()` before use. |
 
 ### Lifecycle Methods

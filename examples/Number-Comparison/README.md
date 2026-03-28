@@ -32,17 +32,17 @@ go run ./cmd/generate_irregular/
 **Step 2 — run the experiment:**
 
 ```bash
-# Digits group, windowed developer mode, subject 1
-go run . -group digits -d -s 1
+# Digits group, windowed mode, subject 1
+go run . -group digits -w -s 1
 
 # Regular dot patterns
-go run . -group regular -d -s 2
+go run . -group regular -w -s 2
 
 # Irregular dot patterns (fixed layout per number)
-go run . -group irregular -d -s 3
+go run . -group irregular -w -s 3
 
 # Random dot patterns (new layout each trial)
-go run . -group random -d -s 4
+go run . -group random -w -s 4
 ```
 
 **Response keys:** F = left stimulus is larger, J = right stimulus is larger.

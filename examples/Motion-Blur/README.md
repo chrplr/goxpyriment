@@ -13,15 +13,16 @@ Demonstrates two perceptual effects caused by the interaction between eye moveme
 
 ```bash
 go run main.go          # fullscreen
-go run main.go -d       # windowed (development)
-go run main.go -d -s 1  # windowed, subject ID 1
+go run main.go -w       # windowed
+go run main.go -w -s 1  # windowed, subject ID 1
 ```
 
 ### Flags
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `-d` | off | Development mode: windowed 1024×768 |
+| `-w` | off | Windowed mode (1024×768 window instead of fullscreen) |
+| `-d N` | -1 | Display ID: monitor index where window/fullscreen opens (-1 = primary) |
 | `-s` | `0` | Participant ID |
 
 ## Controls

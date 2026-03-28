@@ -224,6 +224,7 @@ func main() {
 			Options: groups,
 		},
 		control.FullscreenField,
+		control.DisplayField,
 	}
 	info, err := control.GetParticipantInfo("Number Comparison", fields)
 	if err != nil {
@@ -240,6 +241,7 @@ func main() {
 
 	exp := control.NewExperiment("Number Comparison", width, height, fullscreen, control.Gray, control.Black, 32)
 	exp.SubjectID = subjectID
+	exp.ScreenNumber = control.DisplayIDFromInfo(info)
 	exp.Info = info
 	if err := exp.Initialize(); err != nil {
 		log.Fatal(err)

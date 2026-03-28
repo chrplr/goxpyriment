@@ -24,14 +24,15 @@ The task is a spatial delayed-response task designed to assess the retention of 
 From the `Trubutschek_Unconscious_Working_Memory` directory:
 
 ```bash
-go run main.go -d -s [subject_id]
+go run main.go -w -s [subject_id]
 ```
 
 Or from the repository root:
 
 ```bash
-go run examples/Trubutschek_Unconscious_Working_Memory/main.go -d -s [subject_id]
+go run examples/Trubutschek_Unconscious_Working_Memory/main.go -w -s [subject_id]
 ```
 
-- **-d**: Developer mode (windowed display).
+- **-w**: Windowed mode (1024×768 window instead of fullscreen).
+- **-d N**: Display ID — open on monitor N (-1 = primary).
 - **-s**: Subject ID for data logging.

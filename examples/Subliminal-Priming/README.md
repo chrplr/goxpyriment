@@ -24,8 +24,8 @@ Each 2400 ms trial embeds target sequences at 500 ms intervals within a continuo
 
 ```bash
 go run main.go              # fullscreen
-go run main.go -d           # windowed (development)
-go run main.go -d -s 1      # windowed, subject ID 1
+go run main.go -w           # windowed
+go run main.go -w -s 1      # windowed, subject ID 1
 go run main.go -targets 4   # 4 target sequences per trial (default 1)
 ```
 
@@ -33,7 +33,8 @@ go run main.go -targets 4   # 4 target sequences per trial (default 1)
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `-d` | off | Development mode: windowed 1024×768 |
+| `-w` | off | Windowed mode (1024×768 window instead of fullscreen) |
+| `-d N` | -1 | Display ID: monitor index where window/fullscreen opens (-1 = primary) |
 | `-s` | `0` | Participant ID |
 | `-targets` | `1` | Number of target sequences per trial |
 

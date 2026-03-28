@@ -29,16 +29,17 @@ The "attentional blink" is a phenomenon where the second of two targets cannot b
 From the `Attentional-Blink` directory:
 
 ```bash
-go run main.go -d -s [subject_id]
+go run main.go -w -s [subject_id]
 ```
 
 Or from the repository root:
 
 ```bash
-go run examples/Attentional-Blink/main.go -d -s [subject_id]
+go run examples/Attentional-Blink/main.go -w -s [subject_id]
 ```
 
-- **-d**: Developer mode (windowed display).
+- **-w**: Windowed mode (1024×768 window instead of fullscreen).
+- **-d N**: Display ID — open on monitor N (-1 = primary).
 - **-s**: Subject ID for data logging.
 
 ## References

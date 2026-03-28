@@ -35,13 +35,13 @@ oscilloscope channel 3 so you can measure the actual acoustic onset.
 
 ```bash
 # From the repo root (go.work takes care of module resolution):
-go run tests/Timing-Tests/main.go -test jitter -d
-go run tests/Timing-Tests/main.go -test frames -d -cycles 120
+go run tests/Timing-Tests/main.go -test jitter -w
+go run tests/Timing-Tests/main.go -test frames -w -cycles 120
 go run tests/Timing-Tests/main.go -test square -period-ms 100 -duty 50 -duration-s 30
 ```
 
-Add `-d` for a windowed 1024×768 window (developer mode).
-Remove `-d` for fullscreen on the primary display.
+Add `-w` for a windowed 1024×768 window.
+Remove `-w` for fullscreen on the primary display.
 
 ---
 
@@ -144,7 +144,7 @@ High SD or many frames `>0.5 ms` indicate CPU scheduling interference.
 Consider `chrt -r 99` or isolating a CPU core for the experiment process.
 
 ```bash
-go run main.go -test jitter -duration-s 30 -d
+go run main.go -test jitter -duration-s 30 -w
 ```
 
 ---
@@ -238,7 +238,7 @@ Prints two statistics tables at the end:
 ```bash
 go run main.go -test sound -cycles 300 -freq-hz 1000 -tone-ms 50 -iti-ms 450
 # quick check (30 tones, ~15 s):
-go run main.go -test sound -cycles 30 -iti-ms 450 -d
+go run main.go -test sound -cycles 30 -iti-ms 450 -w
 ```
 
 ---
@@ -287,7 +287,7 @@ Prints statistics at the end:
 ```
 
 ```bash
-go run main.go -test rt -cycles 60 -iti-ms 1000 -d
+go run main.go -test rt -cycles 60 -iti-ms 1000 -w
 # With trigger output for photodiode validation:
 go run main.go -test rt -cycles 60 -trigger-pin 1 -trigger-ms 5
 ```
@@ -344,8 +344,8 @@ A latency of ~11.6 ms at 512 samples / 44100 Hz is the theoretical minimum
 `duration_ms, rep, drain_ms, overhead_ms`
 
 ```bash
-go run main.go -test drain -d
-go run main.go -test drain -drain-reps 20 -freq-hz 1000 -audio-frames 256
+go run main.go -test drain -w
+go run main.go -test drain -wrain-reps 20 -freq-hz 1000 -audio-frames 256
 ```
 
 ---
@@ -357,7 +357,8 @@ go run main.go -test drain -drain-reps 20 -freq-hz 1000 -audio-frames 256
 | Flag | Default | Description |
 |------|---------|-------------|
 | `-test` | *(required)* | Sub-test to run |
-| `-d` | false | Windowed 1024×768 developer mode |
+| `-w` | false | Windowed mode (1024×768 window instead of fullscreen) |
+| `-d N` | -1 | Display ID: monitor index where window/fullscreen opens (-1 = primary) |
 | `-port` | auto | Serial port for DLP-IO8-G |
 | `-trigger-pin` | 1 | Output pin on DLP-IO8-G |
 | `-trigger-ms` | 5 | Trigger pulse duration (ms) |
@@ -393,13 +394,13 @@ system:
 
 ```bash
 # Default (platform-dependent, often 512–2048 samples at 44100 Hz):
-go run main.go -test sound -cycles 30 -d
+go run main.go -test sound -cycles 30 -w
 
 # Aggressive low-latency (~5.8 ms at 44100 Hz):
-go run main.go -test sound -cycles 60 -audio-frames 256 -d
+go run main.go -test sound -cycles 60 -audio-frames 256 -w
 
 # Conservative (~46 ms, stable on any system):
-go run main.go -test sound -cycles 60 -audio-frames 2048 -d
+go run main.go -test sound -cycles 60 -audio-frames 2048 -w
 ```
 
 On startup the program prints the **actual** device format after opening,

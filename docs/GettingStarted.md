@@ -47,7 +47,7 @@ import (
 )
 
 func main() {
-    // NewExperimentFromFlags parses -d (windowed 1024×768) and -s <subjectID>.
+    // NewExperimentFromFlags parses -w (windowed 1024×768), -d N (display index), and -s <subjectID>.
     exp := control.NewExperimentFromFlags("SimpleTrial", control.Black, control.White, 32)
     defer exp.End()
 

@@ -507,9 +507,9 @@ func main() {
 		Type:    control.FieldSelect,
 		Options: runLabels,
 	}
-	fields := make([]control.InfoField, 0, len(control.StandardFields)+2)
+	fields := make([]control.InfoField, 0, len(control.StandardFields)+3)
 	fields = append(fields, control.StandardFields...)
-	fields = append(fields, runField, control.FullscreenField)
+	fields = append(fields, runField, control.FullscreenField, control.DisplayField)
 	info, err := control.GetParticipantInfo("Retinotopy", fields)
 	if err != nil {
 		log.Fatalf("Info dialog: %v", err)
@@ -548,6 +548,7 @@ func main() {
 
 	exp := control.NewExperiment("Retinotopy", width, height, fullscreen, BackgroundColor, control.White, 32)
 	exp.SubjectID = subjectID
+	exp.ScreenNumber = control.DisplayIDFromInfo(info)
 	exp.Info = info
 	if err := exp.Initialize(); err != nil {
 		log.Fatal(err)

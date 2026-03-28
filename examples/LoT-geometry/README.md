@@ -46,10 +46,11 @@ Logged variables include:
 From the `examples` directory:
 
 ```bash
-go run ./LoT-geometry/ -d -s [subject_id]
+go run ./LoT-geometry/ -w -s [subject_id]
 ```
 
-- **-d**: Developer mode (windowed display).
+- **-w**: Windowed mode (1024×768 window instead of fullscreen).
+- **-d N**: Display ID — open on monitor N (-1 = primary).
 - **-s**: Subject ID (default is 1).
 - **ESC**: Quit the experiment.
 

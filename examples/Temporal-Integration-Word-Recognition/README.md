@@ -165,16 +165,17 @@ go run main.go -exp 1 -s <subject_id>
 # Experiment 2 — fullscreen
 go run main.go -exp 2 -s <subject_id>
 
-# Windowed mode (1024×768) for development
-go run main.go -exp 1 -d
-go run main.go -exp 2 -d
+# Windowed mode (1024×768)
+go run main.go -exp 1 -w
+go run main.go -exp 2 -w
 ```
 
 | Flag | Default | Description |
 |---|---|---|
 | `-exp` | 1 | Experiment number (1 or 2) |
 | `-s` | 0 | Subject / participant ID |
-| `-d` | off | Windowed developer mode |
+| `-w` | off | Windowed mode (1024×768 window instead of fullscreen) |
+| `-d N` | -1 | Display ID: monitor index where window/fullscreen opens (-1 = primary) |
 
 ---
 

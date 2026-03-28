@@ -14,7 +14,7 @@ The `.gv` format stores frames as LZ4-compressed RGBA texture blocks with a seek
 
 ```bash
 go run main.go -f assets/bonatti1.gv
-go run main.go -d -f assets/bonatti1.gv   # windowed (development)
+go run main.go -w -f assets/bonatti1.gv   # windowed
 ```
 
 ### Flags
@@ -22,7 +22,8 @@ go run main.go -d -f assets/bonatti1.gv   # windowed (development)
 | Flag | Default | Description |
 |------|---------|-------------|
 | `-f` | — | Path to the `.gv` file to play (required) |
-| `-d` | off | Development mode: windowed 1024×768 |
+| `-w` | off | Windowed mode (1024×768 window instead of fullscreen) |
+| `-d N` | -1 | Display ID: monitor index where window/fullscreen opens (-1 = primary) |
 
 ## Note
 

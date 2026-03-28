@@ -49,8 +49,8 @@ The response screen shows the instruction text and a text-input box. Any positiv
 # Fullscreen, participant 1
 go run main.go -s 1
 
-# Windowed (development / testing)
-go run main.go -s 1 -d
+# Windowed (testing)
+go run main.go -s 1 -w
 
 # Custom viewing distance (default 60 cm)
 go run main.go -s 1 -dist 57
@@ -62,7 +62,8 @@ go run main.go -s 1 -dist 57
 |------|---------|-------------|
 | `-s` | `0` | Participant ID (integer) |
 | `-dist` | `60.0` | Viewing distance in cm — used to compute the disk diameter in pixels |
-| `-d` | off | Development mode: windowed 1024×768 |
+| `-w` | off | Windowed mode (1024×768 window instead of fullscreen) |
+| `-d N` | -1 | Display ID: monitor index where window/fullscreen opens (-1 = primary) |
 
 ---
 

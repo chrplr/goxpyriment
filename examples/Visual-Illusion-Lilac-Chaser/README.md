@@ -8,13 +8,16 @@ From the repository root:
 
 ```bash
 cd examples/lilac_chaser
-go run . -d
+go run . -w
 ```
 
 ### Flags
 
-- `-d`  
-  Developer mode (windowed 800×800 instead of exclusive fullscreen).
+- `-w`
+  Windowed mode (800×800 window instead of exclusive fullscreen).
+
+- `-d N`
+  Display ID: open on monitor N (-1 = primary).
 
 - `-r float`  
   **Radius** of the lilac disks in pixels.  
@@ -27,7 +30,7 @@ go run . -d
 Example:
 
 ```bash
-go run . -d -r 50 -R 255 -G 180 -B 220
+go run . -w -r 50 -R 255 -G 180 -B 220
 ```
 
 ## Behavior

@@ -42,7 +42,7 @@ PDFs and the `site/` directory are excluded from git (see `.gitignore`); they ar
 go run examples/parity_decision/main.go
 
 # Or from inside the example directory
-cd examples/parity_decision && go run . -d -s 1
+cd examples/parity_decision && go run . -w -s 1
 
 # Build a single example
 cd examples/parity_decision && go build .
@@ -55,7 +55,7 @@ go build ./stimuli/
 go build ./...
 ```
 
-Most examples accept `-d` for windowed developer mode (1024×768 window) and `-s <id>` for subject ID.
+Most examples accept `-w` for windowed mode (1024×768 window), `-d N` for display selection (monitor index, -1 = primary), and `-s <id>` for subject ID.
 
 There are no automated tests (`go test` finds nothing meaningful). Verification is manual: build the package, then run an example with a real display.
 
@@ -90,7 +90,7 @@ exp.Run(func() error {
 })
 ```
 
-`NewExperimentFromFlags` parses `-d` (windowed dev mode) and `-s <subjectID>`, then initialises SDL, audio, window, font, and data file. Key fields: `exp.Screen`, `exp.Keyboard`, `exp.Mouse`, `exp.AudioDevice`, `exp.Data`, `exp.Design`.
+`NewExperimentFromFlags` parses `-w` (windowed mode), `-d N` (display index, -1 = primary), and `-s <subjectID>`, then initialises SDL, audio, window, font, and data file. Key fields: `exp.Screen`, `exp.Keyboard`, `exp.Mouse`, `exp.AudioDevice`, `exp.Data`, `exp.Design`.
 
 **Convenience methods:** `exp.Show(stim)` — clear + draw + flip. `exp.Blank(ms)` — clear + flip + sleep.
 

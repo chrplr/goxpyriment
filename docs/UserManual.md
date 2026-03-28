@@ -36,7 +36,8 @@ defer exp.End()
 
 | Flag | Effect |
 |------|--------|
-| `-d` | Developer mode: opens a 1024×768 window instead of going fullscreen |
+| `-w` | Windowed mode: opens a 1024×768 window instead of going fullscreen |
+| `-d N` | Display ID: open on monitor N (-1 = primary display) |
 | `-s N` | Set subject ID to N (integer); written to the data file automatically |
 
 `defer exp.End()` must appear immediately after construction. It saves the data file, releases fonts, destroys the window, and shuts down SDL — even if the experiment panics or returns early.

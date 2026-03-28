@@ -33,7 +33,7 @@ Select the variant using the `-exp` flag:
 go run main.go
 
 # Run Experiment 1A in windowed mode
-go run main.go -exp 1A -d
+go run main.go -exp 1A -w
 
 # Run Experiment 3 for Subject 5
 go run main.go -exp 3 -s 5

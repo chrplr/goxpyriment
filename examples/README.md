@@ -20,7 +20,7 @@ Pre-built binaries for all examples are published with each [GitHub release](htt
 
 A good place to start: `Memory_span`, `Change-Blindness`, `retinotopy`.
 
-When launched from the command line, most programs accept `-d` (windowed 1024×768 developer mode) and `-s <id>` (subject ID written to the `.xpd` data file).
+When launched from the command line, most programs accept `-w` (windowed 1024×768 mode), `-d N` (open on monitor N, 0 = primary), and `-s <id>` (subject ID written to the `.xpd` data file).
 
 Results are saved in a folder `goxpy_data` in your home folder.
 
@@ -29,7 +29,7 @@ Results are saved in a folder `goxpy_data` in your home folder.
 If [Go](https://go.dev) is installed, you can run any example directly from a clone of the repository:
 
 ```bash
-go run ./examples/parity_decision/ -d -s 1
+go run ./examples/parity_decision/ -w -s 1
 ```
 
 Or build and run from inside the example directory:
@@ -37,8 +37,10 @@ Or build and run from inside the example directory:
 ```bash
 cd examples/hello_world
 go run .            # fullscreen by default
-go run . -d         # windowed 1024×768 (developer mode)
-go run . -d -s 1    # windowed, subject ID = 1
+go run . -w         # windowed 1024×768
+go run . -w -s 1    # windowed, subject ID = 1
+go run . -d 1       # fullscreen on monitor 1
+go run . -w -d 1    # windowed on monitor 1
 go build .          # build a standalone binary
 ```
 
@@ -50,7 +52,7 @@ make examples       # from the repo root
 bash build.sh
 ```
 
-Programs that open a **GetParticipantInfo** dialog collect all setup interactively (subject ID, monitor dimensions, fullscreen toggle, and any experiment-specific options). Pass `-headless` on the command line to skip the dialog and use field defaults — useful for scripted runs and automated testing. Programs that do not use the dialog still accept `-d` for windowed development mode and `-s <id>` for a subject ID.
+Programs that open a **GetParticipantInfo** dialog collect all setup interactively (subject ID, monitor dimensions, fullscreen toggle, and any experiment-specific options). Pass `-headless` on the command line to skip the dialog and use field defaults — useful for scripted runs and automated testing. Programs that do not use the dialog still accept `-w` for windowed mode, `-d N` to select a monitor, and `-s <id>` for a subject ID.
 
 ---
 

@@ -10,17 +10,18 @@ Implements the two experiments from Sternberg (1966) demonstrating **high-speed 
 
 ```bash
 # From the Memory-Scanning directory
-go run main.go -d -s 1 -exp 1
+go run main.go -w -s 1 -exp 1
 
 # From the repository root
-go run examples/Memory-Scanning/main.go -d -s 1 -exp 1
+go run examples/Memory-Scanning/main.go -w -s 1 -exp 1
 ```
 
 ### Flags
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `-d` | off | Development mode: windowed 1024×768 |
+| `-w` | off | Windowed mode (1024×768 window instead of fullscreen) |
+| `-d N` | -1 | Display ID: monitor index where window/fullscreen opens (-1 = primary) |
 | `-s` | `0` | Participant ID |
 | `-exp` | `0` | Experiment: `1` (varied set), `2` (fixed set), `0` (both) |
 

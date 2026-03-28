@@ -134,8 +134,9 @@ func NewExperiment(name string, width, height int, fullscreen bool, bg, fg sdl.C
 // NewExperimentFromFlags creates and initializes an experiment using the
 // standard command-line flags accepted by every goxpyriment program:
 //
-//   - `-d`  developer mode: opens a 1024×768 window instead of fullscreen
-//   - `-s N` subject ID (default 0)
+//   - `-w`    windowed mode: opens a 1024×768 window instead of fullscreen
+//   - `-d N`  display ID: open the window / fullscreen on monitor N (0 = primary; default -1 = primary)
+//   - `-s N`  subject ID (default 0)
 //
 // Any extra flags the caller registered with the flag package before calling
 // this function are parsed at the same time, so register experiment-specific
@@ -145,17 +146,21 @@ func NewExperiment(name string, width, height int, fullscreen bool, bg, fg sdl.C
 // being returned. If initialization fails the program exits via log.Fatal.
 // The caller should defer exp.End() immediately after this call.
 func NewExperimentFromFlags(name string, bg, fg sdl.Color, fontSize float32) *Experiment {
-	develop := flag.Bool("d", false, "Developer mode (windowed 1024×768)")
+	windowed := flag.Bool("w", false, "Windowed mode (1024×768 window instead of fullscreen)")
+	display := flag.Int("d", -1, "Display ID: monitor index where the window/fullscreen will open (-1 = primary)")
 	subject := flag.Int("s", 0, "Subject ID")
 	flag.Parse()
 
 	width, height, fullscreen := 0, 0, true
-	if *develop {
+	if *windowed {
 		width, height, fullscreen = 1024, 768, false
 	}
 
 	exp := NewExperiment(name, width, height, fullscreen, bg, fg, fontSize)
 	exp.SubjectID = *subject
+	if *display >= 0 {
+		exp.ScreenNumber = *display
+	}
 	if err := exp.Initialize(); err != nil {
 		log.Fatalf("failed to initialize experiment: %v", err)
 	}

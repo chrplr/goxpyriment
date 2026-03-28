@@ -54,8 +54,8 @@ func main() {
 ```
 
 ```bash
-go run . -d        # windowed developer mode
-go run . -d -s 1   # windowed, subject ID = 1
+go run . -w        # windowed mode
+go run . -w -s 1   # windowed, subject ID = 1
 ```
 
 ---
@@ -73,7 +73,7 @@ go build ./...
 Run any example:
 
 ```bash
-go run examples/Stroop_task/main.go -d -s 1
+go run examples/Stroop_task/main.go -w -s 1
 ```
 
 ---

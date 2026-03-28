@@ -13,7 +13,7 @@ Use this as a starting point if you want to develop an experiment in its own sep
 
 ```bash
 go run main.go
-go run main.go -d   # windowed (development)
+go run main.go -w   # windowed
 ```
 
 ## Running as a standalone module (outside the repo)

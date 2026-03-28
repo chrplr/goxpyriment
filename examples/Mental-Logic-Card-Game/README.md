@@ -14,11 +14,12 @@ go run examples/card_game/main.go
 ### Development Mode (Windowed)
 To run in a 1280x1024 window:
 ```bash
-go run examples/card_game/main.go -d
+go run examples/card_game/main.go -w
 ```
 
 ### Command Line Options
-- `-d`: Enable Development mode (windowed display).
+- `-w`: Windowed mode (1024×768 window instead of fullscreen).
+- `-d N`: Display ID — open on monitor N (-1 = primary).
 - `--scaling <factor>`: Scaling factor for stimuli and layout (default: 1.0).
 - `-F`: Force Fullscreen (default behavior).
 

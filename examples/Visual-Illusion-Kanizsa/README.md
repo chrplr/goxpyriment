@@ -8,13 +8,16 @@ From the repository root:
 
 ```bash
 cd examples/kanizsa-square
-go run . -d
+go run . -w
 ```
 
 ### Flags
 
-- `-d`  
-  Developer mode (windowed 800×600 instead of exclusive fullscreen).
+- `-w`
+  Windowed mode (800×600 window instead of exclusive fullscreen).
+
+- `-d N`
+  Display ID: open on monitor N (-1 = primary).
 
 - `-s int`  
   Subject ID (not used for data here; kept for API consistency).
@@ -30,7 +33,7 @@ go run . -d
 Example:
 
 ```bash
-go run . -d -r 60 -w 250
+go run . -w -r 60 -w 250
 ```
 
 ## Behavior

@@ -129,15 +129,15 @@ debugging.
 On Linux, SDL3 may use a software renderer that ignores VSYNC.  Check with:
 
 ```bash
-SDL_RENDER_DRIVER=opengl go run . -d
+SDL_RENDER_DRIVER=opengl go run . -w
 # or
-SDL_RENDER_DRIVER=vulkan go run . -d
+SDL_RENDER_DRIVER=vulkan go run . -w
 ```
 
-### 4. Developer mode vs fullscreen
+### 4. Windowed mode vs fullscreen
 
-Run with `-d` (windowed) first. Some compositors disable VSYNC for windowed
-apps; fullscreen (no `-d`) is more reliable for true VSYNC behaviour.
+Run with `-w` (windowed) first. Some compositors disable VSYNC for windowed
+apps; fullscreen (no `-w`) is more reliable for true VSYNC behaviour.
 
 ## Expected timing at common refresh rates
 

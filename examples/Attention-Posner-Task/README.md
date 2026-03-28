@@ -29,7 +29,7 @@ Fixation  →  Arrow cue  →  Target  →  ITI
 go run main.go -s 1
 
 # Windowed (development / testing)
-go run main.go -s 1 -d
+go run main.go -s 1 -w
 ```
 
 ### Flags
@@ -37,7 +37,8 @@ go run main.go -s 1 -d
 | Flag | Default | Description |
 |------|---------|-------------|
 | `-s` | `0` | Participant ID (integer) |
-| `-d` | off | Development mode: windowed 1024×768 |
+| `-w` | off | Windowed mode (1024×768 window instead of fullscreen) |
+| `-d N` | -1 | Display ID: monitor index where window/fullscreen opens (-1 = primary) |
 
 ---
 

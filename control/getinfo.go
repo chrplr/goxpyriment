@@ -84,6 +84,17 @@ var (
 		Type:    FieldCheckbox,
 	}
 
+	// DisplayField lets the experimenter choose the monitor on which the
+	// experiment window (or fullscreen) will open. 0 = primary display.
+	// Use DisplayIDFromInfo to extract the integer value from the result map.
+	// FieldText is used (not FieldNumber) because FieldNumber rejects 0.
+	DisplayField = InfoField{
+		Name:    "display_id",
+		Label:   "Display ID (0 = primary monitor)",
+		Default: "0",
+		Type:    FieldText,
+	}
+
 	// StandardFields is ParticipantFields + MonitorFields.
 	StandardFields = append(append([]InfoField{}, ParticipantFields...), MonitorFields...)
 )
@@ -559,6 +570,27 @@ func GetParticipantInfo(title string, fields []InfoField) (map[string]string, er
 		renderer.Present()
 		sdl.Delay(16)
 	}
+}
+
+// DisplayIDFromInfo extracts the display_id value from a GetParticipantInfo
+// result map (e.g. one that included DisplayField). It returns the integer
+// monitor index, or 0 (primary display) if the key is absent or not a
+// non-negative integer.
+//
+// Typical usage:
+//
+//	info, _ := control.GetParticipantInfo(title, append(fields, control.DisplayField))
+//	exp.ScreenNumber = control.DisplayIDFromInfo(info)
+func DisplayIDFromInfo(info map[string]string) int {
+	v, ok := info["display_id"]
+	if !ok {
+		return 0
+	}
+	n, err := strconv.Atoi(strings.TrimSpace(v))
+	if err != nil || n < 0 {
+		return 0
+	}
+	return n
 }
 
 // ─── Session cache ────────────────────────────────────────────────────────────

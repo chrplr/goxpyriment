@@ -31,16 +31,17 @@ The participant is shown two 2D asymmetrical shapes side-by-side. The task is to
 From the `Mental-Rotation` directory:
 
 ```bash
-go run main.go -d -s [subject_id]
+go run main.go -w -s [subject_id]
 ```
 
 Or from the repository root:
 
 ```bash
-go run examples/Mental-Rotation/main.go -d -s [subject_id]
+go run examples/Mental-Rotation/main.go -w -s [subject_id]
 ```
 
-- **-d**: Developer mode (windowed display).
+- **-w**: Windowed mode (1024×768 window instead of fullscreen).
+- **-d N**: Display ID — open on monitor N (-1 = primary).
 - **-s**: Subject ID (default is 1).
 
 ## 5. Notes on 3D Implementation

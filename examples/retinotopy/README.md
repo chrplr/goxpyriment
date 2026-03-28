@@ -20,10 +20,10 @@ Starts in **1280x1024** fullscreen mode with the **768x768** stimulus centered.
 go run examples/retinotopy/main.go -s 0 -r 1
 ```
 
-### Development Mode (Windowed)
+### Windowed Mode
 Starts in a **900x900** window with the **768x768** stimulus centered.
 ```bash
-go run examples/retinotopy/main.go -s 0 -r 1 -d
+go run examples/retinotopy/main.go -s 0 -r 1 -w
 ```
 
 ### Command Line Options
@@ -35,7 +35,8 @@ go run examples/retinotopy/main.go -s 0 -r 1 -d
   - `4`: RETCW (Clockwise Wedge)
   - `5`: RETEXP (Expanding Circles)
   - `6`: RETCON (Contracting Circles)
-- `-d`: Enable Development mode (windowed display).
+- `-w`: Windowed mode (900×900 window instead of fullscreen).
+- `-d N`: Display ID — open on monitor N (-1 = primary).
 - `--scaling <factor>`: Scaling factor for stimuli, grid and fixation dot (default: 1.0).
 - `-F`: Force Fullscreen (default behavior).
 

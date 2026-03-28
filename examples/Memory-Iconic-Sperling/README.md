@@ -36,16 +36,17 @@ Sperling found that when participants were shown a 3x3 grid of letters for a ver
 From the `Memory-Iconic-Sperling` directory:
 
 ```bash
-go run main.go -d -s [subject_id]
+go run main.go -w -s [subject_id]
 ```
 
 Or from the repository root:
 
 ```bash
-go run examples/Memory-Iconic-Sperling/main.go -d -s [subject_id]
+go run examples/Memory-Iconic-Sperling/main.go -w -s [subject_id]
 ```
 
-- **-d**: Developer mode (windowed display).
+- **-w**: Windowed mode (1024×768 window instead of fullscreen).
+- **-d N**: Display ID — open on monitor N (-1 = primary).
 - **-s**: Subject ID (for data logging).
 
 ## References

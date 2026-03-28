@@ -59,7 +59,7 @@ go run main.go -exp 1 -s 12
 go run main.go -exp 2 -s 12
 
 # Windowed 1024×768 (development / testing)
-go run main.go -exp 1 -s 0 -d
+go run main.go -exp 1 -s 0 -w
 ```
 
 ### Flags
@@ -68,7 +68,8 @@ go run main.go -exp 1 -s 0 -d
 |------|---------|-------------|
 | `-exp` | `1` | Experiment number: `1` (letters) or `2` (words) |
 | `-s` | `0` | Participant ID (integer) |
-| `-d` | off | Development mode: windowed 1024×768 instead of fullscreen |
+| `-w` | off | Windowed mode (1024×768 window instead of fullscreen) |
+| `-d N` | -1 | Display ID: monitor index where window/fullscreen opens (-1 = primary) |
 
 ---
 

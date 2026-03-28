@@ -15,7 +15,7 @@ exp.Run(func() error {
 })
 ```
 
-`NewExperimentFromFlags` handles flag parsing (`-d` windowed dev mode, `-s` subject ID), SDL/TTF init, window creation, audio device, font, and data file in one call. Use the lower-level `NewExperiment(...) + Initialize()` only when you need non-standard initialization order.
+`NewExperimentFromFlags` handles flag parsing (`-w` windowed mode, `-d N` display index, `-s` subject ID), SDL/TTF init, window creation, audio device, font, and data file in one call. Use the lower-level `NewExperiment(...) + Initialize()` only when you need non-standard initialization order.
 
 `exp.Run` wraps the SDL event loop. User code panicked with `exitPanic` is recovered there; callers never see it directly. Return `control.EndLoop` (or `sdl.EndLoop`) to exit cleanly.
 

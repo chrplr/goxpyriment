@@ -31,7 +31,7 @@ Full design combining familiarization and both test types.
 go run main.go -exp 1A -s 1
 
 # Windowed (development / testing)
-go run main.go -exp 1A -s 1 -d
+go run main.go -exp 1A -s 1 -w
 ```
 
 ### Flags
@@ -40,7 +40,8 @@ go run main.go -exp 1A -s 1 -d
 |------|---------|-------------|
 | `-exp` | `1A` | Experiment variant: `1A`, `1B`, `2A`, `2B`, or `3` |
 | `-s` | `0` | Participant ID (integer) |
-| `-d` | off | Development mode: windowed 1024×768 |
+| `-w` | off | Windowed mode (1024×768 window instead of fullscreen) |
+| `-d N` | -1 | Display ID: monitor index where window/fullscreen opens (-1 = primary) |
 
 ---
 
