@@ -28,10 +28,10 @@ If you are looking for a simpler, *no-code experiment generator*, check [Gostim2
 
 ## How to write your own experiment, in a nutshell 
 
-1. Install [Git](https://git-scm.com/install/) and [Go](https://go.dev/doc/install) on your machine (for detailed instructions, see [Windows](README-Install-Go-Development-Envir-on-Windows.md) or [macOS](README-Install-Go-Development-Envir-on-macOS.md)).
-2. Clone this repository (`git clone https://github.com/chrplr/goxpyriment.git` or [download ZIP](https://github.com/chrplr/goxpyriment/archive/refs/heads/main.zip)).
-3. Browse [./examples/](./examples/) to see teh source code of experiments and the documentation
-4. Create a folder for your experiment and start coding in a `main.go` file. You can test it by running `go run main.go`. 
+1. Install [Git](https://git-scm.com/install/) and [Go](https://go.dev/doc/install) on your machine (See [detailed instructions](docs/Installing-a-development-environment.md)).
+2. Open a Terminal (`Git Bash` under Windows), clone the goxpyrimentrepository (`git clone https://github.com/chrplr/goxpyriment.git` or [download ZIP](https://github.com/chrplr/goxpyriment/archive/refs/heads/main.zip)).
+3. Browse [./examples/](./examples/) to see the source code of various experiments and the [/.docs](./docs/) 
+4. Create a folder for your experiment and start coding a `main.go` file. You can test it by running `go run main.go`. 
 > [!TIP]
 > *Vibe-coding:* Launch an AI coding agent (Claude, Gemini, etc.) inside the `goxpyriment` folder and ask it to add a new experiment to the `examples` folder — this leads the agent to read the existing examples for context. Describe the experiment (stimuli, design, etc.) in plain language and enjoy.
 > Recommendation: save your prompt in a `description.md` file alongside the code.
