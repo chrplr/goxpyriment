@@ -52,9 +52,11 @@ Returned by `PollEvents`. Summarises the current SDL queue drain:
 
 ```go
 type EventState struct {
-    LastKey         sdl.Keycode
-    LastMouseButton uint8
-    QuitRequested   bool  // sticky — stays true once ESC or window-close seen
+    LastKey            sdl.Keycode
+    LastMouseButton    uint32
+    LastKeyTimestamp   uint64
+    LastMouseTimestamp uint64
+    QuitRequested      bool  // sticky — stays true once ESC or window-close seen
 }
 ```
 

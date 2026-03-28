@@ -57,7 +57,7 @@ go build ./...
 
 Most examples accept `-w` for windowed mode (1024×768 window), `-d N` for display selection (monitor index, -1 = primary), and `-s <id>` for subject ID.
 
-There are no automated tests (`go test` finds nothing meaningful). Verification is manual: build the package, then run an example with a real display.
+Verification is typically manual: build the package, then run an example with a real display. However, core logic in packages like `control` have unit tests (`go test ./control`).
 
 ### Module / workspace layout
 

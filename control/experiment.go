@@ -326,10 +326,7 @@ func (e *Experiment) ShowInstructions(text string) error {
 //	exp.Screen.Update()
 //	exp.Wait(ms)
 func (e *Experiment) Blank(ms int) error {
-	err := e.Do(func() error {
-		return e.Screen.ClearAndUpdate()
-	})
-	if err != nil {
+	if err := e.Screen.ClearAndUpdate(); err != nil {
 		return err
 	}
 	return e.Wait(ms)

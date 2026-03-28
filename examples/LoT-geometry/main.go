@@ -42,31 +42,28 @@ func NewSequence(name string, base []int) Sequence {
 	return Sequence{Name: name, Base: base, Indices: full}
 }
 
-// drawEnvironment uses exp.Do to safely render stimuli on the main thread.
+// drawEnvironment renders stimuli directly on the main thread (inside exp.Run).
 func drawEnvironment(exp *control.Experiment, dots []*stimuli.Circle, fixation *stimuli.FixCross, target *stimuli.Circle, activeIdx int) error {
-	return exp.Do(func() error {
-		if err := exp.Screen.Clear(); err != nil {
+	if err := exp.Screen.Clear(); err != nil {
+		return err
+	}
+	// Draw background dots
+	for i := 0; i < 8; i++ {
+		if err := dots[i].Draw(exp.Screen); err != nil {
 			return err
 		}
-		// Draw background dots
-		for i := 0; i < 8; i++ {
-			if err := dots[i].Draw(exp.Screen); err != nil {
-				return err
-			}
-		}
-		// Draw fixation
-		if err := fixation.Draw(exp.Screen); err != nil {
+	}
+	// Draw fixation
+	if err := fixation.Draw(exp.Screen); err != nil {
+		return err
+	}
+	// Draw target if activeIdx >= 0
+	if activeIdx >= 0 {
+		if err := target.Draw(exp.Screen); err != nil {
 			return err
 		}
-		// Draw target if activeIdx >= 0
-		if activeIdx >= 0 {
-			target.SetPosition(dots[activeIdx].Position)
-			if err := target.Draw(exp.Screen); err != nil {
-				return err
-			}
-		}
-		return exp.Screen.Update()
-	})
+	}
+	return exp.Screen.Update()
 }
 
 func flashSequence(exp *control.Experiment, dots []*stimuli.Circle, fixation *stimuli.FixCross, target *stimuli.Circle, indices []int) error {

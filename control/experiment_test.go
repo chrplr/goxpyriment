@@ -3,7 +3,6 @@ package control
 import (
 	"errors"
 	"testing"
-	"time"
 
 	"github.com/Zyko0/go-sdl3/sdl"
 )
@@ -36,14 +35,10 @@ func TestStickyEvents(t *testing.T) {
 	
 	// 1. Simulate a key press in PollEvents (as if from SDL)
 	// We'll bypass the actual SDL polling for this unit test
-	exp.mu.Lock()
 	exp.event.LastKey = sdl.K_SPACE
-	exp.mu.Unlock()
 
 	// 2. Inject a mock PollKeys that replicates the one in Initialize()
 	pollKeys := func() (sdl.Keycode, bool) {
-		exp.mu.Lock()
-		defer exp.mu.Unlock()
 		k := exp.event.LastKey
 		exp.event.LastKey = 0 // sticky key consumed
 		return k, exp.event.QuitRequested
@@ -62,56 +57,22 @@ func TestStickyEvents(t *testing.T) {
 	}
 }
 
-// TestTaskDispatcher verifies that exp.Do() correctly routes tasks to the
-// main loop and blocks until they are finished.
-func TestTaskDispatcher(t *testing.T) {
-	exp := &Experiment{
-		tasks:     make(chan func() error, 10),
-		logicDone: make(chan error, 1),
-	}
-
-	taskRun := false
-	taskFunc := func() error {
-		taskRun = true
-		return nil
-	}
-
-	// Start a "Main Thread" simulator
-	go func() {
-		select {
-		case task := <-exp.tasks:
-			task()
-		case <-time.After(2 * time.Second):
-			// Timeout to prevent hanging tests
-		}
-	}()
-
-	// Call Do() from the "Logic Thread"
-	err := exp.Do(taskFunc)
-
-	if err != nil {
-		t.Errorf("Do() returned error: %v", err)
-	}
-
-	if !taskRun {
-		t.Error("task was not executed by the dispatcher")
-	}
-}
-
 // TestWaitAbort verifies that Experiment.Wait(ms) correctly detects a quit
 // request and panics with exitPanic.
 func TestWaitAbort(t *testing.T) {
-	// Mock getTicks to avoid SDL initialization crash
+	// Mock getTicks and pollEvent to avoid SDL initialization crash
 	oldTicks := getTicks
 	getTicks = func() uint64 { return 0 }
 	defer func() { getTicks = oldTicks }()
 
+	oldPoll := pollEvent
+	pollEvent = func(ev *sdl.Event) bool { return false }
+	defer func() { pollEvent = oldPoll }()
+
 	exp := &Experiment{}
 	
 	// Simulate a quit request
-	exp.mu.Lock()
 	exp.event.QuitRequested = true
-	exp.mu.Unlock()
 
 	defer func() {
 		if r := recover(); r != nil {

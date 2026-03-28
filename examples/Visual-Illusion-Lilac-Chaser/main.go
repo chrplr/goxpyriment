@@ -52,32 +52,29 @@ func main() {
 				return err // returns control.EndLoop if ESC or QUIT
 			}
 
-			// Render the frame safely on the main thread using exp.Do
-			err := exp.Do(func() error {
-				// Clear screen
-				if err := exp.Screen.Clear(); err != nil {
-					return err
-				}
+			// Render the frame directly on the main thread
+			// Clear screen
+			if err := exp.Screen.Clear(); err != nil {
+				return err
+			}
 
-				// Draw fixation cross
-				if err := fixation.Draw(exp.Screen); err != nil {
-					return err
-				}
+			// Draw fixation cross
+			if err := fixation.Draw(exp.Screen); err != nil {
+				return err
+			}
 
-				// Draw circles
-				for i := 0; i < n; i++ {
-					// Skip the circle at currentPos to create the illusion
-					if i != currentPos {
-						if err := circles[i].Draw(exp.Screen); err != nil {
-							return err
-						}
+			// Draw circles
+			for i := 0; i < n; i++ {
+				// Skip the circle at currentPos to create the illusion
+				if i != currentPos {
+					if err := circles[i].Draw(exp.Screen); err != nil {
+						return err
 					}
 				}
+			}
 
-				// Present the frame
-				return exp.Screen.Update()
-			})
-			if err != nil {
+			// Present the frame
+			if err := exp.Screen.Update(); err != nil {
 				return err
 			}
 
