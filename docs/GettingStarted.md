@@ -28,6 +28,10 @@ If you've ever spent three hours fixing a `conda` environment or `pip` conflict 
 
 ---
 
+To run the following tutorials, you have a Go developement environement. See [here](Installing-a-development-environment.md) for installation instructions.
+
+---
+
 ## Tutorial 1: Your First Trial
 
 A classic sequence: **Fixation Cross** (500 ms) → **Target Circle** → **Wait for Spacebar**.
