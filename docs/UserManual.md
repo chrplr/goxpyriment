@@ -19,7 +19,9 @@ This manual explains the key concepts of the library. It assumes you have read t
 11. [Audio](#11-audio)
 12. [Experimental Design and Randomization](#12-experimental-design-and-randomization)
 13. [Animated Stimuli](#13-animated-stimuli)
-14. [Putting It All Together](#14-putting-it-all-together)
+14. [Gamma Correction and Luminance Linearity](#14-gamma-correction-and-luminance-linearity)
+15. [Hardware Triggers and TTL Devices](#15-hardware-triggers-and-ttl-devices)
+16. [Putting It All Together](#16-putting-it-all-together)
 
 ---
 
@@ -449,6 +451,79 @@ import "github.com/Zyko0/go-sdl3/sdl"
 key, _ := exp.Keyboard.Wait()
 if key == sdl.K_A { ... }
 ```
+
+### Response Devices
+
+All of the input methods above are device-specific: `WaitKeysEventRT` for keyboards, `WaitPressEventRT` for the mouse, and so on. If the experiment should run equally well with different input hardware — a keyboard in one lab, a response box in another — device-specific calls scatter conditional logic throughout the trial loop.
+
+`ResponseDevice` is a single interface that abstracts over all of them:
+
+```go
+// in package io
+type ResponseDevice interface {
+    WaitResponse(ctx context.Context) (Response, error)
+    DrainResponses(ctx context.Context) error
+    Close() error
+}
+```
+
+`WaitResponse` blocks until a response is detected and returns a `Response`:
+
+```go
+type Response struct {
+    Source  io.DeviceKind  // which device fired
+    Code    uint32         // key code, button index, or TTL bitmask
+    RT      time.Duration  // elapsed from WaitResponse call
+    Precise bool           // timing quality (see below)
+}
+```
+
+Wrap any input device with the matching adapter:
+
+```go
+// Keyboard (SDL hardware timestamps → Precise: true)
+var rd io.ResponseDevice = &io.KeyboardResponseDevice{KB: exp.Keyboard}
+
+// Mouse (SDL hardware timestamps → Precise: true)
+var rd io.ResponseDevice = &io.MouseResponseDevice{M: exp.Mouse}
+
+// TTL response box, e.g. MEGTTLBox (software poll → Precise: false)
+box, _ := triggers.NewMEGTTLBox("/dev/ttyACM0")
+var rd io.ResponseDevice = io.NewTTLResponseDevice(box, 5*time.Millisecond)
+```
+
+All three look identical inside a trial loop:
+
+```go
+onset, _ := exp.ShowNS(stim)
+_ = rd.DrainResponses(ctx)         // clear stale presses from previous trial
+resp, err := rd.WaitResponse(ctx)
+if err != nil { /* ESC, timeout, etc. */ }
+
+rtMs := resp.RT.Milliseconds()     // always valid
+```
+
+#### Timing precision and the `Precise` flag
+
+The `Precise` field tells you whether `RT` came from a nanosecond hardware event timestamp or a software poll:
+
+| Device | `Precise` | RT accuracy |
+|--------|-----------|-------------|
+| Keyboard, Mouse, Gamepad | `true` | SDL3 hardware event timestamp, nanosecond resolution — identical to using `WaitKeysEventRT` directly |
+| MEGTTLBox, DLPIO8 | `false` | `time.Now()` at poll detection; accuracy bounded by poll interval (default 5 ms) |
+
+When `Precise` is `true`, the RT in the `Response` is computed from `sdl.TicksNS()` captured at the `WaitResponse` call versus the SDL3 hardware event timestamp — the same nanosecond clock used by `Screen.FlipNS`. It is therefore suitable for stimulus-onset-locked RT:
+
+```go
+onset, _ := exp.ShowNS(stim)
+resp, _ := rd.WaitResponse(ctx)
+if resp.Precise {
+    // resp.RT was computed from SDL hardware timestamps: nanosecond accuracy
+    rtFromOnset := time.Duration(int64(onset) + resp.RT.Nanoseconds())  // approximate
+}
+```
+
+When `Precise` is `false`, `RT` is still a valid elapsed duration — it just has ~poll-interval jitter (5 ms by default). For typical behavioral RT tasks this is acceptable; for EEG/MEG experiments requiring sub-millisecond synchrony, use the TTL output path for stimulus marking and treat RT as an approximate measure or use a hardware response box with sub-ms timestamping.
 
 ---
 
@@ -1011,7 +1086,96 @@ With the flag set, the 7 luminance levels (10, 25, 50, 100, 150, 200, 255) are t
 
 ---
 
-## 15. Putting It All Together
+## 15. Hardware Triggers and TTL Devices
+
+EEG and MEG recordings require a synchronisation signal — a short TTL pulse sent at the exact moment a stimulus is presented — so that electrophysiological data can be time-locked to experimental events. The `triggers` package provides this, along with the ability to read TTL inputs from response hardware such as fiber-optic response pads.
+
+### Concepts
+
+All trigger devices in goxpyriment share two interfaces:
+
+- **`OutputTTLDevice`** — send trigger codes (set lines HIGH/LOW, generate pulses)
+- **`InputTTLDevice`** — read response button states (poll or block)
+
+Lines are **0-indexed (0–7)**. Bit N of a bitmask drives line N.
+
+### Sending triggers (EEG event codes)
+
+```go
+import (
+    "github.com/chrplr/goxpyriment/triggers"
+    "time"
+)
+
+// Auto-detect a DLP-IO8-G; falls back to NullOutputTTLDevice (no-op) if absent.
+out, _, err := triggers.AutoDetectDLPIO8()
+if err != nil { log.Fatal(err) }
+defer out.Close()
+
+// In the trial loop:
+onset, _ := exp.ShowNS(stim)
+out.Pulse(0, 10*time.Millisecond)  // 10 ms pulse on line 0 = EEG event marker
+```
+
+For the NeuroSpin MEGTTLBox:
+
+```go
+box, err := triggers.NewMEGTTLBox("/dev/ttyACM0")
+defer box.Close()
+
+box.Pulse(0, 5*time.Millisecond)   // single line
+box.PulseMask(0b00000011, 5*time.Millisecond)  // lines 0 and 1 simultaneously
+```
+
+### Timing advice
+
+The output pulse should be sent as close as possible to `exp.ShowNS(stim)`. Because both `Screen.FlipNS` and the trigger output use the system's real-time clock, the latency between the VSYNC flip and the TTL edge is typically under 1 ms. The EEG amplifier records this edge, and the exact onset can be recovered by subtracting `int64(triggerEdgeNS - onsetNS)` if the amplifier's sample clock is synchronised.
+
+### Reading response inputs (FORP pads)
+
+The MEGTTLBox wires a fiber-optic response pad (fORP) to its 8 TTL input lines. Use `WaitForInput` directly or via the `ResponseDevice` wrapper (section 7):
+
+```go
+// Via InputTTLDevice directly
+_ = box.DrainInputs(ctx)                     // clear stale presses
+mask, rt, err := box.WaitForInput(ctx)
+buttons := triggers.DecodeMask(mask)
+for _, b := range buttons {
+    fmt.Println(b)  // e.g. "left blue", "right red"
+}
+
+// Via ResponseDevice
+rd := io.NewTTLResponseDevice(box, 5*time.Millisecond)
+_ = rd.DrainResponses(ctx)
+resp, _ := rd.WaitResponse(ctx)
+// resp.Code == bitmask, resp.Precise == false (software poll)
+```
+
+**fORP button mapping** (NeuroSpin wiring):
+
+| FORPButton constant | Line | Arduino pin | STI channel |
+|---------------------|------|-------------|-------------|
+| `FORPLeftBlue`      | 0    | D22         | STI007      |
+| `FORPLeftYellow`    | 1    | D23         | STI008      |
+| `FORPLeftGreen`     | 2    | D24         | STI009      |
+| `FORPLeftRed`       | 3    | D25         | STI010      |
+| `FORPRightBlue`     | 4    | D26         | STI012      |
+| `FORPRightYellow`   | 5    | D27         | STI013      |
+| `FORPRightGreen`    | 6    | D28         | STI014      |
+| `FORPRightRed`      | 7    | D29         | STI015      |
+
+### Supported devices
+
+| Device | Type | Output | Input | Notes |
+|--------|------|--------|-------|-------|
+| DLP-IO8-G | `DLPIO8` | ✓ | ✓ | USB-CDC serial; ASCII protocol |
+| NeuroSpin MEGTTLBox | `MEGTTLBox` | ✓ | ✓ | Arduino Mega; binary protocol; fORP input |
+| LPT parallel port | `ParallelPort` | ✓ | — | Linux only; ppdev ioctl |
+| None / fallback | `NullOutputTTLDevice` | ✓ (no-op) | — | Safe default; returned by `AutoDetectDLPIO8` |
+
+---
+
+## 16. Putting It All Together
 
 Here is a skeleton that illustrates how the concepts compose in a realistic experiment:
 

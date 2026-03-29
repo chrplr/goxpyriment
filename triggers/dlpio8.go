@@ -1,10 +1,10 @@
 // Copyright (2026) Christophe Pallier <christophe@pallier.org>
-// Co-authored by Claude Sonnet 4.6
 // Distributed under the GNU General Public License v3.
 
 package triggers
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"time"
@@ -17,14 +17,18 @@ import (
 // The device communicates at 115200 baud over a USB-to-serial interface.
 // All commands are single ASCII bytes:
 //
-//	Set HIGH  pin 1–8 : '1'–'8'
-//	Set LOW   pin 1–8 : 'Q','W','E','R','T','Y','U','I'
-//	Read      pin 1–8 : 'A','S','D','F','G','H','J','K'
+//	Set HIGH  line 0–7 : '1'–'8'
+//	Set LOW   line 0–7 : 'Q','W','E','R','T','Y','U','I'
+//	Read      line 0–7 : 'A','S','D','F','G','H','J','K'
 //	Ping              : '\'' → device responds with 'Q'
 //	Binary read mode  : '\\' → subsequent reads return 0x00 or 0x01
 
-const dlpBaudRate = 115200
+const (
+	dlpBaudRate            = 115200
+	dlpDefaultPollInterval = 5 * time.Millisecond
+)
 
+// Internal command tables (1-indexed: index 1 = line 0, index 8 = line 7).
 var (
 	setHighCmd = [9]byte{0, '1', '2', '3', '4', '5', '6', '7', '8'}
 	setLowCmd  = [9]byte{0, 'Q', 'W', 'E', 'R', 'T', 'Y', 'U', 'I'}
@@ -32,9 +36,11 @@ var (
 )
 
 // DLPIO8 controls a DLP-IO8 or DLP-IO8-G digital I/O device over USB-CDC
-// serial. Construct with [NewDLPIO8] or [AutoDetectDLPIO8].
+// serial. It implements both [OutputTTLDevice] and [InputTTLDevice].
+// Construct with [NewDLPIO8] or [AutoDetectDLPIO8].
 type DLPIO8 struct {
-	port serial.Port
+	port         serial.Port
+	pollInterval time.Duration
 }
 
 // NewDLPIO8 opens the given serial port (e.g. "/dev/ttyUSB0"), pings the
@@ -53,7 +59,7 @@ func NewDLPIO8(device string) (*DLPIO8, error) {
 	}
 	p.SetReadTimeout(200 * time.Millisecond)
 
-	d := &DLPIO8{port: p}
+	d := &DLPIO8{port: p, pollInterval: dlpDefaultPollInterval}
 	if ok, err := d.ping(); err != nil || !ok {
 		p.Close()
 		if err != nil {
@@ -71,12 +77,12 @@ func NewDLPIO8(device string) (*DLPIO8, error) {
 
 // AutoDetectDLPIO8 scans all available serial ports for a DLP-IO8-G. On
 // success it returns the device and the matched port name. If no device is
-// found it returns a [NullTrigger] and logs a warning; callers do not need
-// to nil-check the returned Trigger.
-func AutoDetectDLPIO8() (Trigger, string, error) {
+// found it returns a [NullOutputTTLDevice] and logs a warning; callers do not
+// need to nil-check the returned [OutputTTLDevice].
+func AutoDetectDLPIO8() (OutputTTLDevice, string, error) {
 	ports, err := serial.GetPortsList()
 	if err != nil {
-		return NullTrigger{}, "", fmt.Errorf("dlpio8: enumerate ports: %w", err)
+		return NullOutputTTLDevice{}, "", fmt.Errorf("dlpio8: enumerate ports: %w", err)
 	}
 	for _, name := range ports {
 		d, err := NewDLPIO8(name)
@@ -85,17 +91,16 @@ func AutoDetectDLPIO8() (Trigger, string, error) {
 		}
 	}
 	log.Println("dlpio8: no DLP-IO8-G found — trigger output disabled")
-	return NullTrigger{}, "", nil
+	return NullOutputTTLDevice{}, "", nil
 }
 
-// ping checks that the device responds to the '`'`' command with 'Q'.
+// ping checks that the device responds to the ping command with 'Q'.
 func (d *DLPIO8) ping() (bool, error) {
 	d.port.ResetInputBuffer()
 	if _, err := d.port.Write([]byte("'")); err != nil {
 		return false, err
 	}
 	buf := make([]byte, 1)
-	// Retry short reads up to 3 times (USB latency can split the response).
 	for i := 0; i < 3; i++ {
 		n, err := d.port.Read(buf)
 		if n == 1 {
@@ -108,33 +113,33 @@ func (d *DLPIO8) ping() (bool, error) {
 	return false, nil
 }
 
-// SetHigh drives pin HIGH. pin is 1-indexed (1–8).
-func (d *DLPIO8) SetHigh(pin int) error {
-	if pin < 1 || pin > 8 {
-		return fmt.Errorf("dlpio8: pin %d out of range (1–8)", pin)
+// SetHigh drives line HIGH. line is 0-indexed (0–7). Implements [OutputTTLDevice].
+func (d *DLPIO8) SetHigh(line int) error {
+	if line < 0 || line > 7 {
+		return fmt.Errorf("dlpio8: line %d out of range (0–7)", line)
 	}
-	_, err := d.port.Write([]byte{setHighCmd[pin]})
+	_, err := d.port.Write([]byte{setHighCmd[line+1]})
 	return err
 }
 
-// SetLow drives pin LOW. pin is 1-indexed (1–8).
-func (d *DLPIO8) SetLow(pin int) error {
-	if pin < 1 || pin > 8 {
-		return fmt.Errorf("dlpio8: pin %d out of range (1–8)", pin)
+// SetLow drives line LOW. line is 0-indexed (0–7). Implements [OutputTTLDevice].
+func (d *DLPIO8) SetLow(line int) error {
+	if line < 0 || line > 7 {
+		return fmt.Errorf("dlpio8: line %d out of range (0–7)", line)
 	}
-	_, err := d.port.Write([]byte{setLowCmd[pin]})
+	_, err := d.port.Write([]byte{setLowCmd[line+1]})
 	return err
 }
 
 // Send sets all 8 output lines simultaneously from a bitmask.
-// Bit 0 = pin 1, bit 7 = pin 8.
-func (d *DLPIO8) Send(value byte) error {
-	for pin := 1; pin <= 8; pin++ {
+// Bit N drives line N. Implements [OutputTTLDevice].
+func (d *DLPIO8) Send(mask byte) error {
+	for line := 0; line < 8; line++ {
 		var err error
-		if value&(1<<uint(pin-1)) != 0 {
-			err = d.SetHigh(pin)
+		if mask&(1<<uint(line)) != 0 {
+			err = d.SetHigh(line)
 		} else {
-			err = d.SetLow(pin)
+			err = d.SetLow(line)
 		}
 		if err != nil {
 			return err
@@ -143,18 +148,22 @@ func (d *DLPIO8) Send(value byte) error {
 	return nil
 }
 
-// Pulse drives pin HIGH for durationMs milliseconds, then LOW.
-func (d *DLPIO8) Pulse(pin int, durationMs int) error {
-	return defaultPulse(d, pin, durationMs)
+// Pulse drives line HIGH for dur, then LOW. Implements [OutputTTLDevice].
+func (d *DLPIO8) Pulse(line int, dur time.Duration) error {
+	return defaultPulse(d, line, dur)
 }
 
-// ReadPin returns the current logical state of a single pin (0 or 1).
-func (d *DLPIO8) ReadPin(pin int) (byte, error) {
-	if pin < 1 || pin > 8 {
-		return 0, fmt.Errorf("dlpio8: pin %d out of range (1–8)", pin)
+// AllLow sets all 8 output lines LOW. Implements [OutputTTLDevice].
+func (d *DLPIO8) AllLow() error { return d.Send(0x00) }
+
+// ReadLine returns the state (0 or 1) of a single input line (0-indexed).
+// Implements [InputTTLDevice].
+func (d *DLPIO8) ReadLine(line int) (byte, error) {
+	if line < 0 || line > 7 {
+		return 0, fmt.Errorf("dlpio8: line %d out of range (0–7)", line)
 	}
 	d.port.ResetInputBuffer()
-	if _, err := d.port.Write([]byte{readCmd[pin]}); err != nil {
+	if _, err := d.port.Write([]byte{readCmd[line+1]}); err != nil {
 		return 0, err
 	}
 	buf := make([]byte, 1)
@@ -167,26 +176,64 @@ func (d *DLPIO8) ReadPin(pin int) (byte, error) {
 			return 0, err
 		}
 	}
-	return 0, fmt.Errorf("dlpio8: ReadPin timeout on pin %d", pin)
+	return 0, fmt.Errorf("dlpio8: ReadLine timeout on line %d", line)
 }
 
-// ReadAll returns the state of all 8 pins as a slice (index 0 = pin 1).
-func (d *DLPIO8) ReadAll() ([]byte, error) {
-	states := make([]byte, 8)
-	for i := 1; i <= 8; i++ {
-		v, err := d.ReadPin(i)
+// ReadAll returns the current state of all 8 input lines as a bitmask.
+// Bit N reflects line N. Implements [InputTTLDevice].
+func (d *DLPIO8) ReadAll() (byte, error) {
+	var mask byte
+	for line := 0; line < 8; line++ {
+		v, err := d.ReadLine(line)
 		if err != nil {
-			return nil, err
+			return 0, err
 		}
-		states[i-1] = v
+		if v != 0 {
+			mask |= 1 << uint(line)
+		}
 	}
-	return states, nil
+	return mask, nil
 }
 
-// AllLow sets all 8 output lines LOW.
-func (d *DLPIO8) AllLow() error { return d.Send(0x00) }
+// WaitForInput blocks until any input line becomes active or ctx is cancelled.
+// Returns the active-line bitmask and the elapsed reaction time.
+// Implements [InputTTLDevice].
+func (d *DLPIO8) WaitForInput(ctx context.Context) (byte, time.Duration, error) {
+	start := time.Now()
+	for {
+		if err := ctx.Err(); err != nil {
+			return 0, time.Since(start), err
+		}
+		mask, err := d.ReadAll()
+		if err != nil {
+			return 0, time.Since(start), err
+		}
+		if mask != 0 {
+			return mask, time.Since(start), nil
+		}
+		time.Sleep(d.pollInterval)
+	}
+}
 
-// Close sets all pins LOW and closes the serial port.
+// DrainInputs polls until all input lines are inactive or ctx is cancelled.
+// Implements [InputTTLDevice].
+func (d *DLPIO8) DrainInputs(ctx context.Context) error {
+	for {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		mask, err := d.ReadAll()
+		if err != nil {
+			return err
+		}
+		if mask == 0 {
+			return nil
+		}
+		time.Sleep(d.pollInterval)
+	}
+}
+
+// Close sets all lines LOW and closes the serial port.
 func (d *DLPIO8) Close() error {
 	_ = d.AllLow()
 	return d.port.Close()

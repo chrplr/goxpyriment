@@ -13,6 +13,7 @@ const (
 	DeviceKeyboard DeviceKind = iota
 	DeviceMouse
 	DeviceGamepad
+	DeviceTTL // TTL input device (MEGTTLBox, DLPIO8, etc.) — polled, not event-driven
 )
 
 // InputEvent is a unified representation of a single input event from any

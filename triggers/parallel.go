@@ -1,10 +1,12 @@
 // Copyright (2026) Christophe Pallier <christophe@pallier.org>
-// Co-authored by Claude Sonnet 4.6
 // Distributed under the GNU General Public License v3.
 
 package triggers
 
-import "fmt"
+import (
+	"fmt"
+	"time"
+)
 
 // ParallelPort controls the 8 data lines of an LPT parallel port via the
 // Linux ppdev kernel interface (/dev/parport0, /dev/parport1, …).
@@ -13,9 +15,9 @@ import "fmt"
 // On other platforms, [ParallelPort.Open] returns an unsupported error.
 //
 // The port must be opened before use (Open) and closed afterwards (Close).
-// Individual pins are addressed by 1-indexed number (pin 1 = data bit D0,
-// pin 8 = data bit D7). The Send method sets all 8 lines at once using a
-// bitmask, which is the natural way to send EEG event codes.
+// Lines are 0-indexed (line 0 = D0, line 7 = D7). [ParallelPort.Send] sets
+// all 8 lines at once using a bitmask, which is the natural way to send EEG
+// event codes.
 //
 // Prerequisites (Linux):
 //   - Load the ppdev kernel module: modprobe ppdev
@@ -39,32 +41,37 @@ func AvailableParallelPorts() []string {
 	return availableParallelPorts()
 }
 
-// SetHigh drives a single pin HIGH (1-indexed, 1–8). Implements [Trigger].
-func (p *ParallelPort) SetHigh(pin int) error {
-	if pin < 1 || pin > 8 {
-		return fmt.Errorf("parallel: pin %d out of range (1–8)", pin)
+// SetHigh drives a single line HIGH. line is 0-indexed (0–7). Implements [OutputTTLDevice].
+func (p *ParallelPort) SetHigh(line int) error {
+	if line < 0 || line > 7 {
+		return fmt.Errorf("parallel: line %d out of range (0–7)", line)
 	}
-	p.shadow |= 1 << uint(pin-1)
+	p.shadow |= 1 << uint(line)
 	return p.writeData(p.shadow)
 }
 
-// SetLow drives a single pin LOW (1-indexed, 1–8). Implements [Trigger].
-func (p *ParallelPort) SetLow(pin int) error {
-	if pin < 1 || pin > 8 {
-		return fmt.Errorf("parallel: pin %d out of range (1–8)", pin)
+// SetLow drives a single line LOW. line is 0-indexed (0–7). Implements [OutputTTLDevice].
+func (p *ParallelPort) SetLow(line int) error {
+	if line < 0 || line > 7 {
+		return fmt.Errorf("parallel: line %d out of range (0–7)", line)
 	}
-	p.shadow &^= 1 << uint(pin-1)
+	p.shadow &^= 1 << uint(line)
 	return p.writeData(p.shadow)
 }
 
 // Send sets all 8 data lines simultaneously from a bitmask.
-// Bit 0 = pin 1 / D0, bit 7 = pin 8 / D7. Implements [Trigger].
-func (p *ParallelPort) Send(value byte) error {
-	p.shadow = value
-	return p.writeData(value)
+// Bit N drives line N / D(N). Implements [OutputTTLDevice].
+func (p *ParallelPort) Send(mask byte) error {
+	p.shadow = mask
+	return p.writeData(mask)
 }
 
-// Pulse drives pin HIGH for durationMs milliseconds, then LOW. Implements [Trigger].
-func (p *ParallelPort) Pulse(pin int, durationMs int) error {
-	return defaultPulse(p, pin, durationMs)
+// Pulse drives line HIGH for dur, then LOW. Implements [OutputTTLDevice].
+func (p *ParallelPort) Pulse(line int, dur time.Duration) error {
+	return defaultPulse(p, line, dur)
+}
+
+// AllLow drives all 8 data lines LOW. Implements [OutputTTLDevice].
+func (p *ParallelPort) AllLow() error {
+	return p.Send(0x00)
 }

@@ -599,6 +599,54 @@ rtNS := int64(ev.TimestampNS - onset)
 
 Pass `keys = nil` to accept any key. Pass `catchMouse = false` to ignore the mouse. On timeout, returns a zero `InputEvent` and `nil` error. On ESC or quit, returns `sdl.EndLoop`.
 
+### ResponseDevice
+
+`ResponseDevice` is a unified interface over all participant-input hardware — SDL-event-driven devices (keyboard, mouse, gamepad) **and** polled TTL devices (MEGTTLBox, DLPIO8). It is the recommended abstraction when the experiment design does not commit to a specific input modality.
+
+```go
+type ResponseDevice interface {
+    WaitResponse(ctx context.Context) (Response, error)
+    DrainResponses(ctx context.Context) error
+    Close() error
+}
+
+type Response struct {
+    Source  io.DeviceKind  // DeviceKeyboard | DeviceMouse | DeviceGamepad | DeviceTTL
+    Code    uint32         // SDL Keycode, mouse button, gamepad button, or TTL bitmask
+    RT      time.Duration  // elapsed from WaitResponse call to detection
+    Precise bool           // true = hardware event timestamp; false = software poll
+}
+```
+
+**`Response.Precise`** distinguishes two timing regimes:
+
+| Device | Precise | RT origin |
+|--------|---------|-----------|
+| Keyboard, Mouse, Gamepad | `true` | SDL3 hardware event timestamp (nanosecond) |
+| MEGTTLBox, DLPIO8 | `false` | `time.Now()` at poll detection (±poll interval, ~5 ms) |
+
+Construct wrappers with the provided adapters:
+
+```go
+// SDL-event-driven devices
+rd := &io.KeyboardResponseDevice{KB: exp.Keyboard}
+rd := &io.MouseResponseDevice{M: exp.Mouse}
+rd := &io.GamepadResponseDevice{GP: pad}
+
+// Polled TTL device (MEGTTLBox, DLPIO8, or any type with ReadAll/DrainInputs)
+box, _ := triggers.NewMEGTTLBox("/dev/ttyACM0")
+rd := io.NewTTLResponseDevice(box, 5*time.Millisecond)
+```
+
+Usage in a trial loop:
+
+```go
+onset, _ := exp.ShowNS(stim)
+_ = rd.DrainResponses(ctx)
+resp, err := rd.WaitResponse(ctx)
+// resp.RT is always valid; resp.Precise tells you whether to trust nanosecond accuracy
+```
+
 ### DataFile
 
 ```go
@@ -705,26 +753,103 @@ geometry.DegreeToRadian(deg float32) float64
 
 Import: `github.com/chrplr/goxpyriment/triggers`
 
-Sends digital trigger pulses to EEG/MEG equipment.
+Provides hardware TTL signal output (EEG/MEG trigger codes) and TTL input (response pads wired over serial). Lines are **0-indexed (0–7)** throughout; bit N of a bitmask corresponds to line N.
+
+### Interfaces
 
 ```go
-type Trigger interface {
-    Send(value byte) error           // set all 8 output lines (bitmask)
-    SetHigh(pin int) error           // drive pin 1–8 HIGH
-    SetLow(pin int) error            // drive pin 1–8 LOW
-    Pulse(pin int, durationMs int) error  // HIGH for duration, then LOW
-    Close() error                    // set all lines LOW, release port
+// OutputTTLDevice — send trigger codes to recording equipment.
+type OutputTTLDevice interface {
+    Send(mask byte) error                    // set all 8 lines from bitmask
+    SetHigh(line int) error                  // drive line HIGH (0-indexed)
+    SetLow(line int) error                   // drive line LOW  (0-indexed)
+    Pulse(line int, d time.Duration) error   // HIGH for d, then LOW (blocks)
+    AllLow() error                           // all lines LOW
+    Close() error                            // AllLow + release port
 }
 
-// DLP-IO8 / DLP-IO8-G (USB-CDC serial)
-trig, err := triggers.NewDLPIO8(port)
-trig := triggers.AutoDetectDLPIO8()  // returns NullTrigger if not found
-
-// Parallel port (Linux only)
-trig, err := triggers.NewParallelPort(path)  // e.g. "/dev/parport0"
+// InputTTLDevice — read TTL inputs from response hardware.
+type InputTTLDevice interface {
+    ReadAll() (byte, error)                                              // bitmask of all lines
+    ReadLine(line int) (byte, error)                                     // 0 or 1 (0-indexed)
+    WaitForInput(ctx context.Context) (mask byte, rt time.Duration, err error)
+    DrainInputs(ctx context.Context) error
+    Close() error
+}
 ```
 
-`NullTrigger` implements `Trigger` as a no-op so callers never need to nil-check the result of `AutoDetectDLPIO8`.
+### DLPIO8 (DLP-IO8-G, USB-CDC serial)
+
+Implements both `OutputTTLDevice` and `InputTTLDevice`.
+
+```go
+// Auto-detect (recommended): returns NullOutputTTLDevice if not found, no error.
+out, portName, err := triggers.AutoDetectDLPIO8()
+defer out.Close()
+out.Pulse(0, 10*time.Millisecond)   // 10 ms pulse on line 0
+
+// Manual:
+d, err := triggers.NewDLPIO8("/dev/ttyUSB0")
+defer d.Close()
+d.Send(0b00000101)                  // lines 0 and 2 HIGH
+mask, err := d.ReadAll()            // bitmask of all 8 input lines
+mask, rt, err := d.WaitForInput(ctx)
+```
+
+### MEGTTLBox (NeuroSpin Arduino Mega TTL box)
+
+Implements both `OutputTTLDevice` and `InputTTLDevice`. Provides 8 TTL output lines (D30–D37) and 8 TTL input lines for a FORP response pad (D22–D29).
+
+```go
+box, err := triggers.NewMEGTTLBox("/dev/ttyACM0",
+    triggers.WithResetDelay(2*time.Second),   // wait for Arduino boot (default 2 s)
+    triggers.WithPollInterval(5*time.Millisecond),
+)
+defer box.Close()
+
+// Output
+box.Pulse(0, 5*time.Millisecond)    // pulse line 0
+box.PulseMask(0b00000011, 5*time.Millisecond)  // pulse lines 0 and 1
+box.Send(0b00000001)                // set line 0 HIGH, all others LOW
+
+// Input (FORP response pad)
+_ = box.DrainInputs(ctx)            // clear latched presses from previous trial
+mask, rt, err := box.WaitForInput(ctx)
+buttons := triggers.DecodeMask(mask)  // []FORPButton
+```
+
+**`FORPButton` constants** (also serve as 0-indexed line numbers for bitmask operations):
+
+```go
+triggers.FORPLeftBlue    // 0
+triggers.FORPLeftYellow  // 1
+triggers.FORPLeftGreen   // 2
+triggers.FORPLeftRed     // 3
+triggers.FORPRightBlue   // 4
+triggers.FORPRightYellow // 5
+triggers.FORPRightGreen  // 6
+triggers.FORPRightRed    // 7
+```
+
+### ParallelPort (Linux LPT)
+
+Implements `OutputTTLDevice`.
+
+```go
+ports := triggers.AvailableParallelPorts()      // scans /dev/parport0..3
+pp := triggers.NewParallelPort("/dev/parport0")
+if err := pp.Open(); err != nil { log.Fatal(err) }
+defer pp.Close()
+pp.Send(0b00000111)                             // lines 0,1,2 HIGH
+pp.Pulse(0, 10*time.Millisecond)
+status, _ := pp.ReadStatus()                    // Linux only: status register
+```
+
+**Prerequisites:** `sudo modprobe ppdev`; user in the `lp` group.
+
+### Null devices
+
+`NullOutputTTLDevice` and `NullInputTTLDevice` are silent no-ops, safe to call without hardware. `AutoDetectDLPIO8` returns `NullOutputTTLDevice` when no device is found.
 
 ---
 

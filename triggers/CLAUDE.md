@@ -1,99 +1,132 @@
-// Copyright (2026) Christophe Pallier <christophe@pallier.org>
-// Distributed under the GNU General Public License v3.
-
 # triggers package
 
-Hardware trigger interfaces for EEG/MEG event coding and response boxes. All devices implement the `Trigger` interface; `NullTrigger` is always safe to use when no hardware is present.
+Hardware TTL signal output (EEG/MEG trigger codes) and TTL input (response pads). Lines are **0-indexed (0–7)**; bit N of a bitmask corresponds to line N.
 
-## Trigger interface
+## Interfaces
 
 ```go
-type Trigger interface {
-    Send(value byte) error         // set all 8 output lines from bitmask
-    SetHigh(pin int) error         // drive single pin HIGH (1-indexed, 1–8)
-    SetLow(pin int) error          // drive single pin LOW
-    Pulse(pin, durationMs int) error // HIGH for durationMs, then LOW (blocks)
-    Close() error                  // set all lines LOW, release resources
+// OutputTTLDevice — send trigger codes to recording equipment.
+type OutputTTLDevice interface {
+    Send(mask byte) error                   // all 8 lines from bitmask
+    SetHigh(line int) error                 // 0-indexed
+    SetLow(line int) error                  // 0-indexed
+    Pulse(line int, d time.Duration) error  // HIGH for d, then LOW (blocks)
+    AllLow() error
+    Close() error
+}
+
+// InputTTLDevice — read TTL inputs from response hardware.
+type InputTTLDevice interface {
+    ReadAll() (byte, error)                                          // bitmask
+    ReadLine(line int) (byte, error)                                 // 0 or 1
+    WaitForInput(ctx context.Context) (mask byte, rt time.Duration, err error)
+    DrainInputs(ctx context.Context) error
+    Close() error
 }
 ```
 
-Pins are **1-indexed** (pin 1 = bit 0 of bitmask, pin 8 = bit 7).
+`NullOutputTTLDevice` and `NullInputTTLDevice` are silent no-ops.
 
-## NullTrigger
+## DLPIO8 (DLP-IO8-G, USB-CDC)
 
-No-op implementation; all methods return nil. Used as a safe default when no device is detected.
+Implements both interfaces. ASCII protocol at 115200 baud.
 
 ```go
-var trig triggers.Trigger = triggers.NullTrigger{}
+// Auto-detect (recommended)
+out, portName, err := triggers.AutoDetectDLPIO8()
+// → NullOutputTTLDevice{} + nil err if not found
+
+// Manual
+d, err := triggers.NewDLPIO8("/dev/ttyUSB0")
+defer d.Close()
+d.Send(0b00000101)                   // lines 0 and 2 HIGH
+d.Pulse(0, 10*time.Millisecond)
+mask, _ := d.ReadAll()               // bitmask of all 8 input lines
+mask, rt, _ := d.WaitForInput(ctx)
+```
+
+**Device protocol (internal):** set HIGH pin 1–8 = '1'–'8'; set LOW = 'Q'–'I'; read = 'A'–'K'; ping = '\''; binary mode = '\\'. The public API uses 0-indexed lines; internally translated to 1-indexed for the ASCII commands.
+
+## MEGTTLBox (NeuroSpin Arduino Mega)
+
+Implements both interfaces. Binary opcode protocol at 115200 baud.
+
+```go
+box, err := triggers.NewMEGTTLBox("/dev/ttyACM0",
+    triggers.WithResetDelay(2*time.Second),    // DTR → Arduino reset (default 2 s)
+    triggers.WithPollInterval(5*time.Millisecond),
+)
+defer box.Close()
+
+box.Pulse(0, 5*time.Millisecond)
+box.PulseMask(0b00000011, 5*time.Millisecond) // lines 0 and 1
+box.Send(0b00000001)                           // persistent set (not a pulse)
+
+_ = box.DrainInputs(ctx)
+mask, rt, _ := box.WaitForInput(ctx)
+buttons := triggers.DecodeMask(mask)           // []FORPButton
+```
+
+**Wire protocol (opcodes):**
+
+| Opcode | Args | Description |
+|--------|------|-------------|
+| 10 | uint16 LE (ms) | set trigger pulse width |
+| 11 | uint8 mask | pulse all set lines |
+| 12 | uint8 line | pulse single line |
+| 13 | uint8 mask | set lines HIGH (persistent) |
+| 14 | uint8 mask | set lines LOW (persistent) |
+| 15 | uint8 line | set single line HIGH |
+| 16 | uint8 line | set single line LOW |
+| 20 | — | read button mask → returns uint8 |
+
+## FORPButton
+
+```go
+// Each constant is the 0-indexed line number = bit position in the bitmask.
+triggers.FORPLeftBlue    // 0, D22, STI007
+triggers.FORPLeftYellow  // 1, D23, STI008
+triggers.FORPLeftGreen   // 2, D24, STI009
+triggers.FORPLeftRed     // 3, D25, STI010
+triggers.FORPRightBlue   // 4, D26, STI012
+triggers.FORPRightYellow // 5, D27, STI013
+triggers.FORPRightGreen  // 6, D28, STI014
+triggers.FORPRightRed    // 7, D29, STI015
+
+buttons := triggers.DecodeMask(mask)  // []FORPButton, ordered low→high bit
+fmt.Println(buttons[0])               // "left blue"
 ```
 
 ## ParallelPort (Linux LPT)
 
+Implements `OutputTTLDevice`. Uses ppdev ioctl (`/dev/parport0..3`).
+
 ```go
-ports := triggers.AvailableParallelPorts()  // scans /dev/parport0..3
 pp := triggers.NewParallelPort("/dev/parport0")
 if err := pp.Open(); err != nil { log.Fatal(err) }
 defer pp.Close()
-
-pp.Send(0b00000111)     // set pins 1,2,3 HIGH
-pp.SetHigh(4)
-pp.SetLow(4)
-pp.Pulse(1, 10)         // 10 ms pulse on pin 1
-
-status, _ := pp.ReadStatus()  // nACK, BUSY, PAPER-OUT, SELECT, nERROR bits
+pp.Send(0b00000111)   // lines 0,1,2 HIGH
+pp.Pulse(0, 10*time.Millisecond)
+status, _ := pp.ReadStatus()   // status register (Linux only)
 ```
 
-**Prerequisites:** `sudo modprobe ppdev`, user must be in the `lp` group.
-
-Non-Linux platforms return `"not supported"` errors from all methods.
-
-## DLPIO8 (USB digital I/O, DLP-IO8-G)
-
-Auto-detection is the recommended approach:
-
-```go
-trig, portName, err := triggers.AutoDetectDLPIO8()
-// If no device found: trig = NullTrigger{}, err = nil (safe fallback)
-defer trig.Close()
-```
-
-Manual construction:
-
-```go
-d, err := triggers.NewDLPIO8("/dev/ttyUSB0")
-defer d.Close()
-d.Send(0b10000001)  // set pins 1 and 8 HIGH
-d.ReadPin(3)        // read state of pin 3 (returns 0 or 1)
-d.ReadAll()         // read all 8 pins; result[0] = pin 1, result[7] = pin 8
-d.AllLow()          // convenience: Send(0x00)
-```
-
-**Device details:**
-- USB-CDC at 115200 baud; device usually appears as `/dev/ttyUSB0` or `/dev/ttyACM0`.
-- Binary mode enabled automatically after init; pin reads return 0x00 or 0x01.
-- `Send()` iterates over individual pins (not atomic); suitable for sequential EEG codes.
-- Constructor retries ping 3 times to handle USB latency.
+**Prerequisites:** `sudo modprobe ppdev`; user in `lp` group.
 
 ## SerialPort (generic UART)
 
-General-purpose serial interface for response boxes, Arduino, etc. Does **not** implement `Trigger`.
+Does **not** implement either TTL interface. General-purpose serial wrapper.
 
 ```go
-ports, _ := triggers.AvailablePorts()   // list all serial ports
 sp := triggers.NewSerialPort("/dev/ttyUSB0", 9600)
-if err := sp.Open(); err != nil { log.Fatal(err) }
-defer sp.Close()
-
-sp.Send(0x42)                    // write single byte
-sp.SendLine("GO", false, true)   // write "GO\n"
-b, _ := sp.Poll()                // non-blocking read; returns 0 if no data
-line, _ := sp.ReadLine()         // blocking read until newline
-sp.Clear()                       // flush input buffer
+sp.Open(); defer sp.Close()
+sp.Send(0x42); sp.SendLine("GO", false, true)
+b, _ := sp.Poll()
+line, _ := sp.ReadLine()
 ```
 
 ## Key conventions
 
-- Always `defer trig.Close()` — this sets all lines LOW and releases the device.
-- Use `AutoDetectDLPIO8()` rather than `NewDLPIO8` so the code degrades gracefully on machines without the device.
-- For EEG event coding, send the trigger code on stimulus onset and reset to 0 after a short pulse: `pp.Send(code)` → `time.Sleep(10ms)` → `pp.Send(0)`. Or use `pp.Pulse(pin, 10)` for single-pin events.
-- `ParallelPort` tracks pin states in a shadow register; `SetHigh`/`SetLow` update it correctly even when only partial byte writes are needed.
+- Always `defer dev.Close()` — drives all lines LOW and releases the port.
+- For `OutputTTLDevice`, send the trigger as close as possible to the `exp.ShowNS` VSYNC flip; latency is typically <1 ms.
+- For `InputTTLDevice`, call `DrainInputs(ctx)` before `WaitForInput(ctx)` between trials to clear latched presses.
+- To use a MEGTTLBox or DLPIO8 as a `ResponseDevice` in the `io` package: `io.NewTTLResponseDevice(box, 5*time.Millisecond)`.

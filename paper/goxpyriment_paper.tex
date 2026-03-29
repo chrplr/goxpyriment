@@ -422,6 +422,59 @@ cursor position in center-based coordinates, including a
 \texttt{WaitPressEventRT} method that follows the same event-timestamp
 convention.
 
+\paragraph{Response Device Abstraction and Timestamp Precision}\label{response-devices}
+
+The device-specific methods above (keyboard, mouse, gamepad) return SDL3
+hardware event timestamps. For TTL-connected response hardware such as
+fiber-optic response pads (fORPs), responses must instead be detected by
+polling a serial device, introducing jitter bounded by the poll interval
+(default 5~ms). These two timing regimes are unified by the
+\texttt{ResponseDevice} interface:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\KeywordTok{type}\NormalTok{ ResponseDevice }\KeywordTok{interface}\NormalTok{ \{}
+\NormalTok{    WaitResponse}\OperatorTok{(}\NormalTok{ctx context.Context}\OperatorTok{)} \OperatorTok{(}\NormalTok{Response}\OperatorTok{,} \DataTypeTok{error}\OperatorTok{)}
+\NormalTok{    DrainResponses}\OperatorTok{(}\NormalTok{ctx context.Context}\OperatorTok{)} \DataTypeTok{error}
+\NormalTok{    Close}\OperatorTok{()} \DataTypeTok{error}
+\NormalTok{\}}
+\end{Highlighting}
+\end{Shaded}
+
+The returned \texttt{Response} value carries a \texttt{Precise} boolean
+flag that explicitly signals the timing quality of the accompanying
+\texttt{RT} field:
+
+\begin{itemize}
+\tightlist
+\item
+  \texttt{Precise\ ==\ true}: \texttt{RT} was derived from an SDL3
+  hardware event timestamp (\texttt{KeyboardEvent.Timestamp} or
+  equivalent), captured at hardware-interrupt time via
+  \texttt{SDL\_GetTicksNS()}. This is the same clock as
+  \texttt{Screen.FlipNS()}, so no conversion or correction is required.
+\item
+  \texttt{Precise\ ==\ false}: \texttt{RT} was measured with
+  \texttt{time.Now()} at the moment the poll loop detected an active
+  input line. Accuracy is bounded by the poll interval (typically 5~ms).
+\end{itemize}
+
+This design is a direct consequence of using SDL3 in Go rather than
+wrapping it through a Python or JavaScript interpreter. Python
+frameworks such as Expyriment use Pygame, which wraps SDL2. Pygame does
+expose event timestamps on SDL2 events, but the standard Expyriment API
+measures reaction time by reading a Python clock (\texttt{time.time()})
+when the event is returned from the event-processing loop
+\parencite{krause2014}. This adds the latency of marshalling the event
+from the SDL queue through Python's C extension layer and potentially
+the Global Interpreter Lock. In \texttt{goxpyriment}, the SDL3 event
+timestamp is read directly from the \texttt{KeyboardEvent} struct in the
+same goroutine that called \texttt{WaitKeysEventRT}, with no interpreter
+or GIL overhead. Whether this difference is measurable in practice
+depends on system load and OS scheduler behaviour; establishing its
+magnitude under realistic experimental conditions is left for future
+timing validation work.
+
 \subsubsection{Data Collection}\label{data-collection}
 
 \texttt{exp.Data} writes to a file named
@@ -566,16 +619,55 @@ When \texttt{exp.Info} is set before calling \texttt{exp.Initialize()},
 the collected values are automatically written to the
 \texttt{-\/-PARTICIPANT\ INFO} section of the data file header.
 
-\subsubsection{Hardware Triggers}\label{hardware-triggers}
+\subsubsection{Hardware Triggers and TTL Devices}\label{hardware-triggers}
 
-The \texttt{triggers} package provides a uniform \texttt{Trigger}
-interface for sending digital pulses to EEG and MEG recording systems.
-Implementations are provided for the DLP-IO8 USB device (a
-serial-port-based 8-bit digital I/O module) and Linux parallel ports.
-\texttt{triggers.AutoDetectDLPIO8()} searches available serial ports and
-returns a \texttt{NullTrigger} (a no-op implementation of the interface)
-if no device is found, allowing the same experiment code to run with and
-without a recording system attached.
+The \texttt{triggers} package provides two complementary interfaces for
+TTL signalling. \texttt{OutputTTLDevice} covers sending trigger codes to
+EEG and MEG recording equipment; \texttt{InputTTLDevice} covers reading
+TTL input lines from response hardware such as fiber-optic response
+pads. Lines are 0-indexed (0--7); bit $N$ of a bitmask corresponds to
+line $N$.
+
+Three hardware back-ends are provided:
+
+\begin{itemize}
+\tightlist
+\item
+  \textbf{DLP-IO8-G} (\texttt{DLPIO8}): a USB-CDC serial device
+  presenting 8 bidirectional digital I/O lines via an ASCII command
+  protocol at 115200~baud. Implements both interfaces.
+  \texttt{AutoDetectDLPIO8()} scans available ports and returns a
+  silent \texttt{NullOutputTTLDevice} if no device is found, so the
+  same experiment code runs with and without recording hardware.
+\item
+  \textbf{NeuroSpin MEGTTLBox} (\texttt{MEGTTLBox}): an Arduino
+  Mega~2560--based interface developed at NeuroSpin \parencite{pallier2026}
+  that exposes 8 TTL output lines (Arduino pins D30--D37) and 8 TTL
+  input lines (D22--D29) wired to a Current Designs fiber-optic
+  response pad (fORP). The host communicates via a compact binary
+  opcode protocol at 115200~baud. The Arduino resets on USB connection
+  (DTR assertion); \texttt{NewMEGTTLBox} waits for the firmware to
+  boot (default 2~s) before returning. Implements both interfaces.
+\item
+  \textbf{Linux parallel port} (\texttt{ParallelPort}): the LPT data
+  register controlled via the kernel's \texttt{ppdev} interface.
+  Implements \texttt{OutputTTLDevice} only.
+\end{itemize}
+
+The \texttt{MEGTTLBox} fORP input lines are annotated with
+\texttt{FORPButton} typed constants (e.g.\ \texttt{FORPLeftBlue},
+\texttt{FORPRightRed}) that serve both as human-readable labels and as
+0-indexed line numbers, enabling readable trial-loop code:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{box}\OperatorTok{.}\NormalTok{Pulse}\OperatorTok{(}\DecValTok{0}\OperatorTok{,} \DecValTok{5}\OperatorTok{*}\NormalTok{time}\OperatorTok{.}\NormalTok{Millisecond}\OperatorTok{)}  \CommentTok{// TTL trigger to STI channel}
+\NormalTok{mask}\OperatorTok{,}\NormalTok{ rt}\OperatorTok{,}\NormalTok{ \_ }\OperatorTok{:=}\NormalTok{ box}\OperatorTok{.}\NormalTok{WaitForInput}\OperatorTok{(}\NormalTok{ctx}\OperatorTok{)}
+\ControlFlowTok{for}\NormalTok{ \_}\OperatorTok{,}\NormalTok{ b }\OperatorTok{:=} \ControlFlowTok{range}\NormalTok{ triggers}\OperatorTok{.}\NormalTok{DecodeMask}\OperatorTok{(}\NormalTok{mask}\OperatorTok{) \{}
+\NormalTok{    fmt}\OperatorTok{.}\NormalTok{Println}\OperatorTok{(}\NormalTok{b}\OperatorTok{.}\NormalTok{String}\OperatorTok{())}  \CommentTok{// "left blue", "right red", etc.}
+\NormalTok{\}}
+\end{Highlighting}
+\end{Shaded}
 
 \begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
 
@@ -814,8 +906,10 @@ Node.js or CDN \\
 GC control & Explicit disable & No & No & No \\
 VSYNC sync & Yes (SDL3) & Yes (Pygame/SDL2) & Yes (Pyglet/PTB) & Limited
 (rAF) \\
-Hardware triggers & Yes (DLP-IO8, parallel) & Yes (parallel, serial) &
+Hardware triggers & Yes (DLP-IO8, parallel, MEGTTLBox) & Yes (parallel, serial) &
 Yes & No \\
+Response device API & Yes (\texttt{ResponseDevice} interface) & Device-specific & Device-specific & N/A \\
+Event timestamp source & SDL3 hardware (\texttt{SDL\_GetTicksNS}) & Python \texttt{time.time()} & iohub or Python clock & \texttt{performance.now()} \\
 Stimulus set & Moderate & Moderate & Extensive & Moderate \\
 GUI builder & No & No & Yes (Builder) & No \\
 Online deployment & No & No & Partial (PsychoJS) & Yes \\
