@@ -9,7 +9,7 @@ import (
 	"math/rand"
 
 	"github.com/Zyko0/go-sdl3/sdl"
-	"github.com/chrplr/goxpyriment/io"
+	"github.com/chrplr/goxpyriment/apparatus"
 )
 
 // DotCloud represents a circular cloud of dots.
@@ -79,7 +79,7 @@ func (dc *DotCloud) Make(nDots int, dotRadius float32, gap float32) bool {
 }
 
 // Draw draws all the dots and the background if specified.
-func (dc *DotCloud) Draw(screen *io.Screen) error {
+func (dc *DotCloud) Draw(screen *apparatus.Screen) error {
 	// If background color is not transparent (A > 0), draw it
 	if dc.BackgroundColor.A > 0 {
 		bgCircle := NewCircle(dc.Radius, dc.BackgroundColor)
@@ -98,7 +98,7 @@ func (dc *DotCloud) Draw(screen *io.Screen) error {
 }
 
 // Present delegates to PresentDrawable — the standard clear → draw → update cycle.
-func (dc *DotCloud) Present(screen *io.Screen, clear, update bool) error {
+func (dc *DotCloud) Present(screen *apparatus.Screen, clear, update bool) error {
 	return PresentDrawable(dc, screen, clear, update)
 }
 

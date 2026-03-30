@@ -36,7 +36,7 @@ import (
 	"github.com/Zyko0/go-sdl3/sdl"
 	"github.com/chrplr/goxpyriment/clock"
 	"github.com/chrplr/goxpyriment/control"
-	"github.com/chrplr/goxpyriment/io"
+	"github.com/chrplr/goxpyriment/apparatus"
 	"github.com/chrplr/goxpyriment/stimuli"
 )
 
@@ -171,7 +171,7 @@ type textItem struct {
 	text string
 }
 
-func (ti *textItem) draw(screen *io.Screen, newText string, x, y float32, color sdl.Color) {
+func (ti *textItem) draw(screen *apparatus.Screen, newText string, x, y float32, color sdl.Color) {
 	if newText != ti.text || ti.tl == nil {
 		if ti.tl != nil {
 			_ = ti.tl.Unload()
@@ -191,7 +191,7 @@ func (ti *textItem) unload() {
 
 // vertBar draws a filled vertical bar whose SDL x-centre is cx, spanning the
 // full screen height.
-func vertBar(screen *io.Screen, cx, w float32, color sdl.Color) {
+func vertBar(screen *apparatus.Screen, cx, w float32, color sdl.Color) {
 	_ = screen.Renderer.SetDrawColor(color.R, color.G, color.B, color.A)
 	_ = screen.Renderer.RenderFillRect(&sdl.FRect{
 		X: cx - w/2,

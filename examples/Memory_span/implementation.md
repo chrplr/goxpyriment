@@ -38,7 +38,7 @@ The Memory Span experiment is implemented in `examples/Memory_span/main.go` usin
 
 ## Data Logging
 
-The following data is recorded in the `.xpd` file:
+The following data is recorded in the `.csv` file:
 - `trial`: Sequential trial number.
 - `type`: Stimulus type (Digit, Letter, or Word).
 - `length`: Sequence length for this trial.

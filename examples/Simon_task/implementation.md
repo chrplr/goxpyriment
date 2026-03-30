@@ -17,7 +17,7 @@ The Simon task is implemented in `examples/Simon_task/main.go` using the `goxpyr
 
 ## Data Logging
 
-The following variables are logged for each trial in the `.xpd` results file:
+The following variables are logged for each trial in the `.csv` results file:
 - `trial`: The sequence number of the trial.
 - `color`: The color of the stimulus ("red" or "green").
 - `position`: The position of the stimulus ("left" or "right").

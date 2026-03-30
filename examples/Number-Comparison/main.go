@@ -40,7 +40,7 @@ import (
 	"github.com/chrplr/goxpyriment/assets_embed"
 	"github.com/chrplr/goxpyriment/control"
 	"github.com/chrplr/goxpyriment/design"
-	gxio "github.com/chrplr/goxpyriment/io"
+	gxio "github.com/chrplr/goxpyriment/apparatus"
 	"github.com/chrplr/goxpyriment/stimuli"
 )
 

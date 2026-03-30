@@ -27,7 +27,7 @@ import (
 	"time"
 
 	"github.com/Zyko0/go-sdl3/sdl"
-	"github.com/chrplr/goxpyriment/io"
+	"github.com/chrplr/goxpyriment/apparatus"
 )
 
 // MotionResult holds the outcome of a PresentMovingDotCloud call.
@@ -98,7 +98,7 @@ func drawFilledCircle(r *sdl.Renderer, cx, cy, radius float32) {
 // Returns a MotionResult with the response key/button and RT, plus any error.
 // On ESC or window-close the error is sdl.EndLoop.
 func PresentMovingDotCloud(
-	screen *io.Screen,
+	screen *apparatus.Screen,
 	nDots int,
 	dotRadius float32,
 	cloudRadius float32,

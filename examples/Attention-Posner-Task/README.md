@@ -49,7 +49,7 @@ Press any key as quickly as possible when the target appears.
 
 ## Output
 
-Trial information is printed to the console (congruency, side, key, reaction time). No `.xpd` file is written in the current version.
+Trial information is printed to the console (congruency, side, key, reaction time). No `.csv` file is written in the current version.
 
 ---
 

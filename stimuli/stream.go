@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/Zyko0/go-sdl3/sdl"
-	"github.com/chrplr/goxpyriment/io"
+	"github.com/chrplr/goxpyriment/apparatus"
 )
 
 // VisualStreamElement represents a single stimulus in a sequence with its timing.
@@ -60,7 +60,7 @@ type TimingLog struct {
 // Durations are rounded to the nearest whole frame. A 50 ms stimulus on a
 // 60 Hz display is shown for exactly 3 frames (50.0 ms); 60 ms becomes 4
 // frames (66.7 ms).
-func PresentStreamOfImages(screen *io.Screen, elements []VisualStreamElement, x, y float32) ([]UserEvent, []TimingLog, error) {
+func PresentStreamOfImages(screen *apparatus.Screen, elements []VisualStreamElement, x, y float32) ([]UserEvent, []TimingLog, error) {
 	// 1. Pre-load all stimuli into GPU memory (Textures)
 	for _, el := range elements {
 		if err := PreloadVisualOnScreen(screen, el.Stimulus); err != nil {
@@ -233,7 +233,7 @@ func MakeRegularSoundStream(sounds []AudioPlayable, durationOn, durationOff time
 
 // PresentStreamOfText handles Rapid Serial Visual Presentation (RSVP).
 // It converts a slice of strings into a stream of centered text stimuli.
-func PresentStreamOfText(screen *io.Screen, words []string, durationOn, durationOff time.Duration, x, y float32, color sdl.Color) ([]UserEvent, []TimingLog, error) {
+func PresentStreamOfText(screen *apparatus.Screen, words []string, durationOn, durationOff time.Duration, x, y float32, color sdl.Color) ([]UserEvent, []TimingLog, error) {
 	elements := make([]VisualStreamElement, len(words))
 	for i, word := range words {
 		elements[i] = VisualStreamElement{

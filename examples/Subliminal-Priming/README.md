@@ -47,7 +47,7 @@ go run main.go -targets 4   # 4 target sequences per trial (default 1)
 
 ## Output
 
-Data are saved to `goxpy_data/` as a `.xpd` file. One row per trial:
+Data are saved to `goxpy_data/` as a `.csv` file. One row per trial:
 
 | Column | Description |
 |--------|-------------|

@@ -5,9 +5,10 @@
 ⟶ Jump to [Demos](./examples/README.md) (pre-built binaries for many experiments; not recommended: only for those in a hurry)
  
 * [Getting Started](docs/GettingStarted.md) — Tutorial for psychologists
-* [Setup](docs/Installation.md) — install tools to build your own experiments 
+* [Setup](docs/Installation.md) — install tools to build your own experiments
 * [User Manual](docs/UserManual.md) — Core concepts explained in depth
 * [API Reference](docs/API.md) — Complete function and type reference
+* [Migration Guide](docs/MigrationGuide.md) — Coming from Expyriment, PsychoPy, or Psychtoolbox?
 * [Github repository](https://github.com/chrplr/goxpyriment)
 * [Google group](https://groups.google.com/a/pallier.org/g/goxpyriment) — Forum (For bugs, report them at <https://github.com/chrplr/goxpyriment/issues>
 * [Github.io Page](https://chrplr.github.io/goxpyriment)

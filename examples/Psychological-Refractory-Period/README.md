@@ -41,7 +41,7 @@ Respond to each task as quickly as possible. Task 1 must be responded to before 
 
 ## Output
 
-Data are saved to `goxpy_data/` as a `.xpd` file. One row per trial, recording SOA, Task 1 stimulus and RT, Task 2 stimulus and RT, and whether each response was correct.
+Data are saved to `goxpy_data/` as a `.csv` file. One row per trial, recording SOA, Task 1 stimulus and RT, Task 2 stimulus and RT, and whether each response was correct.
 
 ## References
 

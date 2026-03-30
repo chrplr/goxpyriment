@@ -2,7 +2,7 @@
 // Co-authored by Claude Sonnet 4.6
 // Distributed under the GNU General Public License v3.
 
-package io
+package apparatus
 
 import (
 	"math"
@@ -26,7 +26,7 @@ import (
 //
 // # Usage
 //
-//	gc := io.NewGammaCorrectorUniform(2.2)
+//	gc := apparatus.NewGammaCorrectorUniform(2.2)
 //	corrected := gc.CorrectColor(sdl.Color{R: 128, G: 128, B: 128, A: 255})
 //	// corrected.R ≈ 186 — the physical value needed for 50% luminance on a
 //	// γ=2.2 monitor.

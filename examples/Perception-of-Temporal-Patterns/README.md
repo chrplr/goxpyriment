@@ -41,7 +41,7 @@ go run main.go -sound cymbal     # use cymbal sound instead of tone
 
 ## Output
 
-Data are saved to `goxpy_data/` as a `.xpd` file. One row per sequence, recording sequence ID, category, number of presentations, and reproduction error in ms.
+Data are saved to `goxpy_data/` as a `.csv` file. One row per sequence, recording sequence ID, category, number of presentations, and reproduction error in ms.
 
 ## Note on sequence accuracy
 

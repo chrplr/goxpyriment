@@ -37,7 +37,7 @@ go run main.go -w -s 1  # windowed, subject ID 1
 
 ## Output
 
-Data are saved to `goxpy_data/` as a `.xpd` file. One row per trial event, recording phase, sequence ID, trial type (standard / deviant / super-deviant), deviant position, response, and RT.
+Data are saved to `goxpy_data/` as a `.csv` file. One row per trial event, recording phase, sequence ID, trial type (standard / deviant / super-deviant), deviant position, response, and RT.
 
 ## References
 

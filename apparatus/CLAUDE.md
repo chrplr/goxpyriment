@@ -1,14 +1,14 @@
 // Copyright (2026) Christophe Pallier <christophe@pallier.org>
 // Distributed under the GNU General Public License v3.
 
-# io package
+# apparatus package
 
-SDL window/renderer, keyboard, mouse, gamepad, and experiment data file I/O.
+SDL window/renderer, keyboard, mouse, gamepad, gamma corrector, and unified input abstractions.
 
 ## Screen
 
 ```go
-screen, err := io.NewScreen("My Experiment", 1024, 768, bgColor, false)
+screen, err := apparatus.NewScreen("My Experiment", 1024, 768, bgColor, false, 0)
 defer screen.Destroy()
 ```
 
@@ -58,7 +58,7 @@ type DisplayInfo struct {
 
 ### Type re-exports
 
-`io` re-exports common SDL types so stimuli code only imports `io`:
+`apparatus` re-exports common SDL types so stimuli code only imports `apparatus`:
 
 ```go
 type FRect      = sdl.FRect
@@ -74,24 +74,25 @@ type BlendMode  = sdl.BlendMode
 ## Keyboard
 
 ```go
-kb := &io.Keyboard{PollKeys: pollFunc}  // injected by control.Experiment
+kb := &apparatus.Keyboard{PollKeys: pollFunc}  // injected by control.Experiment
 ```
 
 | Method | Description |
 |---|---|
 | `Wait()` | Block until any key; returns keycode or `sdl.EndLoop` |
-| `WaitKeys(keys []sdl.Keycode, timeoutMS int64)` | Block for one of the listed keys or timeout (0 = no timeout) |
+| `WaitKeys(keys []sdl.Keycode, timeoutMS int64)` | Block for one of the listed keys or timeout (-1 = no timeout) |
 | `WaitKey(key sdl.Keycode)` | Convenience for single key |
 | `WaitKeysRT(keys, timeoutMS)` | Returns `(key, rtMs, error)` |
+| `WaitKeysEventRT(keys, timeoutMS)` | Returns `(key, eventTimestampNS, error)` — hardware-precision SDL3 timestamp |
 | `Check()` | Non-blocking poll; returns first key or 0 |
 | `Clear()` | Drain SDL event queue |
 
-`PollKeys` is a function injected by the `Experiment`; it drains the SDL queue and returns `(firstKey, quitRequested)`. Keyboard instances are not useful without it.
+`PollKeys` is a function injected by the `Experiment`; it drains the SDL queue and returns `(firstKey, quitRequested)`.
 
 ## Mouse
 
 ```go
-m := &io.Mouse{PollButtons: pollFunc}  // injected by control.Experiment
+m := &apparatus.Mouse{PollButtons: pollFunc}  // injected by control.Experiment
 ```
 
 | Method | Description |
@@ -99,69 +100,79 @@ m := &io.Mouse{PollButtons: pollFunc}  // injected by control.Experiment
 | `ShowCursor(show bool)` | Toggle cursor visibility |
 | `Position() (x, y float32)` | Current cursor position in **window pixels** (not center-based) |
 | `WaitPress()` | Block until any mouse button pressed |
+| `WaitPressRT(timeoutMS)` | Returns `(button, rtMs, error)` |
+| `WaitPressEventRT(timeoutMS)` | Returns `(button, eventTimestampNS, error)` — hardware-precision SDL3 timestamp |
 | `Check()` | Non-blocking poll; returns first button or 0 |
 
-Note: `Position()` returns window-pixel coordinates, unlike `Screen.MousePosition()` which returns center-based coordinates. Use `Screen.MousePosition()` when comparing against stimulus positions.
+Note: `Position()` returns window-pixel coordinates, unlike `Screen.MousePosition()` which returns center-based coordinates.
 
 ## GamePad
 
 ```go
-pads, err := io.GetGamePads()  // returns []GamePad
+pads, err := apparatus.GetGamePads()  // returns []GamePad
 defer pads[0].Close()
 button := pads[0].WaitPress()  // block until button pressed
 ```
 
-## DataFile
+## GammaCorrector
 
 ```go
-df, err := io.NewDataFile(directory, subjectID, expName)
+gc := apparatus.NewGammaCorrectorUniform(2.2)
+corrected := gc.CorrectColor(sdl.Color{R: 128, G: 128, B: 128, A: 255})
+// corrected.R ≈ 186 — the physical digital value for 50% luminance on γ=2.2
+
+// Per-channel gamma (from photometer measurements)
+gc = apparatus.NewGammaCorrector(2.1, 2.2, 2.3)
 ```
 
-Creates `<directory>/<expName>_<subjectID>_<timestamp>.xpd`. Directory is created if absent. A metadata header is written automatically with start time, hostname, OS, and framework version.
-
-| Method | Description |
-|---|---|
-| `AddVariableNames(names []string)` | Write CSV header row |
-| `Add(...interface{})` | Append a data row (subject_id prepended; fields quoted when needed) |
-| `WriteDisplayInfo(DisplayInfo)` | Write display metadata as comment block |
-| `WriteParticipantInfo(map[string]string)` | Write participant metadata (keys sorted) |
-| `WriteEndTime()` | Write session duration |
-| `Save()` | Flush buffer to disk |
-
-Fields containing the delimiter or quotes are automatically escaped. The subject_id column is always the first column, prepended by `Add`.
-
-### Constants
-
-| Constant | Value |
-|---|---|
-| `OutputFileCommentChar` | `"#"` |
-| `OutputFileEOL` | `"\n"` |
-| `DataFileDirectory` | `"goxpy_data"` |
-| `DataFileDelimiter` | `","` |
-
-## OutputFile
-
-Lower-level buffered text file, used as the base of `DataFile`.
+## Input abstraction (DeviceKind, InputEvent)
 
 ```go
-f, err := io.NewOutputFile(directory, filename, commentChar)
-f.Write(content)
-f.WriteLine(content)    // content + EOL
-f.WriteComment(text)    // commentChar + text + EOL
-f.Save()                // flush to disk
+type DeviceKind int
+const (
+    DeviceKeyboard DeviceKind = iota
+    DeviceMouse
+    DeviceGamepad
+    DeviceTTL
+)
+
+type InputEvent struct {
+    Device      DeviceKind
+    Key         sdl.Keycode   // DeviceKeyboard
+    Button      uint32        // DeviceMouse or DeviceGamepad
+    TimestampNS uint64        // SDL3 nanosecond hardware timestamp
+}
 ```
 
-The `Save()` method is defined in `output_file_desktop.go` (build tag: non-wasm). A no-op stub exists in `output_file_wasm.go` for WebAssembly targets.
+## ResponseDevice interface
 
-## Version
+Unified input abstraction for device-agnostic experiment code.
 
-`io.Version` is a `string` var set from build info at init time:
-- Returns the git tag when the library is used as a versioned module dependency.
-- Returns `"(devel)"` when built from source via `go.work`.
+```go
+type ResponseDevice interface {
+    WaitResponse(ctx context.Context) (Response, error)
+    DrainResponses(ctx context.Context) error
+}
+
+type Response struct {
+    Source  DeviceKind
+    Code    uint32
+    RT      time.Duration
+    Precise bool  // true = SDL3 nanosecond accuracy; false = poll-interval accuracy
+}
+```
+
+Construct wrappers:
+
+```go
+rd := &apparatus.KeyboardResponseDevice{KB: exp.Keyboard}
+rd := &apparatus.MouseResponseDevice{M: exp.Mouse}
+rd := &apparatus.GamepadResponseDevice{GP: pad}
+rd := apparatus.NewTTLResponseDevice(box, 5*time.Millisecond)
+```
 
 ## Key conventions
 
 - `Clear()` + `Update()` on `Screen` maps to SDL clear + present; `Update()` blocks on VSYNC.
 - Mouse `Position()` is in window pixels; use `Screen.MousePosition()` for center-based comparison with stimuli.
-- Always call `df.Save()` after the experiment loop ends — the buffer is not flushed automatically.
-- `DataFile.Add` prepends subject_id automatically; do not include it in `AddVariableNames`.
+- `apparatus` is rarely imported directly in experiment code — access is through `exp.Screen`, `exp.Keyboard`, etc. Direct import is needed only when writing custom stimulus types.

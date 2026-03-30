@@ -10,7 +10,7 @@ import (
 	"math"
 
 	"github.com/Zyko0/go-sdl3/sdl"
-	"github.com/chrplr/goxpyriment/io"
+	"github.com/chrplr/goxpyriment/apparatus"
 )
 
 // GaborPatch is a Gabor patch (sinusoidal grating windowed by a Gaussian) with orientation, spatial frequency, phase, and size parameters.
@@ -49,7 +49,7 @@ func NewGaborPatch(sigma, theta, lambda, phase, psi, gamma float64, bgColor sdl.
 }
 
 // preload generates the Gabor patch texture.
-func (gp *GaborPatch) preload(screen *io.Screen) error {
+func (gp *GaborPatch) preload(screen *apparatus.Screen) error {
 	w, h := int(gp.Size), int(gp.Size)
 	img := image.NewRGBA(image.Rect(0, 0, w, h))
 
@@ -106,7 +106,7 @@ func (gp *GaborPatch) preload(screen *io.Screen) error {
 
 // Preload is provided by BaseVisual (no-op; texture is lazy-loaded on first Draw).
 
-func (gp *GaborPatch) Draw(screen *io.Screen) error {
+func (gp *GaborPatch) Draw(screen *apparatus.Screen) error {
 	if gp.Texture == nil {
 		if err := gp.preload(screen); err != nil {
 			return err
@@ -125,7 +125,7 @@ func (gp *GaborPatch) Draw(screen *io.Screen) error {
 }
 
 // Present delegates to PresentDrawable — the standard clear → draw → update cycle.
-func (gp *GaborPatch) Present(screen *io.Screen, clear, update bool) error {
+func (gp *GaborPatch) Present(screen *apparatus.Screen, clear, update bool) error {
 	return PresentDrawable(gp, screen, clear, update)
 }
 

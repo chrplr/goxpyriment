@@ -6,7 +6,7 @@ package stimuli
 
 import (
 	"github.com/Zyko0/go-sdl3/sdl"
-	"github.com/chrplr/goxpyriment/io"
+	"github.com/chrplr/goxpyriment/apparatus"
 )
 
 // Line is a line segment from Start to End in center-based coordinates, with
@@ -33,7 +33,7 @@ func NewLine(start, end sdl.FPoint, color sdl.Color, lineWidth float32) *Line {
 	}
 }
 
-func (l *Line) Draw(screen *io.Screen) error {
+func (l *Line) Draw(screen *apparatus.Screen) error {
 	if err := screen.Renderer.SetDrawColor(l.Color.R, l.Color.G, l.Color.B, l.Color.A); err != nil {
 		return err
 	}
@@ -47,7 +47,7 @@ func (l *Line) Draw(screen *io.Screen) error {
 }
 
 // Present delegates to PresentDrawable — the standard clear → draw → update cycle.
-func (l *Line) Present(screen *io.Screen, clear, update bool) error {
+func (l *Line) Present(screen *apparatus.Screen, clear, update bool) error {
 	return PresentDrawable(l, screen, clear, update)
 }
 

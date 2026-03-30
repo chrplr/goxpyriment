@@ -47,12 +47,12 @@ defer exp.End()
 ### Key fields
 
 ```go
-exp.Screen       *io.Screen           // window + renderer
-exp.Keyboard     *io.Keyboard         // keyboard input
-exp.Mouse        *io.Mouse            // mouse input
+exp.Screen       *apparatus.Screen           // window + renderer
+exp.Keyboard     *apparatus.Keyboard         // keyboard input
+exp.Mouse        *apparatus.Mouse            // mouse input
 exp.AudioDevice  sdl.AudioDeviceID    // SDL audio device for Sound/Tone
 exp.Audio        *control.AudioManager // high-level audio helpers
-exp.Data         *io.DataFile         // output data file
+exp.Data         *results.DataFile         // output data file
 exp.Design       *design.Experiment   // block/trial structure
 exp.SubjectID    int
 exp.DefaultFont  *ttf.Font
@@ -132,7 +132,7 @@ if !fullscreen {
 exp := control.NewExperiment("My Experiment", width, height, fullscreen,
     control.Black, control.White, 32)
 
-// Set Info and SubjectID BEFORE Initialize so they are written to the .xpd header
+// Set Info and SubjectID BEFORE Initialize so they are written to the .csv header
 exp.SubjectID, _ = strconv.Atoi(info["subject_id"])
 exp.Info = info
 
@@ -142,7 +142,7 @@ if err := exp.Initialize(); err != nil {
 defer exp.End()
 ```
 
-When `exp.Info` is non-nil at the time `Initialize()` is called, the collected key/value pairs are automatically written as a `--PARTICIPANT INFO` block in the `.xpd` metadata header — no extra call is required.
+When `exp.Info` is non-nil at the time `Initialize()` is called, the collected key/value pairs are automatically written as a `--PARTICIPANT INFO` block in the `.csv` metadata header — no extra call is required.
 
 > **Note:** When using `GetParticipantInfo` you will typically call the lower-level `NewExperiment` + `Initialize()` instead of `NewExperimentFromFlags`, so you can pass the fullscreen/windowed choice from the dialog directly.
 
@@ -336,6 +336,23 @@ defer debug.SetGCPercent(old)
 
 You do not need to do this yourself for ordinary trial loops; only for high-speed RSVP or animation. The stream and animation functions handle it automatically.
 
+### Choosing a timing approach
+
+Use this decision guide before committing to a timing strategy.
+
+| Situation | Recommended approach |
+|---|---|
+| Coarse ISIs and fixation durations (≥ 100 ms) | `exp.Wait(ms)` — adequate precision, keeps the event loop alive |
+| Stimulus duration measured in frames (e.g. 2-frame mask) | `exp.Show` inside a VSYNC-locked loop, or `PresentStreamOfImages` (Section 10) |
+| Single-stimulus trial, RT relative to onset | `exp.Show(stim)` + `exp.Keyboard.WaitKeysRT(...)` — millisecond RT from call site |
+| Multi-stimulus sequence, RT relative to a specific stimulus | `exp.ShowNS(stim)` + `exp.Keyboard.WaitKeysEventRT(...)` — nanosecond timestamps on the same SDL clock; subtract directly |
+| RSVP or rapid animation (frame-accurate presentation of many items) | `PresentStreamOfImages` / `PresentStreamOfTexts` (Section 10) — GC disabled, VSYNC-locked, full timing log |
+| EEG/MEG synchronisation required | Add a TTL pulse via `triggers` immediately after `exp.ShowNS` (Section 15) |
+
+**OS considerations.** On Linux with a compositor-free X11 session, VSYNC flip latency is typically < 1 ms. On macOS and Windows the compositor adds one frame of latency (~8–17 ms depending on refresh rate); stimulus *duration* is still VSYNC-accurate, but the absolute onset time is shifted by one frame. For EEG work, always verify onset timing with a photodiode regardless of OS.
+
+**When in doubt, use `ShowNS` + `WaitKeysEventRT`.** The overhead over `Show` + `WaitKeysRT` is negligible, and you get hardware-precision timestamps at no cost.
+
 ---
 
 ## 7. Input Handling
@@ -432,9 +449,9 @@ rtNS := int64(ev.TimestampNS - onset)  // hardware-precision RT, nanoseconds
 rtMs := rtNS / 1_000_000
 
 switch ev.Device {
-case io.DeviceKeyboard:
+case apparatus.DeviceKeyboard:
     fmt.Printf("key %d, RT %d ms\n", ev.Key, rtMs)
-case io.DeviceMouse:
+case apparatus.DeviceMouse:
     fmt.Printf("mouse button %d, RT %d ms\n", ev.Button, rtMs)
 }
 ```
@@ -471,7 +488,7 @@ type ResponseDevice interface {
 
 ```go
 type Response struct {
-    Source  io.DeviceKind  // which device fired
+    Source  apparatus.DeviceKind  // which device fired
     Code    uint32         // key code, button index, or TTL bitmask
     RT      time.Duration  // elapsed from WaitResponse call
     Precise bool           // timing quality (see below)
@@ -482,14 +499,14 @@ Wrap any input device with the matching adapter:
 
 ```go
 // Keyboard (SDL hardware timestamps → Precise: true)
-var rd io.ResponseDevice = &io.KeyboardResponseDevice{KB: exp.Keyboard}
+var rd apparatus.ResponseDevice = &apparatus.KeyboardResponseDevice{KB: exp.Keyboard}
 
 // Mouse (SDL hardware timestamps → Precise: true)
-var rd io.ResponseDevice = &io.MouseResponseDevice{M: exp.Mouse}
+var rd apparatus.ResponseDevice = &apparatus.MouseResponseDevice{M: exp.Mouse}
 
 // TTL response box, e.g. MEGTTLBox (software poll → Precise: false)
 box, _ := triggers.NewMEGTTLBox("/dev/ttyACM0")
-var rd io.ResponseDevice = io.NewTTLResponseDevice(box, 5*time.Millisecond)
+var rd apparatus.ResponseDevice = apparatus.NewTTLResponseDevice(box, 5*time.Millisecond)
 ```
 
 All three look identical inside a trial loop:
@@ -529,9 +546,9 @@ When `Precise` is `false`, `RT` is still a valid elapsed duration — it just ha
 
 ## 8. Data Collection
 
-### The `.xpd` file
+### The `.csv` file
 
-`exp.Data` writes to a file named `<expname>_<subjectID>_<timestamp>.xpd` in `~/goxpy_data/`. The format is plain CSV with `#`-prefixed comment lines as a metadata header. It opens automatically on `Initialize()` and is flushed to disk when `exp.End()` is called (or when `exp.Data.Save()` is called explicitly).
+`exp.Data` writes to a file named `<expname>_<subjectID>_<timestamp>.csv` in `~/goxpy_data/`. The format is plain CSV with `#`-prefixed comment lines as a metadata header. It opens automatically on `Initialize()` and is flushed to disk when `exp.End()` is called (or when `exp.Data.Save()` is called explicitly).
 
 ### Declaring column names
 
@@ -620,10 +637,10 @@ Any type that implements `VisualStimulus` can be passed to `exp.Show`:
 
 ```go
 type VisualStimulus interface {
-    Present(screen *io.Screen, clear, update bool) error
+    Present(screen *apparatus.Screen, clear, update bool) error
     Preload() error
     Unload() error
-    Draw(screen *io.Screen) error
+    Draw(screen *apparatus.Screen) error
     GetPosition() sdl.FPoint
     SetPosition(pos sdl.FPoint)
 }
@@ -637,12 +654,12 @@ type MyStimulus struct {
     // your fields
 }
 
-func (m *MyStimulus) Draw(screen *io.Screen) error {
+func (m *MyStimulus) Draw(screen *apparatus.Screen) error {
     // draw using screen.Renderer SDL calls
     return nil
 }
 
-func (m *MyStimulus) Present(screen *io.Screen, clear, update bool) error {
+func (m *MyStimulus) Present(screen *apparatus.Screen, clear, update bool) error {
     return stimuli.PresentDrawable(m, screen, clear, update)
 }
 ```
@@ -1057,7 +1074,7 @@ Applying the LUT before sending a color to the renderer means the monitor's forw
 exp.SetGamma(2.2)   // typical sRGB monitor
 
 // Or with per-channel calibration (from photometer measurements):
-exp.GammaCorrector = io.NewGammaCorrector(2.1, 2.2, 2.3)
+exp.GammaCorrector = apparatus.NewGammaCorrector(2.1, 2.2, 2.3)
 ```
 
 Then wrap every color with `exp.CorrectColor`:
@@ -1145,7 +1162,7 @@ for _, b := range buttons {
 }
 
 // Via ResponseDevice
-rd := io.NewTTLResponseDevice(box, 5*time.Millisecond)
+rd := apparatus.NewTTLResponseDevice(box, 5*time.Millisecond)
 _ = rd.DrainResponses(ctx)
 resp, _ := rd.WaitResponse(ctx)
 // resp.Code == bitmask, resp.Precise == false (software poll)

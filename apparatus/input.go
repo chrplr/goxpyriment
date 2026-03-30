@@ -2,7 +2,7 @@
 // Co-authored by Claude Sonnet 4.6
 // Distributed under the GNU General Public License v3.
 
-package io
+package apparatus
 
 import "github.com/Zyko0/go-sdl3/sdl"
 
@@ -24,11 +24,11 @@ const (
 // Inspect the Device field to determine which response fields are populated:
 //
 //	switch ev.Device {
-//	case io.DeviceKeyboard:
+//	case apparatus.DeviceKeyboard:
 //	    // ev.Key contains the pressed key
-//	case io.DeviceMouse:
+//	case apparatus.DeviceMouse:
 //	    // ev.Button contains the mouse button index (sdl.BUTTON_LEFT etc.)
-//	case io.DeviceGamepad:
+//	case apparatus.DeviceGamepad:
 //	    // ev.GamepadButton contains the gamepad button
 //	}
 //

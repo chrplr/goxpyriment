@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """
 analyze.py  —  Reproduce the latency-profile figures of Povel & Collard (1982)
-from one or more .xpd data files produced by the Finger-Tapping experiment.
+from one or more .csv data files produced by the Finger-Tapping experiment.
 
 Usage
 -----
-    python analyze.py ~/goxpy_data/Patterned_Finger_Tapping_*.xpd
+    python analyze.py ~/goxpy_data/Patterned_Finger_Tapping_*.csv
 
 When called with multiple files each file is treated as one subject.
 
@@ -82,7 +82,7 @@ SETS = {
 
 def load_xpd(paths):
     """
-    Load one or more .xpd files (CSV with # comment lines) into a single
+    Load one or more .csv files (CSV with # comment lines) into a single
     DataFrame.  Each file is assigned a numeric subject ID (1, 2, …).
     """
     frames = []
@@ -337,11 +337,11 @@ def main():
     else:
         # Auto-detect in ~/goxpy_data/
         data_dir = pathlib.Path.home() / "goxpy_data"
-        paths = sorted(data_dir.glob("Patterned_Finger_Tapping_*.xpd"))
+        paths = sorted(data_dir.glob("Patterned_Finger_Tapping_*.csv"))
         if not paths:
             print(
                 "No XPD files found.  Pass the file path(s) explicitly:\n"
-                "    python analyze.py ~/goxpy_data/Patterned_Finger_Tapping_*.xpd"
+                "    python analyze.py ~/goxpy_data/Patterned_Finger_Tapping_*.csv"
             )
             sys.exit(1)
         paths = [str(p) for p in paths]

@@ -10,7 +10,7 @@ import (
 
 	"github.com/Zyko0/go-sdl3/sdl"
 	"github.com/Zyko0/go-sdl3/ttf"
-	"github.com/chrplr/goxpyriment/io"
+	"github.com/chrplr/goxpyriment/apparatus"
 )
 
 // Default Experiment settings
@@ -139,7 +139,7 @@ func FontFromFile(path string, size float32) (*ttf.Font, error) {
 }
 
 // DisplayInfo is re-exported from io so callers need not import that package.
-type DisplayInfo = io.DisplayInfo
+type DisplayInfo = apparatus.DisplayInfo
 
 // ListDisplays returns metadata for all connected displays, ordered so that
 // index 0 is the primary display. Assign an index to exp.ScreenNumber before
@@ -152,5 +152,5 @@ type DisplayInfo = io.DisplayInfo
 //	}
 //	exp.ScreenNumber = 1 // secondary monitor
 func ListDisplays() ([]DisplayInfo, error) {
-	return io.ListDisplays()
+	return apparatus.ListDisplays()
 }

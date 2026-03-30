@@ -8,7 +8,7 @@ import (
 	"math"
 
 	"github.com/Zyko0/go-sdl3/sdl"
-	"github.com/chrplr/goxpyriment/io"
+	"github.com/chrplr/goxpyriment/apparatus"
 )
 
 // Tone is a procedural sine-wave tone with configurable frequency (Hz),
@@ -130,7 +130,7 @@ func (t *Tone) Play() error {
 	return nil
 }
 
-func (t *Tone) Present(screen *io.Screen, clear, update bool) error {
+func (t *Tone) Present(screen *apparatus.Screen, clear, update bool) error {
 	return t.Play()
 }
 

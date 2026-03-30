@@ -7,7 +7,7 @@ package stimuli
 import (
 	"github.com/Zyko0/go-sdl3/sdl"
 	"github.com/Zyko0/go-sdl3/ttf"
-	"github.com/chrplr/goxpyriment/io"
+	"github.com/chrplr/goxpyriment/apparatus"
 )
 
 // TextLine is a single line of text rendered with an optional font (or the screen default).
@@ -34,7 +34,7 @@ func NewTextLine(text string, x, y float32, color sdl.Color) *TextLine {
 }
 
 // preload prepares the texture from the font.
-func (t *TextLine) preload(screen *io.Screen, font *ttf.Font) error {
+func (t *TextLine) preload(screen *apparatus.Screen, font *ttf.Font) error {
 	if font == nil {
 		return nil // Fallback to DebugText if no font provided
 	}
@@ -67,7 +67,7 @@ func (t *TextLine) preload(screen *io.Screen, font *ttf.Font) error {
 
 // Preload is provided by BaseVisual (no-op; texture is lazy-loaded on first Draw).
 
-func (t *TextLine) Draw(screen *io.Screen) error {
+func (t *TextLine) Draw(screen *apparatus.Screen) error {
 	f := t.Font
 	if f == nil {
 		f = screen.DefaultFont
@@ -101,7 +101,7 @@ func (t *TextLine) Draw(screen *io.Screen) error {
 }
 
 // Present delegates to PresentDrawable — the standard clear → draw → update cycle.
-func (t *TextLine) Present(screen *io.Screen, clear, update bool) error {
+func (t *TextLine) Present(screen *apparatus.Screen, clear, update bool) error {
 	return PresentDrawable(t, screen, clear, update)
 }
 

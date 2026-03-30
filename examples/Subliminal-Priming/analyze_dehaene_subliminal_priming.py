@@ -4,7 +4,7 @@
 
 """Descriptive statistics for the Dehaene Subliminal Priming experiment.
 
-Reads one or more .xpd result files (saved by default in ~/goxpy_data/) and
+Reads one or more .csv result files (saved by default in ~/goxpy_data/) and
 prints, for every word_duration_ms level:
 
   • hit rate        — P("seen" | word present)   [visible_word + masked_word]
@@ -19,7 +19,7 @@ Usage:
     python3 analyze_dehaene_subliminal_priming.py [FILE ...]
 
     If no FILE is given the script searches ~/goxpy_data/ for all
-    Dehaene-Subliminal-Priming_*.xpd files automatically.
+    Dehaene-Subliminal-Priming_*.csv files automatically.
 """
 
 import argparse
@@ -34,7 +34,7 @@ from collections import defaultdict
 # ── XPD reader ────────────────────────────────────────────────────────────────
 
 def read_xpd(path):
-    """Return list of dicts for every data row in an .xpd file.
+    """Return list of dicts for every data row in an .csv file.
 
     Comment lines (starting with '#') and the CSV header are handled
     automatically; the header row becomes the dict keys.
@@ -176,21 +176,21 @@ def print_table(title, headers, rows):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Descriptive statistics for Dehaene Subliminal Priming .xpd files."
+        description="Descriptive statistics for Dehaene Subliminal Priming .csv files."
     )
     parser.add_argument(
         "files", nargs="*", metavar="FILE",
-        help=".xpd result file(s). Defaults to ~/goxpy_data/Dehaene-Subliminal-Priming_*.xpd",
+        help=".csv result file(s). Defaults to ~/goxpy_data/Dehaene-Subliminal-Priming_*.csv",
     )
     args = parser.parse_args()
 
     paths = args.files
     if not paths:
-        pattern = os.path.expanduser("~/goxpy_data/Dehaene-Subliminal-Priming_*.xpd")
+        pattern = os.path.expanduser("~/goxpy_data/Dehaene-Subliminal-Priming_*.csv")
         paths = sorted(glob.glob(pattern))
         if not paths:
             sys.exit(
-                "No .xpd files found in ~/goxpy_data/. "
+                "No .csv files found in ~/goxpy_data/. "
                 "Pass file path(s) explicitly or run the experiment first."
             )
 

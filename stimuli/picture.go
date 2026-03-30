@@ -7,7 +7,7 @@ package stimuli
 import (
 	"github.com/Zyko0/go-sdl3/img"
 	"github.com/Zyko0/go-sdl3/sdl"
-	"github.com/chrplr/goxpyriment/io"
+	"github.com/chrplr/goxpyriment/apparatus"
 )
 
 // Picture is an image stimulus loaded from a file path or from memory (e.g. embedded data).
@@ -40,7 +40,7 @@ func NewPictureFromMemory(data []byte, x, y float32) *Picture {
 }
 
 // preload prepares the texture from the file or memory.
-func (p *Picture) preload(screen *io.Screen) error {
+func (p *Picture) preload(screen *apparatus.Screen) error {
 	var surface *sdl.Surface
 	var err error
 
@@ -79,7 +79,7 @@ func (p *Picture) preload(screen *io.Screen) error {
 
 // Preload is provided by BaseVisual (no-op; texture is lazy-loaded on first Draw).
 
-func (p *Picture) Draw(screen *io.Screen) error {
+func (p *Picture) Draw(screen *apparatus.Screen) error {
 	if p.Texture == nil {
 		if err := p.preload(screen); err != nil {
 			return err
@@ -99,7 +99,7 @@ func (p *Picture) Draw(screen *io.Screen) error {
 }
 
 // Present delegates to PresentDrawable — the standard clear → draw → update cycle.
-func (p *Picture) Present(screen *io.Screen, clear, update bool) error {
+func (p *Picture) Present(screen *apparatus.Screen, clear, update bool) error {
 	return PresentDrawable(p, screen, clear, update)
 }
 

@@ -44,4 +44,4 @@ go run examples/retinotopy/main.go -s 0 -r 1 -w
 - **Any Key:** Records a keypress event in the data file (used for the fixation dot color change task).
 
 ## Data Collection
-Results are saved as `.xpd` files in the `data/` directory, containing frame-by-frame timing and event logs.
+Results are saved as `.csv` files in the `data/` directory, containing frame-by-frame timing and event logs.

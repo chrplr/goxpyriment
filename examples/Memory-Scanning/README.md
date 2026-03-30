@@ -35,7 +35,7 @@ go run examples/Memory-Scanning/main.go -w -s 1 -exp 1
 
 ## Output
 
-Data are saved to `goxpy_data/` as a `.xpd` file. Columns: `experiment`, `block`, `set_size`, `trial`, `probe`, `positive`, `key`, `rt`, `correct`.
+Data are saved to `goxpy_data/` as a `.csv` file. Columns: `experiment`, `block`, `set_size`, `trial`, `probe`, `positive`, `key`, `rt`, `correct`.
 
 ## References
 

@@ -42,7 +42,7 @@ go run main.go -speed 80    # custom dot speed (px/s)
 
 ## Output
 
-Data are saved to `goxpy_data/` as a `.xpd` file. One row per click, recording trial number, target count, whether the clicked circle was a target, and the running score.
+Data are saved to `goxpy_data/` as a `.csv` file. One row per click, recording trial number, target count, whether the clicked circle was a target, and the running score.
 
 ## References
 

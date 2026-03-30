@@ -9,7 +9,7 @@ import (
 	"math/rand"
 
 	"github.com/Zyko0/go-sdl3/sdl"
-	"github.com/chrplr/goxpyriment/io"
+	"github.com/chrplr/goxpyriment/apparatus"
 )
 
 // StimulusCircle represents a collection of stimuli arranged in a circle.
@@ -65,7 +65,7 @@ func (sc *StimulusCircle) Make(shuffle bool, jitter bool) {
 }
 
 // Draw draws all stimuli in the circle.
-func (sc *StimulusCircle) Draw(screen *io.Screen) error {
+func (sc *StimulusCircle) Draw(screen *apparatus.Screen) error {
 	for _, stim := range sc.Stimuli {
 		if err := stim.Draw(screen); err != nil {
 			return err
@@ -75,7 +75,7 @@ func (sc *StimulusCircle) Draw(screen *io.Screen) error {
 }
 
 // Present delegates to PresentDrawable — the standard clear → draw → update cycle.
-func (sc *StimulusCircle) Present(screen *io.Screen, clear, update bool) error {
+func (sc *StimulusCircle) Present(screen *apparatus.Screen, clear, update bool) error {
 	return PresentDrawable(sc, screen, clear, update)
 }
 

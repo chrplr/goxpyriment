@@ -7,7 +7,8 @@ This guide documents the complete public API of the `goxpyriment` framework, org
 ```
 control/      ← experiment lifecycle and orchestration (start here)
 stimuli/      ← visual and audio stimulus objects
-io/           ← SDL window/renderer, keyboard, mouse, data files
+apparatus/    ← SDL window/renderer, keyboard, mouse, gamepad, gamma corrector
+results/      ← experiment data file and output file
 design/       ← trial/block structure and randomization
 clock/        ← timing utilities
 geometry/     ← coordinate conversion helpers
@@ -100,7 +101,7 @@ if !fullscreen {
 exp := control.NewExperiment("My Experiment", width, height, fullscreen,
     control.Black, control.White, 32)
 
-// Set Info (and SubjectID) BEFORE Initialize — they are written to the .xpd header automatically
+// Set Info (and SubjectID) BEFORE Initialize — they are written to the .csv header automatically
 exp.SubjectID, _ = strconv.Atoi(info["subject_id"])
 exp.Info = info
 
@@ -108,7 +109,7 @@ if err := exp.Initialize(); err != nil { log.Fatal(err) }
 defer exp.End()
 ```
 
-`Initialize()` writes a `--PARTICIPANT INFO` block to the `.xpd` header whenever `exp.Info` is non-nil at that point. No explicit call to `WriteParticipantInfo` is needed.
+`Initialize()` writes a `--PARTICIPANT INFO` block to the `.csv` header whenever `exp.Info` is non-nil at that point. No explicit call to `WriteParticipantInfo` is needed.
 
 #### Sentinel error
 
@@ -132,6 +133,8 @@ control.ErrCancelled  // returned when the user cancels the dialog
 | `exp.Initialize() error` | Initializes SDL, audio, window, renderer, font, and data file. |
 | `exp.End()` | Cleans up all resources. Always `defer exp.End()` immediately after construction. |
 | `exp.Run(logic func() error) error` | Runs the main trial loop on the SDL main thread. Return `control.EndLoop` to exit cleanly. |
+| `exp.HideCursor() error` | Hides the mouse cursor. Call after `Initialize()` to prevent the cursor from appearing over stimuli. |
+| `exp.ShowCursor() error` | Makes the mouse cursor visible again. |
 
 ### Presentation Methods
 
@@ -149,8 +152,8 @@ control.ErrCancelled  // returned when the user cancels the dialog
 
 | Method | Description |
 |---|---|
-| `exp.Keyboard` | `*io.Keyboard` — see Keyboard section |
-| `exp.Mouse` | `*io.Mouse` — see Mouse section |
+| `exp.Keyboard` | `*apparatus.Keyboard` — see Keyboard section |
+| `exp.Mouse` | `*apparatus.Mouse` — see Mouse section |
 | `exp.PollEvents(handle func(sdl.Event) bool) EventState` | Process all pending SDL events; optionally forward to a handler. Returns `EventState` including nanosecond timestamps. |
 | `exp.HandleEvents() (Keycode, uint32, error)` | Convenience wrapper: returns `(key, mouseButton, error)`. |
 
@@ -177,7 +180,7 @@ type EventState struct {
 | `exp.AddBWSFactor(name string, conditions []interface{})` | Register a between-subjects factor for Latin-square counterbalancing. |
 | `exp.GetPermutedBWSFactorCondition(name string) interface{}` | Return this subject's condition for a BWS factor. |
 | `exp.Design` | `*design.Experiment` — full design object |
-| `exp.Info` | `map[string]string` — values from `GetParticipantInfo`; set before `Initialize()` to persist them automatically to the `.xpd` header |
+| `exp.Info` | `map[string]string` — values from `GetParticipantInfo`; set before `Initialize()` to persist them automatically to the `.csv` header |
 
 ### Font and Display
 
@@ -197,23 +200,23 @@ Standard monitors apply a power-law transfer function L(V) = k·(V/255)^γ (γ �
 |---|---|
 | `exp.SetGamma(gamma float64)` | Install a uniform inverse-gamma corrector. Call once after `Initialize()`. |
 | `exp.CorrectColor(c sdl.Color) sdl.Color` | Apply gamma correction to a color. Returns `c` unchanged when no corrector is set. |
-| `exp.GammaCorrector` | `*io.GammaCorrector` — set directly for per-channel calibration. |
+| `exp.GammaCorrector` | `*apparatus.GammaCorrector` — set directly for per-channel calibration. |
 
 ```go
 // Uniform gamma (typical sRGB monitor)
 exp.SetGamma(2.2)
 
 // Per-channel gamma (from photometer measurements)
-exp.GammaCorrector = io.NewGammaCorrector(2.1, 2.2, 2.3)
+exp.GammaCorrector = apparatus.NewGammaCorrector(2.1, 2.2, 2.3)
 
 // Use in trial loop — specify colors in linear luminance space (0–255)
 disk := stimuli.NewFilledCircle(exp.CorrectColor(control.RGB(128, 128, 128)), radius)
 ```
 
-The `io.GammaCorrector` type is also available directly:
+The `apparatus.GammaCorrector` type is also available directly:
 
 ```go
-gc := io.NewGammaCorrectorUniform(2.2)
+gc := apparatus.NewGammaCorrectorUniform(2.2)
 corrected := gc.CorrectColor(sdl.Color{R: 128, G: 128, B: 128, A: 255})
 // corrected.R ≈ 186 — the physical digital value for 50% luminance on γ=2.2
 ```
@@ -278,14 +281,14 @@ Import: `github.com/chrplr/goxpyriment/stimuli`
 
 ```go
 type Stimulus interface {
-    Present(screen *io.Screen, clear, update bool) error
+    Present(screen *apparatus.Screen, clear, update bool) error
     Preload() error
     Unload() error
 }
 
 type VisualStimulus interface {
     Stimulus
-    Draw(screen *io.Screen) error
+    Draw(screen *apparatus.Screen) error
     GetPosition() sdl.FPoint
     SetPosition(pos sdl.FPoint)
 }
@@ -489,11 +492,12 @@ stimuli.PlaySoundFromMemory(exp.AudioDevice, assets_embed.CorrectWav)
 
 ---
 
-## Package `io`
+## Package `apparatus` and `results`
 
-Import: `github.com/chrplr/goxpyriment/io`
+Import: `github.com/chrplr/goxpyriment/apparatus` (screen, input, gamma)
+Import: `github.com/chrplr/goxpyriment/results` (data file)
 
-In normal experiments you access `io` types through `exp.Screen`, `exp.Keyboard`, `exp.Mouse`, and `exp.Data`. Direct use of `io` is only needed when writing custom stimulus types.
+In normal experiments you access `apparatus` types through `exp.Screen`, `exp.Keyboard`, `exp.Mouse`, and `exp.Data`. Direct use of `apparatus` is only needed when writing custom stimulus types.
 
 ### Screen
 
@@ -509,7 +513,7 @@ screen.FlipNS() (uint64, error)                        // present + return SDL n
 screen.FrameDuration() time.Duration                   // nominal frame duration (falls back to 60 Hz)
 screen.SetLogicalSize(w, h int32) error
 screen.SetVSync(vsync int) error
-screen.DisplayInfo() io.DisplayInfo                    // monitor properties
+screen.DisplayInfo() apparatus.DisplayInfo                    // monitor properties
 screen.Destroy()
 ```
 
@@ -555,7 +559,7 @@ exp.Mouse.ShowCursor(show bool) error
 ### GamePad
 
 ```go
-pads, err := io.GetGamePads()                                  // enumerate connected gamepads
+pads, err := apparatus.GetGamePads()                                  // enumerate connected gamepads
 defer pads[0].Close()
 
 btn, err := pads[0].WaitPress()                                // block until any button
@@ -577,11 +581,11 @@ ev, err := exp.WaitAnyEventRT(
 )
 ```
 
-Returns an `io.InputEvent`:
+Returns an `apparatus.InputEvent`:
 
 ```go
 type InputEvent struct {
-    Device        io.DeviceKind     // DeviceKeyboard | DeviceMouse | DeviceGamepad
+    Device        apparatus.DeviceKind     // DeviceKeyboard | DeviceMouse | DeviceGamepad
     Key           sdl.Keycode       // non-zero for keyboard events
     Button        uint32            // non-zero for mouse events
     GamepadButton sdl.GamepadButton // non-zero for gamepad events
@@ -611,7 +615,7 @@ type ResponseDevice interface {
 }
 
 type Response struct {
-    Source  io.DeviceKind  // DeviceKeyboard | DeviceMouse | DeviceGamepad | DeviceTTL
+    Source  apparatus.DeviceKind  // DeviceKeyboard | DeviceMouse | DeviceGamepad | DeviceTTL
     Code    uint32         // SDL Keycode, mouse button, gamepad button, or TTL bitmask
     RT      time.Duration  // elapsed from WaitResponse call to detection
     Precise bool           // true = hardware event timestamp; false = software poll
@@ -629,13 +633,13 @@ Construct wrappers with the provided adapters:
 
 ```go
 // SDL-event-driven devices
-rd := &io.KeyboardResponseDevice{KB: exp.Keyboard}
-rd := &io.MouseResponseDevice{M: exp.Mouse}
-rd := &io.GamepadResponseDevice{GP: pad}
+rd := &apparatus.KeyboardResponseDevice{KB: exp.Keyboard}
+rd := &apparatus.MouseResponseDevice{M: exp.Mouse}
+rd := &apparatus.GamepadResponseDevice{GP: pad}
 
 // Polled TTL device (MEGTTLBox, DLPIO8, or any type with ReadAll/DrainInputs)
 box, _ := triggers.NewMEGTTLBox("/dev/ttyACM0")
-rd := io.NewTTLResponseDevice(box, 5*time.Millisecond)
+rd := apparatus.NewTTLResponseDevice(box, 5*time.Millisecond)
 ```
 
 Usage in a trial loop:
@@ -657,7 +661,7 @@ exp.Data.WriteParticipantInfo(info)           // append --PARTICIPANT INFO block
 exp.Data.WriteEndTime()                       // append end time + duration
 ```
 
-Output is written to `~/goxpy_data/<expname>_<subjectID>_<timestamp>.xpd` (a CSV with `#`-prefixed metadata header).
+Output is written to `~/goxpy_data/<expname>_<subjectID>_<timestamp>.csv` (a CSV with `#`-prefixed metadata header).
 
 ---
 

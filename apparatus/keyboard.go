@@ -2,7 +2,7 @@
 // Co-authored by Claude Sonnet 4.6
 // Distributed under the GNU General Public License v3.
 
-package io
+package apparatus
 
 import (
 	"time"

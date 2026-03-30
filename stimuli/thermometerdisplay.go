@@ -6,7 +6,7 @@ package stimuli
 
 import (
 	"github.com/Zyko0/go-sdl3/sdl"
-	"github.com/chrplr/goxpyriment/io"
+	"github.com/chrplr/goxpyriment/apparatus"
 )
 
 // ThermometerDisplay represents a segmented progress bar with an optional goal.
@@ -43,7 +43,7 @@ func NewThermometerDisplay(size sdl.FPoint, nrSegments int, state, goal float32)
 	}
 }
 
-func (td *ThermometerDisplay) Draw(screen *io.Screen) error {
+func (td *ThermometerDisplay) Draw(screen *apparatus.Screen) error {
 	// Draw Frame
 	f := NewRectangle(td.Position.X, td.Position.Y, td.Size.X, td.Size.Y, td.FrameColor)
 	if err := f.Draw(screen); err != nil {
@@ -128,7 +128,7 @@ func (td *ThermometerDisplay) Draw(screen *io.Screen) error {
 }
 
 // Present delegates to PresentDrawable — the standard clear → draw → update cycle.
-func (td *ThermometerDisplay) Present(screen *io.Screen, clear, update bool) error {
+func (td *ThermometerDisplay) Present(screen *apparatus.Screen, clear, update bool) error {
 	return PresentDrawable(td, screen, clear, update)
 }
 

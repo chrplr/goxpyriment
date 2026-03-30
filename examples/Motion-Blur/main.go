@@ -43,7 +43,7 @@ import (
 	"github.com/Zyko0/go-sdl3/sdl"
 	"github.com/chrplr/goxpyriment/clock"
 	"github.com/chrplr/goxpyriment/control"
-	"github.com/chrplr/goxpyriment/io"
+	"github.com/chrplr/goxpyriment/apparatus"
 	"github.com/chrplr/goxpyriment/stimuli"
 )
 
@@ -102,7 +102,7 @@ type textItem struct {
 	text string
 }
 
-func (ti *textItem) draw(screen *io.Screen, newText string, x, y float32, color sdl.Color) {
+func (ti *textItem) draw(screen *apparatus.Screen, newText string, x, y float32, color sdl.Color) {
 	if newText != ti.text || ti.tl == nil {
 		if ti.tl != nil {
 			_ = ti.tl.Unload()
@@ -125,7 +125,7 @@ func (ti *textItem) unload() {
 // ---------------------------------------------------------------------------
 
 // vertBar draws a vertical bar centred at (cx, cy) with the given dimensions.
-func vertBar(screen *io.Screen, cx, cy, w, h float32, color sdl.Color) {
+func vertBar(screen *apparatus.Screen, cx, cy, w, h float32, color sdl.Color) {
 	sdlX, sdlY := screen.CenterToSDL(cx, cy)
 	_ = screen.Renderer.SetDrawColor(color.R, color.G, color.B, color.A)
 	_ = screen.Renderer.RenderFillRect(&sdl.FRect{
@@ -137,7 +137,7 @@ func vertBar(screen *io.Screen, cx, cy, w, h float32, color sdl.Color) {
 }
 
 // fillRect draws a filled rectangle centred at (cx, cy).
-func fillRect(screen *io.Screen, cx, cy, w, h float32, color sdl.Color) {
+func fillRect(screen *apparatus.Screen, cx, cy, w, h float32, color sdl.Color) {
 	sdlX, sdlY := screen.CenterToSDL(cx, cy)
 	_ = screen.Renderer.SetDrawColor(color.R, color.G, color.B, color.A)
 	_ = screen.Renderer.RenderFillRect(&sdl.FRect{
@@ -149,7 +149,7 @@ func fillRect(screen *io.Screen, cx, cy, w, h float32, color sdl.Color) {
 }
 
 // hLine draws a horizontal line across the full screen width at center-y = cy.
-func hLine(screen *io.Screen, cy float32, color sdl.Color) {
+func hLine(screen *apparatus.Screen, cy float32, color sdl.Color) {
 	sw := float32(screen.Width)
 	sx1, sy := screen.CenterToSDL(-sw/2, cy)
 	sx2, _ := screen.CenterToSDL(sw/2, cy)

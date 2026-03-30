@@ -1,4 +1,4 @@
-package io
+package results
 
 import (
 	"os"
@@ -24,9 +24,9 @@ func TestDataFileFormatting(t *testing.T) {
 		SubjectID: 42,
 	}
 
-	// 1. Simple data
+	// 1. Simple data — numbers bare, strings always quoted
 	df.Add(1, "test", 3.14)
-	expected := "42,1,test,3.14"
+	expected := `42,1,"test",3.14`
 	if !strings.Contains(df.Buffer[0], expected) {
 		t.Errorf("Expected row to contain %q, got %q", expected, df.Buffer[0])
 	}
@@ -89,7 +89,7 @@ func TestOutputBuffer(t *testing.T) {
 func TestNewDataFileDefaultDir(t *testing.T) {
 	// We don't want to actually create files in $HOME during tests,
 	// so we check if the path generation logic is sane.
-	
+
 	// Test with explicit dir
 	df, err := NewDataFile("my_results", 1, "test_exp")
 	if err != nil {
@@ -100,7 +100,7 @@ func TestNewDataFileDefaultDir(t *testing.T) {
 	if df.Directory != "my_results" {
 		t.Errorf("Expected directory 'my_results', got %q", df.Directory)
 	}
-	
+
 	if !strings.HasPrefix(df.Filename, "test_exp_001_") {
 		t.Errorf("Unexpected filename format: %q", df.Filename)
 	}

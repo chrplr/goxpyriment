@@ -11,7 +11,7 @@ import (
 	"math/rand"
 
 	"github.com/Zyko0/go-sdl3/sdl"
-	"github.com/chrplr/goxpyriment/io"
+	"github.com/chrplr/goxpyriment/apparatus"
 )
 
 // VisualMask is a pattern mask of random dots over a background (e.g. for masking stimuli); DotPercentage controls fill (0–100).
@@ -41,7 +41,7 @@ func NewVisualMask(width, height float32, dotWidth, dotHeight float32, bgColor, 
 }
 
 // preload generates the mask and creates the SDL texture.
-func (vm *VisualMask) preload(screen *io.Screen) error {
+func (vm *VisualMask) preload(screen *apparatus.Screen) error {
 	w, h := int(vm.Size.X), int(vm.Size.Y)
 	img := image.NewRGBA(image.Rect(0, 0, w, h))
 
@@ -76,7 +76,7 @@ func (vm *VisualMask) preload(screen *io.Screen) error {
 
 // Preload is provided by BaseVisual (no-op; texture is lazy-loaded on first Draw).
 
-func (vm *VisualMask) Draw(screen *io.Screen) error {
+func (vm *VisualMask) Draw(screen *apparatus.Screen) error {
 	if vm.Texture == nil {
 		if err := vm.preload(screen); err != nil {
 			return err
@@ -95,7 +95,7 @@ func (vm *VisualMask) Draw(screen *io.Screen) error {
 }
 
 // Present delegates to PresentDrawable — the standard clear → draw → update cycle.
-func (vm *VisualMask) Present(screen *io.Screen, clear, update bool) error {
+func (vm *VisualMask) Present(screen *apparatus.Screen, clear, update bool) error {
 	return PresentDrawable(vm, screen, clear, update)
 }
 

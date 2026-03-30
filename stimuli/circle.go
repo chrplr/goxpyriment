@@ -8,7 +8,7 @@ import (
 	"math"
 
 	"github.com/Zyko0/go-sdl3/sdl"
-	"github.com/chrplr/goxpyriment/io"
+	"github.com/chrplr/goxpyriment/apparatus"
 )
 
 // Circle is a filled circle with the given radius and color; Position is center-based.
@@ -32,7 +32,7 @@ func NewCircle(radius float32, color sdl.Color) *Circle {
 
 // Draw draws the circle using multiple lines or points.
 // For better performance, we could use a texture.
-func (c *Circle) Draw(screen *io.Screen) error {
+func (c *Circle) Draw(screen *apparatus.Screen) error {
 	if err := screen.Renderer.SetDrawColor(c.Color.R, c.Color.G, c.Color.B, c.Color.A); err != nil {
 		return err
 	}
@@ -51,7 +51,7 @@ func (c *Circle) Draw(screen *io.Screen) error {
 }
 
 // Present delegates to PresentDrawable — the standard clear → draw → update cycle.
-func (c *Circle) Present(screen *io.Screen, clear, update bool) error {
+func (c *Circle) Present(screen *apparatus.Screen, clear, update bool) error {
 	return PresentDrawable(c, screen, clear, update)
 }
 

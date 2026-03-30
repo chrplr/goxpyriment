@@ -14,8 +14,6 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/Zyko0/go-sdl3/bin/binsdl"
-	"github.com/Zyko0/go-sdl3/bin/binttf"
 	"github.com/Zyko0/go-sdl3/sdl"
 	"github.com/Zyko0/go-sdl3/ttf"
 	"github.com/chrplr/goxpyriment/assets_embed"
@@ -161,10 +159,10 @@ func GetParticipantInfo(title string, fields []InfoField) (map[string]string, er
 	// On macOS, loading two separate copies of the same dylib (from different
 	// temp paths) registers duplicate Objective-C classes and causes a crash.
 	if sharedSDLLoader == nil {
-		sharedSDLLoader = binsdl.Load()
+		sharedSDLLoader = loadSDL()
 	}
 	if sharedTTFLoader == nil {
-		sharedTTFLoader = binttf.Load()
+		sharedTTFLoader = loadTTF()
 	}
 
 	if err := sdl.Init(sdl.INIT_VIDEO | sdl.INIT_EVENTS); err != nil {

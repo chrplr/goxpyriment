@@ -25,7 +25,7 @@
 - **`io/`**: Manages low-level system interfaces:
   - `Screen`: Handles the SDL window and renderer.
   - `Keyboard`/`Mouse`: Input event handling (non-destructive polling).
-  - `DataFile`: Logging experimental results to `.xpd` files.
+  - `DataFile`: Logging experimental results to `.csv` files.
 - **`stimuli/`**: A library of reusable components for presentation:
   - Visual: `TextLine`, `TextBox`, `Rectangle`, `Circle`, `Picture`, `FixCross`, `GaborPatch`, etc.
   - Audio: `Sound`, `Tone`.

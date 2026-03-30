@@ -23,7 +23,7 @@ package stimuli
 
 import (
 	"github.com/Zyko0/go-sdl3/sdl"
-	"github.com/chrplr/goxpyriment/io"
+	"github.com/chrplr/goxpyriment/apparatus"
 )
 
 // ---------------------------------------------------------------------------
@@ -78,7 +78,7 @@ func (b *BaseVisual) Unload() error {
 // Drawable is the subset of VisualStimulus required by PresentDrawable.
 // Any type with a Draw method satisfies it.
 type Drawable interface {
-	Draw(screen *io.Screen) error
+	Draw(screen *apparatus.Screen) error
 }
 
 // PresentDrawable implements the standard Present() logic shared by most
@@ -87,14 +87,14 @@ type Drawable interface {
 //
 // Individual stimulus types delegate their Present method to this function:
 //
-//	func (r *Rectangle) Present(screen *io.Screen, clear, update bool) error {
+//	func (r *Rectangle) Present(screen *apparatus.Screen, clear, update bool) error {
 //	    return stimuli.PresentDrawable(r, screen, clear, update)
 //	}
 //
 // Stimuli with non-standard Present behaviour (e.g., BlankScreen ignores
 // the clear flag, audio stimuli ignore the screen entirely) should NOT use
 // this helper and should implement Present directly.
-func PresentDrawable(d Drawable, screen *io.Screen, clear, update bool) error {
+func PresentDrawable(d Drawable, screen *apparatus.Screen, clear, update bool) error {
 	if clear {
 		if err := screen.Clear(); err != nil {
 			return err

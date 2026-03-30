@@ -2,21 +2,23 @@
 // Co-authored by Claude Sonnet 4.6
 // Distributed under the GNU General Public License v3.
 
-// Package io provides the low-level input/output subsystems for goxpyriment:
+// Package apparatus provides the low-level input/output subsystems for goxpyriment:
 //
 //   - Screen — SDL window/renderer management, center-based coordinate system,
 //     VSync control, and logical resolution mapping.
 //   - Keyboard — blocking (Wait/WaitKeys) and non-blocking (Check) key input.
 //   - Mouse — cursor visibility, position, and button input.
 //   - GamePad — game-controller button input.
-//   - OutputFile / DataFile — CSV-like result logging with automatic timestamping.
+//   - GammaCorrector — inverse-gamma look-up table for luminance linearization.
+//   - ResponseDevice / Response — unified response abstraction over keyboard, mouse,
+//     gamepad, and TTL devices.
 //
 // Hardware trigger devices (DLP-IO8, parallel port, serial port) are in the
 // separate [github.com/chrplr/goxpyriment/triggers] package.
 //
 // Most types in this package are not used directly; the control.Experiment
 // facade creates and wires them together during initialization.
-package io
+package apparatus
 
 import (
 	"fmt"
@@ -273,7 +275,7 @@ func (s *Screen) SetLogicalSize(width, height int32) error {
 }
 
 // DisplayInfo holds display properties queried once at experiment startup.
-// It is intended to be logged into the .xpd metadata header so that stimulus
+// It is intended to be logged into the .csv metadata header so that stimulus
 // timing can be interpreted correctly during analysis.
 type DisplayInfo struct {
 	ID             uint32  // SDL display ID

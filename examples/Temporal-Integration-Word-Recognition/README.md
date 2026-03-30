@@ -181,7 +181,7 @@ go run main.go -exp 2 -w
 
 ## Output data
 
-Results are written to an `.xpd` file in the current directory (one file per subject).
+Results are written to an `.csv` file in the current directory (one file per subject).
 
 ### Experiment 1 columns
 

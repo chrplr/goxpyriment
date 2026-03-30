@@ -70,7 +70,7 @@ To run the web version:
     ```
 3.  Open `http://localhost:8080` in your browser.
 
-**Data Saving**: When the experiment ends in the browser, the `.xpd` result file will be automatically triggered as a **download** to your computer's `Downloads` folder.
+**Data Saving**: When the experiment ends in the browser, the `.csv` result file will be automatically triggered as a **download** to your computer's `Downloads` folder.
 
 To re-compile the Wasm version yourself:
 ```bash

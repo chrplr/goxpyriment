@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/Zyko0/go-sdl3/sdl"
-	"github.com/chrplr/goxpyriment/io"
+	"github.com/chrplr/goxpyriment/apparatus"
 )
 
 // Sound represents an audio stimulus loaded from a WAV file or byte slice.
@@ -112,7 +112,7 @@ func (s *Sound) Wait() {
 }
 
 // Present plays the sound (implements Stimulus interface).
-func (s *Sound) Present(screen *io.Screen, clear, update bool) error {
+func (s *Sound) Present(screen *apparatus.Screen, clear, update bool) error {
 	return s.Play()
 }
 

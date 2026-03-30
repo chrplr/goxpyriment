@@ -1,7 +1,7 @@
 // Copyright (2026) Christophe Pallier <christophe@pallier.org>
 // Distributed under the GNU General Public License v3.
 
-package io
+package apparatus
 
 import (
 	"context"
@@ -209,7 +209,7 @@ type ttlInputSource interface {
 // Construct with [NewTTLResponseDevice]; pass the concrete device directly:
 //
 //	box, _ := triggers.NewMEGTTLBox("/dev/ttyACM0")
-//	rd := io.NewTTLResponseDevice(box, 5*time.Millisecond)
+//	rd := apparatus.NewTTLResponseDevice(box, 5*time.Millisecond)
 type TTLResponseDevice struct {
 	src          ttlInputSource
 	pollInterval time.Duration

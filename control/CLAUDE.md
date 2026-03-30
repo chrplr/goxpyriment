@@ -28,7 +28,7 @@ exp.Run(func() error {
 | `Mouse` | `*io.Mouse` | Mouse button + position input |
 | `AudioDevice` | `sdl.AudioDeviceID` | Passed to `Sound.PreloadDevice` |
 | `Audio` | `*AudioManager` | High-level audio playback |
-| `Data` | `*io.DataFile` | `.xpd` experiment data file |
+| `Data` | `*io.DataFile` | `.csv` experiment data file |
 | `Design` | `*design.Experiment` | Trial/block structure |
 | `Info` | `map[string]string` | Participant metadata (from `GetParticipantInfo`) |
 | `SubjectID` | `int` | Set by `-s` flag or `GetParticipantInfo` |
@@ -36,7 +36,7 @@ exp.Run(func() error {
 | `DefaultFontSize` | `int` | Font size used at init |
 | `BackgroundColor` | `sdl.Color` | Screen background |
 | `ForegroundColor` | `sdl.Color` | Default text color |
-| `OutputDirectory` | `string` | Where `.xpd` files are written |
+| `OutputDirectory` | `string` | Where `.csv` files are written |
 
 ## Convenience methods
 

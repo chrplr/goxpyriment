@@ -40,9 +40,11 @@ import (
 	"bytes"
 	_ "embed"
 	"encoding/csv"
+	"flag"
 	"fmt"
 	stdlio "io"
 	"log"
+	"math"
 	"math/rand"
 	"runtime/debug"
 	"strconv"
@@ -52,21 +54,27 @@ import (
 	"github.com/Zyko0/go-sdl3/sdl"
 	"github.com/chrplr/goxpyriment/control"
 	"github.com/chrplr/goxpyriment/design"
-	"github.com/chrplr/goxpyriment/io"
+	"github.com/chrplr/goxpyriment/apparatus"
 	"github.com/chrplr/goxpyriment/stimuli"
 )
 
 // ── Constants ─────────────────────────────────────────────────────────────────
 
+// stimFrames is the number of VSYNC frames each component is displayed.
+// It starts at 1 (≈16.7 ms at 60 Hz) and may be scaled by -timescale.
+var stimFrames = 1
+
 const (
 	// Trial timing
 	fixationDurationMS = 1510
-	stimFrames         = 1 // 1 frame ≈ 16.7 ms at 60 Hz
 	nCyclesExp1        = 3
 	maskString         = "########"
 
 	// Font
 	fontSizePt = 20
+
+	// Frame drawn around stimulus area on every flip to reduce apparent motion.
+	framePad float32 = 8.0
 
 	// Exp 1: trial counts
 	nStimuliPerCondExp1 = 20 // 20 stimuli × 6 SOAs = 120 trials per condition
@@ -85,6 +93,7 @@ const (
 
 // soaTable maps each SOA (ms) to its ISI duration in 60 Hz frames.
 // SOA = stimFrames (1) + isiFrames; at 60 Hz 1 frame ≈ 16.67 ms.
+// These are the base values; -timescale multiplies isiFrames and soaMS.
 var soaTable = []struct {
 	soaMS     int
 	isiFrames int
@@ -163,29 +172,29 @@ func splitWord(word string) (odd, even string) {
 }
 
 // oddDisplayStr builds the display string for the odd component.
-// Letters occupy positions 0,2,4,… and spaces occupy 1,3,5,…
+// Letters occupy positions 0,2,4,… and fill occupies 1,3,5,…
 // so that the string visually aligns with the full merged word.
 //
-// Example: "CMAN" → "C M A N " (8 chars for a 8-letter merged word)
-func oddDisplayStr(letters string) string {
+// Example with fill=' ': "CMAN" → "C M A N " (8 chars for a 8-letter merged word)
+func oddDisplayStr(letters string, fill rune) string {
 	runes := []rune(letters)
 	buf := make([]rune, 2*len(runes))
 	for i, r := range runes {
 		buf[2*i] = r
-		buf[2*i+1] = ' '
+		buf[2*i+1] = fill
 	}
 	return string(buf)
 }
 
 // evenDisplayStr builds the display string for the even component.
-// Spaces occupy positions 0,2,4,… and letters occupy 1,3,5,…
+// fill occupies positions 0,2,4,… and letters occupy 1,3,5,…
 //
-// Example: "APGE" → " A P G E" (8 chars)
-func evenDisplayStr(letters string) string {
+// Example with fill=' ': "APGE" → " A P G E" (8 chars)
+func evenDisplayStr(letters string, fill rune) string {
 	runes := []rune(letters)
 	buf := make([]rune, 2*len(runes))
 	for i, r := range runes {
-		buf[2*i] = ' '
+		buf[2*i] = fill
 		buf[2*i+1] = r
 	}
 	return string(buf)
@@ -252,12 +261,12 @@ type trial struct {
 	isiFrames int // ISI between components in 60 Hz frames
 }
 
-func (t *trial) oddStim(color sdl.Color) *stimuli.TextLine {
-	return stimuli.NewTextLine(oddDisplayStr(t.oddLetters), 0, 0, color)
+func (t *trial) oddStim(color sdl.Color, fill rune) *stimuli.TextLine {
+	return stimuli.NewTextLine(oddDisplayStr(t.oddLetters, fill), 0, 0, color)
 }
 
-func (t *trial) evenStim(color sdl.Color) *stimuli.TextLine {
-	return stimuli.NewTextLine(evenDisplayStr(t.evenLetters), 0, 0, color)
+func (t *trial) evenStim(color sdl.Color, fill rune) *stimuli.TextLine {
+	return stimuli.NewTextLine(evenDisplayStr(t.evenLetters, fill), 0, 0, color)
 }
 
 // ── Trial generation ──────────────────────────────────────────────────────────
@@ -378,10 +387,20 @@ func buildPseudowordTrialsExp2(words []wordEntry, n int, lexicon map[string]bool
 
 // ── Frame-accurate display helpers ────────────────────────────────────────────
 
-// flipStim clears the screen, draws stim (or leaves blank if nil), and
-// flips. Returns the VSYNC onset timestamp in nanoseconds.
-func flipStim(screen *io.Screen, stim stimuli.VisualStimulus) uint64 {
+// drawFrame draws a white rectangle outline around the stimulus area.
+func drawFrame(screen *apparatus.Screen, frame *sdl.FRect) {
+	if frame == nil {
+		return
+	}
+	_ = screen.Renderer.SetDrawColor(255, 255, 255, 255)
+	_ = screen.Renderer.RenderRect(frame)
+}
+
+// flipStim clears the screen, draws the frame (if non-nil), draws stim (or
+// leaves blank if nil), and flips. Returns the VSYNC onset timestamp in nanoseconds.
+func flipStim(screen *apparatus.Screen, stim stimuli.VisualStimulus, frame *sdl.FRect) uint64 {
 	_ = screen.Clear()
+	drawFrame(screen, frame)
 	if stim != nil {
 		_ = stim.Draw(screen)
 	}
@@ -389,10 +408,12 @@ func flipStim(screen *io.Screen, stim stimuli.VisualStimulus) uint64 {
 	return ts
 }
 
-// flipBlank clears and flips without drawing anything. Drains the SDL event
-// queue but does not act on events (caller is responsible for ESC / quit).
-func flipBlank(screen *io.Screen) {
+// flipBlank clears, draws the frame (if non-nil), and flips without drawing
+// any stimulus. Drains the SDL event queue but does not act on events
+// (caller is responsible for ESC / quit).
+func flipBlank(screen *apparatus.Screen, frame *sdl.FRect) {
 	_ = screen.Clear()
+	drawFrame(screen, frame)
 	_ = screen.Update()
 }
 
@@ -435,13 +456,11 @@ func pollResponse(respKeys []sdl.Keycode) (sdl.Keycode, uint64) {
 
 // ── Experiment 1: Subjective Report ──────────────────────────────────────────
 
-func runExp1(exp *control.Experiment, trials []trial) error {
+func runExp1(exp *control.Experiment, trials []trial, fill rune) error {
 	screen := exp.Screen
 	kb := exp.Keyboard
 
-	fixCross := stimuli.NewFixCross(20, 2, control.White)
 	mask := stimuli.NewTextLine(maskString, 0, 0, control.White)
-	_ = stimuli.PreloadVisualOnScreen(screen, fixCross)
 	_ = stimuli.PreloadVisualOnScreen(screen, mask)
 
 	exp.AddDataVariableNames([]string{
@@ -465,13 +484,23 @@ func runExp1(exp *control.Experiment, trials []trial) error {
 	}
 
 	for trialIdx, t := range trials {
-		evenSt := t.evenStim(control.White)
-		oddSt := t.oddStim(control.White)
+		evenSt := t.evenStim(control.White, fill)
+		oddSt := t.oddStim(control.White, fill)
 		_ = stimuli.PreloadVisualOnScreen(screen, evenSt)
 		_ = stimuli.PreloadVisualOnScreen(screen, oddSt)
 
-		// Fixation.
-		exp.Show(fixCross)
+		// Frame rect: stable border around the stimulus area, drawn on every
+		// flip to provide a spatial anchor and reduce apparent motion.
+		tlX, tlY := screen.CenterToSDL(-oddSt.Width/2, oddSt.Height/2)
+		frame := &sdl.FRect{
+			X: tlX - framePad,
+			Y: tlY - framePad,
+			W: oddSt.Width + 2*framePad,
+			H: oddSt.Height + 2*framePad,
+		}
+
+		// Fixation: show only the frame so the subject can anchor attention.
+		flipStim(screen, nil, frame)
 		exp.Wait(fixationDurationMS)
 
 		// Critical RSVP sequence — disable GC for precise frame timing.
@@ -480,25 +509,25 @@ func runExp1(exp *control.Experiment, trials []trial) error {
 			defer debug.SetGCPercent(old)
 
 			for cycle := 0; cycle < nCyclesExp1; cycle++ {
-				flipStim(screen, evenSt)
+				flipStim(screen, evenSt, frame)
 				for f := 1; f < stimFrames; f++ {
-					flipBlank(screen) // extra frames if stimFrames > 1
+					flipBlank(screen, frame) // extra frames if stimFrames > 1
 				}
 				for f := 0; f < t.isiFrames; f++ {
-					flipBlank(screen)
+					flipBlank(screen, frame)
 				}
-				flipStim(screen, oddSt)
+				flipStim(screen, oddSt, frame)
 				for f := 1; f < stimFrames; f++ {
-					flipBlank(screen)
+					flipBlank(screen, frame)
 				}
 				for f := 0; f < t.isiFrames; f++ {
-					flipBlank(screen)
+					flipBlank(screen, frame)
 				}
 			}
 			// Mask.
-			flipStim(screen, mask)
+			flipStim(screen, mask, frame)
 			// One blank frame to separate mask from response screen.
-			flipBlank(screen)
+			flipBlank(screen, nil)
 		}()
 
 		if drainEvents() {
@@ -539,11 +568,8 @@ func runExp1(exp *control.Experiment, trials []trial) error {
 
 // ── Experiment 2: Objective Lexical Decision ──────────────────────────────────
 
-func runExp2(exp *control.Experiment, trials []trial) error {
+func runExp2(exp *control.Experiment, trials []trial, fill rune) error {
 	screen := exp.Screen
-
-	fixCross := stimuli.NewFixCross(20, 2, control.White)
-	_ = stimuli.PreloadVisualOnScreen(screen, fixCross)
 
 	exp.AddDataVariableNames([]string{
 		"trial", "condition", "length", "soa_ms",
@@ -566,13 +592,22 @@ func runExp2(exp *control.Experiment, trials []trial) error {
 	respKeys := []sdl.Keycode{exp2WordKey, exp2PwdKey}
 
 	for trialIdx, t := range trials {
-		evenSt := t.evenStim(control.White)
-		oddSt := t.oddStim(control.White)
+		evenSt := t.evenStim(control.White, fill)
+		oddSt := t.oddStim(control.White, fill)
 		_ = stimuli.PreloadVisualOnScreen(screen, evenSt)
 		_ = stimuli.PreloadVisualOnScreen(screen, oddSt)
 
-		// Fixation.
-		exp.Show(fixCross)
+		// Frame rect: stable border around the stimulus area.
+		tlX, tlY := screen.CenterToSDL(-oddSt.Width/2, oddSt.Height/2)
+		frame := &sdl.FRect{
+			X: tlX - framePad,
+			Y: tlY - framePad,
+			W: oddSt.Width + 2*framePad,
+			H: oddSt.Height + 2*framePad,
+		}
+
+		// Fixation: show only the frame so the subject can anchor attention.
+		flipStim(screen, nil, frame)
 		exp.Wait(fixationDurationMS)
 
 		// Ongoing alternation — disable GC.
@@ -589,7 +624,7 @@ func runExp2(exp *control.Experiment, trials []trial) error {
 			cycle := 0
 			for {
 				// Even component (1 frame).
-				flipStim(screen, evenSt)
+				flipStim(screen, evenSt, frame)
 				if k, ts := pollResponse(respKeys); k != 0 {
 					respKey, respTS = k, ts
 					return
@@ -597,7 +632,7 @@ func runExp2(exp *control.Experiment, trials []trial) error {
 
 				// ISI after even.
 				for f := 0; f < t.isiFrames; f++ {
-					flipBlank(screen)
+					flipBlank(screen, frame)
 					if k, ts := pollResponse(respKeys); k != 0 {
 						respKey, respTS = k, ts
 						return
@@ -605,7 +640,7 @@ func runExp2(exp *control.Experiment, trials []trial) error {
 				}
 
 				// Odd component (1 frame).
-				oddOnset := flipStim(screen, oddSt)
+				oddOnset := flipStim(screen, oddSt, frame)
 				if cycle == 0 {
 					rtOnsetNS = oddOnset // RT measured from here
 				}
@@ -616,7 +651,7 @@ func runExp2(exp *control.Experiment, trials []trial) error {
 
 				// ISI after odd.
 				for f := 0; f < t.isiFrames; f++ {
-					flipBlank(screen)
+					flipBlank(screen, frame)
 					if k, ts := pollResponse(respKeys); k != 0 {
 						respKey, respTS = k, ts
 						return
@@ -665,6 +700,26 @@ func runExp2(exp *control.Experiment, trials []trial) error {
 // ── Main ──────────────────────────────────────────────────────────────────────
 
 func main() {
+	fillFlag := flag.String("fill", "X", "placeholder character for alternating letter positions")
+	timescaleFlag := flag.Float64("timescale", 1.0, "time scaling factor (1–10): multiplies stimulus and ISI frame counts")
+	flag.Parse()
+
+	fillRunes := []rune(*fillFlag)
+	if len(fillRunes) != 1 {
+		log.Fatalf("-fill must be exactly one character, got %q", *fillFlag)
+	}
+	fill := fillRunes[0]
+
+	scale := *timescaleFlag
+	if scale < 1.0 || scale > 10.0 {
+		log.Fatalf("-timescale must be between 1 and 10, got %g", scale)
+	}
+	stimFrames = max(1, int(math.Round(float64(stimFrames)*scale)))
+	for i := range soaTable {
+		soaTable[i].isiFrames = max(1, int(math.Round(float64(soaTable[i].isiFrames)*scale)))
+		soaTable[i].soaMS = int(math.Round(float64(soaTable[i].soaMS) * scale))
+	}
+
 	fields := []control.InfoField{
 		{Name: "subject_id", Label: "Subject ID", Default: ""},
 		{
@@ -700,6 +755,7 @@ func main() {
 		log.Fatal(err)
 	}
 	defer exp.End()
+	_ = exp.HideCursor()
 
 	allWords, lexicon, err := loadWords(bytes.NewReader(wordsData))
 	if err != nil {
@@ -747,9 +803,9 @@ func main() {
 	if err := exp.Run(func() error {
 		switch expNum {
 		case 1:
-			runErr = runExp1(exp, trials)
+			runErr = runExp1(exp, trials, fill)
 		case 2:
-			runErr = runExp2(exp, trials)
+			runErr = runExp2(exp, trials, fill)
 		}
 		return runErr
 	}); err != nil && !control.IsEndLoop(err) {

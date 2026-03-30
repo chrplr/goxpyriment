@@ -6,7 +6,7 @@ package stimuli
 
 import (
 	"github.com/Zyko0/go-sdl3/sdl"
-	"github.com/chrplr/goxpyriment/io"
+	"github.com/chrplr/goxpyriment/apparatus"
 )
 
 // Canvas is an offscreen render target of the given size and background color; stimuli can be drawn to it, then the canvas is drawn to the screen.
@@ -30,7 +30,7 @@ func NewCanvas(width, height float32, color sdl.Color) *Canvas {
 }
 
 // preload creates the internal texture for the canvas.
-func (c *Canvas) preload(screen *io.Screen) error {
+func (c *Canvas) preload(screen *apparatus.Screen) error {
 	if c.Texture != nil {
 		return nil
 	}
@@ -48,7 +48,7 @@ func (c *Canvas) preload(screen *io.Screen) error {
 // Preload is provided by BaseVisual (no-op; texture is lazy-loaded on first Draw/Blit).
 
 // Clear clears the canvas with its background color.
-func (c *Canvas) Clear(screen *io.Screen) error {
+func (c *Canvas) Clear(screen *apparatus.Screen) error {
 	if c.Texture == nil {
 		if err := c.preload(screen); err != nil {
 			return err
@@ -68,7 +68,7 @@ func (c *Canvas) Clear(screen *io.Screen) error {
 }
 
 // Blit draws a stimulus onto the canvas.
-func (c *Canvas) Blit(stim VisualStimulus, screen *io.Screen) error {
+func (c *Canvas) Blit(stim VisualStimulus, screen *apparatus.Screen) error {
 	if c.Texture == nil {
 		if err := c.preload(screen); err != nil {
 			return err
@@ -94,7 +94,7 @@ func (c *Canvas) Blit(stim VisualStimulus, screen *io.Screen) error {
 	return stim.Draw(screen)
 }
 
-func (c *Canvas) Draw(screen *io.Screen) error {
+func (c *Canvas) Draw(screen *apparatus.Screen) error {
 	if c.Texture == nil {
 		if err := c.preload(screen); err != nil {
 			return err
@@ -113,7 +113,7 @@ func (c *Canvas) Draw(screen *io.Screen) error {
 }
 
 // Present delegates to PresentDrawable — the standard clear → draw → update cycle.
-func (c *Canvas) Present(screen *io.Screen, clear, update bool) error {
+func (c *Canvas) Present(screen *apparatus.Screen, clear, update bool) error {
 	return PresentDrawable(c, screen, clear, update)
 }
 

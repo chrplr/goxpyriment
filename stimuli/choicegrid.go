@@ -24,7 +24,7 @@ import (
 	"unicode"
 
 	"github.com/Zyko0/go-sdl3/sdl"
-	"github.com/chrplr/goxpyriment/io"
+	"github.com/chrplr/goxpyriment/apparatus"
 )
 
 // ChoiceGrid is a visual multiple-choice response widget.
@@ -100,7 +100,7 @@ func (cg *ChoiceGrid) numCols() int {
 
 // buildButtons computes the center position and SDL hit-test bounds for every
 // button. Call once per Get invocation (the screen size may have changed).
-func (cg *ChoiceGrid) buildButtons(screen *io.Screen) []cgButton {
+func (cg *ChoiceGrid) buildButtons(screen *apparatus.Screen) []cgButton {
 	cols := cg.numCols()
 	n := len(cg.Choices)
 	rows := (n + cols - 1) / cols
@@ -138,7 +138,7 @@ func (cg *ChoiceGrid) buildButtons(screen *io.Screen) []cgButton {
 }
 
 // draw renders the prompt, all buttons, the current response, and a hint.
-func (cg *ChoiceGrid) draw(screen *io.Screen, buttons []cgButton, response []string) error {
+func (cg *ChoiceGrid) draw(screen *apparatus.Screen, buttons []cgButton, response []string) error {
 	H := float32(screen.Height)
 
 	// Prompt near the top of the screen.
@@ -214,7 +214,7 @@ func keycodeMatchesLabel(key sdl.Keycode, label string) bool {
 //
 // The returned slice preserves selection order. Items may appear more than
 // once if the participant selects the same button multiple times.
-func (cg *ChoiceGrid) Get(screen *io.Screen, kb *io.Keyboard) ([]string, error) {
+func (cg *ChoiceGrid) Get(screen *apparatus.Screen, kb *apparatus.Keyboard) ([]string, error) {
 	buttons := cg.buildButtons(screen)
 	response := []string{}
 

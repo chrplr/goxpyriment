@@ -18,7 +18,7 @@ import (
 
 	"github.com/chrplr/goxpyriment/clock"
 	"github.com/chrplr/goxpyriment/control"
-	"github.com/chrplr/goxpyriment/io"
+	"github.com/chrplr/goxpyriment/apparatus"
 	"github.com/chrplr/goxpyriment/stimuli"
 	"github.com/chrplr/goxpyriment/units"
 )
@@ -48,9 +48,9 @@ type Retinotopy struct {
 	Exp             *control.Experiment
 	Patterns        [][]byte // RGB raw data (768x768x3)
 	Masks           [][]byte // Gray raw data (768x768x1)
-	FixationGrid    *io.Texture
+	FixationGrid    *apparatus.Texture
 	FixationDots    []*stimuli.Circle
-	CombinedTexture *io.Texture
+	CombinedTexture *apparatus.Texture
 	PixelBuffer     []byte // RGBA buffer for CombinedTexture (768x768x4)
 
 	MaskOrder    []int
@@ -175,12 +175,12 @@ func (r *Retinotopy) LoadStimuli(subjID int, runID int) error {
 	}
 
 	// 6. Initialize Combined Texture and Buffer
-	tex, err := r.Exp.Screen.Renderer.CreateTexture(io.PIXELFORMAT_RGBA32, io.TEXTUREACCESS_STREAMING, WindowWidth, WindowHeight)
+	tex, err := r.Exp.Screen.Renderer.CreateTexture(apparatus.PIXELFORMAT_RGBA32, apparatus.TEXTUREACCESS_STREAMING, WindowWidth, WindowHeight)
 	if err != nil {
 		return err
 	}
 	r.CombinedTexture = tex
-	r.CombinedTexture.SetBlendMode(io.BLENDMODE_BLEND)
+	r.CombinedTexture.SetBlendMode(apparatus.BLENDMODE_BLEND)
 	r.PixelBuffer = make([]byte, WindowWidth*WindowHeight*4)
 
 	// 7. Calculate centered StimulusRect (768x768 * scaling)
@@ -269,7 +269,7 @@ func (r *Retinotopy) loadOrders(subjID int, runID int) error {
 	return nil
 }
 
-func (r *Retinotopy) loadTextureFromBytes(data []byte) (*io.Texture, error) {
+func (r *Retinotopy) loadTextureFromBytes(data []byte) (*apparatus.Texture, error) {
 	img, _, err := image.Decode(bytes.NewReader(data))
 	if err != nil {
 		return nil, err
@@ -287,7 +287,7 @@ func (r *Retinotopy) loadTextureFromBytes(data []byte) (*io.Texture, error) {
 		}
 	}
 
-	surface, err := io.CreateSurfaceFrom(w, h, io.PIXELFORMAT_RGBA32, rgba.Pix, w*4)
+	surface, err := apparatus.CreateSurfaceFrom(w, h, apparatus.PIXELFORMAT_RGBA32, rgba.Pix, w*4)
 	if err != nil {
 		return nil, err
 	}

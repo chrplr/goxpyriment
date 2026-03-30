@@ -9,9 +9,9 @@ All user-facing documentation lives in `docs/`:
 | File | Contents |
 |---|---|
 | `docs/GettingStarted.md` | Tutorial introduction — Python/Expyriment mapping, 3 worked examples |
+| `docs/MigrationGuide.md` | Migration reference — concept maps and side-by-side code for Expyriment, PsychoPy, Psychtoolbox |
 | `docs/UserManual.md` | Concept guide — rendering model, timing, input, data, streams, audio, design |
 | `docs/API.md` | Complete public API reference organized by package |
-| `docs/index.md` | Landing page (rendered by MkDocs) |
 
 Build and preview the docs site locally (Makefile targets at repo root):
 
@@ -71,7 +71,8 @@ The packages form a deliberate layered stack. Each package has its own `CLAUDE.m
 |---|---|
 | `control/` | Top-level experiment orchestration — `Experiment` facade, SDL re-exports, participant info dialog |
 | `stimuli/` | All visual and audio stimuli, VSYNC-locked animation loops, RSVP streams |
-| `io/` | SDL window/renderer (`Screen`), keyboard, mouse, gamepad, `.xpd` data files |
+| `apparatus/` | SDL window/renderer (`Screen`), keyboard, mouse, gamepad, gamma corrector, response device abstraction |
+| `results/` | Experiment data file (`.csv` with `#`-prefixed metadata), buffered output file |
 | `design/` | Trial/block structure, randomization utilities, Latin-square counterbalancing |
 | `staircase/` | Adaptive threshold estimation — `UpDown` (Levitt 1971) and `Quest` (Watson & Pelli 1983) |
 | `units/` | Vision-science unit conversions — pixels↔degrees↔cm via a `Monitor` struct |

@@ -6,7 +6,7 @@ package stimuli
 
 import (
 	"github.com/Zyko0/go-sdl3/sdl"
-	"github.com/chrplr/goxpyriment/io"
+	"github.com/chrplr/goxpyriment/apparatus"
 )
 
 // TextInput represents a text input box for user input.
@@ -35,7 +35,7 @@ func NewTextInput(message string, position sdl.FPoint, boxWidth float32, bgColor
 }
 
 // Get displays the input box and waits for user input.
-func (ti *TextInput) Get(screen *io.Screen, keyboard *io.Keyboard) (string, error) {
+func (ti *TextInput) Get(screen *apparatus.Screen, keyboard *apparatus.Keyboard) (string, error) {
 	runes := []rune(ti.UserText)
 
 	// Start SDL text input
@@ -76,7 +76,7 @@ func (ti *TextInput) Get(screen *io.Screen, keyboard *io.Keyboard) (string, erro
 	}
 }
 
-func (ti *TextInput) Draw(screen *io.Screen) error {
+func (ti *TextInput) Draw(screen *apparatus.Screen) error {
 	// Message
 	msg := NewTextBox(ti.Message, int32(ti.BoxWidth), sdl.FPoint{X: ti.Position.X, Y: ti.Position.Y + 60}, ti.TextColor)
 	if err := msg.Draw(screen); err != nil {
@@ -105,7 +105,7 @@ func (ti *TextInput) Draw(screen *io.Screen) error {
 }
 
 // Present delegates to PresentDrawable — the standard clear → draw → update cycle.
-func (ti *TextInput) Present(screen *io.Screen, clear, update bool) error {
+func (ti *TextInput) Present(screen *apparatus.Screen, clear, update bool) error {
 	return PresentDrawable(ti, screen, clear, update)
 }
 

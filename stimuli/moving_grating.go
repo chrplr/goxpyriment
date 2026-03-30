@@ -36,7 +36,7 @@ import (
 	"time"
 
 	"github.com/Zyko0/go-sdl3/sdl"
-	"github.com/chrplr/goxpyriment/io"
+	"github.com/chrplr/goxpyriment/apparatus"
 )
 
 // ── Pre-computed grating state ────────────────────────────────────────────────
@@ -146,7 +146,7 @@ func (g *gratingState) updatePixels(phase float64) {
 // variants. g.pixels is updated each frame, uploaded to a short-lived SDL
 // texture, rendered, and destroyed — the pixel buffer itself is reused.
 func presentGratingLoop(
-	screen *io.Screen,
+	screen *apparatus.Screen,
 	g *gratingState,
 	center sdl.FPoint,
 	temporalFreq float64,
@@ -271,7 +271,7 @@ func presentGratingLoop(
 // Returns a MotionResult (key / mouse button / RT) and any error.
 // ESC or window-close returns sdl.EndLoop as the error.
 func PresentMovingGrating(
-	screen *io.Screen,
+	screen *apparatus.Screen,
 	width, height float32,
 	center sdl.FPoint,
 	orientation float64,
@@ -308,7 +308,7 @@ func PresentMovingGrating(
 //   - interruptKeys — Keycodes that end the display; nil = ignore all keys.
 //   - catchMouse    — If true, any mouse button press ends the display.
 func PresentMovingGabor(
-	screen *io.Screen,
+	screen *apparatus.Screen,
 	size float32,
 	sigma float64,
 	center sdl.FPoint,

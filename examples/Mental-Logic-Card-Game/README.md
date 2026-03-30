@@ -52,4 +52,4 @@ When you are ready, press the **SPACE BAR** to start.
 - **SPACE:** Advance from the instruction screen.
 
 ## Data Collection
-Results are saved as `.xpd` files in the `data/` directory, logging trial conditions, response accuracy, and reaction times.
+Results are saved as `.csv` files in the `data/` directory, logging trial conditions, response accuracy, and reaction times.

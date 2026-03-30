@@ -6,7 +6,7 @@ package stimuli
 
 import (
 	"github.com/Zyko0/go-sdl3/sdl"
-	"github.com/chrplr/goxpyriment/io"
+	"github.com/chrplr/goxpyriment/apparatus"
 )
 
 // Shape is a filled polygon defined by Points (relative to the shape center) and a single color.
@@ -27,7 +27,7 @@ func NewShape(points []sdl.FPoint, color sdl.Color) *Shape {
 	}
 }
 
-func (s *Shape) Draw(screen *io.Screen) error {
+func (s *Shape) Draw(screen *apparatus.Screen) error {
 	if len(s.Points) < 3 {
 		return nil // Not a polygon
 	}
@@ -57,7 +57,7 @@ func (s *Shape) Draw(screen *io.Screen) error {
 }
 
 // Present delegates to PresentDrawable — the standard clear → draw → update cycle.
-func (s *Shape) Present(screen *io.Screen, clear, update bool) error {
+func (s *Shape) Present(screen *apparatus.Screen, clear, update bool) error {
 	return PresentDrawable(s, screen, clear, update)
 }
 

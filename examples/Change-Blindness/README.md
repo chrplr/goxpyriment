@@ -39,7 +39,7 @@ If no response is given within 10 seconds the trial is recorded as a miss.
 
 ## Output
 
-Data are saved to `goxpy_data/` as a `.xpd` file. One row per trial:
+Data are saved to `goxpy_data/` as a `.csv` file. One row per trial:
 
 | Column | Description |
 |--------|-------------|

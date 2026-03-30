@@ -9,7 +9,7 @@ import (
 
 	"github.com/Zyko0/go-sdl3/sdl"
 	"github.com/Zyko0/go-sdl3/ttf"
-	"github.com/chrplr/goxpyriment/io"
+	"github.com/chrplr/goxpyriment/apparatus"
 )
 
 // SplashScreen displays a logo image above a message string, centred on
@@ -27,7 +27,7 @@ import (
 //
 // Returns nil on normal exit (timeout or keypress).
 // Returns sdl.EndLoop if ESC or the window-close button was used.
-func SplashScreen(screen *io.Screen, imageData []byte, message string, timeoutSec float64) error {
+func SplashScreen(screen *apparatus.Screen, imageData []byte, message string, timeoutSec float64) error {
 	const (
 		gap      = float32(30) // vertical space between image bottom and text top
 		msgWidth = int32(700)  // word-wrap width for the message
@@ -169,7 +169,7 @@ func splashWait(timeoutSec float64) error {
 //     When false, all three elements are stacked and centred as a group.
 //
 // Returns sdl.EndLoop on ESC or window-close; nil on timeout or any other key.
-func TwoLineSplash(screen *io.Screen, imageData []byte, titleFont *ttf.Font, title string, subtitleFont *ttf.Font, subtitle string, timeoutSec float64, splitLayout bool) error {
+func TwoLineSplash(screen *apparatus.Screen, imageData []byte, titleFont *ttf.Font, title string, subtitleFont *ttf.Font, subtitle string, timeoutSec float64, splitLayout bool) error {
 	const gap = float32(20)
 
 	textColor := contrastWith(screen.BgColor)

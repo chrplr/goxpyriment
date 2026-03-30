@@ -130,7 +130,7 @@ func main() {
 }
 ```
 
-The `.xpd` file (a CSV with a metadata header) is written to `~/goxpy_data/` automatically when the experiment ends. Each row gets the subject ID and a timestamp for free.
+The `.csv` file (a CSV with a metadata header) is written to `~/goxpy_data/` automatically when the experiment ends. Each row gets the subject ID and a timestamp for free.
 
 ---
 
@@ -318,17 +318,6 @@ Key observations:
 - `WaitKeysEventRT` returns the SDL3 event timestamp (not a polling delta), so subtracting any previously recorded `ShowNS` onset gives a physically meaningful RT.
 - Both timestamps are in SDL nanoseconds (divide by `1e6` for milliseconds). Storing raw nanoseconds in the data file and converting offline is the recommended practice.
 - `WaitPressEventRT` provides the same capability for mouse responses.
-
----
-
-## Strength: "Vibe-Coding" with AI
-
-`goxpyriment` is designed to be **AI-friendly**. Because the API is linear and consistent, tools like Claude, Gemini, or ChatGPT can write entire experiments for you.
-
-**Try this prompt:**
-> "Using the goxpyriment library, write an experiment where a random word appears on screen in either Red or Blue. The user must press F for Red and J for Blue. Randomize 20 trials and log the reaction time and accuracy."
-
-The agent will likely produce code that is 95 % ready to run immediately.
 
 ---
 

@@ -9,15 +9,13 @@ import (
 	"log"
 	"time"
 
-	"github.com/Zyko0/go-sdl3/bin/binimg"
-	"github.com/Zyko0/go-sdl3/bin/binsdl"
-	"github.com/Zyko0/go-sdl3/bin/binttf"
 	"github.com/Zyko0/go-sdl3/sdl"
 	"github.com/Zyko0/go-sdl3/ttf"
 	"github.com/chrplr/goxpyriment/assets_embed"
 	"github.com/chrplr/goxpyriment/clock"
 	"github.com/chrplr/goxpyriment/design"
-	"github.com/chrplr/goxpyriment/io"
+	"github.com/chrplr/goxpyriment/apparatus"
+	"github.com/chrplr/goxpyriment/results"
 	"github.com/chrplr/goxpyriment/stimuli"
 )
 
@@ -40,7 +38,7 @@ type EventState struct {
 // audio device/manager, and the `DataFile` used for logging responses.
 //
 // It acts as a **facade**: most of its methods are thin delegations to the
-// focused subsystem packages (io.Screen, io.Keyboard, design.Experiment, etc.).
+// focused subsystem packages (apparatus.Screen, apparatus.Keyboard, design.Experiment, etc.).
 // This keeps the user-facing API simple while the real logic lives in each
 // subsystem.
 //
@@ -61,10 +59,10 @@ type EventState struct {
 type Experiment struct {
 	Name            string
 	Design          *design.Experiment
-	Screen          *io.Screen
-	Keyboard        *io.Keyboard
-	Mouse           *io.Mouse
-	Data            *io.DataFile
+	Screen          *apparatus.Screen
+	Keyboard        *apparatus.Keyboard
+	Mouse           *apparatus.Mouse
+	Data            *results.DataFile
 	SubjectID       int
 	BackgroundColor sdl.Color
 	ForegroundColor sdl.Color
@@ -84,7 +82,7 @@ type Experiment struct {
 	Info            map[string]string
 	// GammaCorrector, when non-nil, is applied by CorrectColor.
 	// Set via SetGamma or by assigning io.NewGammaCorrector(...) directly.
-	GammaCorrector  *io.GammaCorrector
+	GammaCorrector  *apparatus.GammaCorrector
 
 	sdlLoader interface{ Unload() }
 	imgLoader interface{ Unload() }
@@ -225,25 +223,25 @@ func (e *Experiment) ShowNS(v stimuli.VisualStimulus) (uint64, error) {
 //	onset, _ := exp.ShowNS(stim)
 //	ev, _ := exp.WaitAnyEventRT(keys, true, -1)
 //	rtNS := int64(ev.TimestampNS - onset)
-func (e *Experiment) WaitAnyEventRT(keys []sdl.Keycode, catchMouse bool, timeoutMS int) (io.InputEvent, error) {
+func (e *Experiment) WaitAnyEventRT(keys []sdl.Keycode, catchMouse bool, timeoutMS int) (apparatus.InputEvent, error) {
 	start := sdl.Ticks()
 	for {
 		if timeoutMS >= 0 {
 			if int(sdl.Ticks()-start) >= timeoutMS {
-				return io.InputEvent{}, nil
+				return apparatus.InputEvent{}, nil
 			}
 		}
 
 		state := e.PollEvents(nil)
 		if state.QuitRequested {
-			return io.InputEvent{}, sdl.EndLoop
+			return apparatus.InputEvent{}, sdl.EndLoop
 		}
 
 		if state.LastKey != 0 {
 			key := state.LastKey
 			if key == sdl.K_ESCAPE {
-				return io.InputEvent{
-					Device:      io.DeviceKeyboard,
+				return apparatus.InputEvent{
+					Device:      apparatus.DeviceKeyboard,
 					Key:         sdl.K_ESCAPE,
 					TimestampNS: state.LastKeyTimestamp,
 				}, sdl.EndLoop
@@ -258,8 +256,8 @@ func (e *Experiment) WaitAnyEventRT(keys []sdl.Keycode, catchMouse bool, timeout
 				}
 			}
 			if matched {
-				return io.InputEvent{
-					Device:      io.DeviceKeyboard,
+				return apparatus.InputEvent{
+					Device:      apparatus.DeviceKeyboard,
 					Key:         key,
 					TimestampNS: state.LastKeyTimestamp,
 				}, nil
@@ -267,8 +265,8 @@ func (e *Experiment) WaitAnyEventRT(keys []sdl.Keycode, catchMouse bool, timeout
 		}
 
 		if catchMouse && state.LastMouseButton != 0 {
-			return io.InputEvent{
-				Device:      io.DeviceMouse,
+			return apparatus.InputEvent{
+				Device:      apparatus.DeviceMouse,
 				Button:      state.LastMouseButton,
 				TimestampNS: state.LastMouseTimestamp,
 			}, nil
@@ -286,7 +284,7 @@ func (e *Experiment) WaitAnyEventRT(keys []sdl.Keycode, catchMouse bool, timeout
 // that linear luminance values are mapped to the physical digital values
 // required by the monitor.
 func (e *Experiment) SetGamma(gamma float64) {
-	e.GammaCorrector = io.NewGammaCorrectorUniform(gamma)
+	e.GammaCorrector = apparatus.NewGammaCorrectorUniform(gamma)
 }
 
 // CorrectColor applies the experiment's GammaCorrector (if set) to c and
@@ -353,16 +351,16 @@ func (e *Experiment) Wait(ms int) error {
 	}
 }
 
-// SetOutputDirectory overrides the default folder used to store .xpd result
+// SetOutputDirectory overrides the default folder used to store .csv result
 // files. If not called, Initialize will use the user's home directory
-// with the folder name defined by io.DataFileDirectory (default "goxpy_data").
+// with the folder name defined by results.DataFileDirectory (default "goxpy_data").
 func (e *Experiment) SetOutputDirectory(dir string) {
 	e.OutputDirectory = dir
 }
 
 // Initialize loads the embedded SDL/TTF binaries, initializes SDL (video,
 // events and audio), opens the default playback audio device, creates the
-// main window/renderer (`io.Screen`), and creates the default `DataFile`.
+// main window/renderer (`apparatus.Screen`), and creates the default `DataFile`.
 //
 // It must be called exactly once before using the experiment, and `End`
 // should be deferred immediately after successful initialization.
@@ -374,14 +372,14 @@ func (e *Experiment) Initialize() error {
 	if cachedSDL != nil {
 		e.sdlLoader = cachedSDL
 	} else {
-		e.sdlLoader = binsdl.Load()
+		e.sdlLoader = loadSDL()
 	}
 	// imgLoader has no shared counterpart: GetParticipantInfo does not use images.
-	e.imgLoader = binimg.Load()
+	e.imgLoader = loadIMG()
 	if cachedTTF != nil {
 		e.ttfLoader = cachedTTF
 	} else {
-		e.ttfLoader = binttf.Load()
+		e.ttfLoader = loadTTF()
 	}
 
 	if err := sdl.Init(sdl.INIT_VIDEO | sdl.INIT_EVENTS | sdl.INIT_AUDIO); err != nil {
@@ -393,7 +391,7 @@ func (e *Experiment) Initialize() error {
 	}
 
 	// If no explicit window size was provided, we use the autodetect mode (0,0)
-	// which io.NewScreen handles by using native resolution and high pixel density.
+	// which apparatus.NewScreen handles by using native resolution and high pixel density.
 	if e.WindowWidth == 0 && e.WindowHeight == 0 {
 		e.Fullscreen = true
 	}
@@ -406,12 +404,12 @@ func (e *Experiment) Initialize() error {
 	e.AudioDevice = dev
 	e.Audio = &AudioManager{Device: dev}
 
-	screen, err := io.NewScreen(e.Name, e.WindowWidth, e.WindowHeight, e.BackgroundColor, e.Fullscreen, e.ScreenNumber)
+	screen, err := apparatus.NewScreen(e.Name, e.WindowWidth, e.WindowHeight, e.BackgroundColor, e.Fullscreen, e.ScreenNumber)
 	if err != nil {
 		return err
 	}
 	e.Screen = screen
-	e.Keyboard = &io.Keyboard{
+	e.Keyboard = &apparatus.Keyboard{
 		PollKeys: func() (sdl.Keycode, bool) {
 			state := e.PollEvents(nil)
 			return state.LastKey, state.QuitRequested
@@ -421,7 +419,7 @@ func (e *Experiment) Initialize() error {
 			return state.LastKey, state.LastKeyTimestamp, state.QuitRequested
 		},
 	}
-	e.Mouse = &io.Mouse{
+	e.Mouse = &apparatus.Mouse{
 		PollButtons: func() (uint32, bool) {
 			state := e.PollEvents(nil)
 			return state.LastMouseButton, state.QuitRequested
@@ -446,7 +444,7 @@ func (e *Experiment) Initialize() error {
 
 	// Initialize DataFile
 	outDir := e.OutputDirectory
-	dataFile, err := io.NewDataFile(outDir, e.SubjectID, e.Name)
+	dataFile, err := results.NewDataFile(outDir, e.SubjectID, e.Name)
 	if err != nil {
 		return err
 	}
@@ -679,7 +677,7 @@ func (e *Experiment) ShowSplash(waitForKey bool) error {
 		return nil
 	}
 	defer smallFont.Close()
-	subtitle := "Goxpyriment " + io.Version
+	subtitle := "Goxpyriment " + results.Version
 	timeoutSec := 5.0
 	if waitForKey {
 		timeoutSec = 0
@@ -748,4 +746,15 @@ func (e *Experiment) Run(logic func() error) error {
 		}()
 		return logic()
 	})
+}
+
+// HideCursor hides the mouse cursor. Call this after Initialize() to prevent
+// the cursor from appearing over stimuli during the experiment.
+func (e *Experiment) HideCursor() error {
+	return sdl.HideCursor()
+}
+
+// ShowCursor makes the mouse cursor visible again.
+func (e *Experiment) ShowCursor() error {
+	return sdl.ShowCursor()
 }

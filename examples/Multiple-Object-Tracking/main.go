@@ -42,7 +42,7 @@ import (
 	"github.com/Zyko0/go-sdl3/sdl"
 	"github.com/chrplr/goxpyriment/clock"
 	"github.com/chrplr/goxpyriment/control"
-	"github.com/chrplr/goxpyriment/io"
+	"github.com/chrplr/goxpyriment/apparatus"
 	"github.com/chrplr/goxpyriment/stimuli"
 )
 
@@ -225,7 +225,7 @@ var (
 
 // drawOutlineCircle draws a thin ring of the given colour at radius+3 around
 // a dot centre (used to show selection and result).
-func drawOutlineCircle(screen *io.Screen, cx, cy, r float32, color sdl.Color) {
+func drawOutlineCircle(screen *apparatus.Screen, cx, cy, r float32, color sdl.Color) {
 	or_ := r + 3
 	_ = screen.Renderer.SetDrawColor(color.R, color.G, color.B, color.A)
 	sdlCX, sdlCY := screen.CenterToSDL(cx, cy)
@@ -239,7 +239,7 @@ func drawOutlineCircle(screen *io.Screen, cx, cy, r float32, color sdl.Color) {
 }
 
 // drawDots renders all circles in colours appropriate for the current phase.
-func drawDots(screen *io.Screen, dots []dot, phase int) {
+func drawDots(screen *apparatus.Screen, dots []dot, phase int) {
 	for i := range dots {
 		d := &dots[i]
 		d.circ.SetPosition(sdl.FPoint{X: d.x, Y: d.y})
@@ -290,7 +290,7 @@ type cachedText struct {
 	text string
 }
 
-func (ct *cachedText) draw(screen *io.Screen, s string, x, y float32, col sdl.Color) {
+func (ct *cachedText) draw(screen *apparatus.Screen, s string, x, y float32, col sdl.Color) {
 	if s != ct.text || ct.tl == nil {
 		if ct.tl != nil {
 			_ = ct.tl.Unload()

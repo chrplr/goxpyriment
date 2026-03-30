@@ -47,7 +47,7 @@ go run . -group random -w -s 4
 
 **Response keys:** F = left stimulus is larger, J = right stimulus is larger.
 
-**Data:** written to `goxpy_data/<subject_id>.xpd` (tab-separated; one row per trial).
+**Data:** written to `goxpy_data/<subject_id>.csv` (tab-separated; one row per trial).
 
 | Column | Description |
 |---|---|

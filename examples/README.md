@@ -18,7 +18,7 @@ Pre-built binaries for all [examples](https://github.com/chrplr/goxpyriment/tree
 
 A good place to start: `Memory_span`, `Change-Blindness`, `retinotopy`.
 
-When launched from the command line, most programs accept `-w` (windowed 1024×768 mode), `-d N` (open on monitor N, 0 = primary), and `-s <id>` (subject ID written to the `.xpd` data file).
+When launched from the command line, most programs accept `-w` (windowed 1024×768 mode), `-d N` (open on monitor N, 0 = primary), and `-s <id>` (subject ID written to the `.csv` data file).
 
 Results are saved in a folder `goxpy_data` in your home folder.
 
@@ -59,7 +59,7 @@ Programs that open a **GetParticipantInfo** dialog collect all setup interactive
 
 ## Psychological Experiments
 
-Full experiments that record and save behavioural data to an `.xpd` file in `goxpy_data/`.
+Full experiments that record and save behavioural data to an `.csv` file in `goxpy_data/`.
 
 <!-- BEGIN:experiments -->
 

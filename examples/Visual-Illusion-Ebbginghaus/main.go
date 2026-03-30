@@ -9,12 +9,12 @@ import (
 
 	"github.com/chrplr/goxpyriment/clock"
 	"github.com/chrplr/goxpyriment/control"
-	"github.com/chrplr/goxpyriment/io"
+	"github.com/chrplr/goxpyriment/apparatus"
 	"github.com/chrplr/goxpyriment/stimuli"
 )
 
 // DrawEbbinghaus draws an Ebbinghaus illusion figure.
-func DrawEbbinghaus(screen *io.Screen, n int, d float32, r1 float32, r2 float32, col1 control.Color, col2 control.Color, x float32, y float32) error {
+func DrawEbbinghaus(screen *apparatus.Screen, n int, d float32, r1 float32, r2 float32, col1 control.Color, col2 control.Color, x float32, y float32) error {
 	// draw inner circle
 	inner := stimuli.NewCircle(r1, col1)
 	inner.SetPosition(control.FPoint{X: x, Y: y})

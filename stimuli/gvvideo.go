@@ -12,7 +12,7 @@ import (
 	"github.com/Zyko0/go-sdl3/sdl"
 	"github.com/funatsufumiya/go-gv-video/gvvideo"
 
-	xio "github.com/chrplr/goxpyriment/io"
+	xio "github.com/chrplr/goxpyriment/apparatus"
 )
 
 // GvVideo is a video stimulus decoded from a .gv file (LZ4-compressed RGBA frames).

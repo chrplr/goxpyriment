@@ -456,10 +456,10 @@ Prerequisites: `sudo modprobe ppdev` and membership in the `lp` group.
 
 ## Output files
 
-Each run writes an `.xpd` file to `~/goxpy_data/` (standard goxpyriment output).
+Each run writes an `.csv` file to `~/goxpy_data/` (standard goxpyriment output).
 The file is a CSV with a metadata header. Load it in Python with:
 
 ```python
 import pandas as pd
-df = pd.read_csv("~/goxpy_data/Timing-Tests_000_*.xpd", comment="#")
+df = pd.read_csv("~/goxpy_data/Timing-Tests_000_*.csv", comment="#")
 ```

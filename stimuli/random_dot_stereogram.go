@@ -7,7 +7,7 @@ import (
 	"math/rand"
 
 	"github.com/Zyko0/go-sdl3/sdl"
-	xio "github.com/chrplr/goxpyriment/io"
+	xio "github.com/chrplr/goxpyriment/apparatus"
 )
 
 // RDS is a Random Dot Stereogram stimulus — a side-by-side pair of random-dot

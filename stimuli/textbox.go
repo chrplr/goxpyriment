@@ -7,7 +7,7 @@ package stimuli
 import (
 	"github.com/Zyko0/go-sdl3/sdl"
 	"github.com/Zyko0/go-sdl3/ttf"
-	"github.com/chrplr/goxpyriment/io"
+	"github.com/chrplr/goxpyriment/apparatus"
 )
 
 // TextBox represents a multi-line text box with wrapping and alignment.
@@ -38,7 +38,7 @@ func NewTextBox(text string, boxWidth int32, position sdl.FPoint, color sdl.Colo
 }
 
 // preload prepares the texture from the font.
-func (t *TextBox) preload(screen *io.Screen, font *ttf.Font) error {
+func (t *TextBox) preload(screen *apparatus.Screen, font *ttf.Font) error {
 	if font == nil {
 		return nil
 	}
@@ -74,7 +74,7 @@ func (t *TextBox) preload(screen *io.Screen, font *ttf.Font) error {
 
 // Preload is provided by BaseVisual (no-op; texture is lazy-loaded on first Draw).
 
-func (t *TextBox) Draw(screen *io.Screen) error {
+func (t *TextBox) Draw(screen *apparatus.Screen) error {
 	f := t.Font
 	if f == nil {
 		f = screen.DefaultFont
@@ -107,7 +107,7 @@ func (t *TextBox) Draw(screen *io.Screen) error {
 }
 
 // Present delegates to PresentDrawable — the standard clear → draw → update cycle.
-func (t *TextBox) Present(screen *io.Screen, clear, update bool) error {
+func (t *TextBox) Present(screen *apparatus.Screen, clear, update bool) error {
 	return PresentDrawable(t, screen, clear, update)
 }
 

@@ -2,7 +2,7 @@
 // Co-authored by Claude Sonnet 4.6
 // Distributed under the GNU General Public License v3.
 
-package io
+package results
 
 import (
 	"fmt"
@@ -13,6 +13,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/chrplr/goxpyriment/apparatus"
 )
 
 // Default settings for OutputFile and DataFile.
@@ -74,7 +76,7 @@ func NewDataFile(directory string, subjectID int, expName string) (*DataFile, er
 	}
 
 	timestamp := time.Now().Format("200601021504")
-	filename := fmt.Sprintf("%s_%03d_%s.xpd", expName, subjectID, timestamp)
+	filename := fmt.Sprintf("%s_%03d_%s.csv", expName, subjectID, timestamp)
 
 	base, err := NewOutputFile(directory, filename)
 	if err != nil {
@@ -116,18 +118,23 @@ func NewDataFile(directory string, subjectID int, expName string) (*DataFile, er
 
 // Add appends a row of data to the data file.
 // The subject ID is automatically prepended as the first column.
-// Fields containing the delimiter or quotes are properly escaped.
+// Numeric and boolean fields are written as-is; all other fields are
+// always quoted (with internal double-quotes doubled per RFC 4180).
 func (df *DataFile) Add(data ...interface{}) {
 	parts := make([]string, 0, len(data)+1)
 	parts = append(parts, fmt.Sprint(df.SubjectID))
 
 	for _, d := range data {
 		s := fmt.Sprint(d)
-		if strings.Contains(s, df.Delimiter) || strings.Contains(s, "\"") {
+		switch d.(type) {
+		case int, int8, int16, int32, int64,
+			uint, uint8, uint16, uint32, uint64,
+			float32, float64, bool:
+			parts = append(parts, s)
+		default:
 			s = strings.ReplaceAll(s, "\"", "\"\"")
-			s = fmt.Sprintf("\"%s\"", s)
+			parts = append(parts, fmt.Sprintf("\"%s\"", s))
 		}
-		parts = append(parts, s)
 	}
 
 	df.WriteLine(strings.Join(parts, df.Delimiter))
@@ -136,7 +143,7 @@ func (df *DataFile) Add(data ...interface{}) {
 // WriteDisplayInfo appends display properties as comment lines in the metadata
 // header so that the physical display configuration is preserved alongside the
 // trial data for later analysis.
-func (df *DataFile) WriteDisplayInfo(info DisplayInfo) {
+func (df *DataFile) WriteDisplayInfo(info apparatus.DisplayInfo) {
 	df.WriteComment("--DISPLAY INFO")
 	df.WriteComment(fmt.Sprintf("d id: %d", info.ID))
 	df.WriteComment(fmt.Sprintf("d name: %s", info.Name))

@@ -6,7 +6,7 @@ package stimuli
 
 import (
 	"github.com/Zyko0/go-sdl3/sdl"
-	"github.com/chrplr/goxpyriment/io"
+	"github.com/chrplr/goxpyriment/apparatus"
 )
 
 // BlankScreen is a full-screen filled rectangle of one color (e.g. for
@@ -28,7 +28,7 @@ func NewBlankScreen(color sdl.Color) *BlankScreen {
 	return &BlankScreen{Color: color}
 }
 
-func (b *BlankScreen) Draw(screen *io.Screen) error {
+func (b *BlankScreen) Draw(screen *apparatus.Screen) error {
 	if err := screen.Renderer.SetDrawColor(b.Color.R, b.Color.G, b.Color.B, b.Color.A); err != nil {
 		return err
 	}
@@ -41,7 +41,7 @@ func (b *BlankScreen) Draw(screen *io.Screen) error {
 // Present draws the blank screen. The `clear` flag is intentionally ignored
 // because drawing a full-screen fill IS the clear. This is the reason
 // BlankScreen does not delegate to PresentDrawable.
-func (b *BlankScreen) Present(screen *io.Screen, clear, update bool) error {
+func (b *BlankScreen) Present(screen *apparatus.Screen, clear, update bool) error {
 	if err := b.Draw(screen); err != nil {
 		return err
 	}

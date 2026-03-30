@@ -6,7 +6,7 @@ package stimuli
 
 import (
 	"github.com/Zyko0/go-sdl3/sdl"
-	"github.com/chrplr/goxpyriment/io"
+	"github.com/chrplr/goxpyriment/apparatus"
 )
 
 // FixCross is a centered fixation cross (horizontal and vertical lines).
@@ -30,7 +30,7 @@ func NewFixCross(size float32, lineWidth float32, color sdl.Color) *FixCross {
 	}
 }
 
-func (f *FixCross) Draw(screen *io.Screen) error {
+func (f *FixCross) Draw(screen *apparatus.Screen) error {
 	if err := screen.Renderer.SetDrawColor(f.Color.R, f.Color.G, f.Color.B, f.Color.A); err != nil {
 		return err
 	}
@@ -60,7 +60,7 @@ func (f *FixCross) Draw(screen *io.Screen) error {
 }
 
 // Present delegates to PresentDrawable — the standard clear → draw → update cycle.
-func (f *FixCross) Present(screen *io.Screen, clear, update bool) error {
+func (f *FixCross) Present(screen *apparatus.Screen, clear, update bool) error {
 	return PresentDrawable(f, screen, clear, update)
 }
 

@@ -6,7 +6,7 @@ package stimuli
 
 import (
 	"github.com/Zyko0/go-sdl3/sdl"
-	"github.com/chrplr/goxpyriment/io"
+	"github.com/chrplr/goxpyriment/apparatus"
 )
 
 // Rectangle is a filled rectangle with center at (x,y) and size (w,h) in center-based coordinates.
@@ -28,7 +28,7 @@ func NewRectangle(x, y, w, h float32, color sdl.Color) *Rectangle {
 	}
 }
 
-func (r *Rectangle) Draw(screen *io.Screen) error {
+func (r *Rectangle) Draw(screen *apparatus.Screen) error {
 	if err := screen.Renderer.SetDrawColor(r.Color.R, r.Color.G, r.Color.B, r.Color.A); err != nil {
 		return err
 	}
@@ -46,7 +46,7 @@ func (r *Rectangle) Draw(screen *io.Screen) error {
 }
 
 // Present delegates to PresentDrawable — the standard clear → draw → update cycle.
-func (r *Rectangle) Present(screen *io.Screen, clear, update bool) error {
+func (r *Rectangle) Present(screen *apparatus.Screen, clear, update bool) error {
 	return PresentDrawable(r, screen, clear, update)
 }
 

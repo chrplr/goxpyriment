@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/Zyko0/go-sdl3/sdl"
-	xio "github.com/chrplr/goxpyriment/io"
+	xio "github.com/chrplr/goxpyriment/apparatus"
 	"github.com/gen2brain/mpeg"
 )
 

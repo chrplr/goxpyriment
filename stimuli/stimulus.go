@@ -26,9 +26,9 @@
 //	    // ... your fields
 //	}
 //
-//	func (m *MyStim) Draw(screen *io.Screen) error { /* render */ }
+//	func (m *MyStim) Draw(screen *apparatus.Screen) error { /* render */ }
 //
-//	func (m *MyStim) Present(screen *io.Screen, clear, update bool) error {
+//	func (m *MyStim) Present(screen *apparatus.Screen, clear, update bool) error {
 //	    return stimuli.PresentDrawable(m, screen, clear, update)
 //	}
 //
@@ -47,7 +47,7 @@ package stimuli
 
 import (
 	"github.com/Zyko0/go-sdl3/sdl"
-	"github.com/chrplr/goxpyriment/io"
+	"github.com/chrplr/goxpyriment/apparatus"
 )
 
 // Stimulus is the interface for all visual and auditory stimuli.
@@ -56,7 +56,7 @@ import (
 // Preload prepares resources ahead of time (no-op for most types).
 // Unload releases GPU or audio resources; safe to call multiple times.
 type Stimulus interface {
-	Present(screen *io.Screen, clear, update bool) error
+	Present(screen *apparatus.Screen, clear, update bool) error
 	Preload() error
 	Unload() error
 }
@@ -70,7 +70,7 @@ type Stimulus interface {
 // position and lifecycle methods, and only need to implement Draw.
 type VisualStimulus interface {
 	Stimulus
-	Draw(screen *io.Screen) error
+	Draw(screen *apparatus.Screen) error
 	GetPosition() sdl.FPoint
 	SetPosition(pos sdl.FPoint)
 }
@@ -97,7 +97,7 @@ type VisualStimulus interface {
 // types it calls their internal preload routines; for others it falls back
 // to calling Draw, which will lazily allocate textures without updating the
 // screen contents.
-func PreloadVisualOnScreen(screen *io.Screen, v VisualStimulus) error {
+func PreloadVisualOnScreen(screen *apparatus.Screen, v VisualStimulus) error {
 	switch s := v.(type) {
 	case *TextLine:
 		f := s.Font
@@ -130,7 +130,7 @@ func PreloadVisualOnScreen(screen *io.Screen, v VisualStimulus) error {
 }
 
 // PreloadAllVisual preloads a slice of visual stimuli on the given screen.
-func PreloadAllVisual(screen *io.Screen, visuals []VisualStimulus) error {
+func PreloadAllVisual(screen *apparatus.Screen, visuals []VisualStimulus) error {
 	for _, v := range visuals {
 		if err := PreloadVisualOnScreen(screen, v); err != nil {
 			return err
