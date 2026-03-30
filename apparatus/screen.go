@@ -167,18 +167,38 @@ func NewScreen(title string, width, height int, bgColor sdl.Color, fullscreen bo
 			return nil, err
 		}
 
-		// Query the actual physical pixel dimensions.
-		w, h, err := window.SizeInPixels()
+		// Query the logical (OS) pixel dimensions. On standard displays these
+		// equal the physical pixel dimensions. On HiDPI displays (macOS Retina,
+		// some Linux setups) the OS logical size is smaller than the physical
+		// pixel count by the content-scale factor.
+		//
+		// We set a logical presentation matching the logical size so that all
+		// drawing commands and coordinate math operate in the logical coordinate
+		// space. SDL3 then handles the physical upscaling transparently. This
+		// keeps experiment code free of HiDPI concerns on all platforms.
+		logW, logH, err := window.Size()
 		if err != nil {
-			w, h = 0, 0
+			logW, logH = 0, 0
 		}
 
+		if logW > 0 && logH > 0 {
+			// STRETCH: no letterboxing — fullscreen always matches the display
+			// aspect ratio, so stretch == letterbox in practice.
+			if err := renderer.SetLogicalPresentation(logW, logH, sdl.LOGICAL_PRESENTATION_STRETCH); err != nil {
+				renderer.Destroy()
+				window.Destroy()
+				return nil, fmt.Errorf("SetLogicalPresentation: %w", err)
+			}
+		}
+
+		logicalSize := &sdl.FPoint{X: float32(logW), Y: float32(logH)}
 		return &Screen{
-			Window:   window,
-			Renderer: renderer,
-			BgColor:  bgColor,
-			Width:    int(w),
-			Height:   int(h),
+			Window:      window,
+			Renderer:    renderer,
+			BgColor:     bgColor,
+			Width:       int(logW),
+			Height:      int(logH),
+			LogicalSize: logicalSize,
 		}, nil
 	}
 
@@ -229,7 +249,7 @@ func (s *Screen) CenterToSDL(x, y float32) (float32, float32) {
 	if s.LogicalSize != nil {
 		return s.LogicalSize.X/2 + x, s.LogicalSize.Y/2 - y
 	}
-	w, h, _ := s.Renderer.RenderOutputSize()
+	w, h, _ := s.Renderer.CurrentOutputSize()
 	return float32(w)/2 + x, float32(h)/2 - y
 }
 
@@ -262,7 +282,7 @@ func (s *Screen) MousePosition() (float32, float32) {
 	if s.LogicalSize != nil {
 		return lx - s.LogicalSize.X/2, s.LogicalSize.Y/2 - ly
 	}
-	w, h, _ := s.Renderer.RenderOutputSize()
+	w, h, _ := s.Renderer.CurrentOutputSize()
 	return lx - float32(w)/2, float32(h)/2 - ly
 }
 
