@@ -1,7 +1,7 @@
 ## Installing Goxpyriment to create your own experiments
 
 1. Install [Git](https://git-scm.com/install/), then [Go](https://go.dev/doc/install) on your compute (if you are new to this, consult the [detailed instructions](Installing-a-development-environment.md)).
-2.  clone [Goxpyriment Github repository](), by opening a Terminal (App `Git Bash` under Windows), and executing the command-line 
+2.  clone [goxpyriment Github repository](http://github.com/chrplr/goxpyriment), by opening a Terminal (App `Git Bash` under Windows), and executing the command-line 
 
         git clone https://github.com/chrplr/goxpyriment.git
 
