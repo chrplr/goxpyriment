@@ -2,7 +2,7 @@
 
 ## Download pre-built binaries
 
-Pre-built binaries for all [examples](./) are published with each [GitHub release](https://github.com/chrplr/goxpyriment/releases/latest):
+Pre-built binaries for all [examples](https://github.com/chrplr/goxpyriment/tree/main/examples) are published with each [GitHub release](https://github.com/chrplr/goxpyriment/releases/latest):
 
 > [!WARNING]
 > These binaries are unsigned. macOS Gatekeeper and Windows Defender will show security warnings or worse, _misleasding messages_ such as 'this program is damaged'. Don't be intimidated: 
@@ -21,6 +21,9 @@ A good place to start: `Memory_span`, `Change-Blindness`, `retinotopy`.
 When launched from the command line, most programs accept `-w` (windowed 1024×768 mode), `-d N` (open on monitor N, 0 = primary), and `-s <id>` (subject ID written to the `.xpd` data file).
 
 Results are saved in a folder `goxpy_data` in your home folder.
+
+
+If you want to compile these experiments from source on your computer, e.g. because you have Windows/ARM or macOS/Intel,  read on. 
 
 ## Building from source
 
