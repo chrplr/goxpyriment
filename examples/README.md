@@ -68,8 +68,10 @@ Full experiments that record and save behavioural data to an `.csv` file in `gox
 | [Attention-Posner-Task](Attention-Posner-Task/) | Arrow cue directs covert attention; measure cost/benefit on reaction time to a peripheral target | Posner (1980) |
 | [Attentional-Blink](Attentional-Blink/) | RSVP stream; participant detects two targets embedded in a stream of distractors — the second target is often missed within ~500 ms of the first | Raymond et al. (1992) |
 | [Change-Blindness](Change-Blindness/) | Flicker paradigm: alternating original and modified scenes separated by blanks; participant detects what changed | Rensink et al. (1997) |
+| [Classification-Posner-Mitchell](Classification-Posner-Mitchell/) | Classify letter pairs at three levels (physical, name, rule identity); RT increases with depth of processing required | Posner & Mitchell (1967) |
 | [Contrast-Detection-QUEST](Contrast-Detection-QUEST/) | 2-IFC adaptive staircase estimating the contrast detection threshold for a Gabor patch; converges on the 82 % correct point | Watson & Pelli (1983) |
 | [Finger-Tapping](Finger-Tapping/) | Patterned finger-tapping: memorise a key sequence then reproduce it 6 times consecutively as fast as possible; only error-free runs recorded | Povel & Collard (1982) |
+| [Go-NoGo](Go-NoGo/) | Stop-signal task: respond to letters on go-trials; withhold response when a stop-signal tone is played at variable delays | Logan et al. (1984) |
 | [Hemispheric-differences-word-processing](Hemispheric-differences-word-processing/) | Lateralised recognition memory: words studied in LVF or RVF, tested centrally with old/new judgements | Federmeier & Benjamin (2005) |
 | [Letter-size-illusion](Letter-size-illusion/) | Compare heights of letters vs. mirror/pseudo-letters; replicates the letter height superiority illusion (two experiments) | New et al. (2015) |
 | [lexical_decision](lexical_decision/) | Decide whether a letter string is a word or a non-word (F / J keys); stimuli loaded from a CSV file |  |
@@ -86,11 +88,13 @@ Full experiments that record and save behavioural data to an `.csv` file in `gox
 | [Number-Double-Digits-Comparison](Number-Double-Digits-Comparison/) | Compare two-digit numbers against a fixed standard (55 or 65); two experiments with different response-key mappings | Dehaene et al. (1990) |
 | [parity_decision](parity_decision/) | Classify single digits (0–9) as even or odd (F / J keys) |  |
 | [Perception-of-Temporal-Patterns](Perception-of-Temporal-Patterns/) | Reproduction of isochronous and non-isochronous rhythmic patterns; tests internal clock induction and coding complexity | Povel & Essens (1985) |
+| [Posner-ANT](Posner-ANT/) | Attention Network Task (vertical variant): flanker arrows above/below fixation measure alerting, orienting, and executive attention networks | Fan et al. (2009) |
 | [Psychological-Refractory-Period](Psychological-Refractory-Period/) | Two tasks presented in rapid succession; the second response is delayed when the SOA is short | Welford (1952) |
 | [retinotopy](retinotopy/) | HCP retinotopic mapping paradigm (ported from Python); flickering wedge/ring/bar stimuli for visual cortex mapping; run type selected via GetParticipantInfo UI |  |
 | [Sensory-Threshold-Estimation-Auditory](Sensory-Threshold-Estimation-Auditory/) | 1-up/2-down adaptive staircase with 2-IFC to estimate pure-tone hearing thresholds across multiple frequencies | Levitt (1971) |
 | [Simon_task](Simon_task/) | Identify colour of a square regardless of its screen position; congruent trials are faster | Simon (1969) |
 | [simple_reaction_times](simple_reaction_times/) | 20-trial simple RT task: press any key as quickly as possible when a target appears |  |
+| [Statistical-Learning-Auditory](Statistical-Learning-Auditory/) | Statistical learning of tone sequences: exposure to a continuous tone stream with structured transitional probabilities, probed with 2AFC or head-turn preference | Saffran et al. (1999) |
 | [Stroop_task](Stroop_task/) | Name the ink colour of colour words; incongruent trials (e.g. RED in blue ink) are slower | Stroop (1935) |
 | [Subliminal-Priming](Subliminal-Priming/) | Masked word priming: words rendered invisible by surrounding masks still influence processing | Dehaene et al. (2004) |
 | [Temporal-Integration-Word-Recognition](Temporal-Integration-Word-Recognition/) | Alternating odd/even letter components at variable SOA; Exp 1 (subjective report: 0/1/2 words perceived) and Exp 2 (lexical decision with RT); experiment selected via GetParticipantInfo UI | Forget et al. (2010) |
@@ -107,7 +111,6 @@ Full experiments that record and save behavioural data to an `.csv` file in `gox
 Visual illusions, interactive showcases, and minimal templates. Most do not write a data file.
 
 <!-- BEGIN:demos -->
-
 | Directory | Description |
 |-----------|-------------|
 | [canvas_demo](canvas_demo/) | Drawing on an off-screen `Canvas` surface before presenting it in one frame |
@@ -124,7 +127,6 @@ Visual illusions, interactive showcases, and minimal templates. Most do not writ
 | [Visual-Angle-Calibration](Visual-Angle-Calibration/) | Draws concentric rings at 2°, 5°, and 10° of visual angle for a quick sanity-check of the `units.Monitor` calibration |
 | [Visual-Illusion-Ebbginghaus](Visual-Illusion-Ebbginghaus/) | Animated Ebbinghaus (Titchener circles) size-contrast illusion |
 | [Visual-Illusion-Kanizsa](Visual-Illusion-Kanizsa/) | Kanizsa illusory-contour square: a square is perceived where none is drawn |
-
 <!-- END:demos -->
 
 ---
