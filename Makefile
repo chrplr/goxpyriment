@@ -10,13 +10,13 @@ all: examples
 # Examples
 # ---------------------------------------------------------------------------
 
-# Build all examples; binaries go to examples/_build/
+# Build all examples; binaries go to _build/
 examples:
-	@mkdir -p examples/_build
+	@mkdir -p _build
 	@for dir in $(EXAMPLES); do \
 	  name=$$(basename $$dir); \
 	  echo "Building $$name..."; \
-	  (cd $$dir && CGO_ENABLED=0 go build -o "$(CURDIR)/examples/_build/$$name" .); \
+	  (cd $$dir && CGO_ENABLED=0 go build -o "$(CURDIR)/_build/$$name" .); \
 	done
 
 # Regenerate the examples/README.md tables from per-example meta.yaml files.
@@ -60,7 +60,7 @@ deploy: pdfs
 # ---------------------------------------------------------------------------
 
 clean:
-	rm -rf examples/_build/ site/
+	rm -rf _build/ site/
 
 # ---------------------------------------------------------------------------
 # Help
@@ -68,8 +68,8 @@ clean:
 
 help:
 	@echo "Available targets:"
-	@echo "  all       Build all examples (default)"
-	@echo "  examples       Build all examples to examples/_build/"
+	@echo "  all       Build all examples to _build / (default)"
+	@echo "  examples       Same as target "all"<Down>Build all examples to _build/"
 	@echo "  update-readme  Regenerate examples/README.md tables from meta.yaml files"
 	@echo "  run-NAME       Build and run a single example (e.g. make run-parity_decision)"
 	@echo "  tests     Build test binaries"
@@ -77,5 +77,5 @@ help:
 	@echo "  docs      Build MkDocs HTML site to site/"
 	@echo "  serve     Live-reload docs preview at http://127.0.0.1:8000"
 	@echo "  deploy    Generate PDFs and push docs to GitHub Pages"
-	@echo "  clean     Remove examples/_build/ and site/"
+	@echo "  clean     Remove _build/ and site/"
 	@echo "  help      Show this message"

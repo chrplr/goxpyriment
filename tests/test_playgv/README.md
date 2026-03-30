@@ -7,7 +7,6 @@ The `.gv` format stores frames as LZ4-compressed RGBA texture blocks with a seek
 ## Prerequisites
 
 - Go 1.25+
-- SDL3 development libraries (`sudo apt install libsdl3-dev` on Ubuntu/Debian)
 - A `.gv` file (see https://github.com/chrplr/images2gv to convert image sequences)
 
 ## Running

@@ -39,7 +39,6 @@ The response screen shows the instruction text and a text-input box. Any positiv
 ## Prerequisites
 
 - Go 1.25+
-- SDL3 development libraries (`sudo apt install libsdl3-dev` on Ubuntu/Debian)
 
 ---
 

@@ -9,7 +9,6 @@ Use this to verify text-RSVP timing accuracy on your hardware.
 ## Prerequisites
 
 - Go 1.25+
-- SDL3 development libraries (`sudo apt install libsdl3-dev` on Ubuntu/Debian)
 
 ---
 

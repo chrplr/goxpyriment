@@ -4,15 +4,8 @@ Plays pairs of video files side by side and records which key the participant pr
 
 This example can serve as a template for video-based preference or recognition tasks.
 
----
+ Video files must be placed in `assets/*.mpg`
 
-## Prerequisites
-
-- Go 1.25+
-- SDL3 development libraries (`sudo apt install libsdl3-dev` on Ubuntu/Debian)
-- Video files placed in `assets/*.mpg`
-
----
 
 ## Running
 

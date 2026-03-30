@@ -3,6 +3,7 @@
 goxpy_data/
 xpd_results/
 octin_college_font/
+gvassets/
 
 # Compiled binaries
 examples/_build/

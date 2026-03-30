@@ -9,7 +9,6 @@ This example demonstrates the `stimuli.RandomDotStereogram` stimulus type.
 ## Prerequisites
 
 - Go 1.25+
-- SDL3 development libraries (`sudo apt install libsdl3-dev` on Ubuntu/Debian)
 - Binocular vision (stereopsis) required to perceive the depth effect
 
 ---

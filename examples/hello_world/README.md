@@ -7,7 +7,6 @@ Use this as a starting point if you want to develop an experiment in its own sep
 ## Prerequisites
 
 - Go 1.25+
-- SDL3 development libraries (`sudo apt install libsdl3-dev` on Ubuntu/Debian)
 
 ## Running inside the repository
 

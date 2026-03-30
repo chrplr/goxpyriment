@@ -9,7 +9,6 @@ This example prompts the participant for their name and displays it back on scre
 ## Prerequisites
 
 - Go 1.25+
-- SDL3 development libraries (`sudo apt install libsdl3-dev` on Ubuntu/Debian)
 
 ---
 

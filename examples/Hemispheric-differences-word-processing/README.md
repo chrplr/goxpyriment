@@ -34,7 +34,6 @@ Central fixation  →  Word (centre)  →  Old/New response  →  ITI
 ## Prerequisites
 
 - Go 1.25+
-- SDL3 development libraries (`sudo apt install libsdl3-dev` on Ubuntu/Debian)
 
 ---
 

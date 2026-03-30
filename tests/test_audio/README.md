@@ -9,7 +9,6 @@ No display window is opened. The program exits automatically after the sounds fi
 ## Prerequisites
 
 - Go 1.25+
-- SDL3 development libraries (`sudo apt install libsdl3-dev` on Ubuntu/Debian)
 - Working audio output (speakers or headphones)
 
 ---

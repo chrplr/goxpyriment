@@ -9,7 +9,6 @@ Use this as a reference when you need to compose complex multi-element stimuli.
 ## Prerequisites
 
 - Go 1.25+
-- SDL3 development libraries (`sudo apt install libsdl3-dev` on Ubuntu/Debian)
 
 ---
 

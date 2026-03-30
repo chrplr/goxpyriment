@@ -9,7 +9,6 @@ Use this to check your display setup before running timing-sensitive experiments
 ## Prerequisites
 
 - Go 1.25+
-- SDL3 development libraries (`sudo apt install libsdl3-dev` on Ubuntu/Debian)
 
 ---
 

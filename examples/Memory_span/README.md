@@ -13,7 +13,6 @@ A sequence of items is presented one at a time on screen. After the last item, t
 ## Prerequisites
 
 - Go 1.25+
-- SDL3 development libraries (`sudo apt install libsdl3-dev` on Ubuntu/Debian)
 
 ---
 

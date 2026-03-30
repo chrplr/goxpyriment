@@ -41,7 +41,6 @@ Place the file in the same directory as `main.go` or pass its path on the comman
 ## Prerequisites
 
 - Go 1.25+
-- SDL3 development libraries (`sudo apt install libsdl3-dev` on Ubuntu/Debian)
 
 ---
 

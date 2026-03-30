@@ -8,8 +8,6 @@ This example demonstrates video playback using the goxpyriment framework and can
 
 ## Prerequisites
 
-- Go 1.25+
-- SDL3 development libraries (`sudo apt install libsdl3-dev` on Ubuntu/Debian)
 - Video files placed in `assets/*.mpg`
 
 ---

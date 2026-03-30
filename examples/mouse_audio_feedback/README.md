@@ -9,7 +9,6 @@ Use this to verify that audio output is working correctly on your system, or as 
 ## Prerequisites
 
 - Go 1.25+
-- SDL3 development libraries (`sudo apt install libsdl3-dev` on Ubuntu/Debian)
 - Working audio output (speakers or headphones)
 
 ---

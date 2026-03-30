@@ -9,7 +9,6 @@ Timing logs are written to verify that actual onset and offset times match the r
 ## Prerequisites
 
 - Go 1.25+
-- SDL3 development libraries (`sudo apt install libsdl3-dev` on Ubuntu/Debian)
 - PNG image files in the working directory (or embedded in the binary)
 
 ---

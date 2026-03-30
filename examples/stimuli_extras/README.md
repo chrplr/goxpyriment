@@ -17,7 +17,6 @@ Press any key to advance through each stimulus.
 ## Prerequisites
 
 - Go 1.25+
-- SDL3 development libraries (`sudo apt install libsdl3-dev` on Ubuntu/Debian)
 
 ---
 

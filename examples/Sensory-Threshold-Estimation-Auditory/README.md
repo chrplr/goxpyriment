@@ -54,7 +54,6 @@ On each trial two 500 ms intervals are presented, separated by a 400 ms gap. One
 ## Prerequisites
 
 - Go 1.25+
-- SDL3 development libraries (`sudo apt install libsdl3-dev` on Ubuntu/Debian)
 - Headphones or calibrated speakers
 
 ---

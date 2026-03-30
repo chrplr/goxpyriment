@@ -44,7 +44,6 @@ Participants compare the heights of two briefly presented stimuli and decide whi
 ## Prerequisites
 
 - Go 1.25+
-- SDL3 development libraries (`sudo apt install libsdl3-dev` on Ubuntu/Debian)
 - A display — ideally a **17-inch 1024×768 monitor at 64 cm viewing distance** to match the original study. On any other setup the visual angles will be approximate.
 
 ---

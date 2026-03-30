@@ -4,8 +4,7 @@ This is a Go implementation of the HCP Retinotopic Mapping experiment, ported fr
 
 ## Prerequisites
 
-1.  **SDL3 Libraries:** Ensure SDL3 is installed on your system.
-2.  **Stimuli Extraction:** The experiment requires the stimuli to be extracted from the HDF5 file. If you haven't done so, run the extraction script:
+1.  **Stimuli Extraction:** The experiment requires the stimuli to be extracted from the HDF5 file. If you haven't done so, run the extraction script:
     ```bash
     python3 Retinotopy/h5topng.py
     ```
