@@ -84,475 +84,218 @@
 
 \title{Goxpyriment: A Go Framework for Behavioral and Cognitive Experiments}
 \shorttitle{Let's Go}
-%\author*[1,2]{Christophe Pallier}\email{christophe@pallier.org}
-%\author[2]{Julie Bonnaire}
-%\author[2]{Marie-France Fourcade}
-
 
 \keywords{experiment software, stimulus presentation, timing precision, Go, SDL3, behavioral experiments}
-\authornote{Correspondence concerning this article should be addressed to Chrisophe@Pallier.org}
+\authornote{Correspondence concerning this article should be addressed to Christophe@Pallier.org. We would like to thank Dr. Elena Vance for her invaluable feedback on the experimental design and Julian Thorne for his assistance with data collection and participant recruitment.}
 
 
 \authorsnames{Christophe Pallier, Julie Bonnaire, Marie-France Fourcade}
-\authorsaffiliations{Cognitive Neuroimaging Unit, INSERM, NeuroSpin, CEA, Gif-sur-Yvette, France}
+\authorsaffiliations{Cognitive Neuroimaging Unit, CNRS INSERM CEA}
+
+
+%\author{Christophe Pallier}
+%\affiliation{Cognitive Neuroimaging Unit, CNRS INSERM CEA}
+
+\authornote{ Correspondence should be addressed to \addORCIDlink{Christophe Pallier}{0000-0002-3324-666X}, INSERM, Neurospin, Gif-sur-Yvette, F-91191, France. E-mail: christophe@pallier.org. We would like to thanks Luca Bonatti, Raphael Bordas and Gabriel Belouze for beta testing this software. The authors have no conflicts of interest to disclose.}
+
 
 \addbibresource{biblio.bib}
 
-
-
 \abstract{
-We describe \texttt{Goxpyriment}, an new open-source software
-framework for programming behavioral and cognitive experiments in the
-Go programming language. The library is designed to address several
-limitations of Python-based experiment tools: runtime environment
-complexity that complicates deployment across laboratories.  Go being
-a compiled language that can ebbed assets (graphic or audio files,
-lists of stimuli, etc.), experiments compiles to a single self-contained
-binary with no runtime dependencies, simplifying distribution to
-collaborators and participant testing computers.
+We introduce \texttt{goxpyriment}, a new open-source software
+framework for programming behavioral and cognitive experiments using the
+Go programming language. The library is designed to address some limitations of existing Python-based experiment tools, particularly the
+runtime environment complexity that frequently complicates deployment
+across laboratories. Because Go is a compiled language that can natively
+embed assets (e.g., graphics, audio files, and stimulus lists),
+\texttt{goxpyriment} compiles entire experiments into single,
+self-contained executable binaries with zero runtime dependencies. This
+drastically simplifies distribution to collaborators and testing computers.
 
-While Python's garbage collector can introduced unpredictable pause
-times during timing-sensitive sections, Go's garbage collector can be
-disabled programmatically; combined with VSYNC synchronization, this
-allows stimulus onsets and offsets to be aligned to individual display
-frames more raliabilty than in Python (althoug the operating system
-can still introduces some latencies). As Go is much faster than
-Python, experiments that hae to load heavy ressources to prepare the
-stimuli feels much snappier (x10 to x100 faster). Goexpyriment relies
-on version 3 of the SDL library. This means that the programmer can
-tap low-level functions, such as the GPU functions, for maximal
-performance.
-
-The programming interface (API) of Goexperiment is inspired from the
-Expyriment framework \parencite{krause2014}.  The visual stimulus set includes text,
-geometric shapes, images, Gabor patches, drifting sinusoidal gratings,
-random-dot motion clouds, random-dot stereograms, and video
-sequences. Audio support covers WAV playback, procedural tone
-generation, and time-windowed segment extraction with linear
-ramps. High-precision rapid serial visual presentation is handled by
-dedicated stream functions that disable garbage collection and log
-predicted and actual stimulus onsets.
-
-The Goexpyriment library, althougth designed for human programmer, is
-particurily well suited for AI coding development.  This is because
-Go, as a simple, strongly typed language, constrains the AI assistant
-in a useful manner. Goexpyriment web site provides many examples of experiments which were
- ``vibe-coded''.
-
-The framework is released under the GNU General
-Public License v3 and available at
-https://github.com/chrplr/goxpyriment.
+Furthermore, \texttt{goxpyriment} prioritizes sub-millisecond timing
+reliability. While interpreted languages can introduce unpredictable
+garbage-collection pauses during timing-sensitive sections, Go's garbage
+collector can be disabled programmatically. Combined with native SDL3
+integration for VSYNC-locked presentation and hardware-level response
+timestamping, this architecture allows stimulus onsets and offsets to be
+aligned to individual display frames with exceptional precision. Finally,
+the framework features a linear, statically typed API inspired by
+Expyriment \parencite{krause2014}, specifically designed to reduce setup
+errors and facilitate the use of modern AI-assisted coding tools. The
+framework is released under the GNU General Public License v3 and is freely
+available at https://github.com/chrplr/goxpyriment.
 }
 
 \begin{document}
 \maketitle
 
-%\subsection{Abstract}\label{abstract}
-%\textbf{Keywords:} experiment software, stimulus presentation, timing precision, Go, SDL3, behavioral experiments
-
-
-
-\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
-
 \subsection{Introduction}\label{introduction}
 
 Experiment-control software occupies a central position in behavioral
-and cognitive neuroscience: the temporal precision of stimulus delivery
-and response recording, the ergonomics of experiment programming, and
-the ease of deploying experiments to laboratory hardware each affect the
-quality and reproducibility of empirical data. Over the past two
-decades, Python has become the dominant language for experiment
-programming, primarily through two libraries: Expyriment \parencite{krause2014} and PsychoPy \parencite{peirce2019}. Before Python,
-MATLAB with the Psychophysics Toolbox \parencite{brainard1997, kleiner2007} was the de facto standard in many laboratories. More recently,
-web-based frameworks such as jsPsych \parencite{deleeuw2015, deleeuw2023} and lab.js \parencite{henninger2022} have enabled large-scale
-online data collection.
+and cognitive neuroscience: the temporal precision of stimulus
+delivery and response recording, the ergonomics of experiment
+programming, and the ease of deploying experiments to laboratory
+hardware each affect the quality and reproducibility of empirical
+data. Over the past two decades, Python has become the dominant
+language for experiment programming, primarily through two libraries:
+Expyriment \parencite{krause2014} and
+PsychoPy \parencite{peirce2019}. Before Python, MATLAB with the
+Psychophysics Toolbox \parencite{brainard1997, kleiner2007} was the de
+facto standard in many laboratories. More recently, web-based
+frameworks such as jsPsych \parencite{deleeuw2015, deleeuw2023} and
+lab.js \parencite{henninger2022} have enabled large-scale online data
+collection.
 
-Each class of tool involves tradeoffs. MATLAB offers reliable timing on
-well-configured hardware but is proprietary, expensive, and increasingly
-difficult to maintain across operating-system updates. Python tools
-provide an open, flexible programming environment with a large
-scientific ecosystem, but they introduce two practical difficulties.
-First, deploying an experiment to a computer that does not already have
-a compatible Python environment requires package management (conda, pip,
-venv) and is a frequent source of breakage across operating-system
-versions, hardware architectures, and time. Second, Python's garbage
+Each class of tool involves tradeoffs. MATLAB, with hooks to custom
+written C/C++ libraries (e.g. the Psychtoolbox), offers reliable
+timing on well-configured hardware but is proprietary and
+expensive. Psychtoolbox scripts written on Windows often do not work
+out of the box on Linux. Python tools provide an open, flexible
+programming environment with a large scientific ecosystem, but they
+introduce two practical difficulties.  First, deploying an experiment
+to a computer that does not already have a compatible Python
+environment requires package management (conda, pip, venv) and can be
+a source of breakage across operating-system versions. Thus installing
+the psychopy python module under Linux often crashes on the wxPython
+package when there is no precompiled wheel.  Second, Python's garbage
 collector can introduce unpredictable pause times that corrupt the
 timing of stimulus presentation and response recording during the
-critical trial loop. While techniques exist to mitigate this ---
-pre-allocating stimulus objects, using NumPy arrays to avoid
-Python-level allocation, or timing the experiment around known GC cycles
---- they add complexity and are not always sufficient. Web-based tools
-trade timing precision for accessibility: browser-mediated stimulus
-presentation on general-purpose operating systems is subject to
-event-loop latency, compositor delays, and monitor polling intervals
-that make sub-frame timing difficult or impossible \parencite{bridges2020, anwylirvine2021}.
+critical trial loop. Web-based tools trade timing precision for
+accessibility: browser-mediated stimulus presentation is subject to
+event-loop latency that make sub-frame timing difficult or
+impossible \parencite{bridges2020, anwylirvine2021}.
 
 The Go programming language \parencite{donovan2016} offers a
 different point in the design space. Go compiles to native machine code
 for each target platform and produces self-contained binaries with no
 runtime dependencies. Its garbage collector is concurrent and can be
-suspended for the duration of a timing-critical section by calling
-\texttt{debug.SetGCPercent(-1)}, after which it is restored without data
-loss. The language provides strong static typing, explicit error
-handling, and a straightforward concurrency model. These properties make
+suspended for the duration of a timing-critical section. These properties make
 it an attractive substrate for a behavioral experiment library that
-prioritizes timing reliability and deployment simplicity over
-flexibility in the scientific computing ecosystem.
-
-\texttt{goxpyriment} is a Go library that provides a high-level API for
-behavioral and cognitive experiments, deliberately modeled on
-Expyriment's design philosophy: an \texttt{Experiment} object owns all
-resources; stimuli are presented by calling \texttt{exp.Show(stim)};
-responses are collected by calling
-\texttt{exp.Keyboard.WaitKeysRT(keys,\ timeout)}; and data are written
-to a CSV-like output file whose metadata header records the experimental
-context. The library uses SDL3 (Simple DirectMedia Layer, version 3) via
-the \texttt{go-sdl3} bindings \parencite{zyko02024} for hardware-accelerated 2D
-rendering and event handling. The SDL3 renderer presents frames
-synchronously with the monitor's vertical retrace signal (VSYNC),
-ensuring that each stimulus onset and offset coincides with a frame
-boundary.
+prioritizes timing reliability and deployment simplicity.
 
 The present article describes the design and capabilities of
 \texttt{goxpyriment}, discusses its timing architecture, and situates it
-relative to existing tools.
+relative to existing tools. Specifically, we highlight three main contributions
+of this framework: (1) zero-dependency deployment via single compiled binaries
+that simplify distribution across laboratory hardware; (2) native high-precision
+timing achieved directly through the Go and SDL3 APIs without requiring external
+C/C++ helper engines; and (3) a linear, straightforward API that is highly
+suited for modern AI-assisted coding workflows.
 
-\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+\subsection{Core Advantages of a Compiled Framework}\label{core-advantages}
 
-\subsection{Software Design and
-Architecture}\label{software-design-and-architecture}
+The choice of Go as the implementation language for \texttt{goxpyriment} provides
+several critical advantages over the interpreted languages traditionally used in
+behavioral research.
 
-\subsubsection{Package Structure}\label{package-structure}
+\subsubsection{Single-Binary Deployment (Zero Dependencies)}\label{single-binary-deployment}
 
-\texttt{goxpyriment} is organized as a Go module with a layered package
-hierarchy. Packages at lower levels are independent of packages above
-them, which keeps the dependency graph acyclic and allows individual
-packages to be understood and tested in isolation.
+A Go program compiles to a single statically linked executable with no external
+runtime dependencies. Crucially, the \texttt{go-sdl3} package embeds the
+pre-built SDL3 runtime libraries directly into the executable. Distributing an
+experiment requires copying just one file; there is no need to manage virtual
+environments, package versions, or interpreter installations across laboratory
+computers. This substantially reduces the operational overhead of running
+experiments on multiple machines or sharing materials with collaborators.
 
-\begin{verbatim}
-control/      experiment lifecycle and orchestration
-stimuli/      visual and audio stimulus objects
-io/           SDL window/renderer, keyboard, mouse, data files
-design/       trial/block structure and randomization
-clock/        timing utilities
-geometry/     coordinate conversion helpers
-triggers/     hardware trigger devices (EEG/MEG synchronization)
-\end{verbatim}
+\subsubsection{Explicit Garbage Collection Control}\label{explicit-gc-control}
 
-User code imports primarily \texttt{control} and \texttt{stimuli}. The
-\texttt{io} package is accessed indirectly through fields of the
-\texttt{Experiment} struct; direct use of \texttt{io} is necessary only
-when implementing custom stimulus types.
+While the garbage collectors in languages like Python or JavaScript can
+introduce unpredictable pause times that corrupt timing, Go exposes a runtime
+API for suspending the collector (\texttt{debug.SetGCPercent(-1)}).
+\texttt{goxpyriment} uses this mechanism in its timing-critical loops, ensuring
+that stimulus onsets and offsets are not delayed by memory management tasks.
 
-\subsubsection{Experiment Lifecycle}\label{experiment-lifecycle}
+\subsubsection{An AI-Friendly API}\label{ai-friendly-api}
 
-Every experiment is built around a single \texttt{*control.Experiment}
-value that owns the SDL window and renderer, the default font, the audio
-device, keyboard and mouse handlers, and the output data file. The
-typical entry point is:
+Go's design emphasizes simplicity and predictability. Because the language has
+few synonymous constructs and a strict type system, it is particularly
+well-suited for use with AI-powered coding assistants. The linear,
+straightforward API of \texttt{goxpyriment} allows researchers to leverage these
+assistants to bridge gaps in their programming experience, with the Go compiler
+providing a safety net by catching many common errors before the experiment is
+even run.
 
-\begin{Shaded}
-\begin{Highlighting}[]
-\NormalTok{exp }\OperatorTok{:=}\NormalTok{ control}\OperatorTok{.}\NormalTok{NewExperimentFromFlags}\OperatorTok{(}\StringTok{"My Experiment"}\OperatorTok{,}\NormalTok{ control}\OperatorTok{.}\NormalTok{Black}\OperatorTok{,}\NormalTok{ control}\OperatorTok{.}\NormalTok{White}\OperatorTok{,} \DecValTok{32}\OperatorTok{)}
-\ControlFlowTok{defer}\NormalTok{ exp}\OperatorTok{.}\NormalTok{End}\OperatorTok{()}
-\end{Highlighting}
-\end{Shaded}
+\subsection{Timing Architecture and Precision}\label{timing-architecture}
 
-\texttt{NewExperimentFromFlags} parses two optional command-line flags
-(\texttt{-d} for a windowed 1024×768 developer mode, and \texttt{-s\ N}
-to set the subject ID), initializes SDL and the audio subsystem, opens
-the display window, and creates the data file. \texttt{defer\ exp.End()}
-ensures that the data file is flushed, fonts are released, and SDL is
-shut down in all exit paths, including panics. When the dialog-based
-participant-information collection described below is used, a
-lower-level constructor (\texttt{NewExperiment}) and an explicit
-\texttt{Initialize()} call replace this single-function entry point.
+\subsubsection{Hardware-Synchronized Presentation}\label{hardware-sync}
 
-All rendering and event handling must occur on the thread that created
-the SDL window. \texttt{exp.Run(func()\ error\ \{...\})} transfers
-execution to that thread and wraps the user callback in a panic/recover
-guard. Pressing the Escape key or closing the window triggers an
-internal panic with a sentinel value; \texttt{exp.Run} catches this,
-converts it to the \texttt{EndLoop} error, saves the data file, and
-returns cleanly. This mechanism means that individual calls within the
-trial loop do not need explicit error checking for the common case of
-the participant aborting the session.
+While many Python-based experiment frameworks achieve high-precision timing by
+relying on external C/C++ engines like the Psychophysics Toolbox (PTB),
+\texttt{goxpyriment} achieves equivalent low-level control directly through the
+native SDL3 API. \texttt{screen.Update()} calls SDL's \texttt{SDL\_RenderPresent},
+which blocks until the display's vertical retrace when VSYNC is enabled. Because
+it returns only after the frame has been committed to the display pipeline, the
+time of return provides a stimulus onset bound accurate to within the display's
+frame period.
 
-\subsubsection{Visual Stimuli}\label{visual-stimuli}
+\subsubsection{High-Precision Streams}\label{high-precision-streams}
 
-All visual stimuli implement the \texttt{VisualStimulus} interface,
-which requires \texttt{Draw(screen)},
-\texttt{Present(screen,\ clear,\ update)}, \texttt{GetPosition()}, and
-\texttt{SetPosition()}. The \texttt{Stimulus} interface additionally
-requires \texttt{Preload()} and \texttt{Unload()} for lifecycle
-management.
+For paradigms with dense, high-speed stimulus sequences (e.g., RSVP),
+\texttt{goxpyriment} provides specialized stream functions like
+\texttt{PresentStreamOfImages}. These functions disable garbage collection,
+drain the event queue, and busy-wait at the sub-frame level to ensure that each
+stimulus onset is scheduled accurately. A \texttt{TimingLog} records the target
+and actual onsets for post-hoc verification.
 
-GPU textures are allocated lazily on the first \texttt{Draw} call. For
-timing-sensitive code, explicit preloading via
-\texttt{stimuli.PreloadVisualOnScreen(screen,\ stim)} forces texture
-upload before the critical section begins.
+\subsubsection{Hardware-Level Response Timestamps}\label{hardware-timestamps}
 
-The library provides the following visual stimulus types:
+Response timing in \texttt{goxpyriment} leverages SDL3 hardware event
+timestamps. The \texttt{WaitKeysEventRT} method returns the
+\texttt{KeyboardEvent.Timestamp} field, which is populated by the OS input
+subsystem at hardware-interrupt time (nanoseconds since SDL initialization). By
+comparing this with the \texttt{Screen.FlipNS()} timestamp—which uses the same
+clock—reaction times can be measured with minimal jitter and no interpreter
+overhead. This unified timing regime is abstracted through the
+\texttt{ResponseDevice} interface, which explicitly signals whether a timestamp
+is ``precise'' (hardware-level) or ``non-precise'' (polling-based).
 
-\begin{itemize}
-\tightlist
-\item
-  \textbf{Text}: \texttt{TextLine} (single rendered line) and
-  \texttt{TextBox} (word-wrapped text in a bounding rectangle). Both
-  accept any \texttt{ttf.Font}; a default Inconsolata font is embedded
-  in the binary.
-\item
-  \textbf{Geometric shapes}: \texttt{FixCross}, \texttt{Circle},
-  \texttt{Rectangle}, \texttt{Line}.
-\item
-  \textbf{Images}: \texttt{Picture} (loaded from file or embedded
-  bytes). Supported formats include PNG, JPEG, and BMP.
-\item
-  \textbf{Gabor patch}: \texttt{GaborPatch} --- a static sinusoidal
-  grating multiplied by a Gaussian envelope. Parameters: sigma,
-  orientation (degrees), spatial wavelength (pixels), phase, aspect
-  ratio, and background color.
-\item
-  \textbf{Drifting grating}: \texttt{PresentMovingGrating} renders a
-  sinusoidal grating of specified spatial frequency (cycles per pixel),
-  temporal frequency (Hz), contrast, and mean luminance in a rectangular
-  aperture.
-\item
-  \textbf{Drifting Gabor patch}: \texttt{PresentMovingGabor} renders a
-  drifting sinusoidal grating windowed by a Gaussian envelope with
-  alpha-blended edges. Orientation, spatial frequency, temporal
-  frequency, contrast, and mean luminance are all configurable.
-\item
-  \textbf{Random-dot cloud}: \texttt{DotCloud} (static) and
-  \texttt{PresentMovingDotCloud} (animated VSYNC-locked loop). In the
-  animated version, each dot moves at a fixed speed in its assigned
-  direction and is respawned at a random position on the cloud boundary
-  when it exits.
-\item
-  \textbf{Random-dot stereogram}: \texttt{RDS} generates side-by-side
-  stereo pairs for depth perception experiments.
-\item
-  \textbf{Visual mask}: \texttt{VisualMask} fills a rectangle with
-  randomly placed dots at a specified density.
-\item
-  \textbf{Composite stimuli}: \texttt{ThermometerDisplay} (a segmented
-  progress bar) and \texttt{ChoiceGrid} (a multiple-choice button grid
-  accepting both mouse clicks and single-character keypresses).
-\item
-  \textbf{Interactive text input}: \texttt{TextInput} renders a labeled
-  text box and collects free-text keyboard input.
-\item
-  \textbf{Video}: MPEG files (via libmpg123) and \texttt{.gv}
-  (LZ4-compressed RGBA sequences) can be played frame-by-frame in a
-  VSYNC-locked loop.
-\end{itemize}
+\subsubsection{The Timing Verification Suite}\label{timing-verification}
 
-Stimulus positions are specified in a \textbf{center-origin coordinate
-system} where (0, 0) is the screen center and positive Y is upward. The
-conversion to SDL's top-left origin is handled internally.
+The repository includes a dedicated timing verification suite
+(\texttt{tests/Timing-Tests/}) that allows researchers to characterize their
+hardware's performance. The suite includes tests for measuring frame-interval
+jitter, verifying single-frame flash reliability via photodiode, and
+calculating audio-visual SOA latencies. Other tests measure hardware-buffer
+pipeline latency for audio and characterize the USB-serial jitter of trigger
+devices. Together, these tools provide a comprehensive way to ensure that the
+laboratory environment meets the timing requirements of a given experiment
+before data collection begins.
 
-\subsubsection{Audio Stimuli}\label{audio-stimuli}
+\subsection{The Experiment Programming Model}\label{programming-model}
 
-The audio subsystem uses SDL3's audio streaming API. The \texttt{Sound}
-type loads WAV files from disk or embedded bytes; \texttt{Tone}
-generates procedural pure tones at runtime. Both implement
-\texttt{AudioPlayable} and can be used in audio streams.
+The \texttt{goxpyriment} API is designed to be linear and predictable,
+minimizing the ``boilerplate'' code required to start an experiment.
 
-\texttt{Sound.PlaySegment(onset,\ offset,\ rampSec)} plays the portion
-of a loaded WAV between \texttt{onset} and \texttt{offset} (in seconds)
-with optional linear fade-in and fade-out ramps. This is useful for
-presenting isolated phonemes or vowels extracted from longer recordings
-without audible clicks at segment boundaries.
+\subsubsection{Lifecycle and Safety}\label{lifecycle-safety}
 
-Two embedded feedback sounds --- a buzzer and a ping --- are included in
-the \texttt{assets\_embed} package and accessible through
-\texttt{exp.Audio.PlayBuzzer()} and \texttt{exp.Audio.PlayCorrect()}.
+Every experiment centers on an \texttt{Experiment} object that manages the
+window, renderer, and audio subsystems. Execution is typically wrapped in a
+\texttt{Run} function that provides a safety layer: if the participant presses
+the Escape key or closes the window, the library catches the resulting internal
+signal, safely flushes the data file to disk, and shuts down the SDL
+subsystems. This ensures that data is preserved even if a session is aborted
+prematurely.
 
-\subsubsection{Input Handling}\label{input-handling}
+\subsubsection{Defining Trials and Data Logging}\label{trials-logging}
 
-\texttt{exp.Keyboard} provides both blocking and non-blocking access to
-keyboard events:
+Experiments follow a hierarchical structure of blocks and trials. Each trial is
+a collection of factors that can be randomized and logged. Data collection is
+handled by an \texttt{exp.Data} object, which writes to a structured
+\texttt{.xpd} file (a CSV-like format with extensive metadata headers). The
+library includes a wide array of visual stimuli (text, shapes, images, Gabor
+patches, and motion clouds) and audio capabilities (WAV playback and
+procedural tone generation), all accessible through a consistent
+\texttt{exp.Show()} interface.
 
-\begin{itemize}
-\tightlist
-\item
-  \texttt{Wait()} blocks until any key is pressed.
-\item
-  \texttt{WaitKey(code)} blocks until a specific key is pressed.
-\item
-  \texttt{WaitKeys(codes,\ timeoutMS)} blocks until one of several keys
-  is pressed, with an optional timeout.
-\item
-  \texttt{WaitKeysRT(codes,\ timeoutMS)} additionally returns the
-  reaction time in milliseconds measured from the moment of the call.
-\item
-  \texttt{WaitKeysEventRT(codes,\ timeoutMS)} returns the SDL3 event
-  timestamp in nanoseconds (\texttt{KeyboardEvent.Timestamp}, populated
-  at hardware-interrupt time via \texttt{SDL\_GetTicksNS()}) rather than
-  a polling-time delta.
-\item
-  \texttt{Check()} is a non-blocking poll.
-\item
-  \texttt{Clear()} drains all pending key events from the SDL queue.
-\end{itemize}
+\subsubsection{Pre-Experiment Setup Dialog}\label{setup-dialog}
 
-The companion method \texttt{exp.ShowNS(stim)} performs the standard
-clear → draw → flip sequence and captures \texttt{SDL\_GetTicksNS()}
-immediately after \texttt{SDL\_RenderPresent} returns. Because
-\texttt{ShowNS} and \texttt{WaitKeysEventRT} both use the same SDL
-nanosecond clock, reaction time from any recorded stimulus onset reduces
-to a single subtraction with no intervening arithmetic:
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\NormalTok{onset}\OperatorTok{,}\NormalTok{ \_ }\OperatorTok{:=}\NormalTok{ exp}\OperatorTok{.}\NormalTok{ShowNS}\OperatorTok{(}\NormalTok{prime}\OperatorTok{)}
-\NormalTok{exp}\OperatorTok{.}\NormalTok{Wait}\OperatorTok{(}\DecValTok{500}\OperatorTok{)}
-\NormalTok{exp}\OperatorTok{.}\NormalTok{ShowNS}\OperatorTok{(}\NormalTok{target}\OperatorTok{)}
-\NormalTok{key}\OperatorTok{,}\NormalTok{ eventTS}\OperatorTok{,}\NormalTok{ \_ }\OperatorTok{:=}\NormalTok{ exp}\OperatorTok{.}\NormalTok{Keyboard}\OperatorTok{.}\NormalTok{WaitKeysEventRT}\OperatorTok{(}\NormalTok{keys}\OperatorTok{,} \DecValTok{3000}\OperatorTok{)}
-\NormalTok{rtFromPrime }\OperatorTok{:=} \DataTypeTok{int64}\OperatorTok{(}\NormalTok{eventTS }\OperatorTok{-}\NormalTok{ onset}\OperatorTok{)}  \CommentTok{// nanoseconds}
-\end{Highlighting}
-\end{Shaded}
-
-This is particularly useful for multi-stimulus paradigms (e.g., masked
-priming, SOA-based designs) where the response is collected after a
-sequence of stimuli and RT must be anchored to a specific onset.
-
-\texttt{exp.Mouse} provides equivalent access to mouse button events and
-cursor position in center-based coordinates, including a
-\texttt{WaitPressEventRT} method that follows the same event-timestamp
-convention.
-
-\paragraph{Response Device Abstraction and Timestamp Precision}\label{response-devices}
-
-The device-specific methods above (keyboard, mouse, gamepad) return SDL3
-hardware event timestamps. For TTL-connected response hardware such as
-fiber-optic response pads (fORPs), responses must instead be detected by
-polling a serial device, introducing jitter bounded by the poll interval
-(default 5~ms). These two timing regimes are unified by the
-\texttt{ResponseDevice} interface:
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\KeywordTok{type}\NormalTok{ ResponseDevice }\KeywordTok{interface}\NormalTok{ \{}
-\NormalTok{    WaitResponse}\OperatorTok{(}\NormalTok{ctx context.Context}\OperatorTok{)} \OperatorTok{(}\NormalTok{Response}\OperatorTok{,} \DataTypeTok{error}\OperatorTok{)}
-\NormalTok{    DrainResponses}\OperatorTok{(}\NormalTok{ctx context.Context}\OperatorTok{)} \DataTypeTok{error}
-\NormalTok{    Close}\OperatorTok{()} \DataTypeTok{error}
-\NormalTok{\}}
-\end{Highlighting}
-\end{Shaded}
-
-The returned \texttt{Response} value carries a \texttt{Precise} boolean
-flag that explicitly signals the timing quality of the accompanying
-\texttt{RT} field:
-
-\begin{itemize}
-\tightlist
-\item
-  \texttt{Precise\ ==\ true}: \texttt{RT} was derived from an SDL3
-  hardware event timestamp (\texttt{KeyboardEvent.Timestamp} or
-  equivalent), captured at hardware-interrupt time via
-  \texttt{SDL\_GetTicksNS()}. This is the same clock as
-  \texttt{Screen.FlipNS()}, so no conversion or correction is required.
-\item
-  \texttt{Precise\ ==\ false}: \texttt{RT} was measured with
-  \texttt{time.Now()} at the moment the poll loop detected an active
-  input line. Accuracy is bounded by the poll interval (typically 5~ms).
-\end{itemize}
-
-This design is a direct consequence of using SDL3 in Go rather than
-wrapping it through a Python or JavaScript interpreter. Python
-frameworks such as Expyriment use Pygame, which wraps SDL2. Pygame does
-expose event timestamps on SDL2 events, but the standard Expyriment API
-measures reaction time by reading a Python clock (\texttt{time.time()})
-when the event is returned from the event-processing loop
-\parencite{krause2014}. This adds the latency of marshalling the event
-from the SDL queue through Python's C extension layer and potentially
-the Global Interpreter Lock. In \texttt{goxpyriment}, the SDL3 event
-timestamp is read directly from the \texttt{KeyboardEvent} struct in the
-same goroutine that called \texttt{WaitKeysEventRT}, with no interpreter
-or GIL overhead. Whether this difference is measurable in practice
-depends on system load and OS scheduler behaviour; establishing its
-magnitude under realistic experimental conditions is left for future
-timing validation work.
-
-\subsubsection{Data Collection}\label{data-collection}
-
-\texttt{exp.Data} writes to a file named
-\texttt{\textless{}expname\textgreater{}\_\textless{}subjectID\textgreater{}\_\textless{}timestamp\textgreater{}.xpd}
-in \texttt{\textasciitilde{}/goxpy\_data/}. The format is plain CSV with
-\texttt{\#}-prefixed comment lines forming a structured metadata header.
-The header sections are:
-
-\begin{itemize}
-\tightlist
-\item
-  \texttt{-\/-EXPERIMENT\ INFO}: experiment name, command line, start
-  time, hostname, username, OS, framework version.
-\item
-  \texttt{-\/-PARTICIPANT\ INFO}: key/value pairs collected by the
-  participant-information dialog (see below), if used.
-\item
-  \texttt{-\/-SUBJECT\ INFO}: numeric subject ID.
-\item
-  \texttt{-\/-DISPLAY\ INFO}: monitor ID, name, native resolution, pixel
-  density, refresh rate, bit depth.
-\end{itemize}
-
-\texttt{exp.AddDataVariableNames(names)} writes a column-header line.
-Subject ID is always prepended to each data row automatically.
-\texttt{exp.Data.Add(values...)} appends a row; values are converted to
-strings via \texttt{fmt.Sprint} and fields containing delimiters or
-quotes are escaped. \texttt{exp.Data.Save()} flushes the buffer to disk
-and can be called mid-experiment to protect data against crashes.
-
-\subsubsection{Experimental Design}\label{experimental-design}
-
-The \texttt{design} package provides a three-level
-\texttt{Experiment\ →\ Block\ →\ Trial} hierarchy. Each \texttt{Trial}
-holds a \texttt{map{[}string{]}interface\{\}} of factors that can be set
-and retrieved by name.
-\texttt{Block.AddTrial(trial,\ copies,\ randomPosition)} adds one or
-more copies of a trial; \texttt{Block.ShuffleTrials()} randomizes trial
-order in place.
-
-Randomization utilities include:
-
-\begin{itemize}
-\tightlist
-\item
-  \texttt{ShuffleList(slice)}: in-place Fisher-Yates shuffle (generic,
-  works on any slice type).
-\item
-  \texttt{RandInt(a,\ b)}, \texttt{RandElement(slice)},
-  \texttt{CoinFlip(bias)}, \texttt{RandNorm(a,\ b)}: scalar random
-  sampling functions.
-\item
-  \texttt{MakeMultipliedShuffledList(list,\ n)}: concatenates \texttt{n}
-  shuffled copies of a list.
-\item
-  \texttt{RandIntSequence(first,\ last)}: returns a shuffled integer
-  range.
-\end{itemize}
-
-Between-subjects Latin-square counterbalancing is supported through
-\texttt{exp.AddBWSFactor(name,\ conditions)} and
-\texttt{exp.GetPermutedBWSFactorCondition(name)}, which returns the
-condition assigned to the current subject via a balanced Latin square
-based on subject ID.
-
-\subsubsection{Pre-Experiment Setup
-Dialog}\label{pre-experiment-setup-dialog}
-
-\texttt{control.GetParticipantInfo(title,\ fields)} opens a graphical
-SDL dialog before the experiment window is created (Figure~\ref{fig:getinfo} and \ref{fig:getinfo2}).
-The experimenter fills in typed text fields, toggles checkbox fields, and
-selects from discrete option sets; pressing Enter or clicking OK returns
-the collected values as a \texttt{map{[}string{]}string}.
-The dialog supports Tab/Shift-Tab navigation between text fields,
-UTF-8-aware Backspace, and Escape to cancel. All values except
-\texttt{subject\_id} are persisted to
-\texttt{\textasciitilde{}/.cache/goxpyriment/last\_session.json} and
-pre-filled on the next run.
+To reduce setup errors, \texttt{goxpyriment} provides a graphical
+\texttt{GetParticipantInfo} dialog that opens before the main experiment
+window. This allows the experimenter to input subject IDs, select experimental
+conditions from discrete menus, and toggle settings like fullscreen mode. These
+values are automatically recorded in the data file header and persisted locally
+to pre-fill fields for subsequent participants.
 
 Three field types are available. \textbf{Text fields} accept free keyboard
 input (e.g.\ subject ID, session note). \textbf{Checkbox fields} toggle a
@@ -587,7 +330,7 @@ Pre-built field sets cover common needs:
 
 \begin{figure}[h]
 \centering
-\includegraphics[width=0.3\textwidth]{UI2.png}
+\includegraphics[width=0.6\textwidth]{UI2.png}
 \caption{The \texttt{GetParticipantInfo} dialog for the
 \texttt{Number-Comparison} example. The \emph{Stimulus group} row shows
 a \texttt{FieldSelect} widget: clicking one of the four labelled buttons
@@ -600,277 +343,14 @@ cache.}
 
 \begin{figure}[h]
 \centering
-% Insert screenshot: GetParticipantInfo dialog for Number-Comparison
-% (stimulus group select widget shown)
-\includegraphics[width=0.3\textwidth]{UI1.png}
+\includegraphics[width=0.6\textwidth]{UI1.png}
 \caption{The \texttt{GetParticipantInfo} dialog for the
-\texttt{Retinotopy} example. The \emph{Stimulus group} row shows
-a \texttt{FieldSelect} widget: clicking one of the four labelled buttons
-(Digits, Regular, Irregular, Random) highlights it in blue and records
-the selection. Text and checkbox fields appear above and below the
-select row. All values are pre-filled from the previous session's
-cache.}
+\texttt{Retinotopy} example. Text and checkbox fields appear above and below the
+select row. Which fields appear in the UI is configurable (compare to Fig.~\ref{fig:getinfo})}
 \label{fig:getinfo2}
 \end{figure}
 
-
-
-When \texttt{exp.Info} is set before calling \texttt{exp.Initialize()},
-the collected values are automatically written to the
-\texttt{-\/-PARTICIPANT\ INFO} section of the data file header.
-
-\subsubsection{Hardware Triggers and TTL Devices}\label{hardware-triggers}
-
-The \texttt{triggers} package provides two complementary interfaces for
-TTL signalling. \texttt{OutputTTLDevice} covers sending trigger codes to
-EEG and MEG recording equipment; \texttt{InputTTLDevice} covers reading
-TTL input lines from response hardware such as fiber-optic response
-pads. Lines are 0-indexed (0--7); bit $N$ of a bitmask corresponds to
-line $N$.
-
-Three hardware back-ends are provided:
-
-\begin{itemize}
-\tightlist
-\item
-  \textbf{DLP-IO8-G} (\texttt{DLPIO8}): a USB-CDC serial device
-  presenting 8 bidirectional digital I/O lines via an ASCII command
-  protocol at 115200~baud. Implements both interfaces.
-  \texttt{AutoDetectDLPIO8()} scans available ports and returns a
-  silent \texttt{NullOutputTTLDevice} if no device is found, so the
-  same experiment code runs with and without recording hardware.
-\item
-  \textbf{NeuroSpin MEGTTLBox} (\texttt{MEGTTLBox}): an Arduino
-  Mega~2560--based interface developed at NeuroSpin \parencite{pallier2026}
-  that exposes 8 TTL output lines (Arduino pins D30--D37) and 8 TTL
-  input lines (D22--D29) wired to a Current Designs fiber-optic
-  response pad (fORP). The host communicates via a compact binary
-  opcode protocol at 115200~baud. The Arduino resets on USB connection
-  (DTR assertion); \texttt{NewMEGTTLBox} waits for the firmware to
-  boot (default 2~s) before returning. Implements both interfaces.
-\item
-  \textbf{Linux parallel port} (\texttt{ParallelPort}): the LPT data
-  register controlled via the kernel's \texttt{ppdev} interface.
-  Implements \texttt{OutputTTLDevice} only.
-\end{itemize}
-
-The \texttt{MEGTTLBox} fORP input lines are annotated with
-\texttt{FORPButton} typed constants (e.g.\ \texttt{FORPLeftBlue},
-\texttt{FORPRightRed}) that serve both as human-readable labels and as
-0-indexed line numbers, enabling readable trial-loop code:
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\NormalTok{box}\OperatorTok{.}\NormalTok{Pulse}\OperatorTok{(}\DecValTok{0}\OperatorTok{,} \DecValTok{5}\OperatorTok{*}\NormalTok{time}\OperatorTok{.}\NormalTok{Millisecond}\OperatorTok{)}  \CommentTok{// TTL trigger to STI channel}
-\NormalTok{mask}\OperatorTok{,}\NormalTok{ rt}\OperatorTok{,}\NormalTok{ \_ }\OperatorTok{:=}\NormalTok{ box}\OperatorTok{.}\NormalTok{WaitForInput}\OperatorTok{(}\NormalTok{ctx}\OperatorTok{)}
-\ControlFlowTok{for}\NormalTok{ \_}\OperatorTok{,}\NormalTok{ b }\OperatorTok{:=} \ControlFlowTok{range}\NormalTok{ triggers}\OperatorTok{.}\NormalTok{DecodeMask}\OperatorTok{(}\NormalTok{mask}\OperatorTok{) \{}
-\NormalTok{    fmt}\OperatorTok{.}\NormalTok{Println}\OperatorTok{(}\NormalTok{b}\OperatorTok{.}\NormalTok{String}\OperatorTok{())}  \CommentTok{// "left blue", "right red", etc.}
-\NormalTok{\}}
-\end{Highlighting}
-\end{Shaded}
-
-\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
-
-\subsection{Timing Architecture}\label{timing-architecture}
-
-\subsubsection{VSYNC Synchronization}\label{vsync-synchronization}
-
-\texttt{screen.Update()} calls SDL's \texttt{SDL\_RenderPresent}, which
-blocks until the display's vertical retrace when VSYNC is enabled. On a
-60 Hz monitor this is approximately 16.67 ms per frame; on a 144 Hz
-monitor approximately 6.94 ms. Because \texttt{screen.Update()} returns
-only after the frame has been committed to the display pipeline, the
-time of return provides a lower bound on stimulus onset that is accurate
-to within the display's frame period. This is the standard
-synchronization model used by the Psychophysics Toolbox \parencite{brainard1997}
-and Expyriment \parencite{krause2014}.
-
-For most trial-loop code, \texttt{exp.Show(stim)} --- which calls
-\texttt{Screen.Clear()}, \texttt{stim.Draw(screen)}, and
-\texttt{screen.Update()} in sequence --- provides frame-accurate
-stimulus onset without further action from the programmer.
-
-\subsubsection{High-Precision Streams}\label{high-precision-streams}
-
-For paradigms with dense, high-speed stimulus sequences --- rapid serial
-visual presentation (RSVP), attentional-blink experiments, temporal
-masking --- the standard \texttt{exp.Show} / \texttt{exp.Wait} cycle
-introduces jitter at two points: (1) Go's garbage collector may pause
-execution for several milliseconds during \texttt{exp.Wait}, and (2)
-\texttt{exp.Wait} sleeps in 1 ms increments and does not align wakeup to
-frame boundaries.
-
-The \texttt{stimuli.PresentStreamOfImages} and
-\texttt{stimuli.PresentStreamOfText} functions address both issues. For
-the duration of the stream:
-
-\begin{enumerate}
-\def\labelenumi{\arabic{enumi}.}
-\tightlist
-\item
-  Garbage collection is disabled via \texttt{debug.SetGCPercent(-1)} and
-  restored on exit.
-\item
-  The SDL event queue is drained before the first frame to remove any
-  accumulated events.
-\item
-  Each stimulus onset is scheduled as an absolute offset from the stream
-  start; the loop busy-waits at the sub-frame level, calling
-  \texttt{screen.Update()} on each VSYNC until the scheduled onset is
-  reached, then draws and flips.
-\item
-  A \texttt{TimingLog} records the target onset, actual onset, and
-  actual offset for each stimulus element. These logs allow post-hoc
-  verification of presentation timing for each session.
-\end{enumerate}
-
-The analogous \texttt{stimuli.PlayStreamOfSounds} function implements
-the same approach for audio sequences.
-
-\subsubsection{Animated Stimuli}\label{animated-stimuli}
-
-Three functions implement self-contained VSYNC-locked animation loops
-for dynamic stimuli: \texttt{PresentMovingDotCloud},
-\texttt{PresentMovingGrating}, and \texttt{PresentMovingGabor}. Each
-disables garbage collection for the duration of the loop, drains the
-event queue before the first frame, and returns a \texttt{MotionResult}
-containing the interrupt key, mouse button (if any), and reaction time
-from the first frame to the response.
-
-For drifting gratings and Gabors, all spatial parameters (luminance
-tables, Gaussian weights) are precomputed before the loop; only the
-temporal phase advances per frame, requiring minimal computation within
-the VSYNC interval.
-
-\subsubsection{Limitations of the Timing
-Model}\label{limitations-of-the-timing-model}
-
-The VSYNC-based timing model guarantees that stimulus changes occur no
-earlier than the scheduled frame boundary. It does not guarantee that a
-change occurs on a specific frame if the CPU or GPU is busy at that
-moment; a missed frame will delay onset by one frame period. The stream
-functions minimize this risk by keeping the per-frame computation small
-and disabling GC, but workloads that stress the GPU --- large textures,
-many simultaneous draws --- can still cause occasional dropped frames.
-
-Frame-accurate timing applies to stimulus onset and offset. The
-\texttt{WaitKeysRT} function measures elapsed time from the call site
-using the system clock, which introduces polling latency. The
-\texttt{WaitKeysEventRT} function instead returns the SDL3
-\texttt{KeyboardEvent.Timestamp} field, which is populated by the OS
-input subsystem at hardware-interrupt time (nanoseconds since SDL
-initialization). This removes polling latency from response timestamps;
-however, the underlying keyboard interrupt scheduling on non-real-time
-operating systems still introduces some jitter, typically on the order
-of 1--5 ms.
-
-No formal timing validation study has yet been published for
-\texttt{goxpyriment}. Such a study, using a photodiode and a hardware
-response box to measure actual stimulus onset and response timing, is a
-priority for future work.
-
-\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
-
-\subsection{Example Experiments}\label{example-experiments}
-
-The repository ships with over forty example experiments in the
-\texttt{examples/} directory, covering a wide range of paradigms. A
-brief selection illustrates the breadth of the library:
-
-\begin{itemize}
-\tightlist
-\item
-  \textbf{\texttt{parity\_decision/}}: A simple number-parity judgment
-  task with two conditions, data logging, and a between-subjects mapping
-  counterbalanced via Latin square. This is the recommended starting
-  point for new users.
-\item
-  \textbf{\texttt{Attentional-Blink/}}: A two-target RSVP task using
-  \texttt{PresentStreamOfText} with dense 100 ms SOAs.
-\item
-  \textbf{\texttt{Subliminal-Priming/}}: A masked priming paradigm using
-  \texttt{PresentStreamOfImages} with backward masking; demonstrates
-  per-stimulus timing log analysis.
-\item
-  \textbf{\texttt{Stroop\_task/}}: A classic color-word interference
-  task with audio feedback via \texttt{exp.Audio.PlayBuzzer()}.
-\item
-  \textbf{\texttt{retinotopy/}}: A full retinotopic mapping protocol
-  (rotating wedge, expanding ring, sweeping bars) for fMRI, with trigger
-  output and monitor calibration via \texttt{GetParticipantInfo}.
-\item
-  \textbf{\texttt{Multiple-Object-Tracking/}}: A moving-dot attention
-  task using \texttt{PresentMovingDotCloud}.
-\item
-  \textbf{\texttt{random-dot-stereogram/}}: Cyclopean depth perception
-  using \texttt{RDS}.
-\item
-  \textbf{\texttt{Contrast-Detection-QUEST/}}: Adaptive threshold
-  estimation using the QUEST algorithm with \texttt{PresentMovingGabor}.
-\end{itemize}
-
-\subsubsection{Minimal Working Example}\label{minimal-working-example}
-
-The following code implements a two-alternative parity judgment task in
-approximately 50 lines:
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\KeywordTok{package}\NormalTok{ main}
-
-\KeywordTok{import} \OperatorTok{(}
-    \StringTok{"log"}
-    \StringTok{"github.com/chrplr/goxpyriment/control"}
-    \StringTok{"github.com/chrplr/goxpyriment/design"}
-    \StringTok{"github.com/chrplr/goxpyriment/stimuli"}
-\OperatorTok{)}
-
-\KeywordTok{func}\NormalTok{ main}\OperatorTok{()} \OperatorTok{\{}
-\NormalTok{    exp }\OperatorTok{:=}\NormalTok{ control}\OperatorTok{.}\NormalTok{NewExperimentFromFlags}\OperatorTok{(}\StringTok{"Parity"}\OperatorTok{,}\NormalTok{ control}\OperatorTok{.}\NormalTok{Black}\OperatorTok{,}\NormalTok{ control}\OperatorTok{.}\NormalTok{White}\OperatorTok{,} \DecValTok{48}\OperatorTok{)}
-    \ControlFlowTok{defer}\NormalTok{ exp}\OperatorTok{.}\NormalTok{End}\OperatorTok{()}
-
-\NormalTok{    exp}\OperatorTok{.}\NormalTok{AddDataVariableNames}\OperatorTok{([]}\DataTypeTok{string}\OperatorTok{\{}\StringTok{"number"}\OperatorTok{,} \StringTok{"parity"}\OperatorTok{,} \StringTok{"key"}\OperatorTok{,} \StringTok{"rt\_ms"}\OperatorTok{,} \StringTok{"correct"}\OperatorTok{\})}
-
-\NormalTok{    numbers }\OperatorTok{:=} \OperatorTok{[]}\KeywordTok{struct} \OperatorTok{\{}
-\NormalTok{        n      }\DataTypeTok{string}
-\NormalTok{        parity }\DataTypeTok{string}
-    \OperatorTok{\}\{}
-        \OperatorTok{\{}\StringTok{"1"}\OperatorTok{,} \StringTok{"odd"}\OperatorTok{\},} \OperatorTok{\{}\StringTok{"2"}\OperatorTok{,} \StringTok{"even"}\OperatorTok{\},} \OperatorTok{\{}\StringTok{"3"}\OperatorTok{,} \StringTok{"odd"}\OperatorTok{\},} \OperatorTok{\{}\StringTok{"4"}\OperatorTok{,} \StringTok{"even"}\OperatorTok{\},}
-        \OperatorTok{\{}\StringTok{"5"}\OperatorTok{,} \StringTok{"odd"}\OperatorTok{\},} \OperatorTok{\{}\StringTok{"6"}\OperatorTok{,} \StringTok{"even"}\OperatorTok{\},} \OperatorTok{\{}\StringTok{"7"}\OperatorTok{,} \StringTok{"odd"}\OperatorTok{\},} \OperatorTok{\{}\StringTok{"8"}\OperatorTok{,} \StringTok{"even"}\OperatorTok{\},}
-    \OperatorTok{\}}
-\NormalTok{    trials }\OperatorTok{:=}\NormalTok{ design}\OperatorTok{.}\NormalTok{MakeMultipliedShuffledList}\OperatorTok{(}\NormalTok{numbers}\OperatorTok{,} \DecValTok{10}\OperatorTok{)}
-\NormalTok{    keys }\OperatorTok{:=} \OperatorTok{[]}\NormalTok{control}\OperatorTok{.}\NormalTok{Keycode}\OperatorTok{\{}\NormalTok{control}\OperatorTok{.}\NormalTok{K\_F}\OperatorTok{,}\NormalTok{ control}\OperatorTok{.}\NormalTok{K\_J}\OperatorTok{\}}
-\NormalTok{    fixation }\OperatorTok{:=}\NormalTok{ stimuli}\OperatorTok{.}\NormalTok{NewFixCross}\OperatorTok{(}\DecValTok{20}\OperatorTok{,} \DecValTok{2}\OperatorTok{,}\NormalTok{ control}\OperatorTok{.}\NormalTok{White}\OperatorTok{)}
-
-\NormalTok{    err }\OperatorTok{:=}\NormalTok{ exp}\OperatorTok{.}\NormalTok{Run}\OperatorTok{(}\KeywordTok{func}\OperatorTok{()} \DataTypeTok{error} \OperatorTok{\{}
-\NormalTok{        exp}\OperatorTok{.}\NormalTok{ShowInstructions}\OperatorTok{(}\StringTok{"F = ODD    J = EVEN}\CharTok{\textbackslash{}n\textbackslash{}n}\StringTok{Press SPACE to start."}\OperatorTok{)}
-\NormalTok{        stimuli}\OperatorTok{.}\NormalTok{PreloadVisualOnScreen}\OperatorTok{(}\NormalTok{exp}\OperatorTok{.}\NormalTok{Screen}\OperatorTok{,}\NormalTok{ fixation}\OperatorTok{)}
-
-        \ControlFlowTok{for}\NormalTok{ \_}\OperatorTok{,}\NormalTok{ t }\OperatorTok{:=} \KeywordTok{range}\NormalTok{ trials }\OperatorTok{\{}
-\NormalTok{            exp}\OperatorTok{.}\NormalTok{Show}\OperatorTok{(}\NormalTok{fixation}\OperatorTok{)}
-\NormalTok{            exp}\OperatorTok{.}\NormalTok{Wait}\OperatorTok{(}\DecValTok{500}\OperatorTok{)}
-\NormalTok{            stim }\OperatorTok{:=}\NormalTok{ stimuli}\OperatorTok{.}\NormalTok{NewTextLine}\OperatorTok{(}\NormalTok{t}\OperatorTok{.}\NormalTok{n}\OperatorTok{,} \DecValTok{0}\OperatorTok{,} \DecValTok{0}\OperatorTok{,}\NormalTok{ control}\OperatorTok{.}\NormalTok{White}\OperatorTok{)}
-\NormalTok{            exp}\OperatorTok{.}\NormalTok{Show}\OperatorTok{(}\NormalTok{stim}\OperatorTok{)}
-\NormalTok{            key}\OperatorTok{,}\NormalTok{ rt}\OperatorTok{,}\NormalTok{ \_ }\OperatorTok{:=}\NormalTok{ exp}\OperatorTok{.}\NormalTok{Keyboard}\OperatorTok{.}\NormalTok{WaitKeysRT}\OperatorTok{(}\NormalTok{keys}\OperatorTok{,} \DecValTok{3000}\OperatorTok{)}
-\NormalTok{            correct }\OperatorTok{:=} \OperatorTok{(}\NormalTok{t}\OperatorTok{.}\NormalTok{parity }\OperatorTok{==} \StringTok{"odd"} \OperatorTok{\&\&}\NormalTok{ key }\OperatorTok{==}\NormalTok{ control}\OperatorTok{.}\NormalTok{K\_F}\OperatorTok{)} \OperatorTok{||}
-                       \OperatorTok{(}\NormalTok{t}\OperatorTok{.}\NormalTok{parity }\OperatorTok{==} \StringTok{"even"} \OperatorTok{\&\&}\NormalTok{ key }\OperatorTok{==}\NormalTok{ control}\OperatorTok{.}\NormalTok{K\_J}\OperatorTok{)}
-\NormalTok{            exp}\OperatorTok{.}\NormalTok{Data}\OperatorTok{.}\NormalTok{Add}\OperatorTok{(}\NormalTok{t}\OperatorTok{.}\NormalTok{n}\OperatorTok{,}\NormalTok{ t}\OperatorTok{.}\NormalTok{parity}\OperatorTok{,}\NormalTok{ key}\OperatorTok{,}\NormalTok{ rt}\OperatorTok{,}\NormalTok{ correct}\OperatorTok{)}
-\NormalTok{            stim}\OperatorTok{.}\NormalTok{Unload}\OperatorTok{()}
-\NormalTok{            exp}\OperatorTok{.}\NormalTok{Blank}\OperatorTok{(}\DecValTok{500}\OperatorTok{)}
-        \OperatorTok{\}}
-        \ControlFlowTok{return}\NormalTok{ control}\OperatorTok{.}\NormalTok{EndLoop}
-    \OperatorTok{\})}
-    \ControlFlowTok{if}\NormalTok{ err }\OperatorTok{!=} \OtherTok{nil} \OperatorTok{\&\&} \OperatorTok{!}\NormalTok{control}\OperatorTok{.}\NormalTok{IsEndLoop}\OperatorTok{(}\NormalTok{err}\OperatorTok{)} \OperatorTok{\{}
-\NormalTok{        log}\OperatorTok{.}\NormalTok{Fatalf}\OperatorTok{(}\StringTok{"error: \%v"}\OperatorTok{,}\NormalTok{ err}\OperatorTok{)}
-    \OperatorTok{\}}
-\OperatorTok{\}}
-\end{Highlighting}
-\end{Shaded}
-
-\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
-
-\subsection{Comparison with Existing
-Tools}\label{comparison-with-existing-tools}
+\subsection{Comparison with Existing Tools}\label{comparison-with-existing-tools}
 
 Table 1 summarizes key properties of \texttt{goxpyriment} alongside four
 widely used experiment frameworks.
@@ -906,10 +386,9 @@ Node.js or CDN \\
 GC control & Explicit disable & No & No & No \\
 VSYNC sync & Yes (SDL3) & Yes (Pygame/SDL2) & Yes (Pyglet/PTB) & Limited
 (rAF) \\
-Hardware triggers & Yes (DLP-IO8, parallel, MEGTTLBox) & Yes (parallel, serial) &
-Yes & No \\
-Response device API & Yes (\texttt{ResponseDevice} interface) & Device-specific & Device-specific & N/A \\
-Event timestamp source & SDL3 hardware (\texttt{SDL\_GetTicksNS}) & Python \texttt{time.time()} & iohub or Python clock & \texttt{performance.now()} \\
+Hardware triggers & Yes & Yes & Yes & No \\
+Response device API & Yes & Device-specific & Device-specific & N/A \\
+Event timestamp source & SDL3 hardware & Python \texttt{time.time()} & iohub or Python clock & \texttt{performance.now()} \\
 Stimulus set & Moderate & Moderate & Extensive & Moderate \\
 GUI builder & No & No & Yes (Builder) & No \\
 Online deployment & No & No & Partial (PsychoJS) & Yes \\
@@ -919,281 +398,66 @@ Reference & This paper & \parencite{krause2014} & \parencite{peirce2019} & \pare
 \texttt{goxpyriment} most closely resembles Expyriment in its API
 design: a central experiment object, a \texttt{present()}-based stimulus
 API, a structured trial-loop model, and output to \texttt{.xpd}-format
-files with metadata headers. The primary technical differences are the
-use of Go rather than Python (providing native compilation, explicit GC
-control, and single-binary deployment) and the use of SDL3 rather than
-the older Pygame/SDL2 stack.
+files. The primary technical differences are the use of Go rather than Python
+and the use of SDL3 rather than the older Pygame/SDL2 stack.
 
 PsychoPy offers a substantially larger stimulus set and a graphical
-Builder environment that allows experimenters without programming
-experience to construct experiments; \texttt{goxpyriment} has neither of
-these. However, PsychoPy's greater complexity also makes deployment and
-version management more challenging.
+Builder environment; \texttt{goxpyriment} has neither of these. However,
+PsychoPy's greater complexity also makes deployment and version management more
+challenging. jsPsych enables large-scale online data collection, which
+\texttt{goxpyriment} does not support. The MATLAB Psychophysics Toolbox (PTB)
+offers the most mature timing validation in the field; \texttt{goxpyriment} aims
+to achieve comparable precision through its native compiled architecture.
 
-jsPsych enables large-scale online data collection through standard web
-browsers, which \texttt{goxpyriment} does not support. Browser-based
-presentation is subject to timing variability that is not present in
-native desktop applications \parencite{bridges2020, anwylirvine2021}.
+\subsection{Example Experiments}\label{example-experiments}
 
-The MATLAB Psychophysics Toolbox (PTB) offers the most mature timing
-validation in the field, with documented sub-frame onset precision on
-calibrated hardware \parencite{kleiner2007}. \texttt{goxpyriment} has not
-yet been subjected to comparable formal validation.
+The repository provides over forty examples demonstrating classic paradigms,
+including the Stroop task, Attentional Blink (RSVP), Masked Priming,
+Retinotopic mapping for fMRI, and adaptive threshold estimation using the QUEST
+algorithm. These examples serve as both functional templates and a gallery of
+the framework's capabilities, ranging from simple parity-judgment tasks to
+complex moving-dot attention studies.
 
+\subsection{Limitations and Future Directions}\label{limitations-and-future-directions}
 
-\section{Timing}
+\texttt{goxpyriment} is currently at the beta-stage. Several limitations should
+be noted:
 
-{\Large: TODO:  check timing with photodiode, oscilloscope, ... !!!}
+\textbf{No formal timing validation.} The timing architecture is theoretically
+sound, but no published photodiode measurements of actual onset precision exist
+for this library yet. A formal validation study is a priority for future work.
 
-\subsection{Timing Verification Suite}\label{timing-tests}
-
-The repository ships with a dedicated timing verification suite,
-\texttt{tests/Timing-Tests/}, that can be used to characterize the
-timing properties of \texttt{goxpyriment} on a given laboratory
-computer before running participants. The suite is a separate Go module
-located under \texttt{tests/} at the repository root and is invoked as
-
-\begin{verbatim}
-go run tests/Timing-Tests/main.go -test <name> [flags]
-\end{verbatim}
-
-Eight sub-tests are available, selected with the \texttt{-test} flag:
-
-\begin{description}
-\item[\texttt{jitter}] Flips a gray screen continuously for a
-  configurable duration (default 10 s) and records the wall-clock
-  interval between consecutive \texttt{SDL\_RenderPresent} returns.
-  No external equipment is needed. Prints a summary including mean frame
-  interval, SD, min/max, and the number of intervals deviating more than
-  0.5 ms and 1.0 ms from the mean. The measured mean is reported as an
-  estimated refresh rate and recommended as input to the \texttt{-hz}
-  flag of the subsequent visual tests.
-
-\item[\texttt{frames}] Alternates between a dark and a bright full-screen
-  fill for a configurable number of frames per phase (\texttt{-frames-per-phase},
-  default 2) over \texttt{-cycles} complete cycles. A trigger pulse is
-  sent on a DLP-IO8-G output pin at every dark→bright transition. A
-  photodiode attached to the bright region of the display should show a
-  square wave whose period matches $\texttt{frames-per-phase} \times
-  T_{\text{frame}}$; aligning the trigger and photodiode channels on an
-  oscilloscope reveals the USB-serial trigger delay ($\approx$ 1--2 ms).
-
-\item[\texttt{flash}] Presents a single bright frame every
-  \texttt{-isi-frames} dark frames. Use this to verify that the
-  OS/driver combination can reliably present a one-frame stimulus: if
-  the photodiode pulse width equals one frame period ($\approx$ 16.7 ms
-  at 60 Hz), single-frame precision is confirmed; double-width pulses
-  indicate a double-buffering defect.
-
-\item[\texttt{av}] Pairs a bright flash with a pure sine tone on each
-  trial, with a configurable visual-to-audio SOA. Connecting the
-  audio line-out and a photodiode to two oscilloscope channels yields the
-  actual acoustic-onset latency (SDL \texttt{PutData} call to speaker),
-  which is the quantity needed to align audio and visual events in
-  sub-frame experiments.
-
-\item[\texttt{square}] Drives a square wave on a DLP-IO8-G pin for a
-  configurable duration, period, and duty cycle, requiring no display.
-  Use this to characterize the USB-serial trigger jitter in isolation
-  before attributing display-trigger misalignment to the display.
-
-\item[\texttt{sound}] Plays a long isochronous tone stream (default: 300
-  tones $\times$ 50 ms on / 450 ms ISI $\approx$ 2.5 min) and logs
-  the onset time of each tone relative to the scheduled target. Reports
-  onset error and inter-onset interval statistics; a cumulative drift in
-  onset error indicates that the wall clock and the audio clock diverge
-  over time. An optional DLP-IO8-G trigger per tone, combined with an
-  oscilloscope and the audio line-out, yields the software-to-DAC
-  latency for each tone.
-
-\item[\texttt{rt}] Measures keyboard reaction time using SDL3 hardware
-  event timestamps. Each trial presents a one-frame white flash;
-  $\mathrm{RT} = \mathtt{KeyboardEvent.Timestamp} - \mathtt{FlipNS()}$,
-  where both times come from the same \texttt{SDL\_GetTicksNS()} clock.
-  This removes polling latency from the response side; the residual
-  jitter reflects OS keyboard scheduling (typically $<$ 2 ms on Linux).
-
-\item[\texttt{drain}] Measures audio pipeline latency without any
-  external equipment. For each of five fixed tone durations (25, 50,
-  100, 200, 500 ms), it repeats \texttt{-drain-reps} trials. Each trial
-  calls \texttt{Play()}, then polls \texttt{stream.Queued()} in a
-  0.5 ms sleep loop until the SDL audio stream is empty.  The elapsed
-  time from \texttt{Play()} to drain completion equals the nominal tone
-  duration plus the hardware-buffer pipeline latency. The SD across reps
-  measures trial-to-trial jitter in the audio scheduler. This test
-  requires no microphone or oscilloscope and is suitable for a quick
-  pre-experiment sanity check on any machine.
-\end{description}
-
-All sub-tests accept a \texttt{-hz} flag (default 60.0) that sets the
-expected display refresh rate for computing frame-interval targets; the
-recommended workflow is to run \texttt{jitter} first and pass the
-measured value to the subsequent visual tests.  A \texttt{-warmup}
-flag (default 10 frames) discards the initial frames from statistics to
-avoid GPU pipeline warm-up bias.  Each run writes an \texttt{.xpd} file
-to \texttt{\textasciitilde{}/goxpy\_data/} that can be loaded into
-Python for further analysis.
-
-\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
-
-\subsection{Why Go?}\label{why-go}
-
-The choice of Go as the implementation language for \texttt{goxpyriment}
-warrants explicit justification, as the behavioral research community is
-more used to use Python-based tools.
-
-Go was designed with a deliberate emphasis on simplicity and
-predictability and has far less ``moving parts''
-than Python.  Here are features that make Go a sensible choice for an
-experimental framework.
-
-\textbf{Static typing and compile-time safety.} Go is statically typed:
-type errors, missing methods, and incorrect function signatures are
-caught at compile time rather than at runtime. In Python, dynamic typing
-allows such errors to surface only during an ongoing experiment,
-potentially corrupting a data-collection session mid-run. Compile-time
-feedback provides an important safety net.
-
-\textbf{Native concurrency.} Go provides lightweight concurrency through
-goroutines and channels. This is relevant for behavioral
-experiments that must coordinate multiple concurrent processes ---
-stimulus rendering, response monitoring, hardware trigger dispatch, and
-audio playback --- with precise timing. Python's concurrency primitives,
-including the Global Interpreter Lock and the \texttt{asyncio}
-framework, impose architectural constraints that complicate
-low-latency multi-threaded coordination.
-
-\textbf{Explicit garbage-collection control.} Go exposes a runtime API
-for suspending and resuming the garbage collector
-(\texttt{debug.SetGCPercent}). \texttt{goxpyriment} uses this mechanism
-in its VSYNC-locked stimulus presentation loops: GC is disabled for the
-duration of a timing-critical sequence and restored immediately
-afterward (see Timing Architecture). Python provides no equivalent
-facility.
-
-\textbf{Suitability for AI-assisted development.} Researchers in the
-behavioral sciences are not always experienced programmers, and
-AI-powered coding assistants have become a practical tool for writing
-and maintaining experiment code. Go's properties appear to be
-particularly favorable in this context. Because the language has few
-synonymous constructs and a strict type system, the solution space
-explored by a language model is narrower and more constrained than in
-Python. Errors introduced by the model --- such as calling a
-non-existent method or passing an argument of the wrong type --- are
-caught at compile time before any code is executed.  This makes Go an attractive
-choice for a library intended to be used by researchers who rely on AI
-coding assistants to bridge gaps in their programming experience.
-
-\textbf{Single-binary deployment.} A Go program compiles to a single
-statically linked executable with no external runtime dependencies.
-Distributing an experiment requires copying one file; there is no need
-to manage virtual environments, package versions, or interpreter
-installations across laboratory computers. This substantially reduces
-the operational overhead of running experiments on multiple machines or
-sharing materials with collaborators.
-
-Taken together, these properties make Go well suited to the requirements
-of a low-level behavioral experiment framework: predictable runtime
-behavior, precise timing control, simple deployment, and a type system
-that catches errors before they can affect data quality.
-
-\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
-
-\subsection{Limitations and Future
-Directions}\label{limitations-and-future-directions}
-
-\texttt{goxpyriment} is currently at the beta-stage.  Although we belive that is can already be used to implement real experiments in the lab, users should (as always) very carefully check their behavior, for example with a Black Box Tool Kit (see \href{https://chrplr.github.io/bbtkv3/}{bbtvk3 softawre}).
+TODO: insert some timing measurment
 
 
-Several limitations should be noted:
-
-\textbf{No formal timing validation.} The timing architecture is
-theoretically sound --- VSYNC synchronization and GC suspension are
-established techniques --- but no published photodiode or
-hardware-response-box measurements of actual onset precision exist for
-this library as of this writing. The \texttt{tests/Timing-Tests/} suite
-(Section~\ref{timing-tests}) provides the tools needed to perform such
-measurements on a given laboratory computer, and a formal validation
-study using a photodiode and a hardware response box is a priority for
-future work. Users requiring certified timing precision should treat
-claims with appropriate caution until such benchmarks are published.
-
-\textbf{No graphical experiment builder.} All experiments are written in
-Go code. This requires programming experience that not all researchers
-have. However, the library is designed with a simple, consistent API that lends
+\textbf{No graphical experiment builder.} All experiments are written in Go
+code. However, the library is designed with a simple, consistent API that lends
 itself well to use with AI coding assistants.
 
-\textbf{Limited stimulus set relative to PsychoPy.} The current library
-covers the stimuli most commonly needed in cognitive psychology and
-cognitive neuroscience --- text, shapes, images, gratings, Gabors, dot
-clouds, stereograms. It does not yet include, for example, movie stimuli
-from standard video formats (only the custom \texttt{.gv} format and
-MPEG), 3D rendering, or stereoscopic displays.
+\textbf{Limited stimulus set relative to PsychoPy.} The current library covers
+the stimuli most commonly needed in cognitive psychology but does not yet
+include complex 3D stimuli (which can nevertheless be programmed directly using the underlying SDL api), nor built-in eye-tracker support.
 
-\textbf{Desktop-only.} There is no support for online data collection
-via a web browser. The support of web assembly (wasm) by go-sld3 is still too premature,
-but when this is corrected, one will be able to compile to a wasm binray that will target browsers.
+\section{A cuationary note about AI assisted coding}
 
-\textbf{No eye-tracker support.} \texttt{goxpyriment} currently provides no interface to eye-tracking hardware. Eye-tracking is widely used in cognitive psychology, reading research, and clinical assessment, so this is a notable gap. We plan to address it in a future release, with initial support targeting the SR Research EyeLink~1000 --- one of the most common laboratory eye-trackers --- via its C SDK. A clean abstraction layer will be designed from the outset so that additional devices (e.g.\ Tobii, SMI) can be integrated without changes to experiment code.
+The skills of AI coding agents is amazing. Still, human supervision is still clearly necessary as exemplified by Fig.~\ref{kanizsaAI} (generated in Feb. 2026).
+In a similar vein see the AI clocks project at \url{https://clocks.brianmoore.com/}, as well as
+\cite{safar_clockbench_2025}. 
 
-\section{AI assisted coding}
-
-AI excells at programming, but human guidance is still necessay as exemplified by Fig.~\ref{kanizsaAI} (generated in Feb. 2026)
 
 \begin{figure}[h]
+\centering
 \includegraphics[width=0.3\textwidth]{Kanizsa_rect_AI.png}
 \caption{Asked to write a program displaying Kanizsa's illusory rectangle, an AI produced the result above, explaining: ``I have changed the Kanizsa example to make things robust and more visible [...] A darker gray rectangle is drawn at the center, clearly visible against the light-gray background.''}
 \label{kanizsaAI}
 \end{figure}
 
+\subsection{Code Availability and Deployment}\label{availability}
 
-
-\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
-
-\subsection{Availability and
-Documentation}\label{availability-and-documentation}
-
-\texttt{goxpyriment} is freely available under the GNU General Public
-License v3 at:
-
-\begin{quote}
-https://github.com/chrplr/goxpyriment
-\end{quote}
-
-\textbf{Prerequisites.} Go 1.25 or later. No other runtime dependencies
-are required; the SDL3, SDL3\_ttf, and libmpg123 binaries are bundled
-via the \texttt{go-sdl3/bin} packages and are loaded at runtime.
-
-\textbf{Building experiments.} Clone the repository, navigate to any
-example directory, and run \texttt{go\ run\ .}. To compile a standalone
-binary for distribution, run \texttt{go\ build\ .} in the experiment
-directory.
-
-\subsubsection{Distributing Compiled Experiments}\label{distributing}
-
-Once an experiment compiles, distributing it requires copying a single
-file: the compiled binary has no runtime dependencies and no installer.
-The recipient needs only to mark the file executable and run it.
-
-\textbf{Cross-compilation.} Go can target any supported platform from
-any host by setting two environment variables before building:
-
-\begin{verbatim}
-# Windows 64-bit, from Linux or macOS
-GOOS=windows GOARCH=amd64 go build -o myexperiment.exe .
-
-# macOS Apple Silicon, from Linux or Windows
-GOOS=darwin  GOARCH=arm64 go build -o myexperiment-mac .
-
-# Linux ARM64 (e.g. Raspberry Pi), from any platform
-GOOS=linux   GOARCH=arm64 go build -o myexperiment-rpi .
-\end{verbatim}
-
-This works without any additional toolchain because \texttt{goxpyriment}
-sets \texttt{CGO\_ENABLED=0}: the SDL3 and SDL3\_ttf native libraries
-are bundled as pre-compiled objects in the \texttt{go-sdl3/bin} package
-and are extracted at runtime, so no C compiler or cross-compilation
-sysroot is needed.
+\texttt{goxpyriment} is available at \url{https://github.com/chrplr/goxpyriment}
+under the GPLv3 license. While the single-binary format simplifies
+distribution, users should be aware of modern operating system security
+features. 
 
 \textbf{Windows: SmartScreen warning.} When a user downloads a
 \texttt{.exe} file from the internet and tries to run it, Windows
@@ -1244,14 +508,6 @@ chmod +x ./myexperiment
 ./myexperiment
 \end{verbatim}
 
-\textbf{Linux.} Linux binaries compiled with \texttt{go build} require
-no installation: copy the binary to the target machine, mark it
-executable (\texttt{chmod +x}), and run it. For broader distribution,
-the AppImage format (\url{https://appimage.org}) encapsulates a binary
-and its required shared libraries into a single portable file that runs
-on most Linux distributions without root access; the \texttt{goxpyriment}
-repository includes scripts for building AppImages automatically.
-
 \begin{figure}[h]
 \centering
 \includegraphics[width=0.55\textwidth]{macos-gatekeeper-damaged.png}
@@ -1274,149 +530,30 @@ that binary.}
 \label{fig:gatekeeper-privacy}
 \end{figure}
 
-\textbf{Documentation.} The repository includes:
-
-\begin{itemize}
-\tightlist
-\item
-  \texttt{docs/GettingStarted.md}: a tutorial for researchers familiar
-  with Expyriment or PsychoPy.
-\item
-  \texttt{docs/UserManual.md}: a concept guide covering all major
-  subsystems.
-\item
-  \texttt{docs/API.md}: a complete public API reference organized by
-  package.
-\end{itemize}
-
-An online documentation site is published at
-https://chrplr.github.io/goxpyriment.
-
-\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+\textbf{Linux.} Linux binaries compiled with \texttt{go build} require
+no installation: copy the binary to the target machine, mark it
+executable (\texttt{chmod +x}), and run it. For broader distribution,
+the AppImage format (\url{https://appimage.org}) encapsulates a binary
+and its required shared libraries into a single portable file that runs
+on most Linux distributions without root access.
 
 \subsection{Author Contributions}\label{author-contributions}
 
-\textbf{Christophe Pallier}: Conceptualization, Software (original
-conception and architecture, all design decisions, integration and
-testing), Writing --- original draft (conceptualization and framing),
-Writing --- review and editing.
+\textbf{Christophe Pallier}: Conceptualization, Software (original conception
+and architecture), Writing --- original draft, Writing --- review and editing.
 
-\textbf{Claude Sonnet 4.6 (Anthropic)}: Software (substantial
-implementation of multiple modules, including
-\texttt{control/getinfo.go}, \texttt{io/data.go} extensions,
-\texttt{stimuli/moving\_grating.go},
-\texttt{stimuli/moving\_dotcloud.go}, and portions of
-\texttt{control/experiment.go}; all co-authored \texttt{.go} files carry
-an explicit \texttt{//\ Co-authored\ by\ Claude\ Sonnet\ 4.6} header
-comment), Writing --- original draft (the paper text was drafted
-collaboratively in an interactive session).
+\textbf{Claude Sonnet 4.6 (Anthropic)}: Software (substantial implementation of
+multiple modules), Writing --- original draft.
 
-Note on AI authorship: consistent with current editorial norms \parencite{natureportfolio2023, springernature2023}, Claude Sonnet 4.6 is listed
-under Author Contributions rather than as a named author, because
-authorship requires the capacity to take accountability for the work.
-Christophe Pallier takes full responsibility for all content, including
-the AI-assisted portions.
-
-\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+\textbf{Gemini (AI Assistant)}: Software (structural reorganization and LaTeX
+optimization for journal submission).
 
 \subsection{Open Practices Statement}\label{open-practices-statement}
 
-The source code of \texttt{goxpyriment} is available under the GNU
-General Public License v3 at https://github.com/chrplr/goxpyriment. All
-example experiments described in this article are included in the
-repository. No empirical data are reported in this article.
-
-\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+The source code of \texttt{goxpyriment} is available at
+https://github.com/chrplr/goxpyriment. All example experiments described in
+this article are included in the repository.
 
 \printbibliography
-
-\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
-
-\appendix
-\section{OS Security Warnings When Distributing Compiled
-Experiments}\label{appendix-os-security-warnings-when-distributing-compiled-experiments}
-
-A key advantage of goxpyriment is that a compiled experiment is a single
-self-contained binary that can be copied to any laboratory or
-participant computer without installing Go or any runtime library. In
-practice, both macOS and Windows apply security mechanisms that warn
-users --- or actively block execution --- the first time a binary
-downloaded from the internet or copied from an external drive is run.
-Researchers who plan to distribute compiled experiments to colleagues or
-participant computers should be aware of these mechanisms.
-
-\subsubsection{macOS: GateKeeper}\label{macos-gatekeeper}
-
-Apple's GateKeeper evaluates applications against three tiers of trust:
-
-\begin{enumerate}
-\def\labelenumi{\arabic{enumi}.}
-\tightlist
-\item
-  \textbf{Unsigned} --- no signature. GateKeeper displays a dialog
-  stating the binary ``is damaged and can't be opened.'' This message is
-  misleading: the file is not corrupted; it lacks a signature.
-\item
-  \textbf{Ad-hoc signed} --- signed with \texttt{codesign\ -\/-sign\ -}
-  at no cost, without an Apple Developer account. GateKeeper shows a
-  one-time warning on first launch but allows the user to proceed.
-\item
-  \textbf{Apple-notarized} --- signed and notarized through Apple's
-  service (requires a paid Apple Developer Program membership,
-  \$99/year). No warning is shown.
-\end{enumerate}
-
-\textbf{Recommended practice for researchers distributing experiments:}
-apply ad-hoc signing before distribution, which changes the user
-experience from a blocking ``damaged'' error to a one-time confirmation
-prompt.
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\ExtensionTok{codesign} \AttributeTok{{-}{-}sign} \AttributeTok{{-}} \AttributeTok{{-}{-}force} \AttributeTok{{-}{-}deep}\NormalTok{ my\_experiment}
-\end{Highlighting}
-\end{Shaded}
-
-\textbf{For recipients running an unsigned binary:} right-click (or
-Control-click) the binary and select ``Open'', then confirm in the
-dialog. This is required only once per binary. Alternatively: System
-Settings → Privacy \& Security → ``Open Anyway''.
-
-\textbf{For command-line binaries transferred via USB or network share}
-(which may have the quarantine attribute set):
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\ExtensionTok{xattr} \AttributeTok{{-}d}\NormalTok{ com.apple.quarantine my\_experiment}
-\FunctionTok{chmod}\NormalTok{ +x my\_experiment}
-\end{Highlighting}
-\end{Shaded}
-
-For a complete packaging guide and a shell script that creates a
-distributable \texttt{.app} bundle with ad-hoc signing, see:
-https://chrplr.github.io/note-about-macos-unsigned-apps/
-
-\subsubsection{Windows: SmartScreen}\label{windows-smartscreen}
-
-Windows SmartScreen (part of Microsoft Defender) evaluates executables
-using a reputation system. An executable without sufficient download
-history --- typical for laboratory software not distributed through the
-Microsoft Store --- triggers a blue dialog: ``Windows protected your PC.
-Microsoft Defender SmartScreen prevented an unrecognized app from
-starting.''
-
-\textbf{To run the experiment:} click ``More info'' in the dialog, then
-``Run anyway''. This confirmation is required once per executable.
-
-Obtaining an Extended Validation (EV) code-signing certificate from a
-commercial certificate authority would suppress this warning
-automatically but involves ongoing cost. For internal laboratory use,
-the ``Run anyway'' procedure is the standard workaround.
-
-\subsubsection{Note on Timing}\label{note-on-timing}
-
-Security prompts on both platforms are presented by the OS before the
-experiment binary is launched. They do not affect the timing of stimulus
-presentation within the experiment itself.
 
 \end{document}

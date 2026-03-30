@@ -8,6 +8,7 @@
 * [User Manual](docs/UserManual.md) — Core concepts explained in depth
 * [API Reference](docs/API.md) — Complete function and type reference
 * [Github repository](https://github.com/chrplr/goxpyriment)
+* [Google group](https://groups.google.com/a/pallier.org/g/goxpyriment) — Forum (For bugs, report them at <https://github.com/chrplr/goxpyriment/issues>
 * [Github.io Page](https://chrplr.github.io/goxpyriment)
 
 If you are looking for a simpler, *no-code experiment generator*, check [Gostim2](https://chrplr.github.io/gostim2/). 
@@ -36,11 +37,10 @@ As its name suggests, goxpyriment was inspired by [expyriment.org](https://githu
 
 This project is licensed under the GNU Public License v3 - see the [LICENSE](LICENSE.txt) file for details.
 
-Please cite as:
+Please cite thie repository as:
 
 * Christophe Pallier (2026) chrplr/goxpyriment: Goxpyriment vX.Y.Z. Zenodo. https://doi.org/10.5281/zenodo.19200598
 *(updating the version!)*
-
 
 
 
