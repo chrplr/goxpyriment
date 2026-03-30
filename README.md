@@ -5,7 +5,7 @@
 ⟶ Jump to [Demos](./examples/README.md) (pre-built binaries for many experiments; not recommended: only for those in a hurry)
  
 * [Getting Started](docs/GettingStarted.md) — Tutorial for psychologists
-* [Installation](docs/Installation.md)
+* [Installation](docs/Installation.md) — Tools needes to build your own experiment 
 * [User Manual](docs/UserManual.md) — Core concepts explained in depth
 * [API Reference](docs/API.md) — Complete function and type reference
 * [Github repository](https://github.com/chrplr/goxpyriment)
