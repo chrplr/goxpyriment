@@ -29,9 +29,12 @@ After having a look at [Getting Started][GettingStarted.md), and the examples 's
  the [available functions](API.md)
 
 
-1. Create a folder for your experiment and start coding a `main.go` file. You can test it by running `go run main.go`. 
-> [!TIP]
-> *Vibe-coding:* Launch an AI coding agent (Claude, Gemini, etc.) inside the `goxpyriment` folder and ask it to add a new experiment to the `examples` folder — this leads the agent to read the existing examples for context. Describe the experiment (stimuli, design, etc.) in plain language and enjoy.
-> Recommendation: save your prompt in a `description.md` file alongside the code.
-2. Once satisfied with the code, compile your experiment into an executable with `go build .`. This executable will run on any machine with the same OS and architecture. 
-3. If you need to distribute your experiment to colleagues who use another operating system or architecture, you can [cross-compile](https://golangcookbook.com/chapters/running/cross-compiling/). 
+* Create a folder for your experiment and start coding a `main.go` file. You can test it by running `go run main.go`. 
+
+   > 💡 **TIP**
+   > *Vibe-coding:* Launch an AI coding agent (Claude, Gemini, etc.) inside the `goxpyriment` folder and ask it to add a new experiment to the `examples` folder — this leads the agent to read the existing examples for context. Describe the experiment (stimuli, design, etc.) in plain language and enjoy.
+   > Recommendation: save your prompt in a `description.md` file alongside the code.
+
+* Once satisfied with the code, compile your experiment into an executable with `go build .`. This executable will run on any machine with the same OS and architecture. 
+
+* If you need to distribute your experiment to colleagues who use another operating system or architecture, you can [cross-compile](https://golangcookbook.com/chapters/running/cross-compiling/). 

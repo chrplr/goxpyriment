@@ -1,13 +1,13 @@
 # Goxpyriment Example Experiments (Demos)
 
-## Download pre-built binaries
 
 Pre-built binaries for all [examples](https://github.com/chrplr/goxpyriment/tree/main/examples) are published with each [GitHub release](https://github.com/chrplr/goxpyriment/releases/latest):
 
-> [!WARNING]
-> These binaries are unsigned. macOS Gatekeeper and Windows Defender will show security warnings or worse, _misleasding messages_ such as 'this program is damaged'. Don't be intimidated: 
->  macOS: Right-click the app → **Open**, or run `xattr -dr com.apple.quarantine <AppName>.app` in Terminal. See [macOS installation and security](https://chrplr.github.io/note-about-macos-unsigned-apps) for step-by-step instructions.
->  Windows: click "More info" then "Run anyway". 
+⚠️  **WARNING** These binaries are unsigned. macOS Gatekeeper and Windows Defender will show security warnings or worse, _misleasding messages_ such as 'this program is damaged'. Don't be intimidated: 
+*  macOS: Right-click the app → **Open**, or run `xattr -dr com.apple.quarantine <AppName>.app` in Terminal. See [macOS installation and security](https://chrplr.github.io/note-about-macos-unsigned-apps) for step-by-step instructions.
+*  Windows: Just click on "More info" then "Run anyway". 
+
+## Download pre-built binaries
 
 
 * **Linux (x86-64):** Download [`goxpyriment-examples-linux-x86_64-appimages.tar.gz`](https://github.com/chrplr/goxpyriment/releases/latest/download/goxpyriment-examples-linux-x86_64-appimages.tar.gz), extract with `tar xzf`, and run the `.AppImage` files directly (no install needed).
