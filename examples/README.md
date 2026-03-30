@@ -62,6 +62,7 @@ Programs that open a **GetParticipantInfo** dialog collect all setup interactive
 Full experiments that record and save behavioural data to an `.xpd` file in `goxpy_data/`.
 
 <!-- BEGIN:experiments -->
+
 | Directory | Task | Reference |
 |-----------|------|-----------|
 | [Attention-Posner-Task](Attention-Posner-Task/) | Arrow cue directs covert attention; measure cost/benefit on reaction time to a peripheral target | Posner (1980) |
@@ -96,6 +97,7 @@ Full experiments that record and save behavioural data to an `.xpd` file in `gox
 | [Trubutschek_Unconscious_Working_Memory](Trubutschek_Unconscious_Working_Memory/) | Probe access to briefly presented stimuli below and above the threshold of consciousness | Trübutschek et al. (2017) |
 | [Visual-Illusion-Lilac-Chaser](Visual-Illusion-Lilac-Chaser/) | Lilac chaser illusion: a ring of disappearing disks produces a rotating green afterimage |  |
 | [Visual_Statistical_Learning](Visual_Statistical_Learning/) | Implicit learning of statistical regularities in a shape stream, probed with forced-choice and RT tests | Turk-Browne et al. (2005) |
+
 <!-- END:experiments -->
 
 ---
@@ -105,6 +107,7 @@ Full experiments that record and save behavioural data to an `.xpd` file in `gox
 Visual illusions, interactive showcases, and minimal templates. Most do not write a data file.
 
 <!-- BEGIN:demos -->
+
 | Directory | Description |
 |-----------|-------------|
 | [canvas_demo](canvas_demo/) | Drawing on an off-screen `Canvas` surface before presenting it in one frame |
@@ -121,6 +124,7 @@ Visual illusions, interactive showcases, and minimal templates. Most do not writ
 | [Visual-Angle-Calibration](Visual-Angle-Calibration/) | Draws concentric rings at 2°, 5°, and 10° of visual angle for a quick sanity-check of the `units.Monitor` calibration |
 | [Visual-Illusion-Ebbginghaus](Visual-Illusion-Ebbginghaus/) | Animated Ebbinghaus (Titchener circles) size-contrast illusion |
 | [Visual-Illusion-Kanizsa](Visual-Illusion-Kanizsa/) | Kanizsa illusory-contour square: a square is perceived where none is drawn |
+
 <!-- END:demos -->
 
 ---
