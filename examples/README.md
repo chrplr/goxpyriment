@@ -1,10 +1,8 @@
-# Examples
-
-[This directory](./) contains self-contained programs built with the goxpyriment framework. Each subdirectory has its own `main.go` and a `README.md` (or `description.md`) with full details.
+# Goxpyriment Example Experiments (Demos)
 
 ## Download pre-built binaries
 
-Pre-built binaries for all examples are published with each [GitHub release](https://github.com/chrplr/goxpyriment/releases/latest):
+Pre-built binaries for all [examples](./) are published with each [GitHub release](https://github.com/chrplr/goxpyriment/releases/latest):
 
 > [!WARNING]
 > These binaries are unsigned. macOS Gatekeeper and Windows Defender will show security warnings or worse, _misleasding messages_ such as 'this program is damaged'. Don't be intimidated: 
