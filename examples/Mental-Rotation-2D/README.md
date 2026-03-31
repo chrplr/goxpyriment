@@ -28,7 +28,7 @@ The participant is shown two 2D asymmetrical shapes side-by-side. The task is to
 
 ## 4. How to Run
 
-From the `Mental-Rotation` directory:
+From the `Mental-Rotation-2D` directory:
 
 ```bash
 go run main.go -w -s [subject_id]
@@ -37,7 +37,7 @@ go run main.go -w -s [subject_id]
 Or from the repository root:
 
 ```bash
-go run examples/Mental-Rotation/main.go -w -s [subject_id]
+go run examples/Mental-Rotation-2D/main.go -w -s [subject_id]
 ```
 
 - **-w**: Windowed mode (1024×768 window instead of fullscreen).

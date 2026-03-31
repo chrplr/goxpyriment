@@ -16,13 +16,13 @@ By default, the experiment starts in **FULLSCREEN** mode.
 ### Standard Run (Fullscreen)
 Starts in **1280x1024** fullscreen mode with the **768x768** stimulus centered.
 ```bash
-go run examples/retinotopy/main.go -s 0 -r 1
+go run examples/Retinotopy/main.go -s 0 -r 1
 ```
 
 ### Windowed Mode
 Starts in a **900x900** window with the **768x768** stimulus centered.
 ```bash
-go run examples/retinotopy/main.go -s 0 -r 1 -w
+go run examples/Retinotopy/main.go -s 0 -r 1 -w
 ```
 
 ### Command Line Options

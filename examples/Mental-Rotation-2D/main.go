@@ -68,7 +68,7 @@ func showInstructions(exp *control.Experiment) error {
 }
 
 func main() {
-	exp := control.NewExperimentFromFlags("Mental-Rotation", control.Black, control.White, 32)
+	exp := control.NewExperimentFromFlags("Mental-Rotation-2D", control.Black, control.White, 32)
 	defer exp.End()
 
 	exp.AddDataVariableNames([]string{"trial_idx", "angle", "condition", "response", "is_correct", "rt"})
