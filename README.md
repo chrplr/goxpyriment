@@ -19,7 +19,7 @@ If you are looking for a simpler, *no-code experiment generator*, check out [Gos
 💡 **TIP**  **Vibe-coding:** After installation, you can launch an AI coding agent (Claude, Gemini, ...) inside the `goxpyriment`folder and ask it to add a new experiment to the `examples` folder — this leads the agent to read the existing examples for context. Describe the experiment (stimuli, design, etc.) in plain language and enjoy. Recommendation: save your prompt in a `description.md` file alongside the code.
 
 
-⚠️  **WARNING**:  This software is in beta-testing, that is, I am waiting for reports from the battleground before releasing a first stabl version. Although it is certainly possible to use it to implement real experiments in the lab, users should (as always) very carefully check their behavior, for example with a [bbtk](https://chrplr.github.io/bbtkv3/).
+⚠️  **WARNING**:  This software is in beta-testing, that is, I am waiting for reports from the battleground before releasing a first stable version. Although it is certainly possible to use it to implement real experiments in the lab, users should (as always) very carefully check their behavior, for example with a [bbtk](https://chrplr.github.io/bbtkv3/).
 
 
 Goxpyriment relies on the [libsdl](http://libsdl.org) library through the [go-sdl3](https://github.com/Zyko0/go-sdl3) bindings. 
@@ -36,7 +36,7 @@ As its name suggests, goxpyriment was inspired by [expyriment.org](https://githu
 
 This project is licensed under the GNU Public License v3 - see the [LICENSE](LICENSE.txt) file for details.
 
-Please cite thie repository as:
+Please cite this repository as:
 
 * Christophe Pallier (2026) chrplr/goxpyriment: Goxpyriment vX.Y.Z. Zenodo. https://doi.org/10.5281/zenodo.19200598
 *(updating the version!)*

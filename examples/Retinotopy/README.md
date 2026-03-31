@@ -1,6 +1,6 @@
 # Retinotopy Experiment
 
-This is a Go implementation of the HCP Retinotopic Mapping experiment, ported from the Python version developped by Christophe Pallier and Bosco Taddei.
+This is a Go implementation of the HCP Retinotopic Mapping experiment, ported from the Python version developed by Christophe Pallier and Bosco Taddei.
 
 ## Prerequisites
 
