@@ -101,7 +101,7 @@ func TestNewDataFileDefaultDir(t *testing.T) {
 		t.Errorf("Expected directory 'my_results', got %q", df.Directory)
 	}
 
-	if !strings.HasPrefix(df.Filename, "test_exp_001_") {
+	if !strings.HasPrefix(df.Filename, "test_exp_sub-001_date-") {
 		t.Errorf("Unexpected filename format: %q", df.Filename)
 	}
 }

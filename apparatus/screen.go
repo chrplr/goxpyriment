@@ -294,6 +294,61 @@ func (s *Screen) SetLogicalSize(width, height int32) error {
 	return s.Renderer.SetLogicalPresentation(width, height, sdl.LOGICAL_PRESENTATION_LETTERBOX)
 }
 
+// SystemInfo holds SDL, renderer, and audio runtime properties captured once
+// at experiment startup for inclusion in the data file metadata header.
+// Together with DisplayInfo it provides a complete postmortem record of the
+// software and hardware configuration used during a session.
+type SystemInfo struct {
+	SDLVersion    string // SDL library version, e.g. "3.2.10"
+	VideoDriver   string // SDL video driver, e.g. "wayland", "x11", "windows"
+	RendererName  string // GPU renderer backend, e.g. "opengl", "vulkan", "metal"
+	PhysicalW     int32  // renderer output width in physical pixels (HiDPI-aware)
+	PhysicalH     int32  // renderer output height in physical pixels
+	LogicalW      int32  // logical window width (experiment coordinate space)
+	LogicalH      int32  // logical window height
+	Fullscreen    bool   // true when running in fullscreen mode
+	VSync         int    // VSync state: 1=on, 0=off, -1=adaptive
+	AudioDriver   string // SDL audio driver, e.g. "pulseaudio", "alsa", "coreaudio"
+	AudioFormat   string // audio sample format, e.g. "SDL_AUDIO_F32LE"
+	AudioFreq     int32  // sample rate in Hz, e.g. 44100 or 48000
+	AudioChannels int32  // number of audio output channels (1=mono, 2=stereo)
+	AudioFrames   int32  // hardware buffer size in sample frames
+}
+
+// GatherSystemInfo collects SDL and renderer properties from this Screen.
+// Audio fields (AudioDriver, AudioFormat, AudioFreq, AudioChannels, AudioFrames)
+// are left at their zero values; the caller fills them in after opening the
+// audio device.
+func (s *Screen) GatherSystemInfo() SystemInfo {
+	info := SystemInfo{
+		SDLVersion:  sdl.GetVersion().String(),
+		VideoDriver: sdl.GetCurrentVideoDriver(),
+	}
+	if s.Renderer != nil {
+		if name, err := s.Renderer.Name(); err == nil {
+			info.RendererName = name
+		}
+		if w, h, err := s.Renderer.RenderOutputSize(); err == nil {
+			info.PhysicalW = w
+			info.PhysicalH = h
+		}
+		if v, err := s.VSync(); err == nil {
+			info.VSync = v
+		}
+	}
+	if s.Window != nil {
+		info.Fullscreen = (s.Window.Flags() & sdl.WINDOW_FULLSCREEN) != 0
+	}
+	if s.LogicalSize != nil {
+		info.LogicalW = int32(s.LogicalSize.X)
+		info.LogicalH = int32(s.LogicalSize.Y)
+	} else {
+		info.LogicalW = int32(s.Width)
+		info.LogicalH = int32(s.Height)
+	}
+	return info
+}
+
 // DisplayInfo holds display properties queried once at experiment startup.
 // It is intended to be logged into the .csv metadata header so that stimulus
 // timing can be interpreted correctly during analysis.

@@ -485,8 +485,6 @@ func main() {
 		log.Printf("warning: could not enable vsync: %v", err)
 	}
 
-	dispInfo := exp.Screen.DisplayInfo()
-	exp.Data.WriteDisplayInfo(dispInfo)
 	exp.AddDataVariableNames([]string{"trial_num", "condition", "word", "word_duration_ms", "estimated_word_duration_ms", "response", "rt_ms", "reported_word"})
 	if err := exp.Data.Save(); err != nil {
 		log.Fatalf("failed to write data header: %v", err)

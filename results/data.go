@@ -75,8 +75,8 @@ func NewDataFile(directory string, subjectID int, expName string) (*DataFile, er
 		}
 	}
 
-	timestamp := time.Now().Format("200601021504")
-	filename := fmt.Sprintf("%s_%03d_%s.csv", expName, subjectID, timestamp)
+	now := time.Now()
+	filename := fmt.Sprintf("%s_sub-%03d_date-%s-%s.csv", expName, subjectID, now.Format("20060102"), now.Format("1504"))
 
 	base, err := NewOutputFile(directory, filename)
 	if err != nil {
@@ -138,6 +138,26 @@ func (df *DataFile) Add(data ...interface{}) {
 	}
 
 	df.WriteLine(strings.Join(parts, df.Delimiter))
+}
+
+// WriteSystemInfo appends SDL, renderer, and audio runtime properties as
+// comment lines under a --SYSTEM INFO section. Called automatically by
+// Experiment.Initialize() so every data file carries a complete record of the
+// software and hardware configuration used during the session.
+func (df *DataFile) WriteSystemInfo(info apparatus.SystemInfo) {
+	df.WriteComment("--SYSTEM INFO")
+	df.WriteComment(fmt.Sprintf("sys sdl_version: %s", info.SDLVersion))
+	df.WriteComment(fmt.Sprintf("sys video_driver: %s", info.VideoDriver))
+	df.WriteComment(fmt.Sprintf("sys renderer: %s", info.RendererName))
+	df.WriteComment(fmt.Sprintf("sys physical_resolution: %dx%d px", info.PhysicalW, info.PhysicalH))
+	df.WriteComment(fmt.Sprintf("sys logical_resolution: %dx%d px", info.LogicalW, info.LogicalH))
+	df.WriteComment(fmt.Sprintf("sys fullscreen: %v", info.Fullscreen))
+	df.WriteComment(fmt.Sprintf("sys vsync: %d", info.VSync))
+	df.WriteComment(fmt.Sprintf("sys audio_driver: %s", info.AudioDriver))
+	df.WriteComment(fmt.Sprintf("sys audio_format: %s", info.AudioFormat))
+	df.WriteComment(fmt.Sprintf("sys audio_sample_rate_hz: %d", info.AudioFreq))
+	df.WriteComment(fmt.Sprintf("sys audio_channels: %d", info.AudioChannels))
+	df.WriteComment(fmt.Sprintf("sys audio_buffer_frames: %d", info.AudioFrames))
 }
 
 // WriteDisplayInfo appends display properties as comment lines in the metadata

@@ -449,6 +449,22 @@ func (e *Experiment) Initialize() error {
 		return err
 	}
 	e.Data = dataFile
+
+	// Capture system metadata automatically so every data file has a complete
+	// record of SDL, renderer, display, and audio configuration.
+	sysInfo := e.Screen.GatherSystemInfo()
+	sysInfo.AudioDriver = sdl.GetCurrentAudioDriver()
+	if e.AudioDevice != 0 {
+		if spec, frames, err := e.AudioDevice.Format(); err == nil && spec != nil {
+			sysInfo.AudioFreq = spec.Freq
+			sysInfo.AudioChannels = spec.Channels
+			sysInfo.AudioFrames = frames
+			sysInfo.AudioFormat = spec.Format.Name()
+		}
+	}
+	e.Data.WriteSystemInfo(sysInfo)
+	e.Data.WriteDisplayInfo(e.Screen.DisplayInfo())
+
 	if len(e.Info) > 0 {
 		e.Data.WriteParticipantInfo(e.Info)
 	}
@@ -693,7 +709,9 @@ func (e *Experiment) ShowSplash(waitForKey bool) error {
 func (e *Experiment) End() {
 	if e.Data != nil {
 		e.Data.WriteEndTime()
-		e.Data.Save()
+		if err := e.Data.Save(); err == nil {
+			log.Printf("Results saved in %s", e.Data.FullPath)
+		}
 	}
 	if e.DefaultFont != nil {
 		e.DefaultFont.Close()
