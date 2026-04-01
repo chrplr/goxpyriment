@@ -4,7 +4,7 @@
 
 
 ### 1. Core Engine (VSYNC & Timing)
-* **Framework:** Use goxpyriment. If it is missing functions that you would deem reusable for other exepriment, you can add them, or even modify the framework (making sure that the other examples in the example folder can be adapted if necessary) 
+* **Framework:** Use goxpyriment. If it is missing functions that you would deem reusable for other experiment, you can add them, or even modify the framework (making sure that the other examples in the example folder can be adapted if necessary) 
 * **Precision:** Use `performance.now()` to calculate `deltaTime`. Movement must be calculated as `velocity * deltaTime` to ensure smooth motion regardless of minor frame drops.
 * **Sub-pixel Rendering:** Use floating-point coordinates for all horizontal positions to prevent "pixel snapping" or jitter.
 

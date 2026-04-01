@@ -1,4 +1,4 @@
-The aim it to write program using goxpyriment to reproduce experiments 1 and 2 from Forget, Buiatti, and Dehaene (2009), decribed below;
+The aim it to write program using goxpyriment to reproduce experiments 1 and 2 from Forget, Buiatti, and Dehaene (2009), described below;
 
 
 ### General Experimental Environment
