@@ -1,0 +1,1215 @@
+% $ biblatex auxiliary file $
+% $ biblatex bbl format version 3.3 $
+% Do not modify the above lines!
+%
+% This is an auxiliary file used by the 'biblatex' package.
+% This file may safely be deleted. It will be recreated by
+% biber as required.
+%
+\begingroup
+\makeatletter
+\@ifundefined{ver@biblatex.sty}
+  {\@latex@error
+     {Missing 'biblatex' package}
+     {The bibliography requires the 'biblatex' package.}
+      \aftergroup\endinput}
+  {}
+\endgroup
+
+
+\refsection{0}
+  \datalist[entry]{apa/apasortcite//global/global/global}
+    \entry{anwylirvine2021}{article}{}{}
+      \name{author}{5}{}{%
+        {{un=0,uniquepart=base,hash=2d357f59ec56b0137663ffa2571a4c6b}{%
+           family={Anwyl-Irvine},
+           familyi={A\bibinithyphendelim I\bibinitperiod},
+           given={Alexander\bibnamedelima L.},
+           giveni={A\bibinitperiod\bibinitdelim L\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=61f217a0a4c8f37d98961e47914d00db}{%
+           family={Massonnié},
+           familyi={M\bibinitperiod},
+           given={Jessica},
+           giveni={J\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=a256bb3332b012c169ab78cf9b2ebf54}{%
+           family={Flitton},
+           familyi={F\bibinitperiod},
+           given={Adam},
+           giveni={A\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=3e24b68c31ec2b59c32ec6739d24d35d}{%
+           family={Kirkham},
+           familyi={K\bibinitperiod},
+           given={Natasha},
+           giveni={N\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=d5d0ac7b8efb664affda90207b5dbc15}{%
+           family={Evershed},
+           familyi={E\bibinitperiod},
+           given={Jo\bibnamedelima K.},
+           giveni={J\bibinitperiod\bibinitdelim K\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{47510697ffe14bb9cadbdac527d7f2d8}
+      \strng{fullhash}{2dd2e3569553a9567e5a47280a90f24e}
+      \strng{fullhashraw}{2dd2e3569553a9567e5a47280a90f24e}
+      \strng{bibnamehash}{2dd2e3569553a9567e5a47280a90f24e}
+      \strng{authorbibnamehash}{2dd2e3569553a9567e5a47280a90f24e}
+      \strng{authornamehash}{47510697ffe14bb9cadbdac527d7f2d8}
+      \strng{authorfullhash}{2dd2e3569553a9567e5a47280a90f24e}
+      \strng{authorfullhashraw}{2dd2e3569553a9567e5a47280a90f24e}
+      \field{sortinit}{A}
+      \field{sortinithash}{2f401846e2029bad6b3ecc16d50031e2}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \true{uniqueprimaryauthor}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Behavior Research Methods}
+      \field{number}{1}
+      \field{title}{Gorilla in our midst: {An} online behavioral experiment builder}
+      \field{volume}{52}
+      \field{year}{2021}
+      \field{pages}{388\bibrangedash 407}
+      \range{pages}{20}
+      \verb{doi}
+      \verb 10.3758/s13428-019-01237-x
+      \endverb
+    \endentry
+    \entry{brainard1997}{article}{}{}
+      \name{author}{1}{}{%
+        {{un=0,uniquepart=base,hash=61ef2e09a31993155b87dd6df2488ae0}{%
+           family={Brainard},
+           familyi={B\bibinitperiod},
+           given={David\bibnamedelima H.},
+           giveni={D\bibinitperiod\bibinitdelim H\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{61ef2e09a31993155b87dd6df2488ae0}
+      \strng{fullhash}{61ef2e09a31993155b87dd6df2488ae0}
+      \strng{fullhashraw}{61ef2e09a31993155b87dd6df2488ae0}
+      \strng{bibnamehash}{61ef2e09a31993155b87dd6df2488ae0}
+      \strng{authorbibnamehash}{61ef2e09a31993155b87dd6df2488ae0}
+      \strng{authornamehash}{61ef2e09a31993155b87dd6df2488ae0}
+      \strng{authorfullhash}{61ef2e09a31993155b87dd6df2488ae0}
+      \strng{authorfullhashraw}{61ef2e09a31993155b87dd6df2488ae0}
+      \field{sortinit}{B}
+      \field{sortinithash}{d7095fff47cda75ca2589920aae98399}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \true{uniqueprimaryauthor}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Spatial Vision}
+      \field{number}{4}
+      \field{title}{The {Psychophysics} {Toolbox}}
+      \field{volume}{10}
+      \field{year}{1997}
+      \field{pages}{433\bibrangedash 436}
+      \range{pages}{4}
+      \verb{doi}
+      \verb 10.1163/156856897X00357
+      \endverb
+    \endentry
+    \entry{bridges2020}{article}{}{}
+      \name{author}{4}{}{%
+        {{un=0,uniquepart=base,hash=92aa7e63112a2785fcce0f1ba98af624}{%
+           family={Bridges},
+           familyi={B\bibinitperiod},
+           given={David},
+           giveni={D\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=b71ad50ddad265b97be321a4d4495d22}{%
+           family={Pitiot},
+           familyi={P\bibinitperiod},
+           given={Alain},
+           giveni={A\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=1e17486880ecb8501a2a3f5e9846e94b}{%
+           family={MacAskill},
+           familyi={M\bibinitperiod},
+           given={Michael\bibnamedelima R.},
+           giveni={M\bibinitperiod\bibinitdelim R\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=8d806b8252c2760e1d89bdee0591b823}{%
+           family={Peirce},
+           familyi={P\bibinitperiod},
+           given={Jonathan\bibnamedelima W.},
+           giveni={J\bibinitperiod\bibinitdelim W\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{a35eaa729bde4f85cbc264ab5264fc34}
+      \strng{fullhash}{5644ea943ea1e7421bf9fecf83348b4f}
+      \strng{fullhashraw}{5644ea943ea1e7421bf9fecf83348b4f}
+      \strng{bibnamehash}{5644ea943ea1e7421bf9fecf83348b4f}
+      \strng{authorbibnamehash}{5644ea943ea1e7421bf9fecf83348b4f}
+      \strng{authornamehash}{a35eaa729bde4f85cbc264ab5264fc34}
+      \strng{authorfullhash}{5644ea943ea1e7421bf9fecf83348b4f}
+      \strng{authorfullhashraw}{5644ea943ea1e7421bf9fecf83348b4f}
+      \field{sortinit}{B}
+      \field{sortinithash}{d7095fff47cda75ca2589920aae98399}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \true{uniqueprimaryauthor}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{PeerJ}
+      \field{title}{The timing mega-study: {Comparing} a range of experiment generators, both lab-based and online}
+      \field{volume}{8}
+      \field{year}{2020}
+      \field{pages}{e9414}
+      \range{pages}{-1}
+      \verb{doi}
+      \verb 10.7717/peerj.9414
+      \endverb
+    \endentry
+    \entry{deleeuw2015}{article}{}{}
+      \name{author}{1}{}{%
+        {{un=0,uniquepart=base,hash=146430041f56ab957632480a22f61e26}{%
+           family={Leeuw},
+           familyi={L\bibinitperiod},
+           given={Joshua\bibnamedelima R.},
+           giveni={J\bibinitperiod\bibinitdelim R\bibinitperiod},
+           givenun=0,
+           prefix={de},
+           prefixi={d\bibinitperiod}}}%
+      }
+      \strng{namehash}{146430041f56ab957632480a22f61e26}
+      \strng{fullhash}{146430041f56ab957632480a22f61e26}
+      \strng{fullhashraw}{146430041f56ab957632480a22f61e26}
+      \strng{bibnamehash}{146430041f56ab957632480a22f61e26}
+      \strng{authorbibnamehash}{146430041f56ab957632480a22f61e26}
+      \strng{authornamehash}{146430041f56ab957632480a22f61e26}
+      \strng{authorfullhash}{146430041f56ab957632480a22f61e26}
+      \strng{authorfullhashraw}{146430041f56ab957632480a22f61e26}
+      \field{sortinit}{d}
+      \field{sortinithash}{6f385f66841fb5e82009dc833c761848}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \true{uniqueprimaryauthor}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Behavior Research Methods}
+      \field{number}{1}
+      \field{title}{{jsPsych}: {A} {JavaScript} library for creating behavioral experiments in a {Web} browser}
+      \field{volume}{47}
+      \field{year}{2015}
+      \field{pages}{1\bibrangedash 12}
+      \range{pages}{12}
+      \verb{doi}
+      \verb 10.3758/s13428-014-0458-y
+      \endverb
+    \endentry
+    \entry{deleeuw2023}{article}{}{}
+      \name{author}{3}{}{%
+        {{un=0,uniquepart=base,hash=146430041f56ab957632480a22f61e26}{%
+           family={Leeuw},
+           familyi={L\bibinitperiod},
+           given={Joshua\bibnamedelima R.},
+           giveni={J\bibinitperiod\bibinitdelim R\bibinitperiod},
+           givenun=0,
+           prefix={de},
+           prefixi={d\bibinitperiod}}}%
+        {{un=0,uniquepart=base,hash=2d757c9397b6b5f24ce154c710a822f0}{%
+           family={Gilbert},
+           familyi={G\bibinitperiod},
+           given={Rebecca\bibnamedelima A.},
+           giveni={R\bibinitperiod\bibinitdelim A\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=d5077499e3d43a826a190ec5137cc226}{%
+           family={Luchterhandt},
+           familyi={L\bibinitperiod},
+           given={Björn},
+           giveni={B\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{80a3912e96c0f58022d9f0147f68e175}
+      \strng{fullhash}{070e8266431ecf3d94f5afff2c00181b}
+      \strng{fullhashraw}{070e8266431ecf3d94f5afff2c00181b}
+      \strng{bibnamehash}{070e8266431ecf3d94f5afff2c00181b}
+      \strng{authorbibnamehash}{070e8266431ecf3d94f5afff2c00181b}
+      \strng{authornamehash}{80a3912e96c0f58022d9f0147f68e175}
+      \strng{authorfullhash}{070e8266431ecf3d94f5afff2c00181b}
+      \strng{authorfullhashraw}{070e8266431ecf3d94f5afff2c00181b}
+      \field{sortinit}{d}
+      \field{sortinithash}{6f385f66841fb5e82009dc833c761848}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \true{uniqueprimaryauthor}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Journal of Open Source Software}
+      \field{number}{85}
+      \field{title}{{jsPsych}: {Enabling} an open-source collaborative ecosystem of behavioral experiments}
+      \field{volume}{8}
+      \field{year}{2023}
+      \field{pages}{5351}
+      \range{pages}{1}
+      \verb{doi}
+      \verb 10.21105/joss.05351
+      \endverb
+    \endentry
+    \entry{donovan2016}{book}{}{}
+      \name{author}{2}{}{%
+        {{un=0,uniquepart=base,hash=87a7b3a183bd76a052f571ec78de03ed}{%
+           family={Donovan},
+           familyi={D\bibinitperiod},
+           given={Alan\bibnamedelimb A.\bibnamedelimi A.},
+           giveni={A\bibinitperiod\bibinitdelim A\bibinitperiod\bibinitdelim A\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=cef3a18f3097ba31cc4cf18c95bfdfbc}{%
+           family={Kernighan},
+           familyi={K\bibinitperiod},
+           given={Brian\bibnamedelima W.},
+           giveni={B\bibinitperiod\bibinitdelim W\bibinitperiod},
+           givenun=0}}%
+      }
+      \list{publisher}{1}{%
+        {Addison-Wesley}%
+      }
+      \strng{namehash}{1abc4d6494e6783dc4988680f58adcc6}
+      \strng{fullhash}{1abc4d6494e6783dc4988680f58adcc6}
+      \strng{fullhashraw}{1abc4d6494e6783dc4988680f58adcc6}
+      \strng{bibnamehash}{1abc4d6494e6783dc4988680f58adcc6}
+      \strng{authorbibnamehash}{1abc4d6494e6783dc4988680f58adcc6}
+      \strng{authornamehash}{1abc4d6494e6783dc4988680f58adcc6}
+      \strng{authorfullhash}{1abc4d6494e6783dc4988680f58adcc6}
+      \strng{authorfullhashraw}{1abc4d6494e6783dc4988680f58adcc6}
+      \field{sortinit}{D}
+      \field{sortinithash}{6f385f66841fb5e82009dc833c761848}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \true{uniqueprimaryauthor}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{The {Go} Programming Language}
+      \field{year}{2016}
+    \endentry
+    \entry{henninger2022}{article}{}{}
+      \name{author}{5}{}{%
+        {{un=0,uniquepart=base,hash=7c05213eabb6d524ca12dbe6949173fe}{%
+           family={Henninger},
+           familyi={H\bibinitperiod},
+           given={Felix},
+           giveni={F\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=7310e98dbe04db51b1b16b23cbd69cd8}{%
+           family={Shevchenko},
+           familyi={S\bibinitperiod},
+           given={Yury},
+           giveni={Y\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=be91bbb0f25b0e7e2147ae91eb804859}{%
+           family={Meijer},
+           familyi={M\bibinitperiod},
+           given={Rolf\bibnamedelima R.},
+           giveni={R\bibinitperiod\bibinitdelim R\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=e2e6f89fe60567e4e26f347b13b8eb04}{%
+           family={Inzlicht},
+           familyi={I\bibinitperiod},
+           given={Michael},
+           giveni={M\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=6686c2cf7117a843ca001755b6d64c4c}{%
+           family={Hilbig},
+           familyi={H\bibinitperiod},
+           given={Benjamin\bibnamedelima E.},
+           giveni={B\bibinitperiod\bibinitdelim E\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{31e3a8d564a28dbb7cec0107fc3cc839}
+      \strng{fullhash}{d65324f09f8f13ae573e63bf8021bf4b}
+      \strng{fullhashraw}{d65324f09f8f13ae573e63bf8021bf4b}
+      \strng{bibnamehash}{d65324f09f8f13ae573e63bf8021bf4b}
+      \strng{authorbibnamehash}{d65324f09f8f13ae573e63bf8021bf4b}
+      \strng{authornamehash}{31e3a8d564a28dbb7cec0107fc3cc839}
+      \strng{authorfullhash}{d65324f09f8f13ae573e63bf8021bf4b}
+      \strng{authorfullhashraw}{d65324f09f8f13ae573e63bf8021bf4b}
+      \field{sortinit}{H}
+      \field{sortinithash}{23a3aa7c24e56cfa16945d55545109b5}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \true{uniqueprimaryauthor}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Behavior Research Methods}
+      \field{number}{2}
+      \field{title}{lab.js: {A} free, open, online study builder}
+      \field{volume}{54}
+      \field{year}{2022}
+      \field{pages}{556\bibrangedash 573}
+      \range{pages}{18}
+      \verb{doi}
+      \verb 10.3758/s13428-019-01283-5
+      \endverb
+    \endentry
+    \entry{gosdl3}{misc}{}{}
+      \name{author}{1}{}{%
+        {{un=0,uniquepart=base,hash=ad9e6aee877a5367421b64c626d3199d}{%
+           family={Jung},
+           familyi={J\bibinitperiod},
+           given={Bertrand},
+           giveni={B\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{ad9e6aee877a5367421b64c626d3199d}
+      \strng{fullhash}{ad9e6aee877a5367421b64c626d3199d}
+      \strng{fullhashraw}{ad9e6aee877a5367421b64c626d3199d}
+      \strng{bibnamehash}{ad9e6aee877a5367421b64c626d3199d}
+      \strng{authorbibnamehash}{ad9e6aee877a5367421b64c626d3199d}
+      \strng{authornamehash}{ad9e6aee877a5367421b64c626d3199d}
+      \strng{authorfullhash}{ad9e6aee877a5367421b64c626d3199d}
+      \strng{authorfullhashraw}{ad9e6aee877a5367421b64c626d3199d}
+      \field{sortinit}{J}
+      \field{sortinithash}{b2f54a9081ace9966a7cb9413811edb4}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \true{uniqueprimaryauthor}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{howpublished}{\url{https://github.com/Zyko0/go-sdl3}}
+      \field{note}{Accessed: 2026-04-01}
+      \field{title}{{SDL3} {B}indings for {G}o}
+      \field{year}{2026}
+    \endentry
+    \entry{kleiner2007}{article}{}{}
+      \name{author}{3}{}{%
+        {{un=0,uniquepart=base,hash=e894f25570d4f897eef4bec7ee36ed8d}{%
+           family={Kleiner},
+           familyi={K\bibinitperiod},
+           given={Mario},
+           giveni={M\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=61ef2e09a31993155b87dd6df2488ae0}{%
+           family={Brainard},
+           familyi={B\bibinitperiod},
+           given={David\bibnamedelima H.},
+           giveni={D\bibinitperiod\bibinitdelim H\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=4e63c6de719d93eafa799df5dd9c98ed}{%
+           family={Pelli},
+           familyi={P\bibinitperiod},
+           given={Denis},
+           giveni={D\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{5eb06d4855655f46862777322279c8d3}
+      \strng{fullhash}{a7b41f8cbc1193cb778e9b1596da93ad}
+      \strng{fullhashraw}{a7b41f8cbc1193cb778e9b1596da93ad}
+      \strng{bibnamehash}{a7b41f8cbc1193cb778e9b1596da93ad}
+      \strng{authorbibnamehash}{a7b41f8cbc1193cb778e9b1596da93ad}
+      \strng{authornamehash}{5eb06d4855655f46862777322279c8d3}
+      \strng{authorfullhash}{a7b41f8cbc1193cb778e9b1596da93ad}
+      \strng{authorfullhashraw}{a7b41f8cbc1193cb778e9b1596da93ad}
+      \field{sortinit}{K}
+      \field{sortinithash}{c02bf6bff1c488450c352b40f5d853ab}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \true{uniqueprimaryauthor}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Perception}
+      \field{number}{ECVP Abstract Supplement}
+      \field{title}{What's new in {Psychtoolbox-3}?}
+      \field{volume}{36}
+      \field{year}{2007}
+      \field{pages}{14}
+      \range{pages}{1}
+    \endentry
+    \entry{krause2014}{article}{}{}
+      \name{author}{2}{}{%
+        {{un=0,uniquepart=base,hash=41e9aaa41a4ab4b3f4c2e239633fd56e}{%
+           family={Krause},
+           familyi={K\bibinitperiod},
+           given={Florian},
+           giveni={F\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=a95dd934a302dcb9232c16df95948abf}{%
+           family={Lindemann},
+           familyi={L\bibinitperiod},
+           given={Oliver},
+           giveni={O\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{b375d387f811a31ea3af5793ca2f8eff}
+      \strng{fullhash}{b375d387f811a31ea3af5793ca2f8eff}
+      \strng{fullhashraw}{b375d387f811a31ea3af5793ca2f8eff}
+      \strng{bibnamehash}{b375d387f811a31ea3af5793ca2f8eff}
+      \strng{authorbibnamehash}{b375d387f811a31ea3af5793ca2f8eff}
+      \strng{authornamehash}{b375d387f811a31ea3af5793ca2f8eff}
+      \strng{authorfullhash}{b375d387f811a31ea3af5793ca2f8eff}
+      \strng{authorfullhashraw}{b375d387f811a31ea3af5793ca2f8eff}
+      \field{sortinit}{K}
+      \field{sortinithash}{c02bf6bff1c488450c352b40f5d853ab}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \true{uniqueprimaryauthor}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Behavior Research Methods}
+      \field{number}{2}
+      \field{title}{Expyriment: {A} {Python} library for cognitive and neuroscientific experiments}
+      \field{volume}{46}
+      \field{year}{2014}
+      \field{pages}{416\bibrangedash 428}
+      \range{pages}{13}
+      \verb{doi}
+      \verb 10.3758/s13428-013-0390-6
+      \endverb
+    \endentry
+    \entry{natureportfolio2023}{misc}{}{}
+      \name{author}{1}{}{%
+        {{un=0,uniquepart=base,hash=b477c283700363e4b26e0051fa341ee7}{%
+           family={{Nature Portfolio}},
+           familyi={N\bibinitperiod}}}%
+      }
+      \strng{namehash}{b477c283700363e4b26e0051fa341ee7}
+      \strng{fullhash}{b477c283700363e4b26e0051fa341ee7}
+      \strng{fullhashraw}{b477c283700363e4b26e0051fa341ee7}
+      \strng{bibnamehash}{b477c283700363e4b26e0051fa341ee7}
+      \strng{authorbibnamehash}{b477c283700363e4b26e0051fa341ee7}
+      \strng{authornamehash}{b477c283700363e4b26e0051fa341ee7}
+      \strng{authorfullhash}{b477c283700363e4b26e0051fa341ee7}
+      \strng{authorfullhashraw}{b477c283700363e4b26e0051fa341ee7}
+      \field{sortinit}{N}
+      \field{sortinithash}{22369a73d5f88983a108b63f07f37084}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \true{uniqueprimaryauthor}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{howpublished}{\url{https://www.nature.com/nature-portfolio/editorial-policies/ai}}
+      \field{title}{Tools and technologies: {Artificial} intelligence}
+      \field{year}{2023}
+    \endentry
+    \entry{peirce2019}{article}{}{}
+      \name{author}{8}{}{%
+        {{un=0,uniquepart=base,hash=8d806b8252c2760e1d89bdee0591b823}{%
+           family={Peirce},
+           familyi={P\bibinitperiod},
+           given={Jonathan\bibnamedelima W.},
+           giveni={J\bibinitperiod\bibinitdelim W\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=a15a04a473b8bb5f754722fc04c8e408}{%
+           family={Gray},
+           familyi={G\bibinitperiod},
+           given={Jeremy\bibnamedelima R.},
+           giveni={J\bibinitperiod\bibinitdelim R\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=693bf13408fccc3c446a33dac9ad35c5}{%
+           family={Simpson},
+           familyi={S\bibinitperiod},
+           given={Sol},
+           giveni={S\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=1e17486880ecb8501a2a3f5e9846e94b}{%
+           family={MacAskill},
+           familyi={M\bibinitperiod},
+           given={Michael\bibnamedelima R.},
+           giveni={M\bibinitperiod\bibinitdelim R\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=bae96ab1c1a55e1e9e83948109508857}{%
+           family={Höchenberger},
+           familyi={H\bibinitperiod},
+           given={Richard},
+           giveni={R\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=8faaf4d6bb5eedc495a92ec28d3609ab}{%
+           family={Sogo},
+           familyi={S\bibinitperiod},
+           given={Hiroyuki},
+           giveni={H\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=15ea00e86864b07ebb5c463db9664b35}{%
+           family={Kastman},
+           familyi={K\bibinitperiod},
+           given={Erik},
+           giveni={E\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=0a9b8b6c0c72201407ebe443e8075e45}{%
+           family={Lindel{ø}v},
+           familyi={L\bibinitperiod},
+           given={Jonas\bibnamedelima K.},
+           giveni={J\bibinitperiod\bibinitdelim K\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{3c8d74d87c6860268dac46366c41c97f}
+      \strng{fullhash}{2d4aafcfaccd2340bb1b1c17d2d8daba}
+      \strng{fullhashraw}{2d4aafcfaccd2340bb1b1c17d2d8daba}
+      \strng{bibnamehash}{2d4aafcfaccd2340bb1b1c17d2d8daba}
+      \strng{authorbibnamehash}{2d4aafcfaccd2340bb1b1c17d2d8daba}
+      \strng{authornamehash}{3c8d74d87c6860268dac46366c41c97f}
+      \strng{authorfullhash}{2d4aafcfaccd2340bb1b1c17d2d8daba}
+      \strng{authorfullhashraw}{2d4aafcfaccd2340bb1b1c17d2d8daba}
+      \field{sortinit}{P}
+      \field{sortinithash}{ff3bcf24f47321b42cb156c2cc8a8422}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \true{uniqueprimaryauthor}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Behavior Research Methods}
+      \field{number}{1}
+      \field{title}{{PsychoPy2}: {Experiments} in behavior made easy}
+      \field{volume}{51}
+      \field{year}{2019}
+      \field{pages}{195\bibrangedash 203}
+      \range{pages}{9}
+      \verb{doi}
+      \verb 10.3758/s13428-018-01193-y
+      \endverb
+    \endentry
+    \entry{sdl3}{misc}{}{}
+      \name{author}{1}{}{%
+        {{un=0,uniquepart=base,hash=0be951b13b21b1cd9c0352ef25df27c2}{%
+           family={{SDL Developers}},
+           familyi={S\bibinitperiod}}}%
+      }
+      \strng{namehash}{0be951b13b21b1cd9c0352ef25df27c2}
+      \strng{fullhash}{0be951b13b21b1cd9c0352ef25df27c2}
+      \strng{fullhashraw}{0be951b13b21b1cd9c0352ef25df27c2}
+      \strng{bibnamehash}{0be951b13b21b1cd9c0352ef25df27c2}
+      \strng{authorbibnamehash}{0be951b13b21b1cd9c0352ef25df27c2}
+      \strng{authornamehash}{0be951b13b21b1cd9c0352ef25df27c2}
+      \strng{authorfullhash}{0be951b13b21b1cd9c0352ef25df27c2}
+      \strng{authorfullhashraw}{0be951b13b21b1cd9c0352ef25df27c2}
+      \field{sortinit}{S}
+      \field{sortinithash}{b164b07b29984b41daf1e85279fbc5ab}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \true{uniqueprimaryauthor}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{howpublished}{\url{https://www.libsdl.org/}}
+      \field{note}{Accessed: 2026-04-01}
+      \field{title}{Simple {D}irect{M}edia {L}ayer, SDL3}
+      \field{year}{2026}
+    \endentry
+    \entry{springernature2023}{misc}{}{}
+      \name{author}{1}{}{%
+        {{un=0,uniquepart=base,hash=f490abbbedd681c296f05c9da2f55506}{%
+           family={{Springer Nature}},
+           familyi={S\bibinitperiod}}}%
+      }
+      \strng{namehash}{f490abbbedd681c296f05c9da2f55506}
+      \strng{fullhash}{f490abbbedd681c296f05c9da2f55506}
+      \strng{fullhashraw}{f490abbbedd681c296f05c9da2f55506}
+      \strng{bibnamehash}{f490abbbedd681c296f05c9da2f55506}
+      \strng{authorbibnamehash}{f490abbbedd681c296f05c9da2f55506}
+      \strng{authornamehash}{f490abbbedd681c296f05c9da2f55506}
+      \strng{authorfullhash}{f490abbbedd681c296f05c9da2f55506}
+      \strng{authorfullhashraw}{f490abbbedd681c296f05c9da2f55506}
+      \field{sortinit}{S}
+      \field{sortinithash}{b164b07b29984b41daf1e85279fbc5ab}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \true{uniqueprimaryauthor}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{howpublished}{\url{https://www.springernature.com/gp/policies/editorial-policies}}
+      \field{title}{Artificial intelligence ({AI}) policy for authors}
+      \field{year}{2023}
+    \endentry
+  \enddatalist
+  \datalist[entry]{apa/global//global/global/global}
+    \entry{anwylirvine2021}{article}{}{}
+      \name{author}{5}{}{%
+        {{un=0,uniquepart=base,hash=2d357f59ec56b0137663ffa2571a4c6b}{%
+           family={Anwyl-Irvine},
+           familyi={A\bibinithyphendelim I\bibinitperiod},
+           given={Alexander\bibnamedelima L.},
+           giveni={A\bibinitperiod\bibinitdelim L\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=61f217a0a4c8f37d98961e47914d00db}{%
+           family={Massonnié},
+           familyi={M\bibinitperiod},
+           given={Jessica},
+           giveni={J\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=a256bb3332b012c169ab78cf9b2ebf54}{%
+           family={Flitton},
+           familyi={F\bibinitperiod},
+           given={Adam},
+           giveni={A\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=3e24b68c31ec2b59c32ec6739d24d35d}{%
+           family={Kirkham},
+           familyi={K\bibinitperiod},
+           given={Natasha},
+           giveni={N\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=d5d0ac7b8efb664affda90207b5dbc15}{%
+           family={Evershed},
+           familyi={E\bibinitperiod},
+           given={Jo\bibnamedelima K.},
+           giveni={J\bibinitperiod\bibinitdelim K\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{47510697ffe14bb9cadbdac527d7f2d8}
+      \strng{fullhash}{2dd2e3569553a9567e5a47280a90f24e}
+      \strng{fullhashraw}{2dd2e3569553a9567e5a47280a90f24e}
+      \strng{bibnamehash}{2dd2e3569553a9567e5a47280a90f24e}
+      \strng{authorbibnamehash}{2dd2e3569553a9567e5a47280a90f24e}
+      \strng{authornamehash}{47510697ffe14bb9cadbdac527d7f2d8}
+      \strng{authorfullhash}{2dd2e3569553a9567e5a47280a90f24e}
+      \strng{authorfullhashraw}{2dd2e3569553a9567e5a47280a90f24e}
+      \field{sortinit}{A}
+      \field{sortinithash}{2f401846e2029bad6b3ecc16d50031e2}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \true{uniqueprimaryauthor}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Behavior Research Methods}
+      \field{number}{1}
+      \field{title}{Gorilla in our midst: {An} online behavioral experiment builder}
+      \field{volume}{52}
+      \field{year}{2021}
+      \field{pages}{388\bibrangedash 407}
+      \range{pages}{20}
+      \verb{doi}
+      \verb 10.3758/s13428-019-01237-x
+      \endverb
+    \endentry
+    \entry{brainard1997}{article}{}{}
+      \name{author}{1}{}{%
+        {{un=0,uniquepart=base,hash=61ef2e09a31993155b87dd6df2488ae0}{%
+           family={Brainard},
+           familyi={B\bibinitperiod},
+           given={David\bibnamedelima H.},
+           giveni={D\bibinitperiod\bibinitdelim H\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{61ef2e09a31993155b87dd6df2488ae0}
+      \strng{fullhash}{61ef2e09a31993155b87dd6df2488ae0}
+      \strng{fullhashraw}{61ef2e09a31993155b87dd6df2488ae0}
+      \strng{bibnamehash}{61ef2e09a31993155b87dd6df2488ae0}
+      \strng{authorbibnamehash}{61ef2e09a31993155b87dd6df2488ae0}
+      \strng{authornamehash}{61ef2e09a31993155b87dd6df2488ae0}
+      \strng{authorfullhash}{61ef2e09a31993155b87dd6df2488ae0}
+      \strng{authorfullhashraw}{61ef2e09a31993155b87dd6df2488ae0}
+      \field{sortinit}{B}
+      \field{sortinithash}{d7095fff47cda75ca2589920aae98399}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \true{uniqueprimaryauthor}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Spatial Vision}
+      \field{number}{4}
+      \field{title}{The {Psychophysics} {Toolbox}}
+      \field{volume}{10}
+      \field{year}{1997}
+      \field{pages}{433\bibrangedash 436}
+      \range{pages}{4}
+      \verb{doi}
+      \verb 10.1163/156856897X00357
+      \endverb
+    \endentry
+    \entry{bridges2020}{article}{}{}
+      \name{author}{4}{}{%
+        {{un=0,uniquepart=base,hash=92aa7e63112a2785fcce0f1ba98af624}{%
+           family={Bridges},
+           familyi={B\bibinitperiod},
+           given={David},
+           giveni={D\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=b71ad50ddad265b97be321a4d4495d22}{%
+           family={Pitiot},
+           familyi={P\bibinitperiod},
+           given={Alain},
+           giveni={A\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=1e17486880ecb8501a2a3f5e9846e94b}{%
+           family={MacAskill},
+           familyi={M\bibinitperiod},
+           given={Michael\bibnamedelima R.},
+           giveni={M\bibinitperiod\bibinitdelim R\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=8d806b8252c2760e1d89bdee0591b823}{%
+           family={Peirce},
+           familyi={P\bibinitperiod},
+           given={Jonathan\bibnamedelima W.},
+           giveni={J\bibinitperiod\bibinitdelim W\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{a35eaa729bde4f85cbc264ab5264fc34}
+      \strng{fullhash}{5644ea943ea1e7421bf9fecf83348b4f}
+      \strng{fullhashraw}{5644ea943ea1e7421bf9fecf83348b4f}
+      \strng{bibnamehash}{5644ea943ea1e7421bf9fecf83348b4f}
+      \strng{authorbibnamehash}{5644ea943ea1e7421bf9fecf83348b4f}
+      \strng{authornamehash}{a35eaa729bde4f85cbc264ab5264fc34}
+      \strng{authorfullhash}{5644ea943ea1e7421bf9fecf83348b4f}
+      \strng{authorfullhashraw}{5644ea943ea1e7421bf9fecf83348b4f}
+      \field{sortinit}{B}
+      \field{sortinithash}{d7095fff47cda75ca2589920aae98399}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \true{uniqueprimaryauthor}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{PeerJ}
+      \field{title}{The timing mega-study: {Comparing} a range of experiment generators, both lab-based and online}
+      \field{volume}{8}
+      \field{year}{2020}
+      \field{pages}{e9414}
+      \range{pages}{-1}
+      \verb{doi}
+      \verb 10.7717/peerj.9414
+      \endverb
+    \endentry
+    \entry{deleeuw2015}{article}{}{}
+      \name{author}{1}{}{%
+        {{un=0,uniquepart=base,hash=146430041f56ab957632480a22f61e26}{%
+           family={Leeuw},
+           familyi={L\bibinitperiod},
+           given={Joshua\bibnamedelima R.},
+           giveni={J\bibinitperiod\bibinitdelim R\bibinitperiod},
+           givenun=0,
+           prefix={de},
+           prefixi={d\bibinitperiod}}}%
+      }
+      \strng{namehash}{146430041f56ab957632480a22f61e26}
+      \strng{fullhash}{146430041f56ab957632480a22f61e26}
+      \strng{fullhashraw}{146430041f56ab957632480a22f61e26}
+      \strng{bibnamehash}{146430041f56ab957632480a22f61e26}
+      \strng{authorbibnamehash}{146430041f56ab957632480a22f61e26}
+      \strng{authornamehash}{146430041f56ab957632480a22f61e26}
+      \strng{authorfullhash}{146430041f56ab957632480a22f61e26}
+      \strng{authorfullhashraw}{146430041f56ab957632480a22f61e26}
+      \field{sortinit}{d}
+      \field{sortinithash}{6f385f66841fb5e82009dc833c761848}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \true{uniqueprimaryauthor}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Behavior Research Methods}
+      \field{number}{1}
+      \field{title}{{jsPsych}: {A} {JavaScript} library for creating behavioral experiments in a {Web} browser}
+      \field{volume}{47}
+      \field{year}{2015}
+      \field{pages}{1\bibrangedash 12}
+      \range{pages}{12}
+      \verb{doi}
+      \verb 10.3758/s13428-014-0458-y
+      \endverb
+    \endentry
+    \entry{deleeuw2023}{article}{}{}
+      \name{author}{3}{}{%
+        {{un=0,uniquepart=base,hash=146430041f56ab957632480a22f61e26}{%
+           family={Leeuw},
+           familyi={L\bibinitperiod},
+           given={Joshua\bibnamedelima R.},
+           giveni={J\bibinitperiod\bibinitdelim R\bibinitperiod},
+           givenun=0,
+           prefix={de},
+           prefixi={d\bibinitperiod}}}%
+        {{un=0,uniquepart=base,hash=2d757c9397b6b5f24ce154c710a822f0}{%
+           family={Gilbert},
+           familyi={G\bibinitperiod},
+           given={Rebecca\bibnamedelima A.},
+           giveni={R\bibinitperiod\bibinitdelim A\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=d5077499e3d43a826a190ec5137cc226}{%
+           family={Luchterhandt},
+           familyi={L\bibinitperiod},
+           given={Björn},
+           giveni={B\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{80a3912e96c0f58022d9f0147f68e175}
+      \strng{fullhash}{070e8266431ecf3d94f5afff2c00181b}
+      \strng{fullhashraw}{070e8266431ecf3d94f5afff2c00181b}
+      \strng{bibnamehash}{070e8266431ecf3d94f5afff2c00181b}
+      \strng{authorbibnamehash}{070e8266431ecf3d94f5afff2c00181b}
+      \strng{authornamehash}{80a3912e96c0f58022d9f0147f68e175}
+      \strng{authorfullhash}{070e8266431ecf3d94f5afff2c00181b}
+      \strng{authorfullhashraw}{070e8266431ecf3d94f5afff2c00181b}
+      \field{sortinit}{d}
+      \field{sortinithash}{6f385f66841fb5e82009dc833c761848}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \true{uniqueprimaryauthor}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Journal of Open Source Software}
+      \field{number}{85}
+      \field{title}{{jsPsych}: {Enabling} an open-source collaborative ecosystem of behavioral experiments}
+      \field{volume}{8}
+      \field{year}{2023}
+      \field{pages}{5351}
+      \range{pages}{1}
+      \verb{doi}
+      \verb 10.21105/joss.05351
+      \endverb
+    \endentry
+    \entry{donovan2016}{book}{}{}
+      \name{author}{2}{}{%
+        {{un=0,uniquepart=base,hash=87a7b3a183bd76a052f571ec78de03ed}{%
+           family={Donovan},
+           familyi={D\bibinitperiod},
+           given={Alan\bibnamedelimb A.\bibnamedelimi A.},
+           giveni={A\bibinitperiod\bibinitdelim A\bibinitperiod\bibinitdelim A\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=cef3a18f3097ba31cc4cf18c95bfdfbc}{%
+           family={Kernighan},
+           familyi={K\bibinitperiod},
+           given={Brian\bibnamedelima W.},
+           giveni={B\bibinitperiod\bibinitdelim W\bibinitperiod},
+           givenun=0}}%
+      }
+      \list{publisher}{1}{%
+        {Addison-Wesley}%
+      }
+      \strng{namehash}{1abc4d6494e6783dc4988680f58adcc6}
+      \strng{fullhash}{1abc4d6494e6783dc4988680f58adcc6}
+      \strng{fullhashraw}{1abc4d6494e6783dc4988680f58adcc6}
+      \strng{bibnamehash}{1abc4d6494e6783dc4988680f58adcc6}
+      \strng{authorbibnamehash}{1abc4d6494e6783dc4988680f58adcc6}
+      \strng{authornamehash}{1abc4d6494e6783dc4988680f58adcc6}
+      \strng{authorfullhash}{1abc4d6494e6783dc4988680f58adcc6}
+      \strng{authorfullhashraw}{1abc4d6494e6783dc4988680f58adcc6}
+      \field{sortinit}{D}
+      \field{sortinithash}{6f385f66841fb5e82009dc833c761848}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \true{uniqueprimaryauthor}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{The {Go} Programming Language}
+      \field{year}{2016}
+    \endentry
+    \entry{henninger2022}{article}{}{}
+      \name{author}{5}{}{%
+        {{un=0,uniquepart=base,hash=7c05213eabb6d524ca12dbe6949173fe}{%
+           family={Henninger},
+           familyi={H\bibinitperiod},
+           given={Felix},
+           giveni={F\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=7310e98dbe04db51b1b16b23cbd69cd8}{%
+           family={Shevchenko},
+           familyi={S\bibinitperiod},
+           given={Yury},
+           giveni={Y\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=be91bbb0f25b0e7e2147ae91eb804859}{%
+           family={Meijer},
+           familyi={M\bibinitperiod},
+           given={Rolf\bibnamedelima R.},
+           giveni={R\bibinitperiod\bibinitdelim R\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=e2e6f89fe60567e4e26f347b13b8eb04}{%
+           family={Inzlicht},
+           familyi={I\bibinitperiod},
+           given={Michael},
+           giveni={M\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=6686c2cf7117a843ca001755b6d64c4c}{%
+           family={Hilbig},
+           familyi={H\bibinitperiod},
+           given={Benjamin\bibnamedelima E.},
+           giveni={B\bibinitperiod\bibinitdelim E\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{31e3a8d564a28dbb7cec0107fc3cc839}
+      \strng{fullhash}{d65324f09f8f13ae573e63bf8021bf4b}
+      \strng{fullhashraw}{d65324f09f8f13ae573e63bf8021bf4b}
+      \strng{bibnamehash}{d65324f09f8f13ae573e63bf8021bf4b}
+      \strng{authorbibnamehash}{d65324f09f8f13ae573e63bf8021bf4b}
+      \strng{authornamehash}{31e3a8d564a28dbb7cec0107fc3cc839}
+      \strng{authorfullhash}{d65324f09f8f13ae573e63bf8021bf4b}
+      \strng{authorfullhashraw}{d65324f09f8f13ae573e63bf8021bf4b}
+      \field{sortinit}{H}
+      \field{sortinithash}{23a3aa7c24e56cfa16945d55545109b5}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \true{uniqueprimaryauthor}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Behavior Research Methods}
+      \field{number}{2}
+      \field{title}{lab.js: {A} free, open, online study builder}
+      \field{volume}{54}
+      \field{year}{2022}
+      \field{pages}{556\bibrangedash 573}
+      \range{pages}{18}
+      \verb{doi}
+      \verb 10.3758/s13428-019-01283-5
+      \endverb
+    \endentry
+    \entry{gosdl3}{misc}{}{}
+      \name{author}{1}{}{%
+        {{un=0,uniquepart=base,hash=ad9e6aee877a5367421b64c626d3199d}{%
+           family={Jung},
+           familyi={J\bibinitperiod},
+           given={Bertrand},
+           giveni={B\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{ad9e6aee877a5367421b64c626d3199d}
+      \strng{fullhash}{ad9e6aee877a5367421b64c626d3199d}
+      \strng{fullhashraw}{ad9e6aee877a5367421b64c626d3199d}
+      \strng{bibnamehash}{ad9e6aee877a5367421b64c626d3199d}
+      \strng{authorbibnamehash}{ad9e6aee877a5367421b64c626d3199d}
+      \strng{authornamehash}{ad9e6aee877a5367421b64c626d3199d}
+      \strng{authorfullhash}{ad9e6aee877a5367421b64c626d3199d}
+      \strng{authorfullhashraw}{ad9e6aee877a5367421b64c626d3199d}
+      \field{sortinit}{J}
+      \field{sortinithash}{b2f54a9081ace9966a7cb9413811edb4}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \true{uniqueprimaryauthor}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{howpublished}{\url{https://github.com/Zyko0/go-sdl3}}
+      \field{note}{Accessed: 2026-04-01}
+      \field{title}{{SDL3} {B}indings for {G}o}
+      \field{year}{2026}
+    \endentry
+    \entry{kleiner2007}{article}{}{}
+      \name{author}{3}{}{%
+        {{un=0,uniquepart=base,hash=e894f25570d4f897eef4bec7ee36ed8d}{%
+           family={Kleiner},
+           familyi={K\bibinitperiod},
+           given={Mario},
+           giveni={M\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=61ef2e09a31993155b87dd6df2488ae0}{%
+           family={Brainard},
+           familyi={B\bibinitperiod},
+           given={David\bibnamedelima H.},
+           giveni={D\bibinitperiod\bibinitdelim H\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=4e63c6de719d93eafa799df5dd9c98ed}{%
+           family={Pelli},
+           familyi={P\bibinitperiod},
+           given={Denis},
+           giveni={D\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{5eb06d4855655f46862777322279c8d3}
+      \strng{fullhash}{a7b41f8cbc1193cb778e9b1596da93ad}
+      \strng{fullhashraw}{a7b41f8cbc1193cb778e9b1596da93ad}
+      \strng{bibnamehash}{a7b41f8cbc1193cb778e9b1596da93ad}
+      \strng{authorbibnamehash}{a7b41f8cbc1193cb778e9b1596da93ad}
+      \strng{authornamehash}{5eb06d4855655f46862777322279c8d3}
+      \strng{authorfullhash}{a7b41f8cbc1193cb778e9b1596da93ad}
+      \strng{authorfullhashraw}{a7b41f8cbc1193cb778e9b1596da93ad}
+      \field{sortinit}{K}
+      \field{sortinithash}{c02bf6bff1c488450c352b40f5d853ab}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \true{uniqueprimaryauthor}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Perception}
+      \field{number}{ECVP Abstract Supplement}
+      \field{title}{What's new in {Psychtoolbox-3}?}
+      \field{volume}{36}
+      \field{year}{2007}
+      \field{pages}{14}
+      \range{pages}{1}
+    \endentry
+    \entry{krause2014}{article}{}{}
+      \name{author}{2}{}{%
+        {{un=0,uniquepart=base,hash=41e9aaa41a4ab4b3f4c2e239633fd56e}{%
+           family={Krause},
+           familyi={K\bibinitperiod},
+           given={Florian},
+           giveni={F\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=a95dd934a302dcb9232c16df95948abf}{%
+           family={Lindemann},
+           familyi={L\bibinitperiod},
+           given={Oliver},
+           giveni={O\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{b375d387f811a31ea3af5793ca2f8eff}
+      \strng{fullhash}{b375d387f811a31ea3af5793ca2f8eff}
+      \strng{fullhashraw}{b375d387f811a31ea3af5793ca2f8eff}
+      \strng{bibnamehash}{b375d387f811a31ea3af5793ca2f8eff}
+      \strng{authorbibnamehash}{b375d387f811a31ea3af5793ca2f8eff}
+      \strng{authornamehash}{b375d387f811a31ea3af5793ca2f8eff}
+      \strng{authorfullhash}{b375d387f811a31ea3af5793ca2f8eff}
+      \strng{authorfullhashraw}{b375d387f811a31ea3af5793ca2f8eff}
+      \field{sortinit}{K}
+      \field{sortinithash}{c02bf6bff1c488450c352b40f5d853ab}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \true{uniqueprimaryauthor}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Behavior Research Methods}
+      \field{number}{2}
+      \field{title}{Expyriment: {A} {Python} library for cognitive and neuroscientific experiments}
+      \field{volume}{46}
+      \field{year}{2014}
+      \field{pages}{416\bibrangedash 428}
+      \range{pages}{13}
+      \verb{doi}
+      \verb 10.3758/s13428-013-0390-6
+      \endverb
+    \endentry
+    \entry{natureportfolio2023}{misc}{}{}
+      \name{author}{1}{}{%
+        {{un=0,uniquepart=base,hash=b477c283700363e4b26e0051fa341ee7}{%
+           family={{Nature Portfolio}},
+           familyi={N\bibinitperiod}}}%
+      }
+      \strng{namehash}{b477c283700363e4b26e0051fa341ee7}
+      \strng{fullhash}{b477c283700363e4b26e0051fa341ee7}
+      \strng{fullhashraw}{b477c283700363e4b26e0051fa341ee7}
+      \strng{bibnamehash}{b477c283700363e4b26e0051fa341ee7}
+      \strng{authorbibnamehash}{b477c283700363e4b26e0051fa341ee7}
+      \strng{authornamehash}{b477c283700363e4b26e0051fa341ee7}
+      \strng{authorfullhash}{b477c283700363e4b26e0051fa341ee7}
+      \strng{authorfullhashraw}{b477c283700363e4b26e0051fa341ee7}
+      \field{sortinit}{N}
+      \field{sortinithash}{22369a73d5f88983a108b63f07f37084}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \true{uniqueprimaryauthor}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{howpublished}{\url{https://www.nature.com/nature-portfolio/editorial-policies/ai}}
+      \field{title}{Tools and technologies: {Artificial} intelligence}
+      \field{year}{2023}
+    \endentry
+    \entry{peirce2019}{article}{}{}
+      \name{author}{8}{}{%
+        {{un=0,uniquepart=base,hash=8d806b8252c2760e1d89bdee0591b823}{%
+           family={Peirce},
+           familyi={P\bibinitperiod},
+           given={Jonathan\bibnamedelima W.},
+           giveni={J\bibinitperiod\bibinitdelim W\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=a15a04a473b8bb5f754722fc04c8e408}{%
+           family={Gray},
+           familyi={G\bibinitperiod},
+           given={Jeremy\bibnamedelima R.},
+           giveni={J\bibinitperiod\bibinitdelim R\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=693bf13408fccc3c446a33dac9ad35c5}{%
+           family={Simpson},
+           familyi={S\bibinitperiod},
+           given={Sol},
+           giveni={S\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=1e17486880ecb8501a2a3f5e9846e94b}{%
+           family={MacAskill},
+           familyi={M\bibinitperiod},
+           given={Michael\bibnamedelima R.},
+           giveni={M\bibinitperiod\bibinitdelim R\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=bae96ab1c1a55e1e9e83948109508857}{%
+           family={Höchenberger},
+           familyi={H\bibinitperiod},
+           given={Richard},
+           giveni={R\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=8faaf4d6bb5eedc495a92ec28d3609ab}{%
+           family={Sogo},
+           familyi={S\bibinitperiod},
+           given={Hiroyuki},
+           giveni={H\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=15ea00e86864b07ebb5c463db9664b35}{%
+           family={Kastman},
+           familyi={K\bibinitperiod},
+           given={Erik},
+           giveni={E\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=0a9b8b6c0c72201407ebe443e8075e45}{%
+           family={Lindel{ø}v},
+           familyi={L\bibinitperiod},
+           given={Jonas\bibnamedelima K.},
+           giveni={J\bibinitperiod\bibinitdelim K\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{3c8d74d87c6860268dac46366c41c97f}
+      \strng{fullhash}{2d4aafcfaccd2340bb1b1c17d2d8daba}
+      \strng{fullhashraw}{2d4aafcfaccd2340bb1b1c17d2d8daba}
+      \strng{bibnamehash}{2d4aafcfaccd2340bb1b1c17d2d8daba}
+      \strng{authorbibnamehash}{2d4aafcfaccd2340bb1b1c17d2d8daba}
+      \strng{authornamehash}{3c8d74d87c6860268dac46366c41c97f}
+      \strng{authorfullhash}{2d4aafcfaccd2340bb1b1c17d2d8daba}
+      \strng{authorfullhashraw}{2d4aafcfaccd2340bb1b1c17d2d8daba}
+      \field{sortinit}{P}
+      \field{sortinithash}{ff3bcf24f47321b42cb156c2cc8a8422}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \true{uniqueprimaryauthor}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Behavior Research Methods}
+      \field{number}{1}
+      \field{title}{{PsychoPy2}: {Experiments} in behavior made easy}
+      \field{volume}{51}
+      \field{year}{2019}
+      \field{pages}{195\bibrangedash 203}
+      \range{pages}{9}
+      \verb{doi}
+      \verb 10.3758/s13428-018-01193-y
+      \endverb
+    \endentry
+    \entry{sdl3}{misc}{}{}
+      \name{author}{1}{}{%
+        {{un=0,uniquepart=base,hash=0be951b13b21b1cd9c0352ef25df27c2}{%
+           family={{SDL Developers}},
+           familyi={S\bibinitperiod}}}%
+      }
+      \strng{namehash}{0be951b13b21b1cd9c0352ef25df27c2}
+      \strng{fullhash}{0be951b13b21b1cd9c0352ef25df27c2}
+      \strng{fullhashraw}{0be951b13b21b1cd9c0352ef25df27c2}
+      \strng{bibnamehash}{0be951b13b21b1cd9c0352ef25df27c2}
+      \strng{authorbibnamehash}{0be951b13b21b1cd9c0352ef25df27c2}
+      \strng{authornamehash}{0be951b13b21b1cd9c0352ef25df27c2}
+      \strng{authorfullhash}{0be951b13b21b1cd9c0352ef25df27c2}
+      \strng{authorfullhashraw}{0be951b13b21b1cd9c0352ef25df27c2}
+      \field{sortinit}{S}
+      \field{sortinithash}{b164b07b29984b41daf1e85279fbc5ab}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \true{uniqueprimaryauthor}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{howpublished}{\url{https://www.libsdl.org/}}
+      \field{note}{Accessed: 2026-04-01}
+      \field{title}{Simple {D}irect{M}edia {L}ayer, SDL3}
+      \field{year}{2026}
+    \endentry
+    \entry{springernature2023}{misc}{}{}
+      \name{author}{1}{}{%
+        {{un=0,uniquepart=base,hash=f490abbbedd681c296f05c9da2f55506}{%
+           family={{Springer Nature}},
+           familyi={S\bibinitperiod}}}%
+      }
+      \strng{namehash}{f490abbbedd681c296f05c9da2f55506}
+      \strng{fullhash}{f490abbbedd681c296f05c9da2f55506}
+      \strng{fullhashraw}{f490abbbedd681c296f05c9da2f55506}
+      \strng{bibnamehash}{f490abbbedd681c296f05c9da2f55506}
+      \strng{authorbibnamehash}{f490abbbedd681c296f05c9da2f55506}
+      \strng{authornamehash}{f490abbbedd681c296f05c9da2f55506}
+      \strng{authorfullhash}{f490abbbedd681c296f05c9da2f55506}
+      \strng{authorfullhashraw}{f490abbbedd681c296f05c9da2f55506}
+      \field{sortinit}{S}
+      \field{sortinithash}{b164b07b29984b41daf1e85279fbc5ab}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \true{uniqueprimaryauthor}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{howpublished}{\url{https://www.springernature.com/gp/policies/editorial-policies}}
+      \field{title}{Artificial intelligence ({AI}) policy for authors}
+      \field{year}{2023}
+    \endentry
+  \enddatalist
+\endrefsection
+\endinput
+

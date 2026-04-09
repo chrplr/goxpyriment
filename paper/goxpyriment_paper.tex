@@ -5,6 +5,12 @@
 \usepackage{booktabs}
 \usepackage{graphicx}
 \usepackage[export]{adjustbox}
+\usepackage{listings,multicol}
+\lstset{
+  numbers=left,
+  firstnumber=1,
+  numberfirstline=true
+}
 \usepackage{xcolor}
 \usepackage{array}
 \usepackage{calc} % for calculating minipage widths
@@ -140,7 +146,15 @@ timing achieved directly through the Go and SDL3 APIs without requiring external
 C/C++ helper engines; and (3) a linear, straightforward API that is well
 suited for modern AI-assisted coding workflows.
 
+{\small
+\lstinputlisting[float=*t, caption={Example of a Parity Decision experiment}]{parity-decision.go}
+\par}
+
 \section{Framework Design}\label{framework-design}
+
+The code for a Parity Decision task is provided in Appendix.
+TODO: DEVELOP
+
 
 The choice of Go as the implementation language for \texttt{goxpyriment} provides
 several critical advantages over the interpreted languages traditionally used in
@@ -177,7 +191,7 @@ signal, safely flushes the data file to disk, and shuts down the SDL
 subsystems. This ensures that data is preserved even if a session is aborted
 prematurely.
 
-Experiments follow a hierarchical structure of blocks and trials
+If the users want, experiments can follow a hierarchical structure of blocks and trials
 directly inspired by Expyriment. Each trial is a
 collection of factors that can be randomized and logged. Data
 collection is handled by an \texttt{exp.Data} object, which writes to
