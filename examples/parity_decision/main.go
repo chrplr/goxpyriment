@@ -69,12 +69,8 @@ func main() {
 
 		for i, t := range trials {
 			exp.Blank(1000)
-			exp.Show(cue)
-			exp.Wait(500)
-			onsetNS, _ := exp.ShowTS(t.stim)
-
-			key, eventTS, _ := exp.Keyboard.GetKeyEventTS([]control.Keycode{EvenResponse, OddResponse}, -1)
-			rt := int64(eventTS-onsetNS) / 1_000_000
+			exp.ShowTimed(cue, 500)
+			key, rt, _ := exp.ShowAndGetRT(t.stim, []control.Keycode{EvenResponse, OddResponse}, -1)
 			correct := (t.number%2 == 0) == (key == EvenResponse)
 			exp.Data.Add(t.number, key, rt, correct)
 			fmt.Printf("Trial %d: Num=%d, RT=%d ms, Correct=%v\n", i, t.number, rt, correct)

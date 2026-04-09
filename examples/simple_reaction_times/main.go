@@ -46,15 +46,8 @@ func main() {
 			waitTime := design.RandInt(MinWaitTime, MaxWaitTime-1)
 			exp.Wait(waitTime)
 
-			// Flush stale events before showing target to avoid negative RTs
-			exp.Keyboard.Clear()
-
-			// Target stimulus — capture flip timestamp for onset-locked RT
-			onset, _ := exp.ShowTS(target)
-
-			// Wait for response; RT is measured from hardware event timestamps
-			key, keyTS, _ := exp.Keyboard.GetKeyEventTS(nil, MaxResponseDelay)
-			rtMS := int64(keyTS-onset) / 1_000_000
+			// Target stimulus — show and measure hardware-precise RT
+			key, rtMS, _ := exp.ShowAndGetRT(target, nil, MaxResponseDelay)
 
 			if key != 0 {
 				rts = append(rts, float64(rtMS))
@@ -69,9 +62,7 @@ func main() {
 			} else {
 				feedbackText = fmt.Sprintf("RT: %d ms", rtMS)
 			}
-			feedback := stimuli.NewTextLine(feedbackText, 0, 0, control.DefaultTextColor)
-			exp.Show(feedback)
-			exp.Wait(2000)
+			exp.ShowTimed(stimuli.NewTextLine(feedbackText, 0, 0, control.DefaultTextColor), 2000)
 		}
 
 		// Summary screen

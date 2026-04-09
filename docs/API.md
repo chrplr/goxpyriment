@@ -142,6 +142,9 @@ control.ErrCancelled  // returned when the user cancels the dialog
 |---|---|
 | `exp.Show(stim VisualStimulus) error` | Clear → draw → flip. The standard one-call stimulus presentation. |
 | `exp.ShowTS(stim VisualStimulus) (uint64, error)` | Clear → draw → flip, and return the SDL nanosecond timestamp captured immediately after the VSYNC flip. Use with `GetKeyEventTS` for hardware-precision RT measurement. |
+| `exp.ShowTimed(stim VisualStimulus, durationMs int) error` | `Show(stim)` + `Wait(durationMs)` in one call. For fixation crosses, cues, and passive stimulus viewing. |
+| `exp.ShowAndGetRT(stim VisualStimulus, keys []Keycode, timeoutMs int) (Keycode, int64, error)` | Clears stale keyboard events, shows stim with hardware-precise onset timing, waits for a key, and returns `(key, rtMs, error)`. Pass `timeoutMs = -1` for no timeout; returns `(0, 0, nil)` on timeout. This is the canonical single-stimulus RT measurement call. |
+| `exp.ShowEndMessage(message string) error` | Display a centered completion message and wait for any key. For end-of-experiment screens. |
 | `exp.ShowInstructions(text string) error` | Display centered text and wait for spacebar. |
 | `exp.Blank(ms int) error` | Clear and flip screen, then wait `ms` milliseconds. |
 | `exp.Wait(ms int) error` | Wait `ms` ms while pumping SDL events (ESC-abortable). |

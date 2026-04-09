@@ -94,8 +94,7 @@ func main() {
     exp.AddDataVariableNames([]string{"rt"})
 
     err := exp.Run(func() error {
-        exp.Show(fix)
-        exp.Wait(500)
+        exp.ShowTimed(fix, 500)
         exp.Show(target)
         _, rt, err := exp.Keyboard.WaitKeysRT(nil, -1)
         if err != nil {
@@ -149,7 +148,7 @@ PsychoPy Coder mode and goxpyriment are structurally similar: both give you a wi
 | `event.waitKeys(keyList=['f','j'])` | `exp.Keyboard.WaitKeys(keys, timeout)` | |
 | `event.waitKeys(maxWait=3)` | `exp.Keyboard.WaitKeys(keys, 3000)` | Timeout in ms. |
 | `clock.getTime()` for RT | `exp.Keyboard.WaitKeysRT(keys, timeout)` | Returns RT in ms from call site. |
-| `win.callOnFlip(clock.reset)` + `event.waitKeys` | `exp.ShowTS(stim)` + `GetKeyEventTS(...)` | Hardware-precise; no callOnFlip needed. |
+| `win.callOnFlip(clock.reset)` + `event.waitKeys` | `exp.ShowAndGetRT(stim, keys, timeout)` | Hardware-precise RT in ms; no callOnFlip needed. |
 | `data.TrialHandler(trialList, nReps)` | `design.NewBlock(...)` + `block.AddTrial(t, copies, true)` | |
 | `data.ExperimentHandler(...)` | `exp.Data` | |
 | `thisExp.addData("rt", rt)` | `exp.Data.Add(rt)` | |
@@ -201,13 +200,10 @@ func main() {
     target := stimuli.NewCircle(30, control.White)
 
     err := exp.Run(func() error {
-        exp.Show(fix)
-        exp.Wait(500)
-        onset, _ := exp.ShowTS(target)           // nanosecond timestamp at VSYNC flip
-        key, eventTS, _ := exp.Keyboard.GetKeyEventTS(
+        exp.ShowTimed(fix, 500)
+        key, rtMs, _ := exp.ShowAndGetRT(target,
             []control.Keycode{control.K_F, control.K_J}, -1,
         )
-        rtMs := int64(eventTS-onset) / 1_000_000 // nanoseconds → milliseconds
         _ = key
         _ = rtMs
         return control.EndLoop
@@ -314,11 +310,8 @@ func main() {
     target := stimuli.NewCircle(30, control.White)
 
     err := exp.Run(func() error {
-        exp.Show(fix)
-        exp.Wait(500)
-        onset, _    := exp.ShowTS(target)
-        _, eventTS, _ := exp.Keyboard.GetKeyEventTS(nil, -1)
-        rtMs := int64(eventTS-onset) / 1_000_000
+        exp.ShowTimed(fix, 500)
+        _, rtMs, _ := exp.ShowAndGetRT(target, nil, -1)
         _ = rtMs
         return control.EndLoop
     })

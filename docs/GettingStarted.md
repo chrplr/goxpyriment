@@ -31,7 +31,9 @@ If you've ever spent three hours fixing a `conda` environment or `pip` conflict 
 | `exp.initialize()` | (handled by `NewExperimentFromFlags`) | SDL, audio and font all initialized. |
 | `stim.present()` | `exp.Show(stim)` | Clear → draw → flip. |
 | `exp.clock.wait(1000)` | `exp.Wait(1000)` | OS-responsive wait; aborts on ESC. |
-| `key, rt = exp.keyboard.wait()` | `key, rt, err := exp.Keyboard.WaitKeysRT(keys, timeout)` | Response + reaction time. |
+| `stim.present()` + `exp.clock.wait(500)` | `exp.ShowTimed(stim, 500)` | Show + timed wait in one call. |
+| `key, rt = exp.keyboard.wait()` | `key, rt, err := exp.Keyboard.WaitKeysRT(keys, timeout)` | Response + reaction time (call-site precision). |
+| `stim.present()` + `exp.keyboard.wait()` with RT | `key, rt, err := exp.ShowAndGetRT(stim, keys, timeout)` | Hardware-precise RT from VSYNC flip. |
 
 ---
 
@@ -62,8 +64,7 @@ func main() {
 
     exp.ShowInstructions("Press SPACE when you see the circle.")
 
-    exp.Show(fixation)
-    exp.Wait(500)          // hold fixation for 500 ms
+    exp.ShowTimed(fixation, 500)  // hold fixation for 500 ms
 
     exp.Show(target)
     exp.Keyboard.WaitKey(control.K_SPACE)

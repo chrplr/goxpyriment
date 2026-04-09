@@ -203,8 +203,7 @@ if err := exp.Wait(500); err != nil {
 }
 
 // Style B — omit error checks inside exp.Run (fine for experiment scripts)
-exp.Show(fixation)
-exp.Wait(500)
+exp.ShowTimed(fixation, 500)
 ```
 
 Style B works because if something goes wrong (ESC pressed, window closed), the panic/recover mechanism unwinds the call stack before your code can observe an error. Use Style A if you have cleanup that must run on abort; otherwise Style B keeps experiment scripts readable.
@@ -372,8 +371,9 @@ Use this decision guide before committing to a timing strategy.
 | Situation | Recommended approach |
 |---|---|
 | Coarse ISIs and fixation durations (≥ 100 ms) | `exp.Wait(ms)` — adequate precision, keeps the event loop alive |
+| Show stimulus + timed hold (fixation, cue, mask) | `exp.ShowTimed(stim, ms)` — `Show` + `Wait` in one call |
+| Single-stimulus trial, RT relative to onset | `key, rt, err := exp.ShowAndGetRT(stim, keys, timeout)` — hardware-precise RT, clears stale events automatically |
 | Stimulus duration measured in frames (e.g. 2-frame mask) | `exp.Show` inside a VSYNC-locked loop, or `PresentStreamOfImages` (Section 10) |
-| Single-stimulus trial, RT relative to onset | `exp.Show(stim)` + `exp.Keyboard.WaitKeysRT(...)` — millisecond RT from call site |
 | Multi-stimulus sequence, RT relative to a specific stimulus | `exp.ShowTS(stim)` + `exp.Keyboard.GetKeyEventTS(...)` — nanosecond timestamps on the same SDL clock; subtract directly |
 | RSVP or rapid animation (frame-accurate presentation of many items) | `PresentStreamOfImages` / `PresentStreamOfTexts` (Section 10) — GC disabled, VSYNC-locked, full timing log |
 | EEG/MEG synchronisation required | Add a TTL pulse via `triggers` immediately after `exp.ShowTS` (Section 15) |
@@ -381,7 +381,7 @@ Use this decision guide before committing to a timing strategy.
 
 **OS considerations.** Presentation latency depends heavily on whether the display compositor is active — see the next section. For EEG work, always verify onset timing with a photodiode regardless of OS.
 
-**When in doubt, use `ShowTS` + `GetKeyEventTS`.** The overhead over `Show` + `WaitKeysRT` is negligible, and you get hardware-precision timestamps at no cost.
+**When in doubt, use `ShowAndGetRT`.** It clears stale events, records the VSYNC flip timestamp, waits for the key with hardware-precision timing, and returns `(key, rtMs, error)` — the canonical single-stimulus RT call. Use raw `ShowTS` + `GetKeyEventTS` only when composing multiple stimuli before a single response.
 
 **`ShowTS` vs `FlipTS`.** `exp.ShowTS(stim)` is the standard high-level call: it clears the screen, draws the stimulus, flips, and returns the flip timestamp — one line for the common case. `exp.Screen.FlipTS()` is the lower-level primitive that only flips and timestamps, leaving clearing and drawing to you. Use it directly when you need to compose several stimuli with multiple `Draw` calls before a single flip, or when working inside a VRR or VSYNC-locked loop where you manage the render cycle yourself (see the VRR section below).
 
@@ -578,6 +578,12 @@ exp.Keyboard.Clear()
 `WaitKeysRT` measures elapsed time from the moment the call is made (using `sdl.Ticks()`, millisecond granularity). In a single-stimulus trial this is a good approximation of RT from stimulus onset, but it accumulates any delay between `Show()` returning and `WaitKeysRT` being called.
 
 `GetKeyEventTS` returns the SDL3 event's own `Timestamp` field — the nanosecond time at which the hardware key-down event was generated. Combined with `exp.ShowTS(stim)`, which records the nanosecond time of the VSYNC flip, reaction time is simply:
+
+```go
+key, rtMs, _ := exp.ShowAndGetRT(target, responseKeys, 3000)
+```
+
+Internally `ShowAndGetRT` calls `exp.Keyboard.Clear()`, then `exp.ShowTS` to get the VSYNC flip timestamp, then `GetKeyEventTS`, and returns the difference in milliseconds. When you need the raw nanosecond timestamps (e.g. for EEG trigger alignment), you can call the primitives directly:
 
 ```go
 onset, _ := exp.ShowTS(target)   // nanoseconds at VSYNC flip
@@ -1654,15 +1660,11 @@ func main() {
 
         for i, t := range trials {
             // Fixation
-            exp.Show(fixation)
-            exp.Wait(FixationDuration)
+            exp.ShowTimed(fixation, FixationDuration)
 
-            // Stimulus
+            // Stimulus + Response
             stim := stimuli.NewTextLine(t.word, 0, 0, t.color)
-            exp.Show(stim)
-
-            // Response
-            key, rt, _ := exp.Keyboard.WaitKeysRT(keys, ResponseTimeout)
+            key, rt, _ := exp.ShowAndGetRT(stim, keys, ResponseTimeout)
 
             // Score
             correct := false

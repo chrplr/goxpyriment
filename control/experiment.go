@@ -176,20 +176,15 @@ func NewExperimentFromFlags(name string, bg, fg sdl.Color, fontSize float32) *Ex
 }
 
 // Show presents a visual stimulus on the experiment screen, clearing it first
-// and flipping the backbuffer afterwards. It is equivalent to:
+// and flipping the backbuffer afterwards. It is a convenience wrapper around
+// ShowTS for the common case where the onset timestamp is not needed:
 //
-//	stim.Present(exp.Screen, true, true)
+//	exp.Show(stim)   // clear + draw + flip, no timing
 //
-// This is the standard way to display a stimulus in a trial loop.
 // If the user requests to exit during presentation, this method will panic
 // with an internal sentinel to abort the experiment loop gracefully.
 func (e *Experiment) Show(v stimuli.VisualStimulus) error {
-	err := e.Do(func() error {
-		return v.Present(e.Screen, true, true)
-	})
-	if IsEndLoop(err) {
-		panic(exitPanic{err: err})
-	}
+	_, err := e.ShowTS(v)
 	return err
 }
 
@@ -305,6 +300,66 @@ func (e *Experiment) CorrectColor(c sdl.Color) sdl.Color {
 		return c
 	}
 	return e.GammaCorrector.CorrectColor(c)
+}
+
+// ShowTimed presents a visual stimulus (clear + draw + flip) and then waits
+// for the given duration. It replaces the common two-line pattern:
+//
+//	exp.Show(stim)
+//	exp.Wait(durationMs)
+func (e *Experiment) ShowTimed(v stimuli.VisualStimulus, durationMs int) error {
+	if err := e.Show(v); err != nil {
+		return err
+	}
+	return e.Wait(durationMs)
+}
+
+// ShowAndGetRT presents a visual stimulus with hardware-precise onset timing,
+// clears stale keyboard events, then waits for one of the given keys.
+// It returns the keycode and the reaction time in milliseconds computed from
+// the VSYNC flip timestamp.
+//
+// It replaces the common three-line pattern:
+//
+//	onset, _ := exp.ShowTS(stim)
+//	key, eventTS, _ := exp.Keyboard.GetKeyEventTS(keys, timeoutMs)
+//	rt := int64(eventTS-onset) / 1_000_000
+//
+// Pass timeoutMs = -1 for no timeout. On timeout, returns (0, 0, nil).
+// On ESC or window-close, returns sdl.EndLoop.
+func (e *Experiment) ShowAndGetRT(v stimuli.VisualStimulus, keys []Keycode, timeoutMs int) (Keycode, int64, error) {
+	e.Keyboard.Clear()
+	onsetNS, err := e.ShowTS(v)
+	if err != nil {
+		return 0, 0, err
+	}
+	key, eventTS, err := e.Keyboard.GetKeyEventTS(keys, timeoutMs)
+	if err != nil {
+		return key, 0, err
+	}
+	if key == 0 { // timeout
+		return 0, 0, nil
+	}
+	return key, int64(eventTS-onsetNS) / 1_000_000, nil
+}
+
+// ShowEndMessage displays a centered completion message and waits for any key.
+// It replaces the common end-of-experiment pattern:
+//
+//	box := stimuli.NewTextBox(message, width, control.Origin(), exp.ForegroundColor)
+//	exp.Show(box)
+//	exp.Keyboard.Wait()
+func (e *Experiment) ShowEndMessage(message string) error {
+	w := int32(float32(e.Screen.Width) * 0.80)
+	if w < 400 {
+		w = 400
+	}
+	tb := stimuli.NewTextBox(message, w, sdl.FPoint{}, e.ForegroundColor)
+	if err := e.Show(tb); err != nil {
+		return err
+	}
+	_, err := e.Keyboard.Wait()
+	return err
 }
 
 // ShowInstructions displays a centered text block and waits for the

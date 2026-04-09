@@ -42,6 +42,8 @@ func main() {
 	// }
 
 	// 2. Prepare design and stimuli
+	responseKeys := []control.Keycode{control.K_R, control.K_G, control.K_B, control.K_Y}
+
 	words := []string{"RED", "GREEN", "BLUE", "YELLOW"}
 	colors := []control.Color{control.Red, control.Green, control.Blue, control.Yellow}
 	colorNames := []string{"RED", "GREEN", "BLUE", "YELLOW"}
@@ -67,14 +69,9 @@ func main() {
 			// Blank screen
 			exp.Blank(1000)
 
-			// Stimulus
+			// Stimulus + response
 			stim := stimuli.NewTextLine(t.word, 0, 0, t.color)
-			onsetNS, _ := exp.ShowTS(stim)
-
-			// Wait for response
-			responseKeys := []control.Keycode{control.K_R, control.K_G, control.K_B, control.K_Y}
-			key, eventTS, _ := exp.Keyboard.GetKeyEventTS(responseKeys, -1)
-			rt := int64(eventTS-onsetNS) / 1_000_000
+			key, rt, _ := exp.ShowAndGetRT(stim, responseKeys, -1)
 
 			var resp string
 			switch key {

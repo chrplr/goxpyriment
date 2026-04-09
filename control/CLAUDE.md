@@ -41,6 +41,10 @@ exp.Run(func() error {
 ## Convenience methods
 
 - `exp.Show(stim)` — `Clear()` + `Draw()` + `Update()` in one call. Use for single-stimulus frames.
+- `exp.ShowTS(stim)` — Same as `Show` but returns the SDL3 nanosecond flip timestamp for hardware-precise RT.
+- `exp.ShowTimed(stim, durationMs)` — `Show(stim)` + `Wait(durationMs)`. For fixation crosses, cues, and passive stimulus viewing.
+- `exp.ShowAndGetRT(stim, keys, timeoutMs)` — Clears stale keyboard events, shows stim with `ShowTS`, waits for a key with `GetKeyEventTS`, returns `(key, rtMs, error)` with hardware-precise RT. `timeoutMs = -1` for no timeout; returns `(0, 0, nil)` on timeout.
+- `exp.ShowEndMessage(message)` — Renders a centered completion message and waits for any key. For end-of-experiment screens.
 - `exp.ShowInstructions(text)` — Renders centered text, waits for spacebar.
 - `exp.Blank(ms)` — Clears screen, flips, sleeps `ms` milliseconds.
 - `exp.PollEvents(handler)` — Drains SDL queue; `handler` may be nil. Returns `EventState`.

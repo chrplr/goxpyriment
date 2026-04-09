@@ -379,14 +379,7 @@ Press SPACE to start.`, func() int {
 		}
 
 		// End screen
-		endStim := stimuli.NewTextBox(
-			"The experiment is complete. Thank you!\n\nPress any key to exit.",
-			800, control.FPoint{}, control.Black)
-		if err := exp.Show(endStim); err != nil {
-			return err
-		}
-		_, err := exp.Keyboard.Wait()
-		if err != nil {
+		if err := exp.ShowEndMessage("The experiment is complete. Thank you!\n\nPress any key to exit."); err != nil {
 			return err
 		}
 		return control.EndLoop

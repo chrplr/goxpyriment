@@ -437,11 +437,7 @@ func main() {
 		}
 
 		// End screen
-		end := stimuli.NewTextBox(endMsg, 800, control.FPoint{}, control.Black)
-		if err := exp.Show(end); err != nil {
-			return err
-		}
-		if _, err := exp.Keyboard.Wait(); err != nil {
+		if err := exp.ShowEndMessage(endMsg); err != nil {
 			return err
 		}
 		return control.EndLoop
