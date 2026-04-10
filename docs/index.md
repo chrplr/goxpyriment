@@ -3,30 +3,20 @@
 `goxpyriment` is a high-level Go framework for building behavioral and psychological experiments.
 
 * [GitHub repository](https://github.com/chrplr/goxpyriment)
-* [Google group](https://groups.google.com/a/pallier.org/g/goxpyriment) — Forum
-* Report bugs at <https://github.com/chrplr/goxpyriment/issues>
 
-If you are looking for a simpler, *no-code experiment generator*, check out [Gostim2](https://chrplr.github.io/gostim2/).
+## Features
 
----
-
-## Why goxpyriment?
-
-1. **Zero-dependency deployment.** A finished experiment compiles to a standalone executable. No Python, no conda, no DLL of Font hell on lab computers.
-2. **Timing precision.** The stimulus loop runs VSYNC-locked with GC pauses disabled, giving sub-millisecond frame jitter on typical hardware (Variable Refresh Rate monitors are also handled).
+1. **Zero-dependency deployment.** Your experiments compile to standalone executables.
+2. **Timing precision.** The stimulus loop runs VSYNC-locked with GC pauses disabled, giving sub-millisecond frame jitter on typical hardware (VSYNC can be disabled to support Variable Refresh Rate monitors).
 3. **AI-friendly API.** The API is well suited to "vibe-coding": after cloning the repository, describe your paradigm in plain language to Claude, Gemini, or ChatGPT and try the generated code. Given the examples and the constraints afforded by the framework, the experiment is likely to work as expected (but must be checked, of course).
 
 ---
 
 ## Documentation
 
-First, you can skim over this [short paper](https://github.com/chrplr/goxpyriment/blob/main/paper/goxpyriment_paper.pdf) which describes the framework.
-
-
-Then you can read:
-
 | Document | | PDF |
 |---|---|---|
+| [Presentation](https://github.com/chrplr/goxpyriment/blob/main/paper/goxpyriment_paper.pdf) | short paper | | 
 | [Getting Started](GettingStarted.md) | Tutorials | [↓](GettingStarted.pdf) |
 | [Gallery of Examples](GalleryOfExamples.md) | Ready-to-run experiments and demos | |
 | [Installation](Installation.md) | Install Go and build the examples | [↓](Installation.pdf) |
@@ -34,6 +24,16 @@ Then you can read:
 | [Migration Guide](MigrationGuide.md) | Coming from Expyriment, PsychoPy, or Psychtoolbox? | [↓](MigrationGuide.pdf) |
 | [API Reference](API.md) | Complete function and type reference | [↓](API.pdf) |
 | [Timing-Tests](TimingTests.md) | Check the timing of your computer | [↓](TimingTests.pdf) |
+
+
+**Support:** 
+
+* [Google group](https://groups.google.com/a/pallier.org/g/goxpyriment) — Forum
+* Report bugs at <https://github.com/chrplr/goxpyriment/issues>
+
+
+Note: If you are looking for a simpler, *no-code experiment generator*, check out [Gostim2](https://chrplr.github.io/gostim2/).
+
 
 --- 
 
@@ -91,7 +91,7 @@ Then you can read:
 
 ## Ready-to-run experiments
 
-[Pre-built binaries](pre-built-examples.md) (ready-to run apps) of many experimentis are available for Windows, macOS, and Linux.
+[Pre-built binaries](pre-built-examples.md) (ready-to run apps) of many experiments are available for Windows, macOS, and Linux.
 
 ---
 

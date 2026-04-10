@@ -5,9 +5,6 @@
 
 
 * Full documentation: <https://chrplr.github.io/goxpyriment>
-* Gallery of Examples: [source code](./examples/)
-* [Google group](https://groups.google.com/a/pallier.org/g/goxpyriment) — Forum
-* Report bugs at <https://github.com/chrplr/goxpyriment/issues>
 
 If you are looking for a simpler, *no-code experiment generator*, check out [Gostim2](https://chrplr.github.io/gostim2/).
 
@@ -21,7 +18,7 @@ If you are looking for a simpler, *no-code experiment generator*, check out [Gos
 3. **AI-friendly API.** The consistent API is well suited to "vibe-coding" — describe your paradigm in plain language to Claude, Gemini, or ChatGPT and the generated code is usually ready to run immediately.
 
 
-> ⚠️ **Beta:** This software is in beta-testing. Although it is usable for real lab experiments, users should (as always) carefully test their program's behaviour, e.g. with a [bbtk](https://chrplr.github.io/bbtkv3/).
+> ⚠️ **Beta:** This software is in beta-testing. Report bugs at <https://github.com/chrplr/goxpyriment/issues>
 
 ---
 
@@ -36,6 +33,8 @@ If you are looking for a simpler, *no-code experiment generator*, check out [Gos
 | [Migration Guide](docs/MigrationGuide.md) | Coming from Expyriment, PsychoPy, or Psychtoolbox? | [↓](docs/MigrationGuide.pdf) |
 | [API Reference](docs/API.md) | Complete function and type reference | [↓](docs/API.pdf) |
 
+
+* [Google group](https://groups.google.com/a/pallier.org/g/goxpyriment) — Forum
 
 ---
 

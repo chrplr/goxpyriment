@@ -644,21 +644,27 @@ For the `stream` test, onset jitter and SOA error are directly in the
 
 **Linux**
 - Disable the desktop compositor: use a plain window manager (i3, openbox) or
-  start the experiment from a virtual terminal (`Ctrl+Alt+F2`) and disable the window system (`systemctl stop gdm`) .
+  start the experiment from a virtual terminal (`Ctrl+Alt+F2`) and disable the window system (`systemctl stop gdm`).
+- Disable CPU frequency scaling: `cpupower frequency-set -g performance`.
 - Run the experiment process with real-time scheduling:
   ```bash
-  sudo chrt -r 99 Timing-Tests -test display -duration-s 30
+  sudo chrt -r 80 Timing-Tests -test display -duration-s 30
   ```
-- Reduce USB trigger latency (see DLP-IO8-G section above).
-- Disable CPU frequency scaling: `cpupower frequency-set -g performance`.
 
-**macOS:**
-- The macOS WindowServer compositor is always active; expect 1–3 ms frame
-  jitter and one frame of fixed display latency.
-- Always run in fullscreen mode.
+  For this to work, you must first have edited  `/etc/security/limits.conf`:
+  ```
+  # Change username to your login
+  username    -       nice -20
+  username    -       rtprio    99
+  username    -       memlock   unlimited
+  ```
+  Notes: 
+     * Changes will be applied after login; use `ulimit -r` to check, it should return `99`)
+     * You replace `username` above by `@goxpy` to give privileges to users belonging to the goxpy group (to $USER: `usermod -aG goxpy $USER`).
+- Consider installing a _Real-Time Linux kernel_ (see, e.g., <https://ubuntu.com/blog/enable-real-time-ubuntu>)  
+- Reduce USB trigger latency (see DLP-IO8-G section above).
 
 **Windows:**
-- Run in fullscreen exclusive mode to bypass DWM composition.
 - Disable "Hardware-Accelerated GPU Scheduling" in Display Settings if you
   observe high frame jitter.
 

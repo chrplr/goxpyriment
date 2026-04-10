@@ -112,7 +112,7 @@ Python introduces practical difficulties. First, deploying an
 experiment to a computer that does not already have a compatible
 Python environment requires package management (conda, pip, venv) and
 can be a source of breakage across operating-system versions. For
-example, installing the \texttt{psychopy} module under Linux often
+example, installing the \texttt{psychopy} module under Linux can
 crashes while attempting to compile the wxPython package when there is
 no precompiled wheel. Second, Python's garbage collector can introduce
 unpredictable pause times that corrupt the timing of stimulus
@@ -147,39 +147,10 @@ C/C++ helper engines; and (3) a linear, straightforward API that is well
 suited for modern AI-assisted coding workflows.
 
 {\small
-\lstinputlisting[float=*t, caption={Example of a Parity Decision experiment}]{parity-decision.go}
+\lstinputlisting[float=*t, caption={Example of a Parity Decision experiment}, basicstyle=\ttfamily]{parity-decision.go}
 \par}
 
 \section{Framework Design}\label{framework-design}
-
-The code for a Parity Decision task is provided in Appendix.
-TODO: DEVELOP
-
-
-The choice of Go as the implementation language for \texttt{goxpyriment} provides
-several critical advantages over the interpreted languages traditionally used in
-behavioral research.
-
-\subsection{Single-Binary Deployment (Zero Dependencies)}\label{single-binary-deployment}
-
-Go compiles programs into a single statically linked executable with no
-external runtime dependencies. Crucially, the \texttt{go-sdl3} package
-embeds the pre-built SDL3 runtime libraries \parencite{sdl3} directly into the
-executable. Stimuli, experimental lists, fonts, and other assets can be
-embedded too. As a result, distributing an experiment requires copying just one
-file; there is no need to manage virtual environments, package
-versions, or interpreter installations across laboratory
-computers. This substantially reduces the operational overhead of
-running experiments on multiple machines or sharing materials with
-collaborators.
-
-\subsection{Explicit Garbage Collection Control}\label{explicit-gc-control}
-
-While the garbage collectors in languages like Python or JavaScript can
-introduce unpredictable pause times that corrupt timing, Go exposes a runtime
-API for suspending the garbage collector. \texttt{goxpyriment} uses this
-mechanism in its timing-critical loops, ensuring that stimulus onsets and
-offsets are not delayed by memory management tasks.
 
 \subsection{Programming Model}\label{programming-model}
 
@@ -191,27 +162,20 @@ signal, safely flushes the data file to disk, and shuts down the SDL
 subsystems. This ensures that data is preserved even if a session is aborted
 prematurely.
 
-If the users want, experiments can follow a hierarchical structure of blocks and trials
-directly inspired by Expyriment. Each trial is a
-collection of factors that can be randomized and logged. Data
-collection is handled by an \texttt{exp.Data} object, which writes to
-a CSV file with extensive metadata headers.
-
-\subsection{Pre-Experiment Setup Dialog}\label{setup-dialog}
+It is possible, but not necessary, to build the experiment around a
+hierarchical structure of blocks and trials, over which the program
+can iterate, following a patten inspired by Expyriment
+\parencite{krause2014}. Each trial is a collection of factors that can
+be randomized and logged. Data collection is handled by an
+\texttt{exp.Data} object, which writes to a CSV file withal
+metadata headers providing extensive information about the computer OS and hardware, timestamps, etc.
 
 \texttt{goxpyriment} provides an optional graphical
 \texttt{GetParticipantInfo} dialog that opens before the main experiment
-window (see Fig.~\ref{fig:getinfo}). It allows the experimenter to input subject
+window (see Fig.~\ref{fig:getinfo}). This allows the experimenter to input subject
 IDs, select experimental conditions from discrete menus, and toggle
 settings like fullscreen mode. These values are automatically
 recorded in the output data file header.
-
-Programs that use \texttt{GetParticipantInfo} also accept a
-\texttt{-headless} command-line flag. When present, the dialog is skipped
-entirely and field defaults (or values previously saved to the cache) are
-used without opening any window. This is convenient for scripted or
-automated runs (e.g., continuous integration checks or batch stimulus
-generation) where interactive input is not possible.
 
 \begin{figure*}[t]
 \centering
@@ -219,12 +183,32 @@ generation) where interactive input is not possible.
   \includegraphics[width=0.5\textwidth,valign=t]{UI1.png} & \includegraphics[width=0.5\textwidth,valign=t]{UI2.png} \\
 \end{tabular}
 \caption{Examples of \texttt{GetParticipantInfo} dialogs for the \emph{Retinotopy} (left) and
-\emph{Number-Comparison} (right) paradigms provided in the examples accompanying the library. This UI makes it practical for the experimenter to choose among a small fixed set of options without typing, which reduces setup errors when launching an experiment from a desktop shortcut or file manager. Note that which fields appear in the UI is configurable.}
+\emph{Number-Comparison} (right) paradigms provided in the examples accompanying the library. This UI makes it practical for the experimenter to choose among a small set of options without typing, which reduces setup errors when launching an experiment from a desktop shortcut or file manager. Note that which fields appear in the UI is configurable. It is also prossible to pass the information as arguments on the command-line and skip this UI.}
 \label{fig:getinfo}
 \end{figure*}
 
 
-\section{Timing Architecture and Precision}\label{timing-architecture}
+\subsection{Single-Binary Deployment (Zero Dependencies)}\label{single-binary-deployment}
+
+Go compiles programs into a single statically linked executable with
+no external runtime dependencies. Crucially, the \texttt{go-sdl3}
+package embeds the pre-built SDL3 runtime libraries \parencite{sdl3}
+directly into the executable so that the user do not need to install
+any library by herself.  In addition, the stimuli, experimental lists,
+fonts, and other assets can be embedded in the binary too. As a
+result, distributing an experiment requires copying just one file;
+there is no need to manage virtual environments, package versions, or
+interpreter installations across laboratory computers. This
+substantially reduces the operational overhead of installing experiments
+on multiple machines or sharing materials with collaborators.
+
+\subsection{Explicit Garbage Collection Control}\label{explicit-gc-control}
+
+While the garbage collectors in languages like Python or JavaScript can
+introduce unpredictable pause times that corrupt timing, Go exposes a runtime
+API for suspending the garbage collector. \texttt{goxpyriment} uses this
+mechanism in its timing-critical loops, ensuring that stimulus onsets and
+offsets are not delayed by memory management tasks.
 
 \subsection{Hardware-Synchronized Presentation}\label{hardware-sync}
 
@@ -249,21 +233,40 @@ records the target and actual onsets for post-hoc verification, as
 well as the timing of keys pressed during the presentation of the
 stream.
 
-\subsection{Hardware-Level Response Timestamps}\label{hardware-timestamps}
+\subsection{OS-Level Response Timestamps}\label{hardware-timestamps}
 
-Response timing in \texttt{goxpyriment} leverages SDL3 hardware event
+Response timing in \texttt{goxpyriment} leverages SDL3 OS-level event
 timestamps. The \texttt{GetKeyEventTS} method returns the
-\texttt{KeyboardEvent.Timestamp} field, which is populated by the OS input
-subsystem at hardware-interrupt time (nanoseconds since SDL initialization).
-Because SDL events carry their timestamp in the event structure itself, the
-event remains in the queue with its original timestamp regardless of how
-much computation occurs between stimulus onset and response collection.
-By comparing the response timestamp with the \texttt{Screen.FlipTS()}
-timestamp---which uses the same clock---reaction times can be measured
-with minimal jitter and no interpreter overhead. This unified timing
-regime is abstracted through the \texttt{ResponseDevice} interface,
-which explicitly signals whether a timestamp is ``precise''
-(hardware-level) or ``non-precise'' (polling-based).
+\texttt{KeyboardEvent.Timestamp} field, which is populated by the OS
+input subsystem at hardware-interrupt time (nanoseconds since SDL
+initialization).  Because SDL events carry their timestamp in the
+event structure itself, the event remains in the queue with its
+original timestamp regardless of how much computation occurs between
+stimulus onset and response collection.  By comparing the response
+timestamp with the \texttt{Screen.FlipTS()} timestamp---which uses the
+same clock---reaction times can be measured with minimal jitter and no
+interpreter overhead. The big advantage of this approach is there
+there is no need to continusously pool the HID device, e.g. keyboard
+or mouse, to detect events with a good precision. Thuss, a complex
+sequence of stimuli can be programmed and all events will be available
+to process later, when needed.
+
+\subsection{Triggers}
+
+Generic functions for reading from and writing to parallel and serial
+ports are provided. In addition, the current version implements TTL
+input/output interfaces for two specific USB-serial devices: the
+DLP-IO-8 (see \url{https://github.com/chrplr/dlp-io8-g}) and an
+Arduino Mega 2560 utilizing a custom protocol (see
+\url{https://github.com/chrplr/neurospin-meg-ttl-box}).
+
+While USB latency can be a concern, it may be mitigated under Linux by
+setting the value of
+\texttt{/sys/bus/usb-serial/devices/ttyUSB0/latency\_timer} to 1. To
+avoid USB entirely, one can use an Ethernet-based interface such as
+the LabJack T4 (\url{https://labjack.com/products/labjack-t4}), which
+can be controlled via Go's \texttt{modbus} library
+(\url{https://github.com/goburrow/modbus})."
 
 \subsection{The Timing Verification Suite}\label{timing-verification}
 
@@ -274,8 +277,13 @@ frame-interval jitter, verifying single-frame flash reliability via
 photodiode, and calculating audio-visual SOA latencies. Other tests
 measure hardware-buffer pipeline latency for audio and characterize
 the USB-serial jitter of trigger devices. A special folder in the
-repository (\texttt{performance-reports}) is intended for users to
-share the results of tests on their own hardware.
+goxpyriment github repository (\texttt{performance-reports}) is
+intended for users to share the results of tests on their own
+hardware.
+
+%\section{Timing Results}\label{timing-results}
+
+%\input timing-tests.tex
 
 
 \section{AI-Assisted Coding}\label{ai-assisted}
@@ -371,26 +379,27 @@ Reference       & This paper   & \cite{krause2014} & \cite{peirce2019} & \cite{b
 \end{table*}
 
 \texttt{goxpyriment} resembles Expyriment in its API design: a central
-experiment object, a \texttt{present()}-based stimulus API, a structured
-trial-loop model, and output to \texttt{.csv}-format files with metadata. The
-primary technical differences are the use of Go rather than Python and the use
-of SDL3 rather than the older Pygame/SDL2 stack. From the user's point of view,
-\texttt{goxpyriment} adds \emph{stream} objects which, as their name indicates,
-allow displaying sequences of stimuli with tightly controlled timing.
+experiment object, a \texttt{present()}-based stimulus API, a
+structured trial-loop model, and output to \texttt{.csv}-format files
+with metadata. The code for a simple experiment (Parity Decision) is
+provided in Appendix (Listing 1). The primary technical differences
+are the use of Go rather than Python and the use of SDL3 rather than
+the older Pygame/SDL2 stack. From the user's point of view,
+\texttt{goxpyriment} adds \emph{stream} objects which, as their name
+indicates, allow displaying sequences of stimuli with tightly
+controlled timing.
+
 
 \section{Example Experiments}\label{example-experiments}
 
-The repository provides over forty examples demonstrating classic paradigms,
-including the Stroop task, Attentional Blink (RSVP), Masked Priming,
-Retinotopic mapping for fMRI, and adaptive threshold estimation using the QUEST
-algorithm. These examples serve as both functional templates and a gallery of
-the framework's capabilities, ranging from simple parity-judgment tasks to
-complex moving-display studies.
+The repository provides over forty demos and examples of classic
+psychology paradigms, including the Stroop task, Attentional Blink
+(RSVP), Masked Priming, Retinotopic mapping for fMRI, and adaptive
+threshold estimation using the QUEST algorithm. These examples serve
+as both functional templates and a gallery of the framework's
+capabilities.
 
 
-%\section{Timing Results}\label{timing-results}
-
-%\input timing-tests.tex
 
 
 \section{Limitations and Future Directions}\label{limitations-and-future-directions}
