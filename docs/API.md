@@ -101,7 +101,7 @@ if !fullscreen {
 exp := control.NewExperiment("My Experiment", width, height, fullscreen,
     control.Black, control.White, 32)
 
-// Set Info (and SubjectID) BEFORE Initialize — they are written to the .csv header automatically
+// Set Info (and SubjectID) BEFORE Initialize — they are written to the info file automatically
 exp.SubjectID, _ = strconv.Atoi(info["subject_id"])
 exp.Info = info
 
@@ -109,7 +109,7 @@ if err := exp.Initialize(); err != nil { log.Fatal(err) }
 defer exp.End()
 ```
 
-`Initialize()` writes a `--PARTICIPANT INFO` block to the `.csv` header whenever `exp.Info` is non-nil at that point. No explicit call to `WriteParticipantInfo` is needed.
+`Initialize()` writes a `--PARTICIPANT INFO` block to the companion `-info.txt` file whenever `exp.Info` is non-nil at that point. No explicit call to `WriteParticipantInfo` is needed.
 
 #### Sentinel error
 
@@ -183,7 +183,7 @@ type EventState struct {
 | `exp.AddBWSFactor(name string, conditions []interface{})` | Register a between-subjects factor for Latin-square counterbalancing. |
 | `exp.GetPermutedBWSFactorCondition(name string) interface{}` | Return this subject's condition for a BWS factor. |
 | `exp.Design` | `*design.Experiment` — full design object |
-| `exp.Info` | `map[string]string` — values from `GetParticipantInfo`; set before `Initialize()` to persist them automatically to the `.csv` header |
+| `exp.Info` | `map[string]string` — values from `GetParticipantInfo`; set before `Initialize()` to persist them automatically to the `-info.txt` file |
 
 ### Font and Display
 
@@ -683,12 +683,17 @@ resp, err := rd.WaitResponse(ctx)
 ```go
 exp.Data.Add(field1, field2, ...)             // append a data row
 exp.Data.AddVariableNames([]string{...})      // write column header
-exp.Data.WriteDisplayInfo(info)               // append display metadata as comments
-exp.Data.WriteParticipantInfo(info)           // append --PARTICIPANT INFO block (called automatically by Initialize when exp.Info is set)
-exp.Data.WriteEndTime()                       // append end time + duration
+exp.Data.WriteDisplayInfo(info)               // append display metadata to the info file
+exp.Data.WriteParticipantInfo(info)           // append --PARTICIPANT INFO block to the info file (called automatically by Initialize when exp.Info is set)
+exp.Data.WriteEndTime()                       // append end time + duration to the info file
 ```
 
-Output is written to `~/goxpy_data/<expname>_<subjectID>_<timestamp>.csv` (a CSV with `#`-prefixed metadata header).
+Two files are written to `~/goxpy_data/` for each session:
+
+| File | Contents |
+|------|----------|
+| `<expname>_sub-<NNN>_date-<YYYYMMDD>-<HHMM>.csv` | Pure CSV data rows — directly importable by Excel, R, or pandas |
+| `<expname>_sub-<NNN>_date-<YYYYMMDD>-<HHMM>-info.txt` | `#`-prefixed metadata: start/end time, hostname, OS, framework version, display and audio configuration, participant info |
 
 ---
 

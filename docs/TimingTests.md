@@ -66,6 +66,42 @@ These tests are run from a Terminal. This document assumes that you have compile
 go build tests/Timing-Tests/main.go -o Timing-Tests
 ```
 
+---
+
+## Recording system information (`-sysinfo`)
+
+Before running any timing tests it is good practice to capture a snapshot of
+the machine's hardware and software configuration. The `-sysinfo` flag prints
+this information to the terminal and exits immediately — no window is opened,
+no SDL is initialised:
+
+```bash
+Timing-Tests -sysinfo
+```
+
+Example output:
+
+```
+Machine:    product: Precision 5490  System: Dell Inc.  Type: laptop
+System:     Host: mylab-pc  Kernel: 6.17.0-20-generic x86_64  Uptime: 3h 12m
+            OS: Ubuntu 25.10  Shell: bash 5.2.37  Desktop: ubuntu:GNOME
+CPU:        Model: Intel(R) Core(TM) Ultra 7 165H  Info: 16 cores / 22 threads  Speed: 2400 MHz (min: 400 / max: 4700)
+Memory:     RAM: total: 30.04 GiB  used: 6.21 GiB (20.7%)  Swap: total: 8.00 GiB  used: 0 KiB (0.0%)
+Graphics:   Card: Intel Corporation Meteor Lake-P [Intel Arc Graphics]  Driver: i915
+            Card: NVIDIA Corporation AD107GLM [RTX 2000 Ada]  Driver: nvidia
+Audio:      Card: sof-soundwire  Driver: snd_soc_sof_sdw
+            Server: PipeWire  v: 1.4.7  ALSA: k6.17.0-20-generic
+```
+
+Redirect the output to a text file to keep it alongside your result files:
+
+```bash
+Timing-Tests -sysinfo > sysinfo-$(hostname)-$(date +%Y%m%d).txt
+```
+
+Include this file whenever you share timing results or report them in a methods
+section — reviewers routinely ask for CPU model, OS version, graphics driver,
+and audio server.
 
 ---
 
@@ -624,13 +660,17 @@ For the most accurate RT measurement:
 
 ## Loading data in Python
 
-All tests write a `.csv` file to `~/goxpy_data/` with `#`-prefixed metadata
-headers. Load any run in Python with:
+Each test run writes two files to `~/goxpy_data/`:
+
+- `Timing-Tests_sub-000_date-<YYYYMMDD>-<HHMM>.csv` — plain CSV data rows, no comment lines.
+- `Timing-Tests_sub-000_date-<YYYYMMDD>-<HHMM>-info.txt` — session metadata (start/end time, hostname, OS, display and audio configuration).
+
+Load any run in Python with:
 
 ```python
 import pandas as pd
 
-df = pd.read_csv("~/goxpy_data/Timing-Tests_000_*.csv", comment="#")
+df = pd.read_csv("~/goxpy_data/Timing-Tests_sub-000_date-*.csv")
 print(df.head())
 ```
 

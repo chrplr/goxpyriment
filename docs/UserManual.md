@@ -24,12 +24,13 @@ This manual explains the key concepts of the library. It assumes you have read t
 10. [High-Precision Streams (RSVP)](#10-high-precision-streams-rsvp)
 11. [Audio](#11-audio)
 12. [Experimental Design and Randomization](#12-experimental-design-and-randomization)
-13. [Animated Stimuli](#13-animated-stimuli)
-14. [Gamma Correction and Luminance Linearity](#14-gamma-correction-and-luminance-linearity)
-15. [Hardware Triggers and TTL Devices](#15-hardware-triggers-and-ttl-devices)
-16. [Display Compositor Bypass](#16-display-compositor-bypass)
-17. [Variable Refresh Rate (VRR) Stimulus Presentation](#17-variable-refresh-rate-vrr-stimulus-presentation)
-18. [Putting It All Together](#18-putting-it-all-together)
+13. [Embedding Stimuli and Trial Lists in the Executable](#13-embedding-stimuli-and-trial-lists-in-the-executable)
+14. [Animated Stimuli](#14-animated-stimuli)
+15. [Gamma Correction and Luminance Linearity](#15-gamma-correction-and-luminance-linearity)
+16. [Hardware Triggers and TTL Devices](#16-hardware-triggers-and-ttl-devices)
+17. [Display Compositor Bypass](#17-display-compositor-bypass)
+18. [Variable Refresh Rate (VRR) Stimulus Presentation](#18-variable-refresh-rate-vrr-stimulus-presentation)
+19. [Putting It All Together](#19-putting-it-all-together)
 
 ---
 
@@ -822,9 +823,16 @@ When `Precise` is `false`, `RT` is still a valid elapsed duration — it just ha
 
 ## 8. Data Collection
 
-### The `.csv` file
+### Output files
 
-`exp.Data` writes to a file named `<expname>_<subjectID>_<timestamp>.csv` in `~/goxpy_data/`. The format is plain CSV with `#`-prefixed comment lines as a metadata header. It opens automatically on `Initialize()` and is flushed to disk when `exp.End()` is called (or when `exp.Data.Save()` is called explicitly).
+When `exp.End()` is called, two files are written to `~/goxpy_data/`:
+
+| File | Contents |
+|------|----------|
+| `<expName>_sub-<NNN>_date-<YYYYMMDD>-<HHMM>.csv` | Pure CSV data rows — directly importable by Excel, R, or pandas |
+| `<expName>_sub-<NNN>_date-<YYYYMMDD>-<HHMM>-info.txt` | Session metadata: start/end time, hostname, OS, framework version, display and audio configuration, participant info |
+
+Both files open automatically on `Initialize()` and are flushed to disk when `exp.End()` is called.
 
 ### Declaring column names
 
@@ -834,7 +842,7 @@ Call this once, before the trial loop:
 exp.AddDataVariableNames([]string{"condition", "response", "rt_ms", "correct"})
 ```
 
-This writes a `# VARIABLES` header line. **Subject ID is always prepended automatically** — do not include it in the name list.
+**Subject ID is always prepended automatically** — do not include it in the name list.
 
 ### Adding rows
 
@@ -842,22 +850,21 @@ This writes a `# VARIABLES` header line. **Subject ID is always prepended automa
 exp.Data.Add(condition, response, rt, correct)
 ```
 
-Fields are written in the same order as the variable names. Any type that has a meaningful `fmt.Sprint` representation works: `int`, `float64`, `bool`, `string`. The subject ID and a timestamp are prepended automatically. Fields containing commas or quotes are escaped.
+Fields are written in the same order as the variable names. Any type that has a meaningful `fmt.Sprint` representation works: `int`, `float64`, `bool`, `string`. Fields containing commas or quotes are escaped per RFC 4180.
 
-### Example output
+### Example CSV output
 
 ```
-# EXPERIMENT: My Experiment
-# SUBJECT: 3
-# DATE: 2026-03-22T14:05:11
-# VARIABLES: subject_id,condition,response,rt_ms,correct
-3,congruent,F,412,true
-3,incongruent,J,538,false
+subject_id,condition,response,rt_ms,correct
+3,"congruent","F",412,true
+3,"incongruent","J",538,false
 ```
+
+Numbers and booleans are unquoted; strings are always double-quoted.
 
 ### Saving mid-experiment
 
-For long experiments it is good practice to call `exp.Data.Save()` after each block. This flushes the buffer to disk so that data up to that point is not lost if the experiment crashes.
+For long experiments it is good practice to call `exp.Data.Save()` after each block. This flushes both files to disk so that data up to that point is not lost if the experiment crashes.
 
 ---
 
@@ -1262,7 +1269,229 @@ for _, cond := range conditions {
 
 ---
 
-## 13. Animated Stimuli
+## 13. Embedding Stimuli and Trial Lists in the Executable
+
+One of Go's most useful deployment features is `//go:embed`: a compiler directive that copies files from disk into the binary at build time. The result is a **single self-contained executable** that carries all its images, sounds, and trial-list CSV files with it — no separate `assets/` folder, no installer, no missing-file errors on lab computers.
+
+> **When to embed.** Embedding is the right choice for stimuli that are fixed at design time: images, sounds, and pre-generated trial lists. It is not appropriate for stimuli you generate procedurally at runtime (textures drawn with `Canvas`, tones created with `NewTone`, text rendered from `NewTextLine`), or for data files that are written during the experiment.
+
+### 13.1 Project layout
+
+Collect all static assets in a subdirectory alongside `main.go`:
+
+```
+myexperiment/
+  main.go
+  assets/
+    stim_A.png
+    stim_B.png
+    feedback_correct.wav
+    trials.csv
+```
+
+### 13.2 Embedding individual image and sound files
+
+Import `_ "embed"` (blank identifier, needed to activate the directive) and declare a `[]byte` variable per file:
+
+```go
+package main
+
+import _ "embed"
+
+//go:embed assets/stim_A.png
+var stimAImg []byte
+
+//go:embed assets/stim_B.png
+var stimBImg []byte
+
+//go:embed assets/feedback_correct.wav
+var feedbackWav []byte
+```
+
+Pass the byte slices to the `FromMemory` constructors:
+
+```go
+import "github.com/chrplr/goxpyriment/stimuli"
+
+stimA := stimuli.NewPictureFromMemory(stimAImg, 0, 0)
+stimB := stimuli.NewPictureFromMemory(stimBImg, 0, 0)
+feedback := stimuli.NewSoundFromMemory(feedbackWav)
+```
+
+These constructors behave identically to `NewPicture` and `NewSound`; textures are still allocated lazily on first `Draw`, and `PreloadAllVisual` / `PreloadDevice` work the same way.
+
+### 13.3 Embedding a whole stimulus directory
+
+When you have many images (e.g. one per trial) it is impractical to declare a variable for each one. Embed the whole directory as an `embed.FS` and iterate over it at runtime:
+
+```go
+package main
+
+import "embed"
+
+//go:embed assets/stimuli
+var stimuliFS embed.FS
+```
+
+Load every PNG in the directory into a map:
+
+```go
+import (
+    "fmt"
+    "github.com/chrplr/goxpyriment/stimuli"
+)
+
+pics := map[string]*stimuli.Picture{}
+
+entries, err := stimuliFS.ReadDir("assets/stimuli")
+if err != nil {
+    log.Fatal(err)
+}
+for _, e := range entries {
+    if e.IsDir() {
+        continue
+    }
+    data, err := stimuliFS.ReadFile("assets/stimuli/" + e.Name())
+    if err != nil {
+        log.Fatal(err)
+    }
+    pics[e.Name()] = stimuli.NewPictureFromMemory(data, 0, 0)
+}
+
+// Use by filename:
+exp.Show(pics["face_happy.png"])
+```
+
+Or load a specific file by name:
+
+```go
+data, _ := stimuliFS.ReadFile(fmt.Sprintf("assets/stimuli/face_%s.png", condition))
+stim := stimuli.NewPictureFromMemory(data, 0, 0)
+```
+
+### 13.4 Embedding a CSV trial list
+
+A CSV file that defines trial order and parameters is a natural fit for embedding. The workflow is: embed → read into `[]byte` → wrap in `bytes.NewReader` → parse with `encoding/csv`.
+
+**Example `assets/trials.csv`:**
+
+```csv
+condition,soa_ms,correct_key
+congruent,200,F
+incongruent,200,J
+congruent,400,F
+incongruent,400,J
+```
+
+**Embedding and parsing:**
+
+```go
+package main
+
+import (
+    "bytes"
+    _ "embed"
+    "encoding/csv"
+    "log"
+    "strconv"
+)
+
+//go:embed assets/trials.csv
+var trialsCSV []byte
+
+type trial struct {
+    condition  string
+    soaMs      int
+    correctKey string
+}
+
+func loadTrials() ([]trial, error) {
+    r := csv.NewReader(bytes.NewReader(trialsCSV))
+    records, err := r.ReadAll()
+    if err != nil {
+        return nil, err
+    }
+    var trials []trial
+    for i, rec := range records {
+        if i == 0 {
+            continue // skip header row
+        }
+        soa, _ := strconv.Atoi(rec[1])
+        trials = append(trials, trial{
+            condition:  rec[0],
+            soaMs:      soa,
+            correctKey: rec[2],
+        })
+    }
+    return trials, nil
+}
+```
+
+For **tab-separated** files, set `r.Comma = '\t'` immediately after creating the reader.
+
+For **semicolon-separated** files (common in European locales), set `r.Comma = ';'`.
+
+Use the loaded trials in the experiment loop:
+
+```go
+trials, err := loadTrials()
+if err != nil {
+    log.Fatalf("loading trials: %v", err)
+}
+
+err = exp.Run(func() error {
+    exp.ShowInstructions("Press F or J to respond.")
+    for _, t := range trials {
+        exp.Blank(500)
+        stim := stimuli.NewTextLine(t.condition, 0, 0, control.White)
+        key, rt, _ := exp.ShowAndGetRT(stim, []control.Keycode{control.K_F, control.K_J}, 3000)
+        correct := string(key.KeyName()) == t.correctKey
+        exp.Data.Add(t.condition, t.soaMs, rt, correct)
+    }
+    return control.EndLoop
+})
+```
+
+### 13.5 Mixing embedded and runtime-generated stimuli
+
+Embedding is selective — embed only what is fixed, generate the rest at runtime:
+
+```go
+//go:embed assets/mask.png
+var maskImg []byte
+
+// Fixed stimulus: loaded from embedded bytes
+mask := stimuli.NewPictureFromMemory(maskImg, 0, 0)
+
+// Dynamic stimulus: generated from trial parameters
+target := stimuli.NewTextLine(word, 0, 0, control.White)
+```
+
+### 13.6 Build and deployment
+
+Nothing changes in the build command:
+
+```bash
+go build -o myexperiment .
+```
+
+The `assets/` directory must exist on disk at build time but is **not needed at runtime**. Copy the single binary to any lab computer running the same OS:
+
+```bash
+# Cross-compile for Windows from Linux
+GOOS=windows GOARCH=amd64 go build -o myexperiment.exe .
+
+# Cross-compile for macOS (Apple Silicon)
+GOOS=darwin GOARCH=arm64 go build -o myexperiment-mac .
+```
+
+The embedded assets are included in all cross-compiled outputs automatically.
+
+> **Binary size.** Each embedded file adds its uncompressed size to the binary. A typical experiment with a few dozen PNG images and WAV files will add 5–50 MB — acceptable for a self-contained research tool. For very large stimulus sets (hundreds of high-resolution images, video files), consider distributing them as a separate archive alongside the binary instead of embedding.
+
+---
+
+## 14. Animated Stimuli
 
 Three functions run self-contained VSYNC-locked animation loops. All three:
 
@@ -1336,7 +1565,7 @@ result, err := stimuli.PresentMovingGabor(
 
 ---
 
-## 14. Gamma Correction and Luminance Linearity
+## 15. Gamma Correction and Luminance Linearity
 
 ### The gamma problem
 
@@ -1404,7 +1633,7 @@ With the flag set, the 7 luminance levels (10, 25, 50, 100, 150, 200, 255) are t
 
 ---
 
-## 15. Hardware Triggers and TTL Devices
+## 16. Hardware Triggers and TTL Devices
 
 EEG and MEG recordings require a synchronisation signal — a short TTL pulse sent at the exact moment a stimulus is presented — so that electrophysiological data can be time-locked to experimental events. The `triggers` package provides this, along with the ability to read TTL inputs from response hardware such as fiber-optic response pads.
 
@@ -1493,7 +1722,7 @@ resp, _ := rd.WaitResponse(ctx)
 
 ---
 
-## 16. Display Compositor Bypass {#compositor-bypass}
+## 17. Display Compositor Bypass {#compositor-bypass}
 
 A compositing window manager (compositor) intercepts every application
 frame and blends it with other on-screen elements before sending the
@@ -1542,7 +1771,7 @@ These platform differences can be quantified empirically with the
 
 ---
 
-## 17. Variable Refresh Rate (VRR) Stimulus Presentation {#vrr}
+## 18. Variable Refresh Rate (VRR) Stimulus Presentation {#vrr}
 
 Standard displays refresh at a fixed rate (e.g., 60 Hz), which quantises
 every stimulus duration to multiples of the frame period (16.67 ms at
@@ -1594,7 +1823,7 @@ rather than being uniformly small, providing an unambiguous diagnostic.
 
 ---
 
-## 18. Putting It All Together
+## 19. Putting It All Together
 
 Here is a skeleton that illustrates how the concepts compose in a realistic experiment:
 
