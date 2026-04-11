@@ -571,7 +571,7 @@ func (e *Experiment) Initialize() error {
 		if e.Data != nil {
 			e.Data.WriteEndTime()
 			if err := e.Data.Save(); err == nil {
-				log.Printf("Results saved in %s", e.Data.FullPath)
+				log.Printf("Results saved in %s (info: %s)", e.Data.FullPath, e.Data.InfoFile.FullPath)
 			}
 		}
 		// Give pumpFrame up to 3 s to detect the flag so defer End() can run

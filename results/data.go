@@ -54,12 +54,30 @@ func (o *OutputFile) WriteComment(comment string) {
 // DataFile represents an experiment data file in CSV‑like format.
 // It prepends subject ID to each row and supports quoted fields when they
 // contain delimiters or quotes.
+//
+// Metadata (experiment info, system info, display info, participant info) is
+// written to a companion *-info.txt file with the same basename, keeping the
+// CSV free of comment lines so that spreadsheet programs can import it directly.
 type DataFile struct {
 	*OutputFile
+	InfoFile      *OutputFile // receives all WriteComment / metadata lines
 	Delimiter     string
 	SubjectID     int
 	VariableNames []string
 	StartTime     time.Time
+}
+
+// WriteComment writes a comment line to the companion info file (not the CSV).
+func (df *DataFile) WriteComment(comment string) {
+	df.InfoFile.WriteLine(df.InfoFile.CommentChar + " " + comment)
+}
+
+// Save flushes both the CSV file and the companion info file to disk.
+func (df *DataFile) Save() error {
+	if err := df.InfoFile.Save(); err != nil {
+		return err
+	}
+	return df.OutputFile.Save()
 }
 
 // NewDataFile creates a new DataFile in the given directory (or in the
@@ -76,9 +94,15 @@ func NewDataFile(directory string, subjectID int, expName string) (*DataFile, er
 	}
 
 	now := time.Now()
-	filename := fmt.Sprintf("%s_sub-%03d_date-%s-%s.csv", expName, subjectID, now.Format("20060102"), now.Format("1504"))
+	basename := fmt.Sprintf("%s_sub-%03d_date-%s-%s", expName, subjectID, now.Format("20060102"), now.Format("1504"))
+	filename := basename + ".csv"
+	infoFilename := basename + "-info.txt"
 
 	base, err := NewOutputFile(directory, filename)
+	if err != nil {
+		return nil, err
+	}
+	infoFile, err := NewOutputFile(directory, infoFilename)
 	if err != nil {
 		return nil, err
 	}
@@ -86,6 +110,7 @@ func NewDataFile(directory string, subjectID int, expName string) (*DataFile, er
 	start := time.Now()
 	df := &DataFile{
 		OutputFile:    base,
+		InfoFile:      infoFile,
 		Delimiter:     DataFileDelimiter,
 		SubjectID:     subjectID,
 		VariableNames: make([]string, 0),

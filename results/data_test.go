@@ -84,24 +84,63 @@ func TestOutputBuffer(t *testing.T) {
 	}
 }
 
-// TestNewDataFileDefaultDir verifies that NewDataFile correctly defaults to the
-// user's home directory if no directory is provided.
+// TestNewDataFileDefaultDir verifies that NewDataFile correctly creates both the
+// CSV file and the companion info file, with the expected filename patterns.
 func TestNewDataFileDefaultDir(t *testing.T) {
-	// We don't want to actually create files in $HOME during tests,
-	// so we check if the path generation logic is sane.
-
-	// Test with explicit dir
-	df, err := NewDataFile("my_results", 1, "test_exp")
+	tmpDir, err := os.MkdirTemp("", "goxpy_newfile_test")
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer os.RemoveAll("my_results") // Cleanup
+	defer os.RemoveAll(tmpDir)
 
-	if df.Directory != "my_results" {
-		t.Errorf("Expected directory 'my_results', got %q", df.Directory)
+	df, err := NewDataFile(tmpDir, 1, "test_exp")
+	if err != nil {
+		t.Fatal(err)
 	}
 
+	// Directory and CSV filename format.
+	if df.Directory != tmpDir {
+		t.Errorf("Expected directory %q, got %q", tmpDir, df.Directory)
+	}
 	if !strings.HasPrefix(df.Filename, "test_exp_sub-001_date-") {
-		t.Errorf("Unexpected filename format: %q", df.Filename)
+		t.Errorf("Unexpected CSV filename format: %q", df.Filename)
+	}
+	if !strings.HasSuffix(df.Filename, ".csv") {
+		t.Errorf("CSV filename should end with .csv, got %q", df.Filename)
+	}
+
+	// Info file has the same basename with -info.txt suffix.
+	expectedInfoSuffix := "-info.txt"
+	if !strings.HasSuffix(df.InfoFile.Filename, expectedInfoSuffix) {
+		t.Errorf("Info filename should end with %q, got %q", expectedInfoSuffix, df.InfoFile.Filename)
+	}
+	csvBase := strings.TrimSuffix(df.Filename, ".csv")
+	infoBase := strings.TrimSuffix(df.InfoFile.Filename, "-info.txt")
+	if csvBase != infoBase {
+		t.Errorf("CSV base %q and info base %q should be equal", csvBase, infoBase)
+	}
+
+	// Flush and check: CSV must contain no comment lines; info file must have them.
+	if err := df.Save(); err != nil {
+		t.Fatal(err)
+	}
+
+	csvContent, err := os.ReadFile(df.FullPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(string(csvContent), "#") {
+		t.Errorf("CSV file should not contain comment lines, got:\n%s", csvContent)
+	}
+
+	infoContent, err := os.ReadFile(df.InfoFile.FullPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(infoContent), "# ") {
+		t.Errorf("Info file should contain comment lines, got:\n%s", infoContent)
+	}
+	if !strings.Contains(string(infoContent), "EXPERIMENT INFO") {
+		t.Errorf("Info file should contain EXPERIMENT INFO section, got:\n%s", infoContent)
 	}
 }

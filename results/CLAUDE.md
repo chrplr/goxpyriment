@@ -3,7 +3,7 @@
 
 # results package
 
-Experiment data file and buffered output file. Writes trial data to a `.csv` file with `#`-prefixed metadata comments.
+Experiment data file and buffered output file. Writes trial data to a plain `.csv` file (no comment lines) alongside a companion `-info.txt` file that holds all session metadata.
 
 ## DataFile
 
@@ -11,7 +11,12 @@ Experiment data file and buffered output file. Writes trial data to a `.csv` fil
 df, err := results.NewDataFile(directory, subjectID, expName)
 ```
 
-Creates `<directory>/<expName>_<subjectID>_<timestamp>.csv`. Directory is created if absent. A metadata header is written automatically with start time, hostname, OS, and framework version.
+Creates two files in `<directory>`:
+
+- `<expName>_sub-<NNN>_date-<YYYYMMDD>-<HHMM>.csv` — pure CSV data, directly importable by Excel and R.
+- `<expName>_sub-<NNN>_date-<YYYYMMDD>-<HHMM>-info.txt` — `#`-prefixed metadata (start time, hostname, OS, framework version, system info, display info, participant info).
+
+The directory is created if absent.
 
 In normal experiments, access via `exp.Data` — do not create a `DataFile` directly.
 
@@ -19,12 +24,22 @@ In normal experiments, access via `exp.Data` — do not create a `DataFile` dire
 |---|---|
 | `AddVariableNames(names []string)` | Write CSV header row (`subject_id` is always prepended automatically — do not include it) |
 | `Add(...interface{})` | Append a data row — numbers/bools bare, all other fields always quoted (RFC 4180) |
-| `WriteDisplayInfo(apparatus.DisplayInfo)` | Write display metadata as comment block |
-| `WriteParticipantInfo(map[string]string)` | Write participant metadata (keys sorted) |
-| `WriteEndTime()` | Write session end time and duration |
-| `Save()` | Flush buffer to disk |
+| `WriteDisplayInfo(apparatus.DisplayInfo)` | Write display metadata to the info file |
+| `WriteParticipantInfo(map[string]string)` | Write participant metadata to the info file (keys sorted) |
+| `WriteEndTime()` | Write session end time and duration to the info file |
+| `Save()` | Flush both the CSV and the info file to disk |
 
-### Output format
+### CSV format
+
+```
+subject_id,condition,response,rt_ms,correct
+3,"congruent","F",412,true
+3,"incongruent","J",538,false
+```
+
+Numbers and booleans are unquoted; strings are always double-quoted with internal `"` doubled.
+
+### Info file format
 
 ```
 # --EXPERIMENT INFO
@@ -32,13 +47,15 @@ In normal experiments, access via `exp.Data` — do not create a `DataFile` dire
 # e start_time: 20260330-142011
 # --SUBJECT INFO
 # s id: 3
-# --VARIABLES
-subject_id,condition,response,rt_ms,correct
-3,"congruent","F",412,true
-3,"incongruent","J",538,false
+# --SYSTEM INFO
+# sys sdl_version: 3.2.10
+# ...
+# --DISPLAY INFO
+# d refresh_rate_hz: 60.0000
+# ...
+# e end_time: 20260330-143012.000
+# e duration: 00:10:01.000
 ```
-
-Numbers and booleans are unquoted; strings are always double-quoted with internal `"` doubled.
 
 ### Constants
 
@@ -51,7 +68,7 @@ Numbers and booleans are unquoted; strings are always double-quoted with interna
 
 ## OutputFile
 
-Lower-level buffered text file, used as the base of `DataFile`.
+Lower-level buffered text file, used as the base of `DataFile` (and its `InfoFile`).
 
 ```go
 f, err := results.NewOutputFile(directory, filename)
@@ -61,14 +78,14 @@ f.WriteComment(text)    // "#" + text + EOL
 f.Save()                // flush to disk
 ```
 
-`Save()` is defined in `output_file_desktop.go` (build tag: non-wasm). A no-op stub exists in `output_file_wasm.go` for WebAssembly targets.
+`Save()` is defined in `output_file_desktop.go` (build tag: non-wasm). A WASM stub triggers a browser download in `output_file_wasm.go`.
 
 ## Version
 
-`results.Version` is a `string` var set from build info at init time — the git tag when the library is used as a versioned module dependency, `"(devel)"` when built from source via `go.work`. Written automatically to the `.csv` metadata header.
+`results.Version` is a `string` var set from build info at init time — the git tag when the library is used as a versioned module dependency, `"(devel)"` when built from source via `go.work`. Written automatically to the info file.
 
 ## Key conventions
 
 - Call `exp.Data.Save()` after each block for long experiments — the buffer is not flushed automatically until `exp.End()`.
 - `DataFile.Add` prepends `subject_id` automatically; do not include it in `AddVariableNames`.
-- Always call `AddVariableNames` before the first `Add` so column names appear at the top of the file.
+- Always call `AddVariableNames` before the first `Add` so column names appear at the top of the CSV.

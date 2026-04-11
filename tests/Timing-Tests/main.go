@@ -106,6 +106,7 @@ import (
 	"github.com/chrplr/goxpyriment/clock"
 	"github.com/chrplr/goxpyriment/control"
 	"github.com/chrplr/goxpyriment/stimuli"
+	"github.com/chrplr/goxpyriment/sysinfo"
 	"github.com/chrplr/goxpyriment/tests/internal/timingstats"
 	"github.com/chrplr/goxpyriment/triggers"
 )
@@ -136,6 +137,7 @@ var (
 	fVRRMaxMs       = flag.Int("vrr-max-ms", 50, "Maximum stimulus duration to sweep in VRR test (ms, in 1 ms steps) [vrr test]")
 	fWindowed       = flag.Bool("w", false, "Windowed mode (1024×768 window instead of fullscreen)")
 	fDisplay        = flag.Int("d", -1, "Display index: monitor where the window/fullscreen will open (-1 = primary)")
+	fSysInfo        = flag.Bool("sysinfo", false, "Print system information and exit")
 )
 
 // ── Screen fill helper ─────────────────────────────────────────────────────────
@@ -1197,6 +1199,10 @@ func main() {
 	// audio device inside NewExperimentFromFlags. flag.Parse() is idempotent;
 	// NewExperimentFromFlags will call it again harmlessly.
 	flag.Parse()
+	if *fSysInfo {
+		sysinfo.Collect().Print()
+		return
+	}
 	if *fAudioFrames > 0 {
 		control.SetAudioSampleFrames(*fAudioFrames)
 		fmt.Printf("audio: requesting %d sample frames hardware buffer\n", *fAudioFrames)
