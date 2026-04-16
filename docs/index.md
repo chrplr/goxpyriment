@@ -112,3 +112,8 @@ Please cite as:
 
 
 [Christophe Pallier](http://github.com/chrplr), 2026.
+
+
+---
+
+![](icon_512.png)

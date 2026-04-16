@@ -19,8 +19,8 @@ If you've ever spent three hours fixing a `conda` environment or `pip` conflict 
 
 1. **Zero-Dependency Deployment**: When you build a Go experiment, it produces a **standalone executable program** . Drop it on any lab computer and it just works — no Python and or Library Installation required.
 2. **Timing Precision**: Go is a compiled language with a very efficient runtime. `goxpyriment` runs the stimulus loop VSYNC-locked with GC pauses disabled, giving you sub-millisecond frame jitter on typical hardware.
-3. **AI-friendly API**: The linear, consistent API makes it very well suited to "vibe-coding" — describe your paradigm in plain language to Claude, Gemini, or ChatGPT and the generated code is usually 90 % ready to run immediately.
-
+3. **AI-friendly API**: The linear, consistent API makes it very well suited to "vibe-coding" — describe your paradigm in plain language to Claude Code or Gemini CLI  and the generated code is usually 90 % ready to run immediately.
+4. Go is simple (see what Gemini has to say about [Go. vs. Python](gemini-about-go-vs-python.md))
 ---
 
 ## Mapping Concepts: Python to Go
@@ -321,6 +321,13 @@ Key observations:
 - `GetKeyEventTS` returns the SDL3 event timestamp (not a polling delta), so subtracting any previously recorded `ShowTS` onset gives a physically meaningful RT.
 - Both timestamps are in SDL nanoseconds (divide by `1e6` for milliseconds). Storing raw nanoseconds in the data file and converting offline is the recommended practice.
 - `GetPressEventTS` provides the same capability for mouse responses.
+
+---
+
+5. Test AI Coding
+
+1. Take the pdf of a scientific paper about a psychology experiment and ask Gemini or CLaude to read it and to generate a detailed description (stimuli, design, timings) to give to a coder to replicate it. Save the answer in a `description.md` file.
+2. Open Gemini or Claude (command line tool), and asked it to implement the experiment detailed in `description.md`, using the goxperiment library (provide the path of your local clone of the repository) taking inspiration from the examples provided in the `examples/` folder.
 
 ---
 

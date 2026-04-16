@@ -11,6 +11,7 @@
   firstnumber=1,
   numberfirstline=true
 }
+\usepackage{tablefootnote}
 \usepackage{xcolor}
 \usepackage{array}
 \usepackage{calc} % for calculating minipage widths
@@ -37,6 +38,8 @@
 
 \title{Goxpyriment: A Go Framework for Behavioral and Cognitive Experiments}
 \shorttitle{Let's go experiment!}
+\rightheader{Let's go experiment!}
+\leftheader{Let's go experiment!}
 
 \authorsnames{Christophe Pallier, Julie Bonnaire, Marie-France Fourcade}
 \authorsaffiliations{Cognitive Neuroimaging Unit, CNRS INSERM CEA}
@@ -72,7 +75,7 @@
   set of over forty psychology experiments implemented in
   \texttt{goxpyriment} are provided that promote not only learning by
   humans but also improve the ability of modern AI-assisted coding
-  tools to program experiments. The framework is released under the
+  tools to help program experiments. The framework is released under the
   GNU General Public License v3 and is freely available at
   \url{https://github.com/chrplr/goxpyriment}.}
 
@@ -147,7 +150,7 @@ C/C++ helper engines; and (3) a linear, straightforward API that is well
 suited for modern AI-assisted coding workflows.
 
 {\small
-\lstinputlisting[float=*t, caption={Example of a Parity Decision experiment}, basicstyle=\ttfamily]{parity-decision.go}
+\lstinputlisting[float=*t, caption={Example of a Parity Decision experiment}, lineskip=-5pt, basicstyle=\small\ttfamily]{parity-decision.go}
 \par}
 
 \section{Framework Design}\label{framework-design}
@@ -177,15 +180,25 @@ IDs, select experimental conditions from discrete menus, and toggle
 settings like fullscreen mode. These values are automatically
 recorded in the output data file header.
 
-\begin{figure*}[t]
+\begin{figure}[t]
 \centering
-\begin{tabular}{cc}
-  \includegraphics[width=0.5\textwidth,valign=t]{UI1.png} & \includegraphics[width=0.5\textwidth,valign=t]{UI2.png} \\
+\begin{tabular}{l}
+  \textbf{A.}\\
+  \includegraphics[width=0.5\textwidth,valign=t]{UI1.png} \\[.5cm]
+  \textbf{B.}\\
+  \includegraphics[width=0.5\textwidth,valign=t]{UI2.png} \\
 \end{tabular}
-\caption{Examples of \texttt{GetParticipantInfo} dialogs for the \emph{Retinotopy} (left) and
-\emph{Number-Comparison} (right) paradigms provided in the examples accompanying the library. This UI makes it practical for the experimenter to choose among a small set of options without typing, which reduces setup errors when launching an experiment from a desktop shortcut or file manager. Note that which fields appear in the UI is configurable. It is also prossible to pass the information as arguments on the command-line and skip this UI.}
+\caption{Examples of \texttt{GetParticipantInfo} dialogs for
+  \emph{Retinotopy} (A.) and \emph{Number-Comparison} (B.), two paradigms
+  provided in the examples accompanying the library. These UIs makes it
+  practical for the experimenter to choose among a small set of
+  options without typing, which reduces setup errors when launching an
+  experiment from a desktop shortcut or file manager. Note that which
+  fields appear in the UI is configurable. It is also prossible to
+  pass the information as arguments on the command-line and skip these
+  UIs.}
 \label{fig:getinfo}
-\end{figure*}
+\end{figure}
 
 
 \subsection{Single-Binary Deployment (Zero Dependencies)}\label{single-binary-deployment}
@@ -245,11 +258,12 @@ original timestamp regardless of how much computation occurs between
 stimulus onset and response collection.  By comparing the response
 timestamp with the \texttt{Screen.FlipTS()} timestamp---which uses the
 same clock---reaction times can be measured with minimal jitter and no
-interpreter overhead. The big advantage of this approach is there
-there is no need to continusously pool the HID device, e.g. keyboard
-or mouse, to detect events with a good precision. Thuss, a complex
-sequence of stimuli can be programmed and all events will be available
-to process later, when needed.
+interpreter overhead (of course, potential hardware level lags at the
+level of the keyboard or mouse can still be present). The big
+advantage of this approach is there there is no need to continusously
+pool the HID device, e.g. keyboard or mouse, to detect events. Thus, a
+complex sequence of stimuli can be programmed and all events will be
+available to process later, when needed.
 
 \subsection{Triggers}
 
@@ -270,21 +284,79 @@ can be controlled via Go's \texttt{modbus} library
 
 \subsection{The Timing Verification Suite}\label{timing-verification}
 
+\begin{table*}[tb]
+  \caption{Results of timing tests performed on a Raspberry Pi 4
+    (Linux, arm64. The Timing-Tests program provided with goxpyriment
+    was used for stimulation. Four tests were ran with the following
+    parameters: 1) \textbf{frames} -frames-on 1 -frames-off 2 2)
+    \textbf{tones} -tone-ms 50 -iti-ms 450 3) \textbf{trigger}
+    -period-ms 100 -duty 10; 4) \textbf{av (lags)}  simultaneously
+    sends a TTL, a visual and an auditory stimulus.}
+\label{timings}
+\footnotesize
+  \begin{tabular}{lrrrrrrrrrrrr}
+\hline \hline \\
+    &  N &    Min &  P5 &   P25 &  P50 &  P75 &  P95 &  Max &  Range & P95-P05 & Mean & SD \\
+    \cline{2-12} \\
+\multicolumn{11}{l}{\emph{Frames test:} Targets: Duration=16.6(+20), SOA=50} \\
+Duration$^1$ &  5000 & 36.8 & 37.2 & 37.5 & 37.5 & 37.8 & 38.0 & 38.2 & 1.5 &   0.8 &    37.6 & 0.23 \\
+SOA      &  4999 & 49.5 & 49.8 & 49.8 & 50.0 & 50.0 & 50.2 & 50.5 & 1.0 &   0.5 &    50.0 & 0.19 \\
+\\
+\multicolumn{11}{l}{\emph{Tones test:} Targets: Duration=50(+20), SOA=500ms} \\
+Duration$^1$ &   300 & 69.8 & 70.0 & 70.0 & 70.0 & 70.0 & 70.2 & 70.2 & 0.5 &   0.2 &     70.0 & 0.11 \\
+SOA      &   299 & 490.5 & 490.5 & 490.8 & 490.8 & 512.0 & 512.2 & 512.2 & 21.8 &  21.8  &  500.0 & 10.60 \\
+\\
+\multicolumn{11}{l}{\emph{Triggers test:} Targets: Duration=10, SOA=100ms}\\
+Duration & 601 & 9.8 & 10.2 & 10.2 & 10.2 & 10.2 & 10.5 & 10.5 &  0.8 &   0.2 &     10.3 & 0.11 \\
+SOA      & 600 & 99.8 & 100.0 & 100.0 & 100.0 & 100.0 & 100.0 & 100.2 & 0.5 &   0.0 &     100.0 & 0.06 \\
+\\
+    \multicolumn{11}{l}{\emph{Lags:} Target: 0ms}\\
+    TTL->Opto &  600 & 15.0 & 31.2 & 31.5 & 31.5 & 31.8 & 32.0 & 32.2 & 17.2 &  0.8 &     31.4 & 1.89\\
+    TTL->Audio &  600 & 103.0 & 107.0 & 111.5 & 116.8 & 122.0 & 126.3 & 130.0 & 27.0 &  19.3 &  116.8 &  6.26\\
+\hline
+  \end{tabular}
+\\
+  {\footnotesize{$^1$ Because smoothing was set on the
+    `Opto' and `Mic' detectors, 20ms must be subtracted from
+    these durations, as per the BBTK User Manual.}}
+\end{table*}
+
 The repository includes a dedicated timing verification suite
 (\texttt{tests/Timing-Tests/}) that allows researchers to characterize
-their hardware's performance. The suite includes tests for measuring
-frame-interval jitter, verifying single-frame flash reliability via
-photodiode, and calculating audio-visual SOA latencies. Other tests
-measure hardware-buffer pipeline latency for audio and characterize
-the USB-serial jitter of trigger devices. A special folder in the
-goxpyriment github repository (\texttt{performance-reports}) is
-intended for users to share the results of tests on their own
-hardware.
+their hardware's performance with external devices. The suite includes
+tests for measuring frame-interval jitter, verifying single-frame
+flash reliability via photodiode, and calculating audio-visual SOA
+latencies. Other tests measure hardware-buffer pipeline latency for
+audio and characterize the USB-serial jitter of trigger devices.
 
-%\section{Timing Results}\label{timing-results}
-
-%\input timing-tests.tex
-
+Table~\ref{timings} presents results of some of these tests running on
+a modest Raspberry PI 4 with 2Gb of RAM.  The Raspberry displayed
+through HDMI on a Dell Monitor 1905FP, set at a resolution of
+1280$\times$1024 and a refresh rate of 60Hz. The only performance
+tweak applied was to set the timer pooling for usb\_serial to the
+minimum possible value. A Black Box Toolkit version 3
+\parencite{plant_2004}, controlled by our software
+\parencite{Pallier_bbtkv3}, captured input events on the `Opto1',
+`Mic1' and `TTLin1' lines. For the frames test, where the Raspberry
+cycled through sequences of 1 frame-on and 2 frame-off for 5 minutes,
+the measurements show that not a single frame was skipped. The tones
+test, were 50ms tones were played at 2Hz, the target tone duration was
+respected, but the SOA varied between 490 to 512 (an histogram, not
+shown here, reveals a bimodal distribution with duration of either 490
+or 510ms, something that needs further investigatation). The third
+test, sending TTL triggers through a DLP-IO8-G device, reveals a
+stable performance (duration and SOA less than a 1ms away from their
+targets). The last two lines of Table~\ref{timings} reports the delays
+(lags) betwen the TTL signal and the video signal, and between the TTL
+and aduio stimulus. These measures reveal a lag of 32ms, corresponding
+precisely to 2 frames at 60Hz, for the visual stimulus, and a
+lag of 100ms for the audio audio stimulus. As these lags are relatively
+stable (with standard-deviations of 2ms and 6ms respectively), a user
+should compensate for them in an actual experiment. These lags will
+vary with the video and audio hardware and software (drivers \&
+servers) and must be assessed for each configuration. A special folder
+in the goxpyriment github repository (\texttt{performance-reports}) is
+dedicated for users to share the results of timing tests.
 
 \section{AI-Assisted Coding}\label{ai-assisted}
 
@@ -292,8 +364,9 @@ hardware.
 
 Go's design emphasizes simplicity and predictability. Because the
 language has few synonymous constructs, it is particularly well-suited
-for use with AI-powered coding assistants. The framework's
-AI-friendliness also comes from other primary technical merits:
+for use with AI-powered coding assistants, for example Claude Code or
+Gemini cli. The framework's AI-friendliness also comes from other
+primary technical merits:
 
 \textbf{Type Safety}. Unlike dynamic languages where errors like
 misspelled method names or invalid argument types (e.g., supplying a
@@ -314,6 +387,11 @@ experiments is incorrect file paths for stimuli. Using Go's
 \texttt{//go:embed} directive, an AI can generate code that bundles
 assets directly into the binary, eliminating path errors caused by
 mismatched directory structures.
+
+It would be worth conducting a study examining the AI coders abilities
+to program psychology experiments with different frameworks and
+programming langages, but to perform such a study scientifically goes
+largely beyond the scope of the present paper.
 
 \subsection{A Cautionary Note}\label{ai-caution}
 
@@ -400,14 +478,11 @@ as both functional templates and a gallery of the framework's
 capabilities.
 
 
-
-
 \section{Limitations and Future Directions}\label{limitations-and-future-directions}
 
-
-\textbf{Video synchronization.} The video playback functions currently
+\textbf{Video playback.} The video playback functions currently
 do not expose frame-accurate timestamps or hardware trigger
-outputs. Adding precise onset timestamps and trigger support to video
+outputs. Adding precise onset timestamps and trigger support during video
 playback is our highest priority for the next release, as these
 capabilities are required for EEG and fMRI paradigms that include
 video stimuli.
@@ -422,7 +497,7 @@ audio and vido, these features could be implemented in the future.
 \textbf{Online deployment.} \texttt{goxpyriment} does not currently
 support web-based deployment. In theory, this should be possible as Go
 can compile to web assembly (wasm) and SDL3 supports EMSCRIPTEN
-(\url{https://emscripten.org/}). However, when attempted it, we realized that
+(\url{https://emscripten.org/}). However, when we attempted it, we realized that
 the various tools involved are not yet mature enough.
 
 \textbf{Language barrier.}  Researchers who are unfamiliar with Go,
@@ -451,10 +526,8 @@ current editorial norms \parencite{natureportfolio2023,
 Contributions rather than as a named author, because authorship
 requires the capacity to take accountability for the work.  Christophe
 Pallier takes full responsibility for all content. \textbf{Julie
-  Bonnaire} performed timing tests and drafted a report available at
-\url{https://github.com/chrplr/goxpyriment/tree/main/performance-reports}.
-\textbf{Marie-France Fourcade} designed the system used to measure
-visual presentation delays in some of these tests.
+  Bonnaire} and \textbf{Marie-France Fourcade} helped set up the timing
+measurment system and performed tests.
 
 \section{Open Practices Statement}\label{open-practices-statement}
 
