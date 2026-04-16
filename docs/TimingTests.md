@@ -643,6 +643,8 @@ For the most accurate RT measurement:
 
 ---
 
+<!--
+
 ## Interpreting results: what is "good"?
 
 | Metric | Excellent | Acceptable | Problematic |
@@ -655,6 +657,8 @@ For the most accurate RT measurement:
 | VRR duration error SD (`vrr`) | < 0.1 ms | < 0.5 ms | > 1 ms (or periodic → no VRR) |
 | Trigger jitter SD (`trigger`) | < 0.3 ms | < 1 ms | > 2 ms |
 | RT SD (`rt`) | < 3 ms | < 10 ms | > 20 ms |
+
+-->
 
 ---
 
