@@ -56,5 +56,6 @@ func main() {
 		return control.EndLoop
 	})
 
-	exp.ShowEndMessage("Experiment complete. Thank you!\n\nPress any key to exit.")
+	exp.ShowEndMessage("Experiment complete. Thank you!\n\n
+	                    Press any key to exit.")
 }

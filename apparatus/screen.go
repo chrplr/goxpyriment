@@ -143,9 +143,36 @@ func NewScreen(title string, width, height int, bgColor sdl.Color, fullscreen bo
 		// KMS/DRM: SetFullscreen is asynchronous there, so window.Size()
 		// immediately after still returns the pre-fullscreen dimensions.
 		// Including WINDOW_FULLSCREEN at creation time avoids this race.
-		window, err := sdl.CreateWindow(title, 0, 0, sdl.WINDOW_HIGH_PIXEL_DENSITY|sdl.WINDOW_FULLSCREEN)
-		if err != nil {
-			return nil, err
+		//
+		// For secondary displays, embed the target display's position in the
+		// creation properties instead of calling SetPosition after the window
+		// is already fullscreen. Post-creation SetPosition on a fullscreen
+		// window can crash the display manager on some compositors (KDE/GNOME
+		// on X11). The windowed path uses the same property-at-creation approach.
+		var window *sdl.Window
+		var werr error
+		if displayIndex != 0 {
+			if bounds, berr := target.Bounds(); berr == nil && bounds != nil {
+				props, perr := sdl.NewProperties(map[string]any{
+					"SDL.window.create.title":              title,
+					"SDL.window.create.x":                  bounds.X,
+					"SDL.window.create.y":                  bounds.Y,
+					"SDL.window.create.width":              bounds.W,
+					"SDL.window.create.height":             bounds.H,
+					"SDL.window.create.fullscreen":         true,
+					"SDL.window.create.high_pixel_density": true,
+				})
+				if perr == nil {
+					window, werr = sdl.CreateWindowWithProperties(props)
+					props.Destroy()
+				}
+			}
+		}
+		if window == nil {
+			window, werr = sdl.CreateWindow(title, 0, 0, sdl.WINDOW_HIGH_PIXEL_DENSITY|sdl.WINDOW_FULLSCREEN)
+		}
+		if werr != nil {
+			return nil, werr
 		}
 
 		// Block until the window reaches its final state (fullscreen mode
@@ -154,12 +181,6 @@ func NewScreen(title string, width, height int, bgColor sdl.Color, fullscreen bo
 		if err := window.Sync(); err != nil {
 			window.Destroy()
 			return nil, fmt.Errorf("SyncWindow: %w", err)
-		}
-
-		if displayIndex != 0 {
-			if bounds, err := target.Bounds(); err == nil && bounds != nil {
-				window.SetPosition(bounds.X, bounds.Y)
-			}
 		}
 
 		// On Linux, prefer Vulkan over OpenGL. With NVIDIA proprietary drivers
