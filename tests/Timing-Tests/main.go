@@ -220,37 +220,17 @@ func runFrames(exp *control.Experiment, trig triggers.OutputTTLDevice) error {
 
 		for cycle := 0; cycle < *fCycles; cycle++ {
 			// ── Bright phase ──────────────────────────────────────────────────
-			var tBrightBefore, tBrightStart float64
-			for f := 0; f < framesOn; f++ {
-				if f == 0 {
-					// Send trigger just before the flip so it precedes the onset.
-					_ = trig.SetHigh(*fTriggerPin)
-				}
-				tB, tA := fillGray(exp, byte(*fLevelB))
-				if f == 0 {
-					tBrightBefore, tBrightStart = tB, tA
-					go func() {
-						time.Sleep(time.Duration(*fTriggerMs) * time.Millisecond)
-						_ = trig.SetLow(*fTriggerPin)
-					}()
-				}
-				state := exp.PollEvents(nil)
-				if state.QuitRequested {
-					return control.EndLoop
-				}
-			}
+			tBrightBefore, tBrightStart := fillGray(exp, byte(*fLevelB))
+			go triggers.FireTrigger(trig, *fTriggerPin, time.Duration(*fTriggerMs)*time.Millisecond)
+			_, _ = exp.Screen.WaitFrames(framesOn - 1)
 
 			// ── Dark phase ────────────────────────────────────────────────────
-			var tDarkStart float64
-			for f := 0; f < framesOff; f++ {
-				_, tA := fillGray(exp, byte(*fLevelA))
-				if f == 0 {
-					tDarkStart = tA
-				}
-				state := exp.PollEvents(nil)
-				if state.QuitRequested {
-					return control.EndLoop
-				}
+			_, tDarkStart := fillGray(exp, byte(*fLevelA))
+			_, _ = exp.Screen.WaitFrames(framesOff - 1)
+
+			state := exp.PollEvents(nil)
+			if state.QuitRequested {
+				return control.EndLoop
 			}
 
 			// ── Record measurements ───────────────────────────────────────────
@@ -323,19 +303,11 @@ func runAV(exp *control.Experiment, trig triggers.OutputTTLDevice) error {
 				tAudioQ = float64(clock.GetTimeNS()) / 1e6
 				_ = tone.Play()
 				time.Sleep(soaDur)
-				_ = trig.SetHigh(*fTriggerPin)
 				tVisB, tVisA = fillGray(exp, byte(*fLevelB))
-				go func() {
-					time.Sleep(time.Duration(*fTriggerMs) * time.Millisecond)
-					_ = trig.SetLow(*fTriggerPin)
-				}()
+				go triggers.FireTrigger(trig, *fTriggerPin, time.Duration(*fTriggerMs)*time.Millisecond)
 			} else {
-				_ = trig.SetHigh(*fTriggerPin)
 				tVisB, tVisA = fillGray(exp, byte(*fLevelB))
-				go func() {
-					time.Sleep(time.Duration(*fTriggerMs) * time.Millisecond)
-					_ = trig.SetLow(*fTriggerPin)
-				}()
+				go triggers.FireTrigger(trig, *fTriggerPin, time.Duration(*fTriggerMs)*time.Millisecond)
 				time.Sleep(soaDur)
 				tAudioQ = float64(clock.GetTimeNS()) / 1e6
 				_ = tone.Play()
@@ -697,22 +669,15 @@ func runRT(exp *control.Experiment, trig triggers.OutputTTLDevice) error {
 			exp.Screen.Update()
 			time.Sleep(itiDur)
 
-			// Optional trigger pulse just before the onset flip.
-			_, isNull := trig.(triggers.NullOutputTTLDevice)
-			if !isNull {
-				_ = trig.SetHigh(*fTriggerPin)
-			}
-
 			// Flash: draw white screen and flip, capturing SDL nanosecond onset.
 			exp.Screen.Renderer.SetDrawColor(255, 255, 255, 255)
 			exp.Screen.Renderer.Clear()
 			onsetNS, _ := exp.Screen.FlipTS()
 
+			// Trigger pulse after VSYNC: pixels are now on screen.
+			_, isNull := trig.(triggers.NullOutputTTLDevice)
 			if !isNull {
-				go func() {
-					time.Sleep(time.Duration(*fTriggerMs) * time.Millisecond)
-					_ = trig.SetLow(*fTriggerPin)
-				}()
+				go triggers.FireTrigger(trig, *fTriggerPin, time.Duration(*fTriggerMs)*time.Millisecond)
 			}
 
 			// Wait for keypress — returns SDL event timestamp (nanoseconds).
@@ -863,10 +828,6 @@ func runStream(exp *control.Experiment, trig triggers.OutputTTLDevice) error {
 
 		for elem := 0; elem < n; elem++ {
 			// ── ON phase ──────────────────────────────────────────────────────
-			if !isNull {
-				_ = trig.SetHigh(*fTriggerPin)
-			}
-
 			var onsetNS uint64
 			var tOnsetMs float64
 
@@ -877,16 +838,12 @@ func runStream(exp *control.Experiment, trig triggers.OutputTTLDevice) error {
 					ns, _ := exp.Screen.FlipTS()
 					onsetNS = ns
 					tOnsetMs = float64(clock.GetTimeNS())/1e6 - streamStartMs
+					if !isNull {
+						go triggers.FireTrigger(trig, *fTriggerPin, trigDur)
+					}
 				} else {
 					exp.Screen.Update()
 				}
-			}
-
-			if !isNull {
-				go func() {
-					time.Sleep(trigDur)
-					_ = trig.SetLow(*fTriggerPin)
-				}()
 			}
 
 			// ── OFF phase (ISI) ───────────────────────────────────────────────

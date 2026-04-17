@@ -114,11 +114,11 @@ Legacy names (`jitter`, `drain`, `square`, `sound`, `audio`) still work as alias
 
 ## Output files
 
-Each run writes a `.csv` file to `~/goxpy_data/` with `#`-prefixed metadata headers:
+Each run writes a `.csv` file to `~/goxpy_data/`.
 
 ```python
 import pandas as pd
-df = pd.read_csv("~/goxpy_data/Timing-Tests_000_*.csv", comment="#")
+df = pd.read_csv("~/goxpy_data/Timing-Tests_000_*.csv")
 ```
 
 ---

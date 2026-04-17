@@ -73,6 +73,35 @@ type InputTTLDevice interface {
 	Close() error
 }
 
+// FireTrigger pulses line HIGH for dur then LOW, silently discarding errors.
+// It has no return value so it can be launched directly as a goroutine
+// immediately after a VSYNC flip, keeping the frame loop free of blocking
+// serial I/O:
+//
+//	go triggers.FireTrigger(trig, pin, 5*time.Millisecond)
+//
+// The pulse duration is controlled by precisionSleep, which busy-spins the
+// last 500 µs to eliminate OS scheduling overshoot from time.Sleep alone.
+func FireTrigger(d OutputTTLDevice, line int, dur time.Duration) {
+	_ = d.SetHigh(line)
+	precisionSleep(dur)
+	_ = d.SetLow(line)
+}
+
+// precisionSleep sleeps for approximately dur with sub-millisecond accuracy.
+// It delegates most of the wait to time.Sleep then busy-spins the final 500 µs
+// to absorb OS scheduling jitter, which can otherwise cause time.Sleep to
+// overshoot by several milliseconds on a loaded system.
+func precisionSleep(dur time.Duration) {
+	deadline := time.Now().Add(dur)
+	if dur > 500*time.Microsecond {
+		time.Sleep(dur - 500*time.Microsecond)
+	}
+	for time.Now().Before(deadline) {
+		// busy-spin
+	}
+}
+
 // defaultPulse is a shared Pulse implementation built on SetHigh/SetLow.
 // Used by DLPIO8 and ParallelPort.
 func defaultPulse(d OutputTTLDevice, line int, dur time.Duration) error {

@@ -586,6 +586,43 @@ func (s *Screen) VSync() (int, error) {
 	return int(v), err
 }
 
+// WaitFrames blocks for exactly n VSYNC edges without modifying the displayed
+// content. It re-presents the current backbuffer n times, each call blocking
+// until the next vertical retrace, and returns the SDL nanosecond timestamp
+// captured after the final flip.
+//
+// Use this to hold a stimulus on screen for a precise number of frames without
+// redrawing it:
+//
+//	screen.Flip()          // show the stimulus
+//	screen.WaitFrames(5)   // keep it visible for 5 more frames
+func (s *Screen) WaitFrames(n int) (uint64, error) {
+	for i := 0; i < n; i++ {
+		if err := s.Renderer.Present(); err != nil {
+			return 0, err
+		}
+	}
+	return sdl.TicksNS(), nil
+}
+
+// RefreshRate returns the display's nominal refresh rate in Hz when VSync is
+// enabled, or 0 if VSync is disabled or the rate cannot be queried.
+//
+// The value comes from the OS display mode (same source as FrameDuration).
+// Use the frames sub-test in tests/Timing-Tests for a hardware-verified
+// measurement.
+func (s *Screen) RefreshRate() float32 {
+	v, err := s.VSync()
+	if err != nil || v == 0 {
+		return 0
+	}
+	id := sdl.GetDisplayForWindow(s.Window)
+	if mode, err := id.CurrentDisplayMode(); err == nil && mode != nil && mode.RefreshRate > 0 {
+		return mode.RefreshRate
+	}
+	return 0
+}
+
 // Destroy cleans up the window and renderer.
 func (s *Screen) Destroy() {
 	if s.Renderer != nil {
