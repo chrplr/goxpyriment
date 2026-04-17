@@ -6,6 +6,7 @@ package control
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"os"
 	"os/signal"
@@ -475,6 +476,11 @@ func (e *Experiment) Initialize() error {
 	// which apparatus.NewScreen handles by using native resolution and high pixel density.
 	if e.WindowWidth == 0 && e.WindowHeight == 0 {
 		e.Fullscreen = true
+	}
+
+	// Apply audio buffer hint before opening the audio device.
+	if pendingAudioSampleFrames > 0 {
+		sdl.SetHint(sdl.HINT_AUDIO_DEVICE_SAMPLE_FRAMES, fmt.Sprintf("%d", pendingAudioSampleFrames))
 	}
 
 	// Initialize Audio
