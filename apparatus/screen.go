@@ -586,18 +586,33 @@ func (s *Screen) VSync() (int, error) {
 	return int(v), err
 }
 
-// WaitFrames blocks for exactly n VSYNC edges without modifying the displayed
-// content. It re-presents the current backbuffer n times, each call blocking
-// until the next vertical retrace, and returns the SDL nanosecond timestamp
-// captured after the final flip.
+// WaitFrames holds the current solid-color display state for exactly n
+// additional VSYNC edges. Before each Present it re-clears the backbuffer
+// with the renderer's current draw color so that the double-buffer swap never
+// reveals a stale backbuffer. Returns the SDL nanosecond timestamp after the
+// final flip.
 //
-// Use this to hold a stimulus on screen for a precise number of frames without
-// redrawing it:
+// Intended use: after a solid-color Clear+Flip, hold that color for n more frames.
 //
-//	screen.Flip()          // show the stimulus
-//	screen.WaitFrames(5)   // keep it visible for 5 more frames
+//	r.SetDrawColor(255, 255, 255, 255)
+//	r.Clear()
+//	screen.Flip()           // frame 0: white appears
+//	screen.WaitFrames(5)    // frames 1–5: white stays on screen
+//
+// For stimuli composed of textures or multiple draw calls, use an explicit
+// per-frame redraw loop instead:
+//
+//	for i := 0; i < n; i++ {
+//	    drawMyStimulus(screen)
+//	    screen.Flip()
+//	}
 func (s *Screen) WaitFrames(n int) (uint64, error) {
 	for i := 0; i < n; i++ {
+		// Re-clear backbuffer with the current draw color so both buffers stay
+		// identical and the swap is visually a no-op.
+		if err := s.Renderer.Clear(); err != nil {
+			return 0, err
+		}
 		if err := s.Renderer.Present(); err != nil {
 			return 0, err
 		}

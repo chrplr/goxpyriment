@@ -218,15 +218,36 @@ func runFrames(exp *control.Experiment, trig triggers.OutputTTLDevice) error {
 		oldGC := debug.SetGCPercent(-1)
 		defer debug.SetGCPercent(oldGC)
 
+		r := exp.Screen.Renderer
+		bLevel, dLevel := byte(*fLevelB), byte(*fLevelA)
+
 		for cycle := 0; cycle < *fCycles; cycle++ {
 			// ── Bright phase ──────────────────────────────────────────────────
-			tBrightBefore, tBrightStart := fillGray(exp, byte(*fLevelB))
-			go triggers.FireTrigger(trig, *fTriggerPin, time.Duration(*fTriggerMs)*time.Millisecond)
-			_, _ = exp.Screen.WaitFrames(framesOn - 1)
+			// Re-draw each frame so double-buffering never shows the opposite color.
+			var tBrightBefore, tBrightStart float64
+			for f := 0; f < framesOn; f++ {
+				r.SetDrawColor(bLevel, bLevel, bLevel, 255)
+				r.Clear()
+				tB := float64(clock.GetTimeNS()) / 1e6
+				exp.Screen.Update()
+				tA := float64(clock.GetTimeNS()) / 1e6
+				if f == 0 {
+					tBrightBefore = tB
+					tBrightStart = tA
+					go triggers.FireTrigger(trig, *fTriggerPin, time.Duration(*fTriggerMs)*time.Millisecond)
+				}
+			}
 
 			// ── Dark phase ────────────────────────────────────────────────────
-			_, tDarkStart := fillGray(exp, byte(*fLevelA))
-			_, _ = exp.Screen.WaitFrames(framesOff - 1)
+			var tDarkStart float64
+			for f := 0; f < framesOff; f++ {
+				r.SetDrawColor(dLevel, dLevel, dLevel, 255)
+				r.Clear()
+				exp.Screen.Update()
+				if f == 0 {
+					tDarkStart = float64(clock.GetTimeNS()) / 1e6
+				}
+			}
 
 			state := exp.PollEvents(nil)
 			if state.QuitRequested {
@@ -305,6 +326,19 @@ func runAV(exp *control.Experiment, trig triggers.OutputTTLDevice) error {
 	audioFirst := *fSoaMs < 0
 
 	return exp.Run(func() error {
+		r := exp.Screen.Renderer
+		bLevel, dLevel := byte(*fLevelB), byte(*fLevelA)
+
+		// holdBright redraws bright into the backbuffer for each remaining frame
+		// so double-buffering never flips the opposite color into view.
+		holdBright := func(remaining int) {
+			for f := 0; f < remaining; f++ {
+				r.SetDrawColor(bLevel, bLevel, bLevel, 255)
+				r.Clear()
+				exp.Screen.Update()
+			}
+		}
+
 		for trial := 0; trial < *fCycles; trial++ {
 			var tVisB, tVisA, tAudioQ float64
 
@@ -314,19 +348,19 @@ func runAV(exp *control.Experiment, trig triggers.OutputTTLDevice) error {
 				time.Sleep(soaDur)
 				tVisB, tVisA = fillGray(exp, byte(*fLevelB))
 				go triggers.FireTrigger(trig, *fTriggerPin, time.Duration(*fTriggerMs)*time.Millisecond)
-				_, _ = exp.Screen.WaitFrames(framesOn - 1)
+				holdBright(framesOn - 1)
 			} else {
 				tVisB, tVisA = fillGray(exp, byte(*fLevelB))
 				go triggers.FireTrigger(trig, *fTriggerPin, time.Duration(*fTriggerMs)*time.Millisecond)
 				// Schedule audio at the requested SOA relative to visual onset;
-				// WaitFrames holds the bright screen for the remaining frames concurrently.
+				// holdBright keeps the bright screen for the remaining frames concurrently.
 				tAudioQCh := make(chan float64, 1)
 				go func() {
 					time.Sleep(soaDur)
 					tAudioQCh <- float64(clock.GetTimeNS()) / 1e6
 					_ = tone.Play()
 				}()
-				_, _ = exp.Screen.WaitFrames(framesOn - 1)
+				holdBright(framesOn - 1)
 				tAudioQ = <-tAudioQCh
 			}
 
@@ -337,8 +371,11 @@ func runAV(exp *control.Experiment, trig triggers.OutputTTLDevice) error {
 				fmt.Sprintf("%.1f", soaActual))
 
 			// Dark phase: frames-off frames as ITI between stimuli.
-			fillGray(exp, byte(*fLevelA))
-			_, _ = exp.Screen.WaitFrames(framesOff - 1)
+			for f := 0; f < framesOff; f++ {
+				r.SetDrawColor(dLevel, dLevel, dLevel, 255)
+				r.Clear()
+				exp.Screen.Update()
+			}
 
 			state := exp.PollEvents(nil)
 			if state.QuitRequested {
