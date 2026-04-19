@@ -1,7 +1,7 @@
 ---
 title: Timing-Tests
 author: <christophe@pallier.org>
-date: 2026-04-06
+date: 2026-04-19
 ---
 
 # Timing-Tests: A Guide for Researchers
@@ -540,10 +540,11 @@ stimuli are then not achievable without driver changes.
 Timing-Tests -test tones -cycles 300 -freq-hz 1000 -tone-ms 50 -iti-ms 450
 ```
 
-This test plays a long sequence of identical sine tones and measures, for each
-tone, the error between the actual and target onset time. Run it for at least
-300 tones (~2.5 minutes at 500 ms SOA) to reveal cumulative drift and
-scheduling outliers.
+This test plays a long sequence of identical sine tones using
+`stimuli.PlayStreamOfSounds` (the same library function used in real
+experiments) and measures, for each tone, the error between the actual and
+target onset time. Run it for at least 300 tones (~2.5 minutes at 500 ms SOA)
+to reveal cumulative drift and scheduling outliers.
 
 **Onset error** (`actual_onset − target_onset`): the target is
 `i × SOA`, where `SOA = tone_ms + iti_ms`. A growing onset error indicates
@@ -555,11 +556,17 @@ drift of tens of milliseconds per minute indicates a problem.
 this should equal the SOA with low variance. High IOI variance indicates OS
 audio scheduling issues.
 
-If a DLP-IO8-G is connected, a trigger is fired just before each `Play()`
-call. Connect the trigger to oscilloscope channel 2 and the audio line-out to
-channel 1: the gap between the trigger edge and the acoustic onset is the
-**software-to-acoustic latency** for that tone. The mean of this gap across
-300 trials is the audio latency; the SD is the trial-to-trial jitter.
+If a DLP-IO8-G is connected, the trigger pin is set **HIGH immediately before**
+`PlayStreamOfSounds` and **LOW immediately after** it returns, producing a
+single square pulse whose width equals the total measured stream duration.
+Connect the trigger to oscilloscope channel 2 and the audio line-out to
+channel 1. Two things are readable from the oscilloscope:
+
+- **Software-to-acoustic latency:** the gap between the rising trigger edge
+  and the acoustic onset of the first tone.
+- **Stream duration accuracy:** the trigger pulse width should equal
+  `cycles × SOA`. Any discrepancy reveals cumulative drift in the audio
+  scheduler.
 
 > `actual_onset_ms` is when `Play()` was called — when PCM data entered the
 > SDL buffer — not when sound left the speaker. The oscilloscope measures the
@@ -567,20 +574,33 @@ channel 1: the gap between the trigger edge and the acoustic onset is the
 > `latency` test.
 
 **Output file:** `tone_num, target_onset_ms, actual_onset_ms, onset_error_ms,
-actual_offset_ms, ioi_ms, ioi_error_ms, trigger_sent`.
+actual_offset_ms, ioi_ms, ioi_error_ms`.
 
 ---
 
 ### `av` — audio–visual synchrony
 
 ```bash
-Timing-Tests -test av -soa-ms 0 -freq-hz 1000 -tone-ms 50 -iti-ms 1000 -cycles 30 
+Timing-Tests -test av -soa-ms 0 -freq-hz 1000 -frames-on 3 -frames-off 60 -cycles 30
 ```
 
 This test presents pairs of audio and visual stimuli with a controlled
 *stimulus onset asynchrony* (SOA). Set `-soa-ms 0` to present them
 simultaneously (minimum software SOA); positive values delay the audio;
 negative values delay the visual.
+
+**Stimulus structure:** the visual stimulus is a bright white screen lasting
+`-frames-on` frames (same as the `frames` test). The tone duration is derived
+from the same parameter: `tone_ms = frames-on × (1000 / hz)`, so the sound
+and the light have exactly the same nominal duration. The dark inter-trial
+interval between stimulus pairs lasts `-frames-off` frames. The `-iti-ms` and
+`-tone-ms` flags are not used by this test.
+
+For example, at 60 Hz with `-frames-on 3 -frames-off 60`:
+- Bright screen and tone: `3 × 16.67 ms = 50 ms`
+- Dark ITI: `60 × 16.67 ms = 1000 ms`
+
+Use `-hz` to match your display's actual refresh rate (run the `display` test first).
 
 **Software-only** (no oscilloscope): the program records `t_visual_after_ms`
 (when `RenderPresent` returned) and `t_audio_queued_ms` (when `Play()` was

@@ -63,9 +63,9 @@
 // Per-test flags — av:
 //
 //	-soa-ms float     Visual-to-audio SOA in ms; negative = audio first (default 0)
-//	-iti-ms float     Inter-trial interval in ms (default 1000)
+//	-frames-on  int   Bright frames per cycle; tone duration = frames-on × refresh period (default 1)
+//	-frames-off int   Dark frames per cycle (ITI between stimuli) (default 60)
 //	-freq-hz float    Tone frequency in Hz (default 1000)
-//	-tone-ms int      Tone duration in ms (default 50)
 //
 // Per-test flags — jitter:
 //
@@ -121,8 +121,8 @@ var (
 	fCycles     = flag.Int("cycles", 60, "Number of cycles / flashes")
 	fLevelA     = flag.Int("level-a", 0, "Dark luminance 0–255")
 	fLevelB     = flag.Int("level-b", 255, "Bright luminance 0–255")
-	fFramesOn   = flag.Int("frames-on", 1, "Bright frames per cycle [frames / stream tests]")
-	fFramesOff  = flag.Int("frames-off", 60, "Dark frames per cycle [frames / stream tests]")
+	fFramesOn   = flag.Int("frames-on", 1, "Bright frames per cycle [frames / stream / av tests]")
+	fFramesOff  = flag.Int("frames-off", 60, "Dark frames per cycle [frames / stream / av tests]")
 	fSoaMs          = flag.Float64("soa-ms", 0, "Visual-to-audio SOA ms; negative = audio first [av test]")
 	fItiMs          = flag.Float64("iti-ms", 1000, "Inter-trial interval ms [av test]")
 	fFreqHz         = flag.Float64("freq-hz", 1000, "Tone frequency Hz [av test]")
@@ -275,11 +275,20 @@ func runFrames(exp *control.Experiment, trig triggers.OutputTTLDevice) error {
 // ── Test: av ──────────────────────────────────────────────────────────────────
 
 // runAV presents periodic visual flashes paired with tones at a configurable SOA.
+//
+// The bright phase lasts frames-on frames; the tone duration matches that duration
+// (frames-on × refresh period, derived from -hz). The dark ITI between stimuli
+// lasts frames-off frames. -iti-ms and -tone-ms are not used by this test.
 func runAV(exp *control.Experiment, trig triggers.OutputTTLDevice) error {
-	fmt.Printf("av: soa=%.1f ms  iti=%.0f ms  tone=%.0f Hz / %d ms  cycles=%d\n",
-		*fSoaMs, *fItiMs, *fFreqHz, *fToneMs, *fCycles)
+	framesOn := *fFramesOn
+	framesOff := *fFramesOff
+	frameMs := 1000.0 / *fHz
+	toneDurMs := int(math.Round(float64(framesOn) * frameMs))
 
-	tone := stimuli.NewTone(*fFreqHz, *fToneMs, 0.8)
+	fmt.Printf("av: soa=%.1f ms  freq=%.0f Hz  tone=%d ms (frames-on=%d × %.2f ms)  frames-off=%d  cycles=%d\n",
+		*fSoaMs, *fFreqHz, toneDurMs, framesOn, frameMs, framesOff, *fCycles)
+
+	tone := stimuli.NewTone(*fFreqHz, toneDurMs, 0.8)
 	if err := tone.PreloadDevice(exp.AudioDevice); err != nil {
 		return fmt.Errorf("av: preload tone: %w", err)
 	}
@@ -305,32 +314,38 @@ func runAV(exp *control.Experiment, trig triggers.OutputTTLDevice) error {
 				time.Sleep(soaDur)
 				tVisB, tVisA = fillGray(exp, byte(*fLevelB))
 				go triggers.FireTrigger(trig, *fTriggerPin, time.Duration(*fTriggerMs)*time.Millisecond)
+				_, _ = exp.Screen.WaitFrames(framesOn - 1)
 			} else {
 				tVisB, tVisA = fillGray(exp, byte(*fLevelB))
 				go triggers.FireTrigger(trig, *fTriggerPin, time.Duration(*fTriggerMs)*time.Millisecond)
-				time.Sleep(soaDur)
-				tAudioQ = float64(clock.GetTimeNS()) / 1e6
-				_ = tone.Play()
+				// Schedule audio at the requested SOA relative to visual onset;
+				// WaitFrames holds the bright screen for the remaining frames concurrently.
+				tAudioQCh := make(chan float64, 1)
+				go func() {
+					time.Sleep(soaDur)
+					tAudioQCh <- float64(clock.GetTimeNS()) / 1e6
+					_ = tone.Play()
+				}()
+				_, _ = exp.Screen.WaitFrames(framesOn - 1)
+				tAudioQ = <-tAudioQCh
 			}
 
 			soaActual := tAudioQ - tVisA
-			exp.Data.Add(trial, fmt.Sprintf("%.3f", tVisB), fmt.Sprintf("%.3f", tVisA), fmt.Sprintf("%.3f", tAudioQ),
+			exp.Data.Add(trial,
+				fmt.Sprintf("%.3f", tVisB), fmt.Sprintf("%.3f", tVisA), fmt.Sprintf("%.3f", tAudioQ),
 				fmt.Sprintf("%.1f", *fSoaMs),
 				fmt.Sprintf("%.1f", soaActual))
 
-			// ITI: dark screen
+			// Dark phase: frames-off frames as ITI between stimuli.
 			fillGray(exp, byte(*fLevelA))
-			remaining := time.Duration(*fItiMs*float64(time.Millisecond)) - 16*time.Millisecond
-			if remaining > 0 {
-				time.Sleep(remaining)
-			}
+			_, _ = exp.Screen.WaitFrames(framesOff - 1)
 
 			state := exp.PollEvents(nil)
 			if state.QuitRequested {
 				return control.EndLoop
 			}
 		}
-		fmt.Printf("\nav: %d trials complete. Check oscilloscope for audio latency.\n", *fCycles)
+		fmt.Printf("\nav: %d trials complete. Check oscilloscope for AV sync.\n", *fCycles)
 		return control.EndLoop
 	})
 }
@@ -491,21 +506,19 @@ func sleepUntil(t time.Time) {
 
 // ── Test: sound ───────────────────────────────────────────────────────────────
 
-// runSound plays a long regular tone stream and reports onset-jitter statistics.
+// runSound plays a regular tone stream via stimuli.PlayStreamOfSounds and
+// reports onset-jitter statistics from the returned TimingLog.
 //
-// A DLP-IO8-G trigger pulse is sent on *fTriggerPin just before each tone's
-// Play() call. Connect pin 1 to oscilloscope channel 2 and the audio line-out
-// to channel 1 to measure the actual software-to-acoustic latency per tone.
-//
-// GC is disabled for the duration of the stream (mirrors PlayStreamOfSounds).
-// The SOA is toneDur + isiDur; a 300-tone stream at 50 ms / 450 ms ISI runs
-// ~2.5 minutes — long enough to reveal cumulative drift and scheduling outliers.
+// If a DLP-IO8-G is connected, pin *fTriggerPin is set HIGH immediately before
+// PlayStreamOfSounds and LOW immediately after it returns, producing a single
+// square pulse whose width equals the total stream duration. Connect pin 1 to
+// oscilloscope channel 2 and the audio line-out to channel 1 to compare the
+// measured pulse width against the nominal nTones × SOA value.
 func runSound(exp *control.Experiment, trig triggers.OutputTTLDevice) error {
 	toneDur := time.Duration(*fToneMs) * time.Millisecond
 	isiDur := time.Duration(*fItiMs) * time.Millisecond
 	soa := toneDur + isiDur
 	nTones := *fCycles
-	triggerDur := time.Duration(*fTriggerMs) * time.Millisecond
 
 	_, isNull := trig.(triggers.NullOutputTTLDevice)
 
@@ -513,7 +526,7 @@ func runSound(exp *control.Experiment, trig triggers.OutputTTLDevice) error {
 		nTones, *fFreqHz, *fToneMs, int64(*fItiMs), soa.Milliseconds(),
 		float64(nTones)*soa.Seconds())
 	if !isNull {
-		fmt.Printf("  trigger pin %d (%d ms pulse)", *fTriggerPin, *fTriggerMs)
+		fmt.Printf("  trigger pin %d (high→low brackets full stream)", *fTriggerPin)
 	}
 	fmt.Println()
 
@@ -526,12 +539,17 @@ func runSound(exp *control.Experiment, trig triggers.OutputTTLDevice) error {
 	}
 	defer tone.Unload()
 
+	sounds := make([]stimuli.AudioPlayable, nTones)
+	for i := range sounds {
+		sounds[i] = tone
+	}
+	elements := stimuli.MakeRegularSoundStream(sounds, toneDur, isiDur)
+
 	exp.AddDataVariableNames([]string{
 		"tone_num",
 		"target_onset_ms", "actual_onset_ms", "onset_error_ms",
 		"actual_offset_ms",
 		"ioi_ms", "ioi_error_ms",
-		"trigger_sent",
 	})
 
 	return exp.Run(func() error {
@@ -543,76 +561,52 @@ func runSound(exp *control.Experiment, trig triggers.OutputTTLDevice) error {
 			return err
 		}
 
-		oldGC := debug.SetGCPercent(-1)
-		defer debug.SetGCPercent(oldGC)
+		if !isNull {
+			_ = trig.SetHigh(*fTriggerPin)
+		}
+		_, timing, err := stimuli.PlayStreamOfSounds(elements)
+		if !isNull {
+			_ = trig.SetLow(*fTriggerPin)
+		}
+		if control.IsEndLoop(err) {
+			return control.EndLoop
+		}
+		if err != nil {
+			return err
+		}
 
-		soaMs := soa.Milliseconds()
+		soaMs := float64(soa) / 1e6 // nanoseconds → milliseconds
 		var onsetErrors, ioiVals []float64
-		var prevActualMs int64
-		streamStart := time.Now()
+		var prevActualMs float64
 
-		for i := 0; i < nTones; i++ {
-			targetOnsetMs := int64(i) * soaMs
-
-			// ── Trigger + Play ────────────────────────────────────────────
-			if !isNull {
-				_ = trig.SetHigh(*fTriggerPin)
-			}
-			actualOnset := time.Since(streamStart)
-			_ = tone.Play()
-
-			// Pulse the trigger for triggerMs, then set low synchronously.
-			if !isNull {
-				time.Sleep(triggerDur)
-				_ = trig.SetLow(*fTriggerPin)
-			}
-
-			// ── Wait remainder of on-phase ────────────────────────────────
-			onDeadline := streamStart.Add(time.Duration(targetOnsetMs)*time.Millisecond + toneDur)
-			for time.Now().Before(onDeadline) {
-				time.Sleep(time.Millisecond)
-				if exp.PollEvents(nil).QuitRequested {
-					return control.EndLoop
-				}
-			}
-			actualOffset := time.Since(streamStart)
-
-			// ── Wait ISI ──────────────────────────────────────────────────
-			offDeadline := onDeadline.Add(isiDur)
-			for time.Now().Before(offDeadline) {
-				time.Sleep(time.Millisecond)
-				if exp.PollEvents(nil).QuitRequested {
-					return control.EndLoop
-				}
-			}
-
-			// ── Log ───────────────────────────────────────────────────────
-			actualMs := actualOnset.Milliseconds()
-			onsetErr := float64(actualMs - targetOnsetMs)
+		for _, tl := range timing {
+			targetOnsetMs := float64(tl.Index) * soaMs
+			actualOnsetMs := float64(tl.ActualOnset) / 1e6
+			actualOffsetMs := float64(tl.ActualOffset) / 1e6
+			onsetErr := actualOnsetMs - targetOnsetMs
 
 			var ioiMs, ioiErr float64
-			if i > 0 {
-				ioiMs = float64(actualMs - prevActualMs)
-				ioiErr = ioiMs - float64(soaMs)
+			if tl.Index > 0 {
+				ioiMs = actualOnsetMs - prevActualMs
+				ioiErr = ioiMs - soaMs
 				ioiVals = append(ioiVals, ioiMs)
 			}
 			onsetErrors = append(onsetErrors, onsetErr)
-			prevActualMs = actualMs
+			prevActualMs = actualOnsetMs
 
 			exp.Data.Add(
-				i,
-				targetOnsetMs,
-				actualMs,
+				tl.Index,
+				fmt.Sprintf("%.3f", targetOnsetMs),
+				fmt.Sprintf("%.3f", actualOnsetMs),
 				fmt.Sprintf("%.3f", onsetErr),
-				actualOffset.Milliseconds(),
+				fmt.Sprintf("%.3f", actualOffsetMs),
 				fmt.Sprintf("%.3f", ioiMs),
 				fmt.Sprintf("%.3f", ioiErr),
-				!isNull,
 			)
 		}
 
 		timingstats.PrintStats("Onset error vs target (ms)", timingstats.ComputeStats(onsetErrors, 0), 0)
-		timingstats.PrintStats("Inter-onset interval (ms)", timingstats.ComputeStats(ioiVals, float64(soaMs)), float64(soaMs))
+		timingstats.PrintStats("Inter-onset interval (ms)", timingstats.ComputeStats(ioiVals, soaMs), soaMs)
 		return control.EndLoop
 	})
 }

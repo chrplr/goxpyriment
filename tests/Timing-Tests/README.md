@@ -47,8 +47,8 @@ go run tests/Timing-Tests/main.go -test vrr     -vrr-max-ms 50 -cycles 5
 go run tests/Timing-Tests/main.go -test trigger -period-ms 100 -duty 50 -duration-s 30
 go run tests/Timing-Tests/main.go -test frames  -frames-on 2 -frames-off 2 -cycles 120
 go run tests/Timing-Tests/main.go -test frames  -frames-on 1 -frames-off 60 -cycles 60   # single-frame flashes
-go run tests/Timing-Tests/main.go -test tones   -cycles 300 -freq-hz 1000 -tone-ms 50 -iti-ms 450 
-go run tests/Timing-Tests/main.go -test av      -soa-ms 0 -cycles 30 
+go run tests/Timing-Tests/main.go -test tones   -cycles 300 -freq-hz 1000 -tone-ms 50 -iti-ms 450
+go run tests/Timing-Tests/main.go -test av      -soa-ms 0 -frames-on 3 -frames-off 60 -cycles 30
 go run tests/Timing-Tests/main.go -test rt      -cycles 60 
 ```
 
@@ -82,13 +82,13 @@ Legacy names (`jitter`, `drain`, `square`, `sound`, `audio`) still work as alias
 | Flag | Default | Description |
 |------|---------|-------------|
 | `-test` | *(required)* | Sub-test name |
-| `` | false | Windowed mode (1024×768) instead of fullscreen |
+| `-w` | false | Windowed mode (1024×768) instead of fullscreen |
 | `-d N` | -1 | Monitor index (-1 = primary) |
 | `-port` | auto | Serial port for DLP-IO8-G |
 | `-trigger-pin` | 1 | DLP-IO8-G output pin (1–8) |
 | `-trigger-ms` | 5 | Trigger pulse duration (ms) |
 | `-cycles` | 60 | Number of elements / flashes / trials |
-| `-hz` | 60.0 | Expected refresh rate (Hz); used by `display` and `stream` (not needed for `frames`) |
+| `-hz` | 60.0 | Expected refresh rate (Hz); used by `display`, `stream`, and `av` (not needed for `frames`) |
 | `-warmup` | 10 | Cycles/elements excluded from statistics at start |
 | `-audio-frames` | SDL default | Hardware audio buffer size in sample frames (e.g. 256, 512, 2048) |
 
@@ -96,17 +96,17 @@ Legacy names (`jitter`, `drain`, `square`, `sound`, `audio`) still work as alias
 
 | Flag | Applies to | Default | Description |
 |------|-----------|---------|-------------|
-| `-level-a` | frames, stream | 0 | Dark luminance 0–255 |
-| `-level-b` | frames, stream | 255 | Bright luminance 0–255 |
-| `-frames-on` | frames, stream | 1 | Bright frames per cycle |
-| `-frames-off` | frames, stream | 60 | Dark frames per cycle |
+| `-level-a` | frames, stream, av | 0 | Dark luminance 0–255 |
+| `-level-b` | frames, stream, av | 255 | Bright luminance 0–255 |
+| `-frames-on` | frames, stream, av | 1 | Bright frames per cycle; for `av` the tone duration equals `frames-on × refresh period` |
+| `-frames-off` | frames, stream, av | 60 | Dark frames per cycle; for `av` this is the dark ITI between stimuli |
 | `-duration-s` | display, trigger | 10 | Measurement duration (s) |
-| `-period-ms` | trigger | 100 | Squareave period (ms) |
+| `-period-ms` | trigger | 100 | Square-wave period (ms) |
 | `-duty` | trigger | 50 | Duty cycle (%) |
-| `-soa-ms` | av | 0 | Audio-before-visual SOA (ms); negative = audio first |
-| `-iti-ms` | av, tones, rt | 1000 | Inter-trial interval (ms) |
+| `-soa-ms` | av | 0 | Visual-to-audio SOA (ms); negative = audio first |
+| `-iti-ms` | tones, rt | 1000 | Inter-trial interval / ISI (ms) |
 | `-freq-hz` | av, tones, latency | 1000 | Tone frequency (Hz) |
-| `-tone-ms` | av, tones | 50 | Tone duration (ms) |
+| `-tone-ms` | tones | 50 | Tone duration (ms) |
 | `-drain-reps` | latency | 10 | Repetitions per tone duration |
 | `-vrr-max-ms` | vrr | 50 | Maximum sweep duration (ms); test runs 1 ms → this value in 1 ms steps |
 
@@ -135,5 +135,13 @@ To reduce USB latency to ~1 ms (recommended):
 echo 1 | sudo tee /sys/bus/usb-serial/devices/ttyUSB0/latency_timer
 ```
 
-**Audio line-out** — for the `av` test, patch the headphone or line-out jack
-directly into oscilloscope channel 2 to measure actual acoustic onset timing.
+**Audio line-out** — for the `tones` and `av` tests, patch the headphone or
+line-out jack into oscilloscope channel 2 to measure actual acoustic onset timing.
+
+For **`tones`**: the DLP-IO8-G pin goes HIGH just before `PlayStreamOfSounds`
+and LOW immediately after it returns, producing a single square pulse covering
+the entire stream. Compare its width against the nominal `cycles × SOA` value
+to verify that the audio pipeline does not drift.
+
+For **`av`**: the trigger fires at each visual onset (as in `frames`); compare
+the audio waveform onset against the trigger edge to measure the AV delay.
