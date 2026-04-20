@@ -117,7 +117,11 @@ func PresentStreamOfImages(screen *apparatus.Screen, elements []VisualStreamElem
 					return userEvents, timingLogs, err
 				}
 			}
+			prev := len(userEvents)
 			userEvents = collectEvents(streamStartTime, userEvents)
+			if escOrQuit(userEvents[prev:]) {
+				return userEvents, timingLogs, sdl.EndLoop
+			}
 		}
 
 		actualOffset := time.Since(streamStartTime)
@@ -139,7 +143,11 @@ func PresentStreamOfImages(screen *apparatus.Screen, elements []VisualStreamElem
 					return userEvents, timingLogs, err
 				}
 			}
+			prev := len(userEvents)
 			userEvents = collectEvents(streamStartTime, userEvents)
+			if escOrQuit(userEvents[prev:]) {
+				return userEvents, timingLogs, sdl.EndLoop
+			}
 		}
 
 		timingLogs = append(timingLogs, TimingLog{
@@ -290,7 +298,11 @@ func PlayStreamOfSounds(elements []SoundStreamElement) ([]UserEvent, []TimingLog
 		}
 		onDeadline := time.Now().Add(el.DurationOn)
 		for time.Now().Before(onDeadline) {
+			prev := len(userEvents)
 			userEvents = collectEvents(streamStart, userEvents)
+			if escOrQuit(userEvents[prev:]) {
+				return userEvents, timingLogs, sdl.EndLoop
+			}
 			time.Sleep(1 * time.Millisecond)
 		}
 
@@ -299,7 +311,11 @@ func PlayStreamOfSounds(elements []SoundStreamElement) ([]UserEvent, []TimingLog
 		// --- SOUND OFF (ISI / silence) ---
 		offDeadline := time.Now().Add(el.DurationOff)
 		for time.Now().Before(offDeadline) {
+			prev := len(userEvents)
 			userEvents = collectEvents(streamStart, userEvents)
+			if escOrQuit(userEvents[prev:]) {
+				return userEvents, timingLogs, sdl.EndLoop
+			}
 			time.Sleep(1 * time.Millisecond)
 		}
 
@@ -312,6 +328,21 @@ func PlayStreamOfSounds(elements []SoundStreamElement) ([]UserEvent, []TimingLog
 	}
 
 	return userEvents, timingLogs, nil
+}
+
+// escOrQuit reports whether any event in the slice is an ESC key-down or a quit event.
+func escOrQuit(events []UserEvent) bool {
+	for _, ue := range events {
+		switch ue.Event.Type {
+		case sdl.EVENT_QUIT:
+			return true
+		case sdl.EVENT_KEY_DOWN:
+			if ue.Event.KeyboardEvent().Key == sdl.K_ESCAPE {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // collectEvents drains the SDL event queue without blocking, appending any
