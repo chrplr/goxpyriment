@@ -426,7 +426,7 @@ func runTrial(exp *control.Experiment, trialID, nTargets int) error {
 		}
 		hud.draw(screen, hudText, 0, hudY, colorWhite)
 
-		_ = screen.Update()
+		_ = screen.PacedFlip()
 
 		// ── Events ──────────────────────────────────────────────────────────
 		quit := false

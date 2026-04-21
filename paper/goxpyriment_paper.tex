@@ -38,8 +38,6 @@
 
 \title{Goxpyriment: A Go Framework for Behavioral and Cognitive Experiments}
 \shorttitle{Let's go experiment!}
-\rightheader{Let's go experiment!}
-\leftheader{Let's go experiment!}
 
 \authorsnames{Christophe Pallier, Julie Bonnaire, Marie-France Fourcade}
 \authorsaffiliations{Cognitive Neuroimaging Unit, CNRS INSERM CEA}
@@ -285,41 +283,44 @@ can be controlled via Go's \texttt{modbus} library
 \subsection{The Timing Verification Suite}\label{timing-verification}
 
 \begin{table*}[tb]
-  \caption{Results of timing tests performed on a Raspberry Pi 4
-    (Linux, arm64. The Timing-Tests program provided with goxpyriment
-    was used for stimulation. Four tests were ran with the following
-    parameters: 1) \textbf{frames} -frames-on 1 -frames-off 2 2)
-    \textbf{tones} -tone-ms 50 -iti-ms 450 3) \textbf{trigger}
-    -period-ms 100 -duty 10; 4) \textbf{av (lags)}  simultaneously
-    sends a TTL, a visual and an auditory stimulus.}
+  \caption{Results of a timing test performed on a Raspberry Pi 4
+    (Linux, arm64). Every half second, a 200ms tone was played, a 200ms white screen was displayed, and a TTL signal was sent. 1000 cycles. Measurements were performed with a Black Box Toolkit v3. }
 \label{timings}
 \footnotesize
   \begin{tabular}{lrrrrrrrrrrrr}
 \hline \hline \\
-    &  N &    Min &  P5 &   P25 &  P50 &  P75 &  P95 &  Max &  Range & P95-P05 & Mean & SD \\
-    \cline{2-12} \\
-\multicolumn{11}{l}{\emph{Frames test:} Targets: Duration=16.6(+20), SOA=50} \\
-Duration$^1$ &  5000 & 36.8 & 37.2 & 37.5 & 37.5 & 37.8 & 38.0 & 38.2 & 1.5 &   0.8 &    37.6 & 0.23 \\
-SOA      &  4999 & 49.5 & 49.8 & 49.8 & 50.0 & 50.0 & 50.2 & 50.5 & 1.0 &   0.5 &    50.0 & 0.19 \\
-\\
-\multicolumn{11}{l}{\emph{Tones test:} Targets: Duration=50(+20), SOA=500ms} \\
-Duration$^1$ &   300 & 69.8 & 70.0 & 70.0 & 70.0 & 70.0 & 70.2 & 70.2 & 0.5 &   0.2 &     70.0 & 0.11 \\
-SOA      &   299 & 490.5 & 490.5 & 490.8 & 490.8 & 512.0 & 512.2 & 512.2 & 21.8 &  21.8  &  500.0 & 10.60 \\
-\\
-\multicolumn{11}{l}{\emph{Triggers test:} Targets: Duration=10, SOA=100ms}\\
-Duration & 601 & 9.8 & 10.2 & 10.2 & 10.2 & 10.2 & 10.5 & 10.5 &  0.8 &   0.2 &     10.3 & 0.11 \\
-SOA      & 600 & 99.8 & 100.0 & 100.0 & 100.0 & 100.0 & 100.0 & 100.2 & 0.5 &   0.0 &     100.0 & 0.06 \\
-\\
-    \multicolumn{11}{l}{\emph{Lags:} Target: 0ms}\\
-    TTL->Opto &  600 & 15.0 & 31.2 & 31.5 & 31.5 & 31.8 & 32.0 & 32.2 & 17.2 &  0.8 &     31.4 & 1.89\\
-    TTL->Audio &  600 & 103.0 & 107.0 & 111.5 & 116.8 & 122.0 & 126.3 & 130.0 & 27.0 &  19.3 &  116.8 &  6.26\\
-\hline
+    &     Min &  P5 &   P25 &  P50 &  P75 &  P95 &  Max &  Range & P95-P05 & Mean & SD \\
+    \cline{2-11} \\
+\multicolumn{11}{l}{Durations$^1$} \\
+Opto1  & 220.0 & 220.2 & 220.2 & 220.5 & 220.5 & 220.8 & 220.8 &
+0.8 & 0.5 & 220.4 & 0.17 \\
+Mic1  & 220.5 & 220.5 & 220.8 & 220.8 & 223.8 & 230.2 & 254.5 &
+34.0 & 9.8 & 222.8 & 3.73 \\
+TTLin1  & 5.0 & 5.2 & 5.2 & 5.2 & 5.5 & 5.5 & 6.2 & 1.2 & 0.2 &
+5.3 & 0.13 \\
+
+\multicolumn{11}{l}{Inter-onsets intervals} \\
+Opto1 & 499.5 & 499.5 & 499.8 & 499.8 & 500.0 & 500.2 & 500.2 &
+0.8 & 0.8 & 499.9 & 0.19 \\
+Mic1 & 482.5 & 494.0 & 497.2 & 500.2 & 502.0 & 506.0 & 518.2 &
+35.8 & 12.0 & 499.9 & 3.79 \\
+TTLin1 & 493.5 & 499.5 & 499.8 & 499.8 & 500.0 & 500.0 & 500.5 &
+7.0 & 0.5 & 499.9 & 0.27 \\
+
+\multicolumn{11}{l}{Paired-Event Onset Differences relative to TTLin1} \\
+
+TTLin1$\rightarrow$Opto1 &  37.8 & 38.2 & 38.2 & 38.5 & 38.5 & 38.8 & 39.0 &
+1.2 & 0.5 & 38.5 & 0.17 \\
+
+TTLin1$\rightarrow$Mic1 &  62.0 & 66.5 & 69.0 & 70.8 & 72.6 & 75.5 & 87.8 &
+             25.8 & 9.0 & 70.9 & 2.77 \\ \hline
   \end{tabular}
-\\
+
   {\footnotesize{$^1$ Because smoothing was set on the
     `Opto' and `Mic' detectors, 20ms must be subtracted from
     these durations, as per the BBTK User Manual.}}
 \end{table*}
+
 
 The repository includes a dedicated timing verification suite
 (\texttt{tests/Timing-Tests/}) that allows researchers to characterize
@@ -337,25 +338,21 @@ tweak applied was to set the timer pooling for usb\_serial to the
 minimum possible value. A Black Box Toolkit version 3
 \parencite{plant_2004}, controlled by our software
 \parencite{Pallier_bbtkv3}, captured input events on the `Opto1',
-`Mic1' and `TTLin1' lines. For the frames test, where the Raspberry
-cycled through sequences of 1 frame-on and 2 frame-off for 5 minutes,
-the measurements show that not a single frame was skipped. The tones
-test, were 50ms tones were played at 2Hz, the target tone duration was
-respected, but the SOA varied between 490 to 512 (an histogram, not
-shown here, reveals a bimodal distribution with duration of either 490
-or 510ms, something that needs further investigatation). The third
-test, sending TTL triggers through a DLP-IO8-G device, reveals a
-stable performance (duration and SOA less than a 1ms away from their
-targets). The last two lines of Table~\ref{timings} reports the delays
-(lags) betwen the TTL signal and the video signal, and between the TTL
-and aduio stimulus. These measures reveal a lag of 32ms, corresponding
-precisely to 2 frames at 60Hz, for the visual stimulus, and a
-lag of 100ms for the audio audio stimulus. As these lags are relatively
-stable (with standard-deviations of 2ms and 6ms respectively), a user
-should compensate for them in an actual experiment. These lags will
-vary with the video and audio hardware and software (drivers \&
-servers) and must be assessed for each configuration. A special folder
-in the goxpyriment github repository (\texttt{performance-reports}) is
+`Mic1' and `TTLin1' lines. The first lines show the duration and
+inter-onset timings.  The numbers are quite stable for the `Opto' and
+`TTLin' sensors (SD<0.5ms), and more variable for the `Mic1' (sound
+detector). We believe that the variability is more likely to come from the loudspeaker
+than the actual playout by the computer. The last two lines of
+Table~\ref{timings} reports the delays (lags) betwen the TTL signal
+and the video signal, and between the TTL and audio stimulus. These
+measures reveal a lag of 38ms, corresponding to a bit more than 2
+frames at 60Hz, for the visual stimulus, and a lag of 70ms for the
+audio audio stimulus. As these lags are relatively stable (with
+standard-deviations of 0.17ms and 2.77ms respectively), a user should
+compensate for them in an actual experiment. These lags will vary with
+the video and audio hardware and software (drivers \& servers) and
+must be assessed for each configuration. A special folder in the
+goxpyriment github repository (\texttt{performance-reports}) is
 dedicated for users to share the results of timing tests.
 
 \section{AI-Assisted Coding}\label{ai-assisted}
@@ -513,10 +510,41 @@ meant to ease the transition.
 \textbf{Name of the project.} The name ``goxpyriment'' is quite hard to
 pronounce and memorize.
 
+\clearpage
 
-\begin{center}\rule{0.5\linewidth}{0.5pt}\end{center}
+\section{Declarations}
 
-\section{Author Contributions}\label{author-contributions}
+\subsection{Funding}
+
+No funding was received to assist with this project nor with the preparation of this manuscript.
+
+\subsection{Conflict of interest/Competing interest}
+
+The authors have no competing interests to declare that are relevant to the content of this article.
+
+\subsection{Ethics approval}
+
+Not applicable.
+
+\subsection{Consent to participate}
+
+Not applicable.
+
+\subsection{Consent for publication}
+
+Not applicable.
+
+\subsection{Availability of data and materials}
+
+\subsection{Code availability}
+
+The source code of \texttt{goxpyriment} is available under the GNU
+General Public License v3 at
+\url{https://github.com/chrplr/goxpyriment}. All example experiments
+described in this article are included in the repository. No empirical
+data are reported in this article.
+
+\subsection{Authors Contributions}\label{author-contributions}
 
 \textbf{Christophe Pallier}: Conceptualization, Software
 implementation, Documentation and Paper Writing, with assistance from
@@ -526,16 +554,10 @@ current editorial norms \parencite{natureportfolio2023,
 Contributions rather than as a named author, because authorship
 requires the capacity to take accountability for the work.  Christophe
 Pallier takes full responsibility for all content. \textbf{Julie
-  Bonnaire} and \textbf{Marie-France Fourcade} helped set up the timing
-measurment system and performed tests.
+  Bonnaire} and \textbf{Marie-France Fourcade} set up the timing
+measurement system and performed tests.
 
-\section{Open Practices Statement}\label{open-practices-statement}
-
-The source code of \texttt{goxpyriment} is available under the GNU
-General Public License v3 at
-\url{https://github.com/chrplr/goxpyriment}. All example experiments
-described in this article are included in the repository. No empirical
-data are reported in this article.
+\clearpage
 
 \printbibliography
 

@@ -44,9 +44,10 @@
 //	-port string      Serial port for DLP-IO8-G (default: auto-detect)
 //	-trigger-pin int  Output pin on DLP-IO8-G (default 1)
 //	-trigger-ms  int  Trigger pulse duration in ms (default 5)
-//	-cycles int       Number of cycles / flashes (default 60)
+//	-cycles int       Number of cycles / flashes (default 120)
 //	-w                Windowed mode: 1024×768 window instead of fullscreen
 //	-d int            Display index: monitor to use (-1 = primary, default -1)
+//	-paced-flip       Use PacedFlip() instead of Update() for frame pacing in frames/av tests
 //
 // Per-test flags — rt:
 //
@@ -57,7 +58,7 @@
 //	-level-a int      Dark luminance 0–255 (default 0)
 //	-level-b int      Bright luminance 0–255 (default 255)
 //	-frames-on  int   Bright frames per cycle (default 1)
-//	-frames-off int   Dark frames per cycle (default 60)
+//	-frames-off int   Dark frames per cycle (default 9)
 //	-warmup int       Cycles discarded from statistics at start (default 10)
 //
 // Per-test flags — av:
@@ -118,11 +119,11 @@ var (
 	fPort       = flag.String("port", "", "Serial port for DLP-IO8-G (empty = auto-detect)")
 	fTriggerPin = flag.Int("trigger-pin", 1, "DLP-IO8-G output pin (1–8)")
 	fTriggerMs  = flag.Int("trigger-ms", 5, "Trigger pulse duration (ms)")
-	fCycles     = flag.Int("cycles", 60, "Number of cycles / flashes")
+	fCycles     = flag.Int("cycles", 120, "Number of cycles / flashes")
 	fLevelA     = flag.Int("level-a", 0, "Dark luminance 0–255")
 	fLevelB     = flag.Int("level-b", 255, "Bright luminance 0–255")
 	fFramesOn   = flag.Int("frames-on", 1, "Bright frames per cycle [frames / stream / av tests]")
-	fFramesOff  = flag.Int("frames-off", 60, "Dark frames per cycle [frames / stream / av tests]")
+	fFramesOff  = flag.Int("frames-off", 9, "Dark frames per cycle [frames / stream / av tests]")
 	fSoaMs          = flag.Float64("soa-ms", 0, "Visual-to-audio SOA ms; negative = audio first [av test]")
 	fItiMs          = flag.Float64("iti-ms", 1000, "Inter-trial interval ms [av test]")
 	fFreqHz         = flag.Float64("freq-hz", 1000, "Tone frequency Hz [av test]")
@@ -138,6 +139,7 @@ var (
 	fWindowed       = flag.Bool("w", false, "Windowed mode (1024×768 window instead of fullscreen)")
 	fDisplay        = flag.Int("d", -1, "Display index: monitor where the window/fullscreen will open (-1 = primary)")
 	fSysInfo        = flag.Bool("sysinfo", false, "Print system information and exit")
+	fPacedFlip      = flag.Bool("paced-flip", false, "Use PacedFlip() instead of Update() for frame pacing in frames/av tests")
 )
 
 // ── Screen fill helper ─────────────────────────────────────────────────────────
@@ -221,6 +223,11 @@ func runFrames(exp *control.Experiment, trig triggers.OutputTTLDevice) error {
 		r := exp.Screen.Renderer
 		bLevel, dLevel := byte(*fLevelB), byte(*fLevelA)
 
+		flip := exp.Screen.Update
+		if *fPacedFlip {
+			flip = exp.Screen.PacedFlip
+		}
+
 		for cycle := 0; cycle < *fCycles; cycle++ {
 			// ── Bright phase ──────────────────────────────────────────────────
 			// Re-draw each frame so double-buffering never shows the opposite color.
@@ -229,7 +236,7 @@ func runFrames(exp *control.Experiment, trig triggers.OutputTTLDevice) error {
 				r.SetDrawColor(bLevel, bLevel, bLevel, 255)
 				r.Clear()
 				tB := float64(clock.GetTimeNS()) / 1e6
-				exp.Screen.Update()
+				flip()
 				tA := float64(clock.GetTimeNS()) / 1e6
 				if f == 0 {
 					tBrightBefore = tB
@@ -243,7 +250,7 @@ func runFrames(exp *control.Experiment, trig triggers.OutputTTLDevice) error {
 			for f := 0; f < framesOff; f++ {
 				r.SetDrawColor(dLevel, dLevel, dLevel, 255)
 				r.Clear()
-				exp.Screen.Update()
+				flip()
 				if f == 0 {
 					tDarkStart = float64(clock.GetTimeNS()) / 1e6
 				}
@@ -329,13 +336,18 @@ func runAV(exp *control.Experiment, trig triggers.OutputTTLDevice) error {
 		r := exp.Screen.Renderer
 		bLevel, dLevel := byte(*fLevelB), byte(*fLevelA)
 
+		flip := exp.Screen.Update
+		if *fPacedFlip {
+			flip = exp.Screen.PacedFlip
+		}
+
 		// holdBright redraws bright into the backbuffer for each remaining frame
 		// so double-buffering never flips the opposite color into view.
 		holdBright := func(remaining int) {
 			for f := 0; f < remaining; f++ {
 				r.SetDrawColor(bLevel, bLevel, bLevel, 255)
 				r.Clear()
-				exp.Screen.Update()
+				flip()
 			}
 		}
 
@@ -346,11 +358,19 @@ func runAV(exp *control.Experiment, trig triggers.OutputTTLDevice) error {
 				tAudioQ = float64(clock.GetTimeNS()) / 1e6
 				_ = tone.Play()
 				time.Sleep(soaDur)
-				tVisB, tVisA = fillGray(exp, byte(*fLevelB))
+				r.SetDrawColor(bLevel, bLevel, bLevel, 255)
+				r.Clear()
+				tVisB = float64(clock.GetTimeNS()) / 1e6
+				flip()
+				tVisA = float64(clock.GetTimeNS()) / 1e6
 				go triggers.FireTrigger(trig, *fTriggerPin, time.Duration(*fTriggerMs)*time.Millisecond)
 				holdBright(framesOn - 1)
 			} else {
-				tVisB, tVisA = fillGray(exp, byte(*fLevelB))
+				r.SetDrawColor(bLevel, bLevel, bLevel, 255)
+				r.Clear()
+				tVisB = float64(clock.GetTimeNS()) / 1e6
+				flip()
+				tVisA = float64(clock.GetTimeNS()) / 1e6
 				go triggers.FireTrigger(trig, *fTriggerPin, time.Duration(*fTriggerMs)*time.Millisecond)
 				// Schedule audio at the requested SOA relative to visual onset;
 				// holdBright keeps the bright screen for the remaining frames concurrently.
@@ -374,7 +394,7 @@ func runAV(exp *control.Experiment, trig triggers.OutputTTLDevice) error {
 			for f := 0; f < framesOff; f++ {
 				r.SetDrawColor(dLevel, dLevel, dLevel, 255)
 				r.Clear()
-				exp.Screen.Update()
+				flip()
 			}
 
 			state := exp.PollEvents(nil)

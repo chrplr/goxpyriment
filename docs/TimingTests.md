@@ -530,6 +530,15 @@ stimuli are then not achievable without driver changes.
 **From the CSV alone** (no oscilloscope): check that `bright_duration_ms` and
 `period_ms` match the expected frame multiples and that their SD is low.
 
+**Frame-pacing mode:** by default this test uses `Screen.Update()` (standard
+`SDL_RenderPresent` with VSYNC block). On some hardware `Screen.PacedFlip()`
+produces lower jitter. If you see unexpectedly high SD values, re-run with
+`-paced-flip` and compare:
+
+```bash
+Timing-Tests -test frames -frames-on 2 -frames-off 2 -cycles 120 -paced-flip
+```
+
 **Output file:** `cycle, t_before_ms, t_after_ms, bright_duration_ms, period_ms`.
 
 ---
@@ -618,6 +627,10 @@ To achieve a specific *perceptual* SOA (e.g. simultaneous percept), set
 `-soa-ms` to compensate for the difference: if the audio arrives 12 ms after
 the light even when `soa-ms=0`, set `soa-ms=-12` to delay the visual by 12 ms
 so that the light and sound arrive at the ear/eye simultaneously.
+
+**Frame-pacing mode:** as with the `frames` test, the default pacing uses
+`Screen.Update()`. Use `-paced-flip` if timing variance is higher than expected
+on your hardware.
 
 **Output file:** `trial, t_visual_before_ms, t_visual_after_ms,
 t_audio_queued_ms, soa_intended_ms, soa_actual_ms`.

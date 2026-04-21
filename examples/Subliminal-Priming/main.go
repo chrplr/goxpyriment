@@ -380,13 +380,13 @@ func runStream(exp *control.Experiment, items []streamItem, header stimuli.Visua
 			}
 			if f == 0 {
 				// Capture the SDL nanosecond timestamp of the actual VSYNC flip.
-				ts, err := screen.FlipTS()
+				ts, err := screen.PacedFlipTS()
 				if err != nil {
 					return 0, err
 				}
 				onsetNS = ts
 			} else {
-				if err := screen.Update(); err != nil { // VSYNC blocks here
+				if err := screen.PacedFlip(); err != nil {
 					return 0, err
 				}
 			}

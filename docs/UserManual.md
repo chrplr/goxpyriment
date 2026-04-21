@@ -274,7 +274,7 @@ You can restore your preferred scaling after the session.
 
 ## 5. The Rendering Model
 
-SDL uses a **double-buffered** rendering model. There is an off-screen backbuffer where you draw, and the visible display. You draw to the backbuffer; calling `screen.Update()` (also called a "flip") presents it to the screen, typically synchronized to the vertical retrace (VSYNC).
+SDL uses a **double-buffered** rendering model. There is an off-screen backbuffer where you draw, and the visible display. You draw to the backbuffer; calling `screen.Update()` (also called a "flip") presents it to the screen, synchronized to the vertical retrace (VSYNC).
 
 The three-step cycle for showing one stimulus is:
 
@@ -285,6 +285,8 @@ exp.Screen.Update()      // present to display (VSYNC-blocks)
 ```
 
 `exp.Show(stim)` does all three in one call and is the right choice for single-stimulus presentations. For cases where you need to draw multiple stimuli simultaneously — so they appear on screen at the same time — call each `Draw` separately before the single `Update`:
+
+> **Triple/mailbox buffering.** On some systems (NVIDIA + compositor, Wayland mailbox mode) the GPU driver uses triple buffering, where `SDL_RenderPresent` queues the frame and returns immediately — it does **not** block for VSYNC. In a per-frame loop this means all frames for a given stimulus can fly by before the first one is scanned out, collapsing a 3-frame stimulus to zero visible frames. Use `screen.PacedFlip()` instead of `screen.Update()` in any loop that presents a stimulus for multiple frames: it calls `Update()` and, if the driver returned before the expected frame boundary, busy-waits until the correct time. The pacing state is stored on `Screen` automatically; no extra variables are needed.
 
 ```go
 // Show fixation cross and stimulus simultaneously
@@ -315,6 +317,8 @@ All rendering must happen inside the `exp.Run` callback — equivalently, on the
 ### Frame cadence
 
 `screen.Update()` blocks until the display's vertical retrace (VSYNC). On a 60 Hz monitor this is ~16.67 ms; on a 120 Hz monitor ~8.33 ms. This is the fundamental clock of the visual display: every stimulus change is aligned to a frame boundary automatically.
+
+On some systems (NVIDIA proprietary driver + compositor, Wayland mailbox mode) the driver uses triple buffering and `Update()` returns immediately without blocking. In a per-frame loop this collapses multi-frame stimuli. Use `screen.PacedFlip()` as a drop-in for `screen.Update()` in any tight frame loop — it adds a busy-wait when needed and is a no-op on systems with correct VSYNC blocking.
 
 To know your frame duration at runtime:
 
@@ -374,7 +378,7 @@ Use this decision guide before committing to a timing strategy.
 | Coarse ISIs and fixation durations (≥ 100 ms) | `exp.Wait(ms)` — adequate precision, keeps the event loop alive |
 | Show stimulus + timed hold (fixation, cue, mask) | `exp.ShowTimed(stim, ms)` — `Show` + `Wait` in one call |
 | Single-stimulus trial, RT relative to onset | `key, rt, err := exp.ShowAndGetRT(stim, keys, timeout)` — hardware-precise RT, clears stale events automatically |
-| Stimulus duration measured in frames (e.g. 2-frame mask) | `exp.Show` inside a VSYNC-locked loop, or `PresentStreamOfImages` (Section 10) |
+| Stimulus duration measured in frames (e.g. 2-frame mask) | Per-frame loop with `screen.PacedFlip()` (safe on all drivers), or `PresentStreamOfImages` (Section 10) |
 | Multi-stimulus sequence, RT relative to a specific stimulus | `exp.ShowTS(stim)` + `exp.Keyboard.GetKeyEventTS(...)` — nanosecond timestamps on the same SDL clock; subtract directly |
 | RSVP or rapid animation (frame-accurate presentation of many items) | `PresentStreamOfImages` / `PresentStreamOfTexts` (Section 10) — GC disabled, VSYNC-locked, full timing log |
 | EEG/MEG synchronisation required | Add a TTL pulse via `triggers` immediately after `exp.ShowTS` (Section 15) |
@@ -384,7 +388,7 @@ Use this decision guide before committing to a timing strategy.
 
 **When in doubt, use `ShowAndGetRT`.** It clears stale events, records the VSYNC flip timestamp, waits for the key with hardware-precision timing, and returns `(key, rtMs, error)` — the canonical single-stimulus RT call. Use raw `ShowTS` + `GetKeyEventTS` only when composing multiple stimuli before a single response.
 
-**`ShowTS` vs `FlipTS`.** `exp.ShowTS(stim)` is the standard high-level call: it clears the screen, draws the stimulus, flips, and returns the flip timestamp — one line for the common case. `exp.Screen.FlipTS()` is the lower-level primitive that only flips and timestamps, leaving clearing and drawing to you. Use it directly when you need to compose several stimuli with multiple `Draw` calls before a single flip, or when working inside a VRR or VSYNC-locked loop where you manage the render cycle yourself (see the VRR section below).
+**`ShowTS` vs `FlipTS` vs `PacedFlipTS`.** `exp.ShowTS(stim)` is the standard high-level call: it clears the screen, draws the stimulus, flips, and returns the flip timestamp — one line for the common case. `exp.Screen.FlipTS()` is the lower-level primitive that only flips and timestamps, leaving clearing and drawing to you. `exp.Screen.PacedFlipTS()` is the same as `FlipTS` but adds the triple-buffering guard (busy-wait if the driver returned early); use it for the onset frame of a multi-frame stimulus in a per-frame loop. Use plain `FlipTS` only in VRR mode (where VSYNC is disabled by design) or when you have confirmed that the driver blocks correctly.
 
 ### Display compositor bypass
 

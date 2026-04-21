@@ -69,6 +69,7 @@ type Screen struct {
 	DefaultFont  *ttf.Font
 	CanvasOffset *sdl.FPoint // If not nil, use this instead of true center
 	LogicalSize  *sdl.FPoint // If not nil, use this for CenterToSDL
+	lastFlipTime time.Time   // tracks per-frame pacing for PacedFlip
 }
 
 // displayByIndex resolves a 0-based display index to an SDL DisplayID.
@@ -562,6 +563,41 @@ func (s *Screen) FlipTS() (uint64, error) {
 	return sdl.TicksNS(), nil
 }
 
+// PacedFlip presents the backbuffer (like Flip) and, when the driver does not
+// block for VSYNC (triple/mailbox buffering), busy-waits until the expected
+// frame boundary. It is a drop-in for Flip in any per-frame stimulus loop.
+//
+// On systems with well-behaved double-buffered VSYNC the busy-wait runs zero
+// iterations and overhead is negligible. On systems where SDL_RenderPresent
+// returns immediately (NVIDIA + compositor, Wayland mailbox, triple-buffer
+// drivers), it enforces the correct frame period so that each call occupies
+// exactly one display frame — preventing bright frames from being swallowed
+// before the monitor scans them out.
+func (s *Screen) PacedFlip() error {
+	if err := s.Update(); err != nil {
+		return err
+	}
+	now := time.Now()
+	if !s.lastFlipTime.IsZero() {
+		target := s.lastFlipTime.Add(s.FrameDuration())
+		for now.Before(target) {
+			now = time.Now()
+		}
+	}
+	s.lastFlipTime = now
+	return nil
+}
+
+// PacedFlipTS is PacedFlip plus an SDL nanosecond timestamp captured after the
+// flip completes. Use this as a drop-in for FlipTS in timing-critical loops
+// where triple/mailbox buffering must be guarded against.
+func (s *Screen) PacedFlipTS() (uint64, error) {
+	if err := s.PacedFlip(); err != nil {
+		return 0, err
+	}
+	return sdl.TicksNS(), nil
+}
+
 // SetVSync toggles vertical synchronization.
 // vsync: 1 to enable, 0 to disable, -1 for adaptive vsync.
 func (s *Screen) SetVSync(vsync int) error {
@@ -613,7 +649,7 @@ func (s *Screen) WaitFrames(n int) (uint64, error) {
 		if err := s.Renderer.Clear(); err != nil {
 			return 0, err
 		}
-		if err := s.Renderer.Present(); err != nil {
+		if err := s.PacedFlip(); err != nil {
 			return 0, err
 		}
 	}

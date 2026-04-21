@@ -91,6 +91,7 @@ Legacy names (`jitter`, `drain`, `square`, `sound`, `audio`) still work as alias
 | `-hz` | 60.0 | Expected refresh rate (Hz); used by `display`, `stream`, and `av` (not needed for `frames`) |
 | `-warmup` | 10 | Cycles/elements excluded from statistics at start |
 | `-audio-frames` | SDL default | Hardware audio buffer size in sample frames (e.g. 256, 512, 2048) |
+| `-paced-flip` | false | Use `PacedFlip()` instead of `Update()` for frame pacing in `frames` and `av` tests (see note below) |
 
 ### Per-test flags
 
@@ -120,6 +121,22 @@ Each run writes a `.csv` file to `~/goxpy_data/`.
 import pandas as pd
 df = pd.read_csv("~/goxpy_data/Timing-Tests_000_*.csv")
 ```
+
+---
+
+## Frame-pacing mode (`-paced-flip`)
+
+The `frames` and `av` tests support two frame-pacing strategies, selectable
+with the `-paced-flip` flag:
+
+| Mode | Call | When to use |
+|------|------|-------------|
+| default | `Screen.Update()` | Standard `SDL_RenderPresent` with VSYNC block — works well on most systems |
+| `-paced-flip` | `Screen.PacedFlip()` | Alternative pacing loop — better on some hardware (e.g. systems where `Update()` shows high jitter) |
+
+If you observe unexpectedly high timing variance in `frames` or `av`, try
+re-running with `-paced-flip` and compare the statistics. Report which mode
+you used when sharing results.
 
 ---
 
