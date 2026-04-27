@@ -24,6 +24,7 @@ _build/
 *.prof
 *.wasm
 test.bin
+*.gv
 
 # Node / browser tooling
 node_modules/

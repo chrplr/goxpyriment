@@ -204,13 +204,45 @@ type TimingLog struct {
 
 ## GV video
 
+### High-level one-shot
+
 ```go
-events, err := stimuli.PlayGv(screen, "path/to/video.gv", x, y)
+events, logs, err := stimuli.PlayGv(screen, "path/to/video.gv", x, y)
 ```
 
-Plays an LZ4-compressed RGBA `.gv` file once, frame-by-frame, VSYNC-locked. GC disabled. Exits on ESC/window-close.
+Plays an LZ4-compressed RGBA `.gv` file once, frame-by-frame, VSYNC-locked. GC disabled. Exits on ESC/window-close. Returns per-frame timing logs.
 
-For manual frame control, use `NewGvVideo(path)` and call `Draw(screen)` yourself.
+### Interactive (manual control)
+
+```go
+v, err := stimuli.NewGvVideo("path/to/video.gv")
+defer v.Close()
+
+v.Play()
+err = exp.Run(func() error {
+    if err := v.Update(exp.Screen); err == io.EOF {
+        return control.EndLoop
+    }
+    dest := sdl.FRect{X: 100, Y: 50, W: 640, H: 480}
+    v.DrawAt(exp.Screen, &dest)
+    exp.Screen.Update()
+    return nil
+})
+```
+
+| Method | Description |
+|---|---|
+| `Play()` | Start or resume; resets to frame 0 if not yet started |
+| `Pause()` | Freeze at current frame; `Update()` becomes a no-op |
+| `Rewind()` | Jump back to frame 0 and resume |
+| `IsPlaying() bool` | True after `Play()`, before all frames shown |
+| `IsPaused() bool` | True while paused |
+| `Update(screen) error` | Advance one frame; returns `io.EOF` when done (and on every subsequent call); no-op if paused/stopped |
+| `Draw(screen) error` | Render current frame centered at `v.Position` |
+| `DrawAt(screen, *sdl.FRect) error` | Render current frame into a custom rectangle |
+| `Close()` | Release GPU texture and file handle (alias for `Unload`) |
+
+`Width`, `Height` (float32), `FrameCount` (int), and `FPS` (float64) are populated at construction from the file header. GPU resources are lazy-initialised on the first `Update` or `Draw`/`DrawAt` call.
 
 ## Splash screens
 
