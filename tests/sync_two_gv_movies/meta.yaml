@@ -1,0 +1,2 @@
+category: demo
+description: Two .gv movies played side by side under a shared MasterClock; demonstrates media.MovieManager multi-movie sync, burst-pause, Movie[At]/Movie[AtDisplay], and Display[Onset/Offset] events with optional TTL-trigger wiring
