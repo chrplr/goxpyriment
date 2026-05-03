@@ -7,6 +7,7 @@ This guide documents the complete public API of the `goxpyriment` framework, org
 ```
 control/      ← experiment lifecycle and orchestration (start here)
 stimuli/      ← visual and audio stimulus objects
+media/        ← multi-movie playback with hardware-verified display onsets
 apparatus/    ← SDL window/renderer, keyboard, mouse, gamepad, gamma corrector
 results/      ← experiment data file and output file
 design/       ← trial/block structure and randomization
@@ -694,6 +695,84 @@ Two files are written to `~/goxpy_data/` for each session:
 |------|----------|
 | `<expname>_sub-<NNN>_date-<YYYYMMDD>-<HHMM>.csv` | Pure CSV data rows — directly importable by Excel, R, or pandas |
 | `<expname>_sub-<NNN>_date-<YYYYMMDD>-<HHMM>-info.txt` | `#`-prefixed metadata: start/end time, hostname, OS, framework version, display and audio configuration, participant info |
+
+---
+
+## Package `media`
+
+Import: `github.com/chrplr/goxpyriment/media`
+
+Multi-movie playback with shared master-clock synchronisation,
+look-ahead frame conditions, and post-vsync display events for hardware-
+trigger alignment. Adds `MovieManager` (per-experiment owner of the
+clock and movie set), `Movie` (per-movie state with PsyScope-Tahoe
+semantics), and the `media/present` subpackage of OS-level vsync
+backends. Pure Go, `.gv` movies only, silent.
+
+**Full reference (precision contracts, platform support, mapping to
+PsyScope movie commands):** see [MediaMovies.md](MediaMovies.md).
+
+### Quick API summary
+
+```go
+mgr := media.NewMovieManager(exp.Screen)
+defer mgr.Close()
+
+gv, _ := gvvideo.LoadGVVideo("clip.gv")
+mov, _ := media.NewMovie(mgr, gv,
+    media.WithTag("M1"),
+    media.WithRepeat(-1),
+    media.WithSize(640, 360),
+    media.WithPosition(sdl.FPoint{X: -200, Y: 0}),
+)
+defer mov.Close()
+
+// Look-ahead — fires from inside DrawWithoutFlip, BEFORE the frame is presented.
+mov.OnAt(media.Frame(186), func(o media.Onset) { /* ... */ })
+
+// Hardware-verified — fires from NotifyFlipped with the OS vsync timestamp.
+mov.OnAtDisplay(media.Frame(186), func(o media.Onset) {
+    _ = ttl.Pulse(0, 5*time.Millisecond)
+})
+
+// Display[Onset/Offset] — fires when the named tag changes visibility.
+mgr.OnDisplayOnset("M1", func(o media.Onset) { /* ... */ })
+
+// Atomic command burst (PsyScope script-line equivalent):
+mgr.BeginBurst()
+movieA.Pause(); movieB.Pause(); movieC.Pause()
+mgr.EndBurst()
+
+// Per-frame, mixed compositing:
+exp.Screen.Clear()
+mgr.DrawWithoutFlip()           // decode + render movies
+fix.Present(exp.Screen, false, false)  // overlay
+ts, _ := exp.Screen.FlipTS()
+mgr.NotifyFlipped(ts)
+```
+
+### Onset precision summary
+
+| Source | Where | Meaning |
+|---|---|---|
+| `LookAhead` | `OnAt` / `OnDone` callbacks | `sdl.TicksNS()` at fire time, pre-vsync |
+| `VsyncEstimated` | `OnAtDisplay` / `Display*` callbacks (fallback timer) | Post-`Present` `FlipTS`, ~vsync-period |
+| `HardwareVerified` | `OnAtDisplay` / `Display*` callbacks (Stage 5 timer) | OS-measured first-pixel-visible, sub-ms |
+
+### Platform status
+
+| Platform | Backend | Precision |
+|---|---|---|
+| macOS | `CVDisplayLink` (CoreVideo via purego) | `HardwareVerified` |
+| Linux | `DRM_IOCTL_WAIT_VBLANK` (`/dev/dri/cardN`, `video` group) | `HardwareVerified` |
+| Windows | (not yet — fallback) | `VsyncEstimated` |
+| Other | (fallback) | `VsyncEstimated` |
+
+See [MediaMovies.md §8](MediaMovies.md#8-platform-support-stage-5) for
+the Windows roadmap and [§7](MediaMovies.md#7-external-trigger-synchronisation-with-frames-on-screen)
+for the trigger-synchrony contract (the wire pulse arrives ~0.5–5 ms
+after `Onset.TimestampNS`; calibrate the constant offset with a
+photodiode for sub-ms wire-side alignment).
 
 ---
 

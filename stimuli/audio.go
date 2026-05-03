@@ -111,6 +111,50 @@ func (s *Sound) Wait() {
 	}
 }
 
+// PlaySyncedWithFlip synchronises sound onset with the next VSYNC flip.
+//
+// It pauses the audio device, pre-fills the stream with the sound data (so
+// the data is ready but silent), performs the display flip (which blocks until
+// VSYNC), and immediately resumes the device.  Audio onset follows the flip by
+// at most one audio callback period — approximately frames/sampleRate seconds,
+// where frames is the hardware buffer size set via SetAudioSampleFrames.
+//
+// At the default 512-frame buffer (44100 Hz) the lag is ≤ 11.6 ms.
+// Calling exp.SetAudioSampleFrames(128) before Initialize() reduces it to
+// ≤ 2.9 ms at the cost of higher underrun risk on loaded systems.
+//
+// The lag is constant and measurable empirically once per setup; subtract it
+// when reporting stimulus onset times.
+func (s *Sound) PlaySyncedWithFlip(screen *apparatus.Screen) (uint64, error) {
+	if s.Stream == nil {
+		return 0, fmt.Errorf("PlaySyncedWithFlip: sound not loaded (call PreloadDevice first)")
+	}
+	return syncStreamWithFlip(s.Stream, s.Data, screen)
+}
+
+// syncStreamWithFlip is the shared pause-fill-flip-resume implementation used
+// by both Sound.PlaySyncedWithFlip and Tone.PlaySyncedWithFlip.
+func syncStreamWithFlip(stream *sdl.AudioStream, data []byte, screen *apparatus.Screen) (uint64, error) {
+	if err := stream.PauseDevice(); err != nil {
+		return 0, err
+	}
+	stream.Clear()
+	if err := stream.PutData(data); err != nil {
+		_ = stream.ResumeDevice()
+		return 0, err
+	}
+	if err := stream.Flush(); err != nil {
+		_ = stream.ResumeDevice()
+		return 0, err
+	}
+	flipNS, err := screen.FlipTS()
+	resumeErr := stream.ResumeDevice()
+	if err != nil {
+		return flipNS, err
+	}
+	return flipNS, resumeErr
+}
+
 // Present plays the sound (implements Stimulus interface).
 func (s *Sound) Present(screen *apparatus.Screen, clear, update bool) error {
 	return s.Play()

@@ -233,7 +233,6 @@ func initialize() {
 	}
 
 	iSetFontSize = func(font *Font, ptsize float32) bool {
-		panic("not implemented on js")
 		internal.StackSave()
 		defer internal.StackRestore()
 		_font, ok := internal.GetJSPointer(font)
@@ -1923,7 +1922,6 @@ func initialize() {
 	}
 
 	iCloseFont = func(font *Font) {
-		panic("not implemented on js")
 		internal.StackSave()
 		defer internal.StackRestore()
 		_font, ok := internal.GetJSPointer(font)
@@ -1937,7 +1935,6 @@ func initialize() {
 	}
 
 	iQuit = func() {
-		panic("not implemented on js")
 		internal.StackSave()
 		defer internal.StackRestore()
 		js.Global().Get("Module").Call(

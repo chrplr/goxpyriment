@@ -5,6 +5,7 @@
 package stimuli
 
 import (
+	"fmt"
 	"math"
 
 	"github.com/Zyko0/go-sdl3/sdl"
@@ -120,6 +121,15 @@ func (t *Tone) PreloadDevice(audioDevice sdl.AudioDeviceID) error {
 	t.Stream = stream
 
 	return audioDevice.BindAudioStream(t.Stream)
+}
+
+// PlaySyncedWithFlip synchronises tone onset with the next VSYNC flip.
+// See Sound.PlaySyncedWithFlip for a full description of the timing semantics.
+func (t *Tone) PlaySyncedWithFlip(screen *apparatus.Screen) (uint64, error) {
+	if t.Stream == nil {
+		return 0, fmt.Errorf("PlaySyncedWithFlip: tone not loaded (call PreloadDevice first)")
+	}
+	return syncStreamWithFlip(t.Stream, t.Data, screen)
 }
 
 func (t *Tone) Play() error {

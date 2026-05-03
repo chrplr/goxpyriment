@@ -6641,21 +6641,7 @@ func initialize() {
 	}
 
 	iSetWindowFullscreen = func(window *Window, fullscreen bool) bool {
-		panic("not implemented on js")
-		internal.StackSave()
-		defer internal.StackRestore()
-		_window, ok := internal.GetJSPointer(window)
-		if !ok {
-			_window = internal.StackAlloc(int(unsafe.Sizeof(*window)))
-		}
-		_fullscreen := internal.NewBoolean(fullscreen)
-		ret := js.Global().Get("Module").Call(
-			"_SDL_SetWindowFullscreen",
-			_window,
-			_fullscreen,
-		)
-
-		return internal.GetBool(ret)
+		return true // fullscreen handled by browser Fullscreen API, not SDL
 	}
 
 	iSyncWindow = func(window *Window) bool {
@@ -10512,25 +10498,11 @@ func initialize() {
 	}
 
 	iShowCursor = func() bool {
-		panic("not implemented on js")
-		internal.StackSave()
-		defer internal.StackRestore()
-		ret := js.Global().Get("Module").Call(
-			"_SDL_ShowCursor",
-		)
-
-		return internal.GetBool(ret)
+		return true // cursor visibility managed by browser/CSS in WASM
 	}
 
 	iHideCursor = func() bool {
-		panic("not implemented on js")
-		internal.StackSave()
-		defer internal.StackRestore()
-		ret := js.Global().Get("Module").Call(
-			"_SDL_HideCursor",
-		)
-
-		return internal.GetBool(ret)
+		return true
 	}
 
 	iCursorVisible = func() bool {
@@ -16829,25 +16801,11 @@ func initialize() {
 	}
 
 	iDelay = func(ms uint32) {
-		panic("not implemented on js")
-		internal.StackSave()
-		defer internal.StackRestore()
-		_ms := int32(ms)
-		js.Global().Get("Module").Call(
-			"_SDL_Delay",
-			_ms,
-		)
+		_ = ms // blocking sleep not possible in WASM; timing driven by rAF
 	}
 
 	iDelayNS = func(ns uint64) {
-		panic("not implemented on js")
-		internal.StackSave()
-		defer internal.StackRestore()
-		_ns := internal.NewBigInt(ns)
-		js.Global().Get("Module").Call(
-			"_SDL_DelayNS",
-			_ns,
-		)
+		_ = ns // blocking sleep not possible in WASM
 	}
 
 	iDelayPrecise = func(ns uint64) {

@@ -313,8 +313,12 @@ func runAV(exp *control.Experiment, trig triggers.OutputTTLDevice) error {
 	frameMs := 1000.0 / *fHz
 	toneDurMs := int(math.Round(float64(framesOn) * frameMs))
 
-	fmt.Printf("av: soa=%.1f ms  freq=%.0f Hz  tone=%d ms (frames-on=%d × %.2f ms)  frames-off=%d  cycles=%d\n",
-		*fSoaMs, *fFreqHz, toneDurMs, framesOn, frameMs, framesOff, *fCycles)
+	syncMethod := "goroutine"
+	if *fSoaMs == 0 {
+		syncMethod = "PlaySyncedWithFlip"
+	}
+	fmt.Printf("av: soa=%.1f ms  freq=%.0f Hz  tone=%d ms (frames-on=%d × %.2f ms)  frames-off=%d  cycles=%d  sync=%s\n",
+		*fSoaMs, *fFreqHz, toneDurMs, framesOn, frameMs, framesOff, *fCycles, syncMethod)
 
 	tone := stimuli.NewTone(*fFreqHz, toneDurMs, 0.8)
 	if err := tone.PreloadDevice(exp.AudioDevice); err != nil {
@@ -363,6 +367,19 @@ func runAV(exp *control.Experiment, trig triggers.OutputTTLDevice) error {
 				tVisB = float64(clock.GetTimeNS()) / 1e6
 				flip()
 				tVisA = float64(clock.GetTimeNS()) / 1e6
+				go triggers.FireTrigger(trig, *fTriggerPin, time.Duration(*fTriggerMs)*time.Millisecond)
+				holdBright(framesOn - 1)
+			} else if soaDur == 0 {
+				// SOA=0: use PlaySyncedWithFlip so the audio buffer is pre-filled
+				// before the flip and the device resumes immediately after VSYNC.
+				// This eliminates goroutine scheduling jitter and primes the audio
+				// pipeline at flip time; onset lags by at most one callback period.
+				r.SetDrawColor(bLevel, bLevel, bLevel, 255)
+				r.Clear()
+				tVisB = float64(clock.GetTimeNS()) / 1e6
+				flipNS, _ := tone.PlaySyncedWithFlip(exp.Screen)
+				tVisA = float64(flipNS) / 1e6
+				tAudioQ = tVisA // audio pre-buffered; onset ≤ tVisA + 1 callback period
 				go triggers.FireTrigger(trig, *fTriggerPin, time.Duration(*fTriggerMs)*time.Millisecond)
 				holdBright(framesOn - 1)
 			} else {

@@ -91,3 +91,27 @@ deploy: pdfs docs
 clean:
 	rm -rf _build/ site/
 
+# ---------------------------------------------------------------------------
+# WASM / browser builds
+# ---------------------------------------------------------------------------
+# Usage:
+#   make wasm-hello_world          build hello_world as WASM
+#   make wasm-hello_world-serve    build + serve on http://localhost:8080
+#
+# Prerequisite: the Emscripten-compiled SDL3 bundle must exist at
+#   examples/hello_world/SDL3.js and examples/hello_world/SDL3.wasm
+# See docs/WASM.md for how to build it.
+
+WASM_EXEC_JS := $(shell go env GOROOT)/lib/wasm/wasm_exec.js
+
+wasm-%-serve: wasm-%
+	cd examples/$* && python3 -m http.server 8080
+
+wasm-%:
+	GOOS=js GOARCH=wasm go build -o examples/$*/main.wasm ./examples/$*/
+	@if [ ! -f examples/$*/wasm_exec.js ]; then \
+	  cp $(WASM_EXEC_JS) examples/$*/wasm_exec.js; \
+	fi
+	@echo "Built examples/$*/main.wasm"
+	@echo "Serve with: make wasm-$*-serve  (requires SDL3.js + SDL3.wasm in examples/$*/)"
+

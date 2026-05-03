@@ -464,13 +464,16 @@ func (e *Experiment) Initialize() error {
 		e.ttfLoader = loadTTF()
 	}
 
-	if err := sdl.Init(sdl.INIT_VIDEO | sdl.INIT_EVENTS | sdl.INIT_AUDIO | sdl.INIT_JOYSTICK | sdl.INIT_GAMEPAD); err != nil {
-		return err
+	log.Printf("DEBUG: calling sdl.Init flags=%v", platformSDLInitFlags())
+	if err := sdl.Init(platformSDLInitFlags()); err != nil {
+		return fmt.Errorf("sdl.Init: %w", err)
 	}
+	log.Printf("DEBUG: sdl.Init OK")
 
 	if err := ttf.Init(); err != nil {
-		return err
+		return fmt.Errorf("ttf.Init: %w", err)
 	}
+	log.Printf("DEBUG: ttf.Init OK")
 
 	// If no explicit window size was provided, we use the autodetect mode (0,0)
 	// which apparatus.NewScreen handles by using native resolution and high pixel density.
@@ -483,18 +486,16 @@ func (e *Experiment) Initialize() error {
 		sdl.SetHint(sdl.HINT_AUDIO_DEVICE_SAMPLE_FRAMES, fmt.Sprintf("%d", pendingAudioSampleFrames))
 	}
 
-	// Initialize Audio
-	dev, err := sdl.AUDIO_DEVICE_DEFAULT_PLAYBACK.OpenAudioDevice(nil)
-	if err != nil {
-		return err
+	if err := e.platformInitAudio(); err != nil {
+		return fmt.Errorf("platformInitAudio: %w", err)
 	}
-	e.AudioDevice = dev
-	e.Audio = &AudioManager{Device: dev}
+	log.Printf("DEBUG: audio OK")
 
 	screen, err := apparatus.NewScreen(e.Name, e.WindowWidth, e.WindowHeight, e.BackgroundColor, e.Fullscreen, e.ScreenNumber)
 	if err != nil {
-		return err
+		return fmt.Errorf("NewScreen: %w", err)
 	}
+	log.Printf("DEBUG: NewScreen OK")
 	e.Screen = screen
 	e.Keyboard = &apparatus.Keyboard{
 		PollKeys: func() (sdl.Keycode, bool) {
