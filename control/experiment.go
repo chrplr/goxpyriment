@@ -79,6 +79,9 @@ type Experiment struct {
 	DefaultFont     *ttf.Font
 	AudioDevice     sdl.AudioDeviceID
 	Audio           *AudioManager
+	// AudioRecorder is set by OpenAudioRecorder / OpenAudioRecorderOnDevice and
+	// closed automatically by End. Optional; nil if capture is not used.
+	AudioRecorder *stimuli.AudioRecorder
 	WindowWidth     int
 	WindowHeight    int
 	Fullscreen      bool
@@ -591,6 +594,40 @@ func (e *Experiment) Initialize() error {
 	return nil
 }
 
+// OpenAudioRecorder opens the default microphone using SDL's recording device
+// stream. spec is the PCM format you will read (see [stimuli.DefaultRecorderSpec]);
+// pass nil to let SDL choose, then inspect [stimuli.AudioRecorder.OutputFormat].
+//
+// The recorder is stored in [Experiment.AudioRecorder] and closed by [Experiment.End].
+// If a recorder was already open, it is replaced and the previous one is closed.
+//
+// Requires a successful [Experiment.Initialize] (SDL audio subsystem must be up).
+func (e *Experiment) OpenAudioRecorder(spec *sdl.AudioSpec) (*stimuli.AudioRecorder, error) {
+	r, err := stimuli.NewAudioRecorder(spec)
+	if err != nil {
+		return nil, err
+	}
+	if e.AudioRecorder != nil {
+		_ = e.AudioRecorder.Close()
+	}
+	e.AudioRecorder = r
+	return r, nil
+}
+
+// OpenAudioRecorderOnDevice is like [Experiment.OpenAudioRecorder] but binds a
+// specific device id from [sdl.GetAudioRecordingDevices].
+func (e *Experiment) OpenAudioRecorderOnDevice(device sdl.AudioDeviceID, spec *sdl.AudioSpec) (*stimuli.AudioRecorder, error) {
+	r, err := stimuli.NewAudioRecorderOnDevice(device, spec)
+	if err != nil {
+		return nil, err
+	}
+	if e.AudioRecorder != nil {
+		_ = e.AudioRecorder.Close()
+	}
+	e.AudioRecorder = r
+	return r, nil
+}
+
 // pollEvent is a hook for sdl.PollEvent to allow unit testing without
 // a live SDL context.
 var pollEvent = sdl.PollEvent
@@ -853,6 +890,10 @@ func (e *Experiment) End() {
 	}
 	if e.Screen != nil {
 		e.Screen.Destroy()
+	}
+	if e.AudioRecorder != nil {
+		_ = e.AudioRecorder.Close()
+		e.AudioRecorder = nil
 	}
 	if e.Audio != nil {
 		e.Audio.Shutdown()
