@@ -1184,6 +1184,40 @@ snd.Wait()  // wait here if needed
 
 For fire-and-forget feedback sounds, call `snd.Play()` without `snd.Wait()`.
 
+### Microphone recording
+
+goxpyriment can capture PCM from the system microphone via SDL3. Playback (`exp.AudioDevice`) and recording use **different** device handles.
+
+Typical flow:
+
+1. After `Initialize`, call `exp.SelectAudioRecordingDevice` so the participant picks an input from a numbered menu (SDL sometimes fails with the implicit default on Linux; picking an enumerated device is more reliable).
+2. Open the recorder with `exp.OpenAudioRecorderOnDevice(mic.ID, &stimuli.DefaultRecorderSpec())`.
+3. Call `rec.Start()` before the interval you want to capture; `rec.Stop()` when done.
+4. Read captured bytes with `rec.Drain(nil)` and save with `stimuli.WriteFloat32WAV`.
+
+```go
+mic, err := exp.SelectAudioRecordingDevice("Select microphone")
+rec, err := exp.OpenAudioRecorderOnDevice(mic.ID, &stimuli.DefaultRecorderSpec())
+
+rec.Start()
+exp.ShowTimed(fixation, 500)
+exp.ShowTimed(cue, 1000) // recording continues if Start was called before
+rec.Stop()
+
+pcm, _ := rec.Drain(nil)
+fmt := rec.OutputFormat()
+stimuli.WriteFloat32WAV(filepath.Join(exp.Data.Directory, "trial_01.wav"),
+    pcm, int(fmt.Freq), int(fmt.Channels))
+
+exp.Data.Add(1, "trial_01.wav", len(pcm), mic.Name) // log device name in CSV
+```
+
+`exp.End()` closes `exp.AudioRecorder` automatically.
+
+**Platform notes:** desktop Linux/macOS/Windows only (`!js` build tag). Capture latency and jitter depend on the OS audio stack (PipeWire, PulseAudio, CoreAudio, WASAPI). This is suitable for voice responses and session archiving, not for sub-millisecond EEG sync without external validation.
+
+Worked examples: `examples/audio_record` (single manual clip) and `examples/audio_record_trials` (10 × 1 s trials, WAV per trial).
+
 ---
 
 ## 12. Experimental Design and Randomization
