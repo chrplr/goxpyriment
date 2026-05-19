@@ -8,7 +8,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"path/filepath"
 
 	"github.com/chrplr/goxpyriment/clock"
@@ -20,15 +19,25 @@ func main() {
 	exp := control.NewExperimentFromFlags("Audio capture demo", control.Black, control.White, 32)
 	defer exp.End()
 
-	spec := stimuli.DefaultRecorderSpec()
-	rec, err := exp.OpenAudioRecorder(&spec)
-	if err != nil {
-		log.Fatalf("open recorder: %v", err)
-	}
-
 	title := stimuli.NewTextLine("Press SPACE to record ~2 s, ESC to quit.", 0, 0, control.White)
 
-	err = exp.Run(func() error {
+	var rec *stimuli.AudioRecorder
+	ready := false
+
+	err := exp.Run(func() error {
+		if !ready {
+			mic, err := exp.SelectAudioRecordingDevice("Select microphone")
+			if err != nil {
+				return err
+			}
+			spec := stimuli.DefaultRecorderSpec()
+			rec, err = exp.OpenAudioRecorderOnDevice(mic.ID, &spec)
+			if err != nil {
+				return fmt.Errorf("open recorder: %w", err)
+			}
+			ready = true
+		}
+
 		if err := exp.Screen.Clear(); err != nil {
 			return err
 		}
