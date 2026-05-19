@@ -110,6 +110,29 @@ stimuli.PlayBuzzer(exp.AudioDevice)  // incorrect response
 stimuli.PlayPing(exp.AudioDevice)    // correct response
 ```
 
+### Audio recording (microphone)
+
+Desktop only (`audio_recorder.go`, `!js`). Uses `sdl.OpenAudioDeviceStream` on a recording device.
+
+```go
+mic, _ := exp.SelectAudioRecordingDevice("Select microphone") // control package
+rec, _ := stimuli.NewAudioRecorderOnDevice(mic.ID, &stimuli.DefaultRecorderSpec())
+rec.Start()
+pcm, _ := rec.Drain(nil)
+rec.Stop()
+stimuli.WriteFloat32WAV(path, pcm, int(rec.OutputFormat().Freq), int(rec.OutputFormat().Channels))
+rec.Close()
+```
+
+| API | Notes |
+|---|---|
+| `DefaultRecorderSpec()` | Mono `AUDIO_F32LE` @ 44100 Hz |
+| `ListRecordingDevices()` | System default + `GetAudioRecordingDevices` |
+| `AudioRecorder` | `Start` / `Stop` / `Read` / `Drain` / `Close` |
+| `WriteFloat32WAV` | IEEE float32 LE WAV writer |
+
+`Menu.Caption` supports a title above device lists (e.g. microphone picker titles).
+
 ## VSYNC-locked animation loops
 
 All three functions disable GC, drain stale events before the first frame, and return `MotionResult{Key, Button, RTms}`.

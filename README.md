@@ -38,7 +38,7 @@ If you are looking for a simpler, *no-code experiment generator*, check out [Gos
 
 ---
 
-Inspired by [expyriment.org](https://github.com/expyriment/expyriment). Built on [libsdl](http://libsdl.org) via [go-sdl3](https://github.com/Zyko0/go-sdl3). Licensed under the GNU GPL v3.
+Inspired by [expyriment.org](https://github.com/expyriment/expyriment). Built on [libsdl](http://libsdl.org) via [go-sdl3](https://github.com/Zyko0/go-sdl3). Licensed under the GNU GPL v3. See [CONTRIBUTORS.md](CONTRIBUTORS.md) for additional credits.
 
 Please cite this repository as:
 > Christophe Pallier (2026) Goxpyriment vX.Y.Z. Zenodo. https://doi.org/10.5281/zenodo.19200598

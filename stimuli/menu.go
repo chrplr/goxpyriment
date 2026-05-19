@@ -49,6 +49,9 @@ type Menu struct {
 	// LineSpacing is the vertical distance (pixels) between consecutive item
 	// centers. 0 = auto: 1.6 × the font's line height.
 	LineSpacing float32
+
+	// Caption is optional text drawn above the list (supports newlines).
+	Caption string
 }
 
 // NewMenu creates a Menu with sensible visual defaults.
@@ -78,6 +81,19 @@ func (m *Menu) lineSpacing(screen *apparatus.Screen) float32 {
 
 // draw renders all items, highlighting the one at index sel.
 func (m *Menu) draw(screen *apparatus.Screen, sel int) error {
+	if m.Caption != "" {
+		w := int32(float32(screen.Width) * 0.85)
+		if w < 400 {
+			w = 400
+		}
+		captionY := float32(screen.Height) * 0.32
+		tb := NewTextBox(m.Caption, w, sdl.FPoint{X: m.Pos.X, Y: captionY}, m.TextColor)
+		tb.Font = m.Font
+		if err := tb.Draw(screen); err != nil {
+			return err
+		}
+	}
+
 	n := len(m.Items)
 	ls := m.lineSpacing(screen)
 	totalH := float32(n-1) * ls

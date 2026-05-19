@@ -269,10 +269,20 @@ control.BUTTON_LEFT, BUTTON_RIGHT
 ### Audio
 
 ```go
-exp.AudioDevice  // sdl.AudioDeviceID — pass to Sound.PreloadDevice()
+exp.AudioDevice     // sdl.AudioDeviceID — pass to Sound.PreloadDevice()
+exp.AudioRecorder   // *stimuli.AudioRecorder — set by OpenAudioRecorder* (optional)
+exp.Audio           // *control.AudioManager — playback helpers
 
 // Top-level helper (call before NewExperiment)
-control.SetAudioSampleFrames(frames int)  // set audio buffer size (256–2048)
+control.SetAudioSampleFrames(frames int)  // set audio buffer size (256–2048); playback only
+
+// Microphone capture (after Initialize)
+mic, err := exp.SelectAudioRecordingDevice("Select microphone")
+rec, err := exp.OpenAudioRecorderOnDevice(mic.ID, &stimuli.DefaultRecorderSpec())
+rec.Start()
+pcm, _ := rec.Read(buf)          // or rec.Drain(nil)
+rec.Stop()
+_ = rec.Close()                  // also closed by exp.End()
 ```
 
 ---
@@ -507,6 +517,38 @@ import "github.com/chrplr/goxpyriment/assets_embed"
 stimuli.PlaySoundFromMemory(exp.AudioDevice, assets_embed.BuzzerWav)
 stimuli.PlaySoundFromMemory(exp.AudioDevice, assets_embed.CorrectWav)
 ```
+
+### Audio recording (microphone)
+
+Capture uses a **separate** SDL recording device from playback (`exp.AudioDevice`). Not available on the JS/WASM build.
+
+```go
+// List inputs (includes "System default" plus SDL-enumerated devices)
+devices, _ := stimuli.ListRecordingDevices()
+
+// Device picker (numbered menu; returns ID + human-readable name)
+mic, err := exp.SelectAudioRecordingDevice("Select microphone")
+
+spec := stimuli.DefaultRecorderSpec() // mono float32 @ 44.1 kHz
+rec, err := exp.OpenAudioRecorderOnDevice(mic.ID, &spec)
+// or: rec, err := exp.OpenAudioRecorder(&spec)  // SDL default recording device
+
+rec.Start()
+// ... present trials ...
+pcm, err := rec.Drain(nil)
+rec.Stop()
+
+outFmt := rec.OutputFormat()
+stimuli.WriteFloat32WAV("trial.wav", pcm, int(outFmt.Freq), int(outFmt.Channels))
+```
+
+| Type / function | Role |
+|---|---|
+| `stimuli.AudioRecorder` | SDL capture stream; `Start` / `Stop` / `Read` / `Drain` / `Close` |
+| `stimuli.ListRecordingDevices()` | `[]RecordingDevice{ID, Name}` |
+| `stimuli.WriteFloat32WAV` | Save IEEE float32 little-endian WAV |
+| `exp.SelectAudioRecordingDevice` | Interactive device menu |
+| `exp.OpenAudioRecorder` / `OpenAudioRecorderOnDevice` | Open capture; stored in `exp.AudioRecorder` |
 
 ---
 

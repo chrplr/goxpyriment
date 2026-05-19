@@ -28,6 +28,7 @@ exp.Run(func() error {
 | `Mouse` | `*io.Mouse` | Mouse button + position input |
 | `AudioDevice` | `sdl.AudioDeviceID` | Passed to `Sound.PreloadDevice` |
 | `Audio` | `*AudioManager` | High-level audio playback |
+| `AudioRecorder` | `*stimuli.AudioRecorder` | Optional capture; set by `OpenAudioRecorder*` |
 | `Data` | `*io.DataFile` | `.csv` experiment data file |
 | `Design` | `*design.Experiment` | Trial/block structure |
 | `Info` | `map[string]string` | Participant metadata (from `GetParticipantInfo`) |
@@ -77,6 +78,18 @@ type EventState struct {
 | `Shutdown()` | Called by `exp.End()` automatically |
 
 Audio stimuli still need `sound.PreloadDevice(exp.AudioDevice)` before first play.
+
+## Audio recording
+
+Playback and capture use separate SDL devices. Not available on JS/WASM.
+
+| Method | Description |
+|---|---|
+| `SelectAudioRecordingDevice(title)` | Numbered menu; returns `stimuli.RecordingDevice` (`ID`, `Name`) |
+| `OpenAudioRecorder(spec)` | Default SDL recording device → `exp.AudioRecorder` |
+| `OpenAudioRecorderOnDevice(device, spec)` | Specific device → `exp.AudioRecorder` |
+
+`exp.End()` closes `exp.AudioRecorder` before the playback device.
 
 ## Participant info dialog (GetParticipantInfo)
 
