@@ -1216,8 +1216,6 @@ exp.Data.Add(1, "trial_01.wav", len(pcm), mic.Name) // log device name in CSV
 
 **Platform notes:** desktop Linux/macOS/Windows only (`!js` build tag). Capture latency and jitter depend on the OS audio stack (PipeWire, PulseAudio, CoreAudio, WASAPI). This is suitable for voice responses and session archiving, not for sub-millisecond EEG sync without external validation.
 
-Worked examples: `examples/audio_record` (single manual clip) and `examples/audio_record_trials` (10 × 1 s trials, WAV per trial).
-
 ---
 
 ## 12. Experimental Design and Randomization

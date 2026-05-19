@@ -1,4 +1,5 @@
 // Copyright (2026) Christophe Pallier <christophe@pallier.org>
+// Co-developed by Álvaro Cabana <almadana@gmail.com> with Cursor (2026).
 // Distributed under the GNU General Public License v3.
 
 //go:build js

@@ -550,8 +550,6 @@ stimuli.WriteFloat32WAV("trial.wav", pcm, int(outFmt.Freq), int(outFmt.Channels)
 | `exp.SelectAudioRecordingDevice` | Interactive device menu |
 | `exp.OpenAudioRecorder` / `OpenAudioRecorderOnDevice` | Open capture; stored in `exp.AudioRecorder` |
 
-Examples: `examples/audio_record`, `examples/audio_record_trials`.
-
 ---
 
 ## Package `apparatus` and `results`

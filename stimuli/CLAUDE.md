@@ -131,7 +131,7 @@ rec.Close()
 | `AudioRecorder` | `Start` / `Stop` / `Read` / `Drain` / `Close` |
 | `WriteFloat32WAV` | IEEE float32 LE WAV writer |
 
-`Menu.Caption` supports a title above device lists. Examples: `examples/audio_record`, `examples/audio_record_trials`.
+`Menu.Caption` supports a title above device lists (e.g. microphone picker titles).
 
 ## VSYNC-locked animation loops
 
