@@ -13,6 +13,8 @@ require (
 	github.com/ebitengine/purego v0.10.0 // indirect
 	github.com/funatsufumiya/go-gv-video v0.0.2 // indirect
 	github.com/gen2brain/mpeg v0.5.0 // indirect
+	github.com/goburrow/modbus v0.1.0 // indirect
+	github.com/goburrow/serial v0.1.0 // indirect
 	github.com/pierrec/lz4/v4 v4.1.26 // indirect
 	github.com/robroyd/dds v0.0.0-20221227152439-75471f84d293 // indirect
 	go.bug.st/serial v1.6.4 // indirect

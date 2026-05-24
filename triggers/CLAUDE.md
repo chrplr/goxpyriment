@@ -80,6 +80,42 @@ buttons := triggers.DecodeMask(mask)           // []FORPButton
 | 16 | uint8 line | set single line LOW |
 | 20 | — | read button mask → returns uint8 |
 
+## FT232HTrigger (Adafruit FT232H, Linux)
+
+Implements both interfaces. Pure-Go driver via Linux usbfs — no libftdi or D2XX required.
+
+**Wiring:**
+- AD0–AD7 (D-bus) → 8 TTL output lines for trigger codes
+- AC0–AC7 (C-bus) → 8 TTL input lines for response pads
+
+```go
+box, err := triggers.NewFT232H(
+    triggers.WithFT232HPollInterval(5*time.Millisecond), // optional
+)
+if err != nil { log.Fatal(err) }
+defer box.Close()
+
+box.Send(0b00000001)               // line 0 HIGH (persistent)
+box.Pulse(0, 5*time.Millisecond)   // line 0: HIGH for 5 ms, then LOW
+box.AllLow()
+
+_ = box.DrainInputs(ctx)
+mask, rt, _ := box.WaitForInput(ctx)
+
+// Auto-detect (falls back to NullOutputTTLDevice if not found):
+out, err := triggers.AutoDetectFT232H()
+defer out.Close()
+```
+
+**Prerequisites (Linux):**
+- `ftdi_sio` kernel module must not hold the device: `sudo rmmod ftdi_sio`
+- User needs rw access to `/dev/bus/usb/BBB/DDD`; add a udev rule or join `plugdev`:
+  ```
+  ACTION=="add", SUBSYSTEM=="usb", ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6014", MODE="0666", GROUP="plugdev"
+  ```
+
+**Internal protocol:** MPSSE mode via direct usbfs ioctls (VID=0x0403, PID=0x6014). GPIO commands: `SET_BITS_LOW` (0x80) for AD0–AD7, `GET_BITS_HIGH` (0x83) for AC0–AC7. Every bulk IN packet is prefixed by 2 modem-status bytes.
+
 ## FORPButton
 
 ```go
@@ -96,6 +132,71 @@ triggers.FORPRightRed    // 7, D29, STI015
 buttons := triggers.DecodeMask(mask)  // []FORPButton, ordered low→high bit
 fmt.Println(buttons[0])               // "left blue"
 ```
+
+## LinuxGPIOTrigger (Raspberry Pi and other Linux SBCs)
+
+Implements both interfaces via the Linux GPIO character device v2 API (kernel ≥ 5.10). Works on any Linux SBC with GPIO — Raspberry Pi, Rock Pi, BeagleBone, Jetson, etc. No libraries or kernel modules required beyond read-write access to `/dev/gpiochip0`.
+
+**Wiring:** any 8 GPIO pins for output, any other 8 for input. Pin numbers are chip-relative offsets (= BCM numbers on Raspberry Pi).
+
+```go
+box, err := triggers.NewLinuxGPIOTrigger(
+    triggers.WithGPIOOutputPins([8]int{17, 27, 22, 5, 6, 13, 19, 26}),
+    triggers.WithGPIOInputPins([8]int{12, 16, 20, 21, 4, 25, 24, 23}),
+    triggers.WithGPIOChip("/dev/gpiochip0"),          // optional, this is default
+    triggers.WithGPIOPollInterval(5*time.Millisecond), // optional
+)
+if err != nil { log.Fatal(err) }
+defer box.Close()
+
+box.Send(0b00000001)              // pin 17 HIGH
+box.Pulse(0, 5*time.Millisecond)  // pin 17: HIGH for 5 ms, then LOW
+
+_ = box.DrainInputs(ctx)
+mask, rt, _ := box.WaitForInput(ctx)
+```
+
+Output-only and input-only configurations are both valid; omit the unused option.
+
+**Prerequisites:**
+- Kernel ≥ 5.10 (GPIO character device v2 API)
+- User in the `gpio` group or `/dev/gpiochip0` accessible: `sudo usermod -aG gpio $USER`
+
+**Internal protocol:** `GPIO_V2_GET_LINE_IOCTL` (0xC250B407) to claim 8 lines, `GPIO_V2_LINE_SET_VALUES_IOCTL` (0xC010B40E) and `GPIO_V2_LINE_GET_VALUES_IOCTL` (0xC010B40F) for atomic byte read/write. The `init()` function panic-checks struct size 592 at startup to catch any layout drift.
+
+## LabJackT4 (Modbus TCP)
+
+Implements both interfaces. Pure-Go Modbus TCP driver — no SDK or system library required.
+
+**Wiring:**
+- FIO0–FIO7 → 8 TTL output lines for trigger codes (configured as outputs on open)
+- EIO0–EIO7 → 8 TTL input lines for response pads (configured as inputs on open)
+
+```go
+box, err := triggers.NewLabJackT4("192.168.1.100",
+    triggers.WithT4PollInterval(5*time.Millisecond), // optional
+    triggers.WithT4Timeout(1*time.Second),            // optional
+    triggers.WithT4UnitID(1),                         // optional
+)
+if err != nil { log.Fatal(err) }
+defer box.Close()
+
+box.Send(0b00000001)              // FIO0 HIGH
+box.Pulse(0, 5*time.Millisecond)  // FIO0: HIGH for 5 ms, then LOW
+
+_ = box.DrainInputs(ctx)
+mask, rt, _ := box.WaitForInput(ctx)
+```
+
+**Internal protocol:** Modbus TCP on port 502 via `github.com/goburrow/modbus`.
+FC6 (`WriteSingleRegister`) for output; FC3 (`ReadHoldingRegisters`) for input.
+
+| Register | Address | Description |
+|----------|---------|-------------|
+| `FIO_STATE` | 2500 | FIO0–FIO7 output bitmask |
+| `EIO_STATE` | 2501 | EIO0–EIO7 input bitmask |
+| `FIO_DIRECTION` | 2504 | 0x00FF = all FIO lines outputs |
+| `EIO_DIRECTION` | 2505 | 0x0000 = all EIO lines inputs |
 
 ## ParallelPort (Linux LPT)
 

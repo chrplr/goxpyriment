@@ -111,6 +111,70 @@ func (s *Sound) Wait() {
 	}
 }
 
+// CurrentSampleFrame returns a best-effort estimate of the sample frame that
+// is currently being played by the audio hardware.
+//
+// # THIS IS NOT THE EXACT CURRENT SAMPLE
+//
+// The SDL audio pipeline has two queues between your data and the speaker:
+//
+//  1. SDL's software stream buffer — drained by the audio thread.
+//  2. The hardware DMA buffer — filled by the audio thread; the driver plays
+//     from here.  Samples that have already left the software buffer but are
+//     still in the hardware buffer have NOT been heard yet.
+//
+// SDL_GetAudioStreamQueued (called internally) only sees layer 1. The hardware
+// buffer in layer 2 adds a constant lag that is subtracted using the device's
+// reported buffer size.  The result is still an approximation: the returned
+// value is accurate to within ±one hardware callback period, which at the
+// default 512-frame buffer and 44100 Hz is roughly ±11.6 ms.  Calling
+// [control.SetAudioSampleFrames](128) before initialization reduces the bound
+// to ±2.9 ms at the cost of higher underrun risk.
+//
+// The reported position lags reality — it never jumps ahead.
+//
+// Returns 0 if the sound has not been loaded or playback has not started.
+// Returns the total frame count once playback is complete.
+func (s *Sound) CurrentSampleFrame() (int, error) {
+	if s.Stream == nil || len(s.Data) == 0 {
+		return 0, nil
+	}
+
+	bytesPerFrame := int(s.Spec.Channels) * sampleByteWidth(s.Spec.Format)
+	if bytesPerFrame == 0 {
+		return 0, fmt.Errorf("CurrentSampleFrame: invalid audio spec (channels=%d format=%d)",
+			s.Spec.Channels, s.Spec.Format)
+	}
+	totalFrames := len(s.Data) / bytesPerFrame
+
+	queued, err := s.Stream.Queued()
+	if err != nil {
+		return 0, fmt.Errorf("CurrentSampleFrame: %w", err)
+	}
+	if queued < 0 {
+		queued = 0
+	}
+
+	// Estimate hardware buffer latency in source (WAV) frames.
+	hwWavFrames := 0
+	if deviceID := s.Stream.Device(); deviceID != 0 {
+		if devSpec, hwFrames, fmtErr := deviceID.Format(); fmtErr == nil &&
+			devSpec != nil && devSpec.Freq > 0 && hwFrames > 0 {
+			hwLatencySec := float64(hwFrames) / float64(devSpec.Freq)
+			hwWavFrames = int(hwLatencySec * float64(s.Spec.Freq))
+		}
+	}
+
+	played := totalFrames - int(queued)/bytesPerFrame - hwWavFrames
+	if played < 0 {
+		return 0, nil
+	}
+	if played > totalFrames {
+		return totalFrames, nil
+	}
+	return played, nil
+}
+
 // PlaySyncedWithFlip synchronises sound onset with the next VSYNC flip.
 //
 // It pauses the audio device, pre-fills the stream with the sound data (so
