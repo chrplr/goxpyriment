@@ -92,6 +92,9 @@ type Experiment struct {
 	// GammaCorrector, when non-nil, is applied by CorrectColor.
 	// Set via SetGamma or by assigning io.NewGammaCorrector(...) directly.
 	GammaCorrector  *apparatus.GammaCorrector
+	// Microphone, when non-nil, is the audio recording device opened by
+	// OpenMicrophone. Closed automatically by End().
+	Microphone      *apparatus.Microphone
 
 	sdlLoader interface{ Unload() }
 	imgLoader interface{ Unload() }
@@ -841,6 +844,22 @@ func (e *Experiment) ShowSplash(waitForKey bool) error {
 // ---------------------------------------------------------------------------
 
 // End cleans up resources.
+// OpenMicrophone opens an audio recording device and stores it in exp.Microphone.
+// Pass nil for spec to use apparatus.DefaultRecordingSpec (F32LE mono 44100 Hz).
+// Returns an error if no recording device is available or the device fails to open.
+// The microphone is closed automatically by End().
+func (e *Experiment) OpenMicrophone(spec *sdl.AudioSpec) error {
+	mic, err := apparatus.NewMicrophone(spec)
+	if err != nil {
+		return err
+	}
+	if e.Microphone != nil {
+		e.Microphone.Close()
+	}
+	e.Microphone = mic
+	return nil
+}
+
 func (e *Experiment) End() {
 	if e.Data != nil {
 		e.Data.WriteEndTime()
@@ -859,6 +878,9 @@ func (e *Experiment) End() {
 	}
 	if e.AudioDevice != 0 {
 		e.AudioDevice.Close()
+	}
+	if e.Microphone != nil {
+		e.Microphone.Close()
 	}
 	ttf.Quit()
 	sdl.Quit()

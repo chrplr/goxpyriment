@@ -1184,6 +1184,134 @@ snd.Wait()  // wait here if needed
 
 For fire-and-forget feedback sounds, call `snd.Play()` without `snd.Wait()`.
 
+### Microphone recording
+
+goxpyriment can capture audio from the system microphone via SDL3's recording API. The primary use cases are:
+
+- **Picture naming** — measure the latency from image onset to the participant's first vocalization.
+- **Vocal shadowing** — measure the latency between a spoken or tonal stimulus and the participant's repetition of it.
+
+Open the microphone once, before the trial loop:
+
+```go
+// nil uses the default recording spec: F32LE mono 44100 Hz
+if err := exp.OpenMicrophone(nil); err != nil {
+    log.Fatalf("microphone unavailable: %v", err)
+}
+// exp.Microphone is now ready; it is closed automatically by exp.End()
+```
+
+To select a custom format (e.g. higher sample rate or stereo):
+
+```go
+spec := &sdl.AudioSpec{Format: sdl.AUDIO_F32LE, Channels: 1, Freq: 48000}
+exp.OpenMicrophone(spec)
+```
+
+To list all connected recording devices and open a specific one:
+
+```go
+devices, _ := apparatus.GetRecordingDevices()
+for _, d := range devices {
+    name, _ := d.Name()
+    fmt.Println(d, name)
+}
+mic, _ := apparatus.NewMicrophoneFromDevice(devices[0], nil)
+exp.Microphone = mic
+```
+
+### Voice key — detecting vocal onset
+
+A `VoiceKey` monitors the microphone and fires when the amplitude exceeds a threshold. It is the goxpyriment equivalent of a hardware voice key or PsychoPy's `OnsetVoiceKey`.
+
+```go
+vk := apparatus.NewVoiceKey(exp.Microphone, 0.03, 128)
+// threshold = 0.03 (RMS amplitude 0–1 for F32LE)
+// windowSz  = 128 samples ≈ 2.9 ms at 44100 Hz
+```
+
+**Per-trial pattern:**
+
+```go
+// 1. Arm: flush the mic buffer and start capturing.
+//    Returns the SDL3 nanosecond timestamp of capture start.
+captureStartNS, _ := vk.Arm()
+
+// 2. Present the stimulus.
+imageOnsetNS, _ := exp.ShowTS(picture)   // picture naming
+// — or —
+stimulusNS, _ := tone.PlaySyncedWithFlip(exp.Screen)  // shadowing
+
+// 3. Wait for the vocal response (2-second window).
+onsetNS, pcm, err := vk.WaitOnset(captureStartNS, 2000)
+if errors.Is(err, apparatus.ErrVoiceTimeout) {
+    // participant did not respond in time
+}
+
+// 4. Compute RT (both timestamps are on the SDL3 nanosecond clock).
+rtMs := int64(onsetNS - imageOnsetNS) / 1_000_000
+```
+
+`WaitOnset` also returns `pcm` — the raw PCM bytes captured during the trial. Save them as WAV for offline verification (see below).
+
+**Threshold calibration.** A value of 0.02–0.05 works in a quiet room. If you observe:
+
+- **Spuriously short RTs (< 100 ms)** — the threshold is too low; it is triggering on breath noise, lip smacks, or microphone bleed from the speakers. Raise the threshold or use headphones.
+- **`detected = false` (missed responses)** — the threshold is too high for soft or breathy voices. Lower it.
+
+Always verify using the saved WAV files rather than adjusting the threshold blindly.
+
+### Timing: microphone and screen on the same clock
+
+Both `imageOnsetNS` (from `exp.ShowTS` or `screen.FlipTS`) and the voice onset computed by `WaitOnset` use `sdl.TicksNS()` — SDL3's monotonic nanosecond clock. No cross-clock conversion is needed:
+
+```
+vk.Arm()  ──────────────────────────── captureStartNS  (sdl.TicksNS())
+                │
+                │  exp.ShowTS(picture)
+                │  ↳ VSYNC flip ──────── imageOnsetNS   (sdl.TicksNS())
+                │
+                │  [participant starts speaking at sample N]
+                │
+                └── onsetNS = captureStartNS + N × 1e9 / sampleRate
+                                                        (sdl.TicksNS() domain)
+
+RT = (onsetNS − imageOnsetNS) / 1 000 000  [ms]
+```
+
+Call `vk.Arm()` just before showing the stimulus so the microphone is already capturing when the image appears. There is no need to arm it long in advance.
+
+### Saving WAV files for verification
+
+Always save a WAV file for each trial and spot-check a random subset after the session. Voice keys can fire on breaths, lip smacks, or room noise; the WAV is the ground truth.
+
+```go
+apparatus.WriteWAV(
+    fmt.Sprintf("sub-%03d_trial-%02d.wav", exp.SubjectID, trial),
+    exp.Microphone.Spec,
+    pcm,
+)
+```
+
+`WriteWAV` supports F32LE, S16LE, S32LE, and U8 formats and writes a standard RIFF/WAV file that any audio editor can open.
+
+For post-hoc re-analysis of saved files (e.g. applying a different threshold), use `apparatus.ScanOnset`:
+
+```go
+sampleIndex := apparatus.ScanOnset(pcm, newThreshold, 128)
+if sampleIndex >= 0 {
+    revisedOnsetNS = apparatus.SampleOnsetNS(captureStartNS, sampleIndex, int(exp.Microphone.Spec.Freq))
+}
+```
+
+### Acoustic feedback (shadowing and AV tasks)
+
+When audio plays through laptop built-in speakers, the microphone picks up the playback signal and the voice key triggers on it rather than on the participant's voice. This produces spuriously short latencies (sometimes < 0 ms if the mic captures the speaker before the amp threshold is crossed).
+
+**Always use headphones for playback** in any task that simultaneously records and plays audio.
+
+If headphones are unavailable, a simple analysis-side fix is to reject any onset that falls within a guard interval after stimulus onset (e.g. discard `onsetNS - stimulusNS < 100 ms`).
+
 ---
 
 ## 12. Experimental Design and Randomization
@@ -1715,14 +1843,65 @@ resp, _ := rd.WaitResponse(ctx)
 | `FORPRightGreen`    | 6    | D28         | STI014      |
 | `FORPRightRed`      | 7    | D29         | STI015      |
 
+### FT232H (Adafruit FT232H breakout, Linux)
+
+A USB-to-MPSSE bridge. AD0–AD7 are TTL output lines; AC0–AC7 are TTL input lines. No libftdi or D2XX installation needed — the driver uses Linux usbfs directly.
+
+```go
+box, err := triggers.NewFT232H()
+defer box.Close()
+
+box.Pulse(0, 5*time.Millisecond)
+mask, rt, _ := box.WaitForInput(ctx)
+
+// Auto-detect (returns NullOutputTTLDevice if no device found):
+out, _ := triggers.AutoDetectFT232H()
+```
+
+Prerequisites: unload the `ftdi_sio` kernel module (`sudo rmmod ftdi_sio`) and ensure the user has rw access to the USB device node (udev rule or `plugdev` group membership).
+
+### GPIO (Raspberry Pi and other Linux SBCs)
+
+Drives any 8 GPIO pins as TTL outputs and reads any other 8 pins as TTL inputs, using the Linux GPIO character device v2 API. Works on Raspberry Pi (BCM pin numbers), Rock Pi, BeagleBone, Jetson, and any Linux SBC with kernel ≥ 5.10.
+
+```go
+box, err := triggers.NewLinuxGPIOTrigger(
+    triggers.WithGPIOOutputPins([8]int{17, 27, 22, 5, 6, 13, 19, 26}),
+    triggers.WithGPIOInputPins([8]int{12, 16, 20, 21, 4, 25, 24, 23}),
+)
+defer box.Close()
+
+box.Pulse(0, 5*time.Millisecond)
+mask, rt, _ := box.WaitForInput(ctx)
+```
+
+Output-only and input-only configurations are both valid. Prerequisites: kernel ≥ 5.10; user in the `gpio` group.
+
+### LabJack T4 (Modbus TCP)
+
+Communicates over Ethernet via Modbus TCP — no LabJack SDK or driver required. FIO0–FIO7 are output lines; EIO0–EIO7 are input lines.
+
+```go
+box, err := triggers.NewLabJackT4("192.168.1.100")
+defer box.Close()
+
+box.Pulse(0, 5*time.Millisecond)
+mask, rt, _ := box.WaitForInput(ctx)
+```
+
+The device must be reachable on the local network. Default Modbus port 502 is used; append `:port` to the host string to override.
+
 ### Supported devices
 
-| Device | Type | Output | Input | Notes |
-|--------|------|--------|-------|-------|
-| DLP-IO8-G | `DLPIO8` | ✓ | ✓ | USB-CDC serial; ASCII protocol |
-| NeuroSpin MEGTTLBox | `MEGTTLBox` | ✓ | ✓ | Arduino Mega; binary protocol; fORP input |
-| LPT parallel port | `ParallelPort` | ✓ | — | Linux only; ppdev ioctl |
-| None / fallback | `NullOutputTTLDevice` | ✓ (no-op) | — | Safe default; returned by `AutoDetectDLPIO8` |
+| Device | Type | Output | Input | Connection | Notes |
+|--------|------|--------|-------|------------|-------|
+| DLP-IO8-G | `DLPIO8` | ✓ | ✓ | USB-CDC serial | ASCII protocol |
+| NeuroSpin MEGTTLBox | `MEGTTLBox` | ✓ | ✓ | USB serial | Arduino Mega; binary protocol; fORP input |
+| Adafruit FT232H | `FT232HTrigger` | ✓ | ✓ | USB (usbfs) | Linux only; no libftdi needed |
+| Linux GPIO | `LinuxGPIOTrigger` | ✓ | ✓ | GPIO pins | Any Linux SBC; kernel ≥ 5.10 |
+| LabJack T4 | `LabJackT4` | ✓ | ✓ | Ethernet (Modbus TCP) | No SDK needed |
+| LPT parallel port | `ParallelPort` | ✓ | — | LPT | Linux only; ppdev ioctl |
+| None / fallback | `NullOutputTTLDevice` | ✓ (no-op) | — | — | Returned by `AutoDetectDLPIO8`, `AutoDetectFT232H` |
 
 ---
 

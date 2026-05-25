@@ -275,6 +275,17 @@ exp.AudioDevice  // sdl.AudioDeviceID — pass to Sound.PreloadDevice()
 control.SetAudioSampleFrames(frames int)  // set audio buffer size (256–2048)
 ```
 
+### Microphone
+
+```go
+exp.Microphone  // *apparatus.Microphone — nil until OpenMicrophone is called
+
+// Open the default recording device (nil = F32LE mono 44100 Hz)
+exp.OpenMicrophone(spec *sdl.AudioSpec) error
+
+// Closed automatically by exp.End()
+```
+
 ---
 
 ## Package `stimuli`
@@ -679,6 +690,79 @@ resp, err := rd.WaitResponse(ctx)
 // resp.RT is always valid; resp.Precise tells you whether to trust nanosecond accuracy
 ```
 
+### Microphone
+
+```go
+// Construction
+mic, err := apparatus.NewMicrophone(spec)                          // default recording device
+mic, err := apparatus.NewMicrophoneFromDevice(devID, spec)         // specific device
+apparatus.DefaultRecordingSpec() sdl.AudioSpec                     // F32LE mono 44100 Hz
+devices, err := apparatus.GetRecordingDevices() []sdl.AudioDeviceID
+
+// Fields
+mic.DeviceID  sdl.AudioDeviceID
+mic.Stream    *sdl.AudioStream
+mic.Spec      sdl.AudioSpec
+
+// Methods
+captureStartNS, err := mic.StartCapture()    // flush buffer, resume device, return TicksNS()
+err := mic.StopCapture()                     // pause device
+n, err := mic.ReadSamples(buf []byte)        // read PCM bytes (non-blocking)
+n, err := mic.Available()                    // bytes waiting to be read
+mic.Close()                                  // destroy stream
+```
+
+In normal experiments, open the microphone via `exp.OpenMicrophone(spec)` (see control package); `exp.Microphone` is then available throughout the experiment and closed by `exp.End()`.
+
+### VoiceKey
+
+Detects voice onset by computing per-window RMS over F32LE PCM samples.
+
+```go
+vk := apparatus.NewVoiceKey(mic, threshold float32, windowSz int) *VoiceKey
+// threshold: RMS amplitude (0–1). Recommended starting value: 0.02–0.05.
+// windowSz:  samples per RMS window. 0 → 128 (≈ 2.9 ms at 44100 Hz).
+
+captureStartNS, err := vk.Arm()   // flush mic buffer, start capture, return TicksNS()
+
+onsetNS, pcm, err := vk.WaitOnset(captureStartNS uint64, timeoutMS int) (uint64, []byte, error)
+// Returns: onset timestamp (sdl.TicksNS() domain), all PCM bytes captured, nil or ErrVoiceTimeout.
+```
+
+`onsetNS` and the `imageOnsetNS` returned by `exp.ShowTS` or `screen.FlipTS` are on the same SDL3 nanosecond clock:
+
+```go
+captureStartNS, _ := vk.Arm()
+imageOnsetNS, _   := exp.ShowTS(picture)
+onsetNS, pcm, _   := vk.WaitOnset(captureStartNS, 2000)
+rtMs := int64(onsetNS - imageOnsetNS) / 1_000_000
+```
+
+Sentinel error: `apparatus.ErrVoiceTimeout`
+
+Post-hoc helpers (for re-analysing saved WAV files):
+
+```go
+sampleIdx := apparatus.ScanOnset(pcm []byte, threshold float32, windowSz int) int
+// Returns the sample index of the first onset window, or -1 if not found.
+
+onsetNS := apparatus.SampleOnsetNS(captureStartNS uint64, sampleIndex, sampleRate int) uint64
+// Converts a sample index back to a nanosecond timestamp.
+
+names, err := apparatus.DeviceNames() map[sdl.AudioDeviceID]string
+// Returns all recording devices and their human-readable names.
+```
+
+### WriteWAV
+
+```go
+apparatus.WriteWAV(path string, spec sdl.AudioSpec, data []byte) error
+```
+
+Saves raw PCM bytes as a standard RIFF/WAV file. Supports `AUDIO_F32LE`, `AUDIO_S16LE`, `AUDIO_S32LE`, and `AUDIO_U8`. Writes atomically via a temp file + rename.
+
+---
+
 ### DataFile
 
 ```go
@@ -946,6 +1030,91 @@ triggers.FORPRightGreen  // 6
 triggers.FORPRightRed    // 7
 ```
 
+### FT232HTrigger (Adafruit FT232H, Linux)
+
+Implements both `OutputTTLDevice` and `InputTTLDevice`. Pure-Go driver via Linux usbfs — no libftdi or D2XX installation required.
+
+**Wiring:** AD0–AD7 (D-bus) → 8 TTL output lines; AC0–AC7 (C-bus) → 8 TTL input lines.
+
+```go
+box, err := triggers.NewFT232H(
+    triggers.WithFT232HPollInterval(5*time.Millisecond), // optional; default 5 ms
+)
+if err != nil { log.Fatal(err) }
+defer box.Close()
+
+box.Send(0b00000001)              // AD0 HIGH (persistent)
+box.Pulse(0, 5*time.Millisecond)  // AD0: HIGH for 5 ms, then LOW
+box.AllLow()
+
+_ = box.DrainInputs(ctx)
+mask, rt, err := box.WaitForInput(ctx)
+
+// Auto-detect (falls back to NullOutputTTLDevice if no device found):
+out, err := triggers.AutoDetectFT232H()
+defer out.Close()
+```
+
+**Prerequisites (Linux):**
+- The `ftdi_sio` kernel module must not hold the device: `sudo rmmod ftdi_sio`
+- User needs rw access to `/dev/bus/usb/BBB/DDD`. Recommended udev rule:
+  ```
+  ACTION=="add", SUBSYSTEM=="usb", ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6014", MODE="0666", GROUP="plugdev"
+  ```
+
+### LinuxGPIOTrigger (Raspberry Pi and other Linux SBCs)
+
+Implements both `OutputTTLDevice` and `InputTTLDevice`. Uses the Linux GPIO character device v2 API (kernel ≥ 5.10) — no external libraries required.
+
+**Wiring:** any 8 GPIO pins for output, any other 8 for input. Pin numbers are chip-relative offsets (= BCM numbers on Raspberry Pi).
+
+```go
+box, err := triggers.NewLinuxGPIOTrigger(
+    triggers.WithGPIOOutputPins([8]int{17, 27, 22, 5, 6, 13, 19, 26}),
+    triggers.WithGPIOInputPins([8]int{12, 16, 20, 21, 4, 25, 24, 23}),
+    triggers.WithGPIOChip("/dev/gpiochip0"),           // optional; this is the default
+    triggers.WithGPIOPollInterval(5*time.Millisecond), // optional; default 5 ms
+)
+if err != nil { log.Fatal(err) }
+defer box.Close()
+
+box.Send(0b00000001)              // pin 17 HIGH
+box.Pulse(0, 5*time.Millisecond)  // pin 17: HIGH for 5 ms, then LOW
+
+_ = box.DrainInputs(ctx)
+mask, rt, err := box.WaitForInput(ctx)
+```
+
+Output-only and input-only configurations are both valid — omit `WithGPIOOutputPins` or `WithGPIOInputPins` as needed.
+
+**Prerequisites:**
+- Linux kernel ≥ 5.10
+- User in the `gpio` group: `sudo usermod -aG gpio $USER`
+
+### LabJackT4 (Modbus TCP)
+
+Implements both `OutputTTLDevice` and `InputTTLDevice`. Pure-Go Modbus TCP driver — no LabJack SDK or system library required.
+
+**Wiring:** FIO0–FIO7 → 8 TTL output lines (configured as outputs on open); EIO0–EIO7 → 8 TTL input lines (configured as inputs on open).
+
+```go
+box, err := triggers.NewLabJackT4("192.168.1.100",
+    triggers.WithT4PollInterval(5*time.Millisecond), // optional; default 5 ms
+    triggers.WithT4Timeout(1*time.Second),            // optional; default 1 s
+    triggers.WithT4UnitID(1),                         // optional; default 1
+)
+if err != nil { log.Fatal(err) }
+defer box.Close()
+
+box.Send(0b00000001)              // FIO0 HIGH
+box.Pulse(0, 5*time.Millisecond)  // FIO0: HIGH for 5 ms, then LOW
+
+_ = box.DrainInputs(ctx)
+mask, rt, err := box.WaitForInput(ctx)
+```
+
+The host string may include the port number (`"192.168.1.100:502"`); default Modbus port 502 is appended automatically if omitted.
+
 ### ParallelPort (Linux LPT)
 
 Implements `OutputTTLDevice`.
@@ -964,7 +1133,7 @@ status, _ := pp.ReadStatus()                    // Linux only: status register
 
 ### Null devices
 
-`NullOutputTTLDevice` and `NullInputTTLDevice` are silent no-ops, safe to call without hardware. `AutoDetectDLPIO8` returns `NullOutputTTLDevice` when no device is found.
+`NullOutputTTLDevice` and `NullInputTTLDevice` are silent no-ops, safe to call without hardware. `AutoDetectDLPIO8` and `AutoDetectFT232H` return a `NullOutputTTLDevice` when no device is found.
 
 ---
 

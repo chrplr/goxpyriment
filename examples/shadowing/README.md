@@ -1,0 +1,94 @@
+# Shadowing
+
+A vocal shadowing latency task: the participant hears an audio stimulus and repeats it aloud as quickly as possible. The software measures the time between audio onset and the participant's vocal onset.
+
+## Usage
+
+```bash
+go run main.go -w -s 1
+```
+
+Flags:
+
+| Flag | Default | Description |
+|---|---|---|
+| `-w` | — | Windowed mode (1024×768 instead of fullscreen) |
+| `-d N` | primary | Display index |
+| `-s N` | 0 | Subject ID |
+| `-threshold F` | 0.03 | Voice-key amplitude threshold (0–1, F32LE RMS) |
+| `-save-wav` | true | Save per-trial WAV files for offline verification |
+| `-reps N` | 2 | Number of repetitions of the stimulus list |
+
+## Output
+
+Two files are written to the current directory (or `-output` path if set):
+
+- `Shadowing_sub-NNN_date-YYYYMMDD-HHMM.csv` — trial data with columns `trial`, `rep`, `label`, `shadowing_ms`, `detected`
+- `sub-NNN_trial-TTT_repR_label.wav` per trial (when `-save-wav=true`) — raw F32LE mono 44100 Hz PCM, useful for verifying that the voice key triggered correctly
+
+## Timing model
+
+```
+vk.Arm()                   ← mic buffer flushed; recording starts
+     │
+     │   PlaySyncedWithFlip():
+     │     pause audio device
+     │     fill tone buffer
+     │     VSYNC flip ──────────────────────── stimulusNS (screen + audio anchored here)
+     │     resume audio device
+     │
+     │   [participant hears tone, starts speaking]
+     │
+     └── WaitOnset() detects amplitude threshold ── onsetNS
+                                                       │
+                         shadowing latency = (onsetNS − stimulusNS) / 1 000 000  [ms]
+```
+
+`vk.Arm()` is called before `PlaySyncedWithFlip` so the microphone is already capturing when the audio device is resumed. Both `stimulusNS` and `onsetNS` are on the same SDL3 nanosecond clock, so no cross-clock conversion is needed.
+
+`PlaySyncedWithFlip` pauses the audio playback device, pre-fills the sound buffer, executes the VSYNC-locked screen flip, then immediately resumes. The speaker starts within at most one audio callback period after the flip (≤ `frames / sampleRate` seconds — about 11.6 ms at the default 512-frame buffer and 44100 Hz). Call `control.SetAudioSampleFrames(128)` before `Initialize()` to reduce this to ≤ 2.9 ms at the cost of higher underrun risk on loaded systems.
+
+## Voice key threshold
+
+The threshold is the minimum F32LE RMS amplitude (0–1) over a 128-sample window (~2.9 ms at 44100 Hz) required to declare a voice onset.
+
+- **Too low**: false triggers from breath noise, lip smacks, or — critically — playback audio bleeding into the microphone.
+- **Too high**: soft or breathy onsets are missed; `detected = false` in the data.
+
+A value of 0.02–0.05 works well in a quiet room with headphones. Calibrate by inspecting the saved WAV files: the true onset should be the first large-amplitude region, with flat (near-zero) signal before it.
+
+## Acoustic feedback warning
+
+With laptop built-in speakers, the playback tone will bleed into the microphone and trigger the voice key before the participant speaks, giving spuriously short latencies (< 100 ms). **Always use headphones** for playback in this experiment.
+
+If headphones are unavailable, raise the threshold well above the level of the speaker bleed, or add a brief post-stimulus silence gate (ignore any onset within the first 100 ms after stimulus onset) in the analysis.
+
+## Using real speech files
+
+Replace the generated tones with recorded word stimuli:
+
+```go
+// Construction (once, before the trial loop):
+snd := stimuli.NewSound("stimuli/apple.wav")
+if err := snd.PreloadDevice(exp.AudioDevice); err != nil {
+    log.Fatal(err)
+}
+
+// In the trial loop (replaces it.tone.PlaySyncedWithFlip):
+exp.Screen.Clear()
+it.text.Draw(exp.Screen)
+stimulusNS, err := snd.PlaySyncedWithFlip(exp.Screen)
+```
+
+`Sound.PlaySyncedWithFlip` has identical timing semantics to `Tone.PlaySyncedWithFlip` — the same pause/fill/flip/resume sequence.
+
+To embed audio files in the binary:
+
+```go
+//go:embed stimuli/*.wav
+var stimuliFS embed.FS
+
+data, _ := stimuliFS.ReadFile("stimuli/apple.wav")
+snd := stimuli.NewSoundFromMemory(data)
+snd.PreloadDevice(exp.AudioDevice)
+```
