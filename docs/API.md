@@ -2,6 +2,12 @@
 
 This guide documents the complete public API of the `goxpyriment` framework, organized by package.
 
+Note that you can access the  source code documentation by running `pkgsite` and opening http://localhost:8080.  To install pkgsite:
+
+```
+go install golang.org/x/pkgsite/cmd/pkgsite@latest
+```
+
 ## Package Overview
 
 ```

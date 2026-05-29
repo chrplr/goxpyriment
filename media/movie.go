@@ -46,10 +46,11 @@ type Movie struct {
 	fcount int
 
 	// GPU + CPU buffers — texture allocated lazily on first Draw via
-	// MovieManager.advanceMovie; rgba allocated in NewMovie so the per-
-	// frame decode never allocates.
-	texture *sdl.Texture
-	rgba    []byte
+	// MovieManager.advanceMovie; rgba and compressedBuf allocated in NewMovie
+	// so per-frame decode never allocates.
+	texture       *sdl.Texture
+	rgba          []byte // decompressed RGBA buffer, one frame
+	compressedBuf []byte // LZ4-compressed scratch buffer, max frame size
 
 	// Configuration (set at NewMovie time, may be mutated by setters).
 	rate         float64
@@ -176,6 +177,7 @@ func NewMovie(mgr *MovieManager, gv *gvvideo.GVVideo, opts ...Option) (*Movie, e
 		return nil, fmt.Errorf("media.NewMovie: GV file reports frame count=%d", m.fcount)
 	}
 	m.rgba = make([]byte, gv.Header.FrameBytes)
+	m.compressedBuf = make([]byte, gvMaxCompressedSize(gv))
 	mgr.add(m)
 	return m, nil
 }

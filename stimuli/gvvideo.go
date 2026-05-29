@@ -30,9 +30,10 @@ type VideoFrameLog struct {
 type GvVideo struct {
 	BaseVisual // Position, GetPosition, SetPosition, Preload, Unload (Unload overridden below)
 	gv         *gvvideo.GVVideo
-	texture    *sdl.Texture
-	rgba       []byte
-	Width      float32
+	texture       *sdl.Texture
+	rgba          []byte // decompressed RGBA buffer, one frame
+	compressedBuf []byte // LZ4-compressed scratch buffer, max frame size
+	Width         float32
 	Height     float32
 	FrameCount int
 	FPS        float64
@@ -74,6 +75,7 @@ func (v *GvVideo) preload(screen *xio.Screen) error {
 	}
 	v.texture = tex
 	v.rgba = make([]byte, v.gv.Header.FrameBytes)
+	v.compressedBuf = make([]byte, gvMaxCompressedSize(v.gv))
 	return nil
 }
 
@@ -92,12 +94,14 @@ func (v *GvVideo) Unload() error {
 		}
 		v.gv = nil
 	}
+	v.rgba = nil
+	v.compressedBuf = nil
 	return nil
 }
 
 // updateFrame decompresses frame frameID into the GPU texture.
 func (v *GvVideo) updateFrame(frameID int) error {
-	if err := v.gv.ReadFrameCompressedTo(uint32(frameID), v.rgba); err != nil {
+	if err := gvReadFrameInto(v.gv, uint32(frameID), v.compressedBuf, v.rgba); err != nil {
 		return fmt.Errorf("GvVideo updateFrame %d: %w", frameID, err)
 	}
 	return v.texture.Update(nil, v.rgba, int32(v.gv.Header.Width*4))

@@ -508,7 +508,7 @@ func (mgr *MovieManager) advanceMovie(m *Movie, now time.Duration) ([]stagedCall
 	// condition firing only).
 	if m.totalFramesDecoded != oldDecoded && m.totalFramesDecoded >= 1 {
 		withinLoop := uint32((m.totalFramesDecoded - 1) % m.fcount)
-		if err := m.gv.ReadFrameCompressedTo(withinLoop, m.rgba); err != nil {
+		if err := gvReadFrameInto(m.gv, withinLoop, m.compressedBuf, m.rgba); err != nil {
 			return staged, false, fmt.Errorf("media: decode movie %q frame %d (loop %d): %w",
 				m.Tag, withinLoop+1, m.loopCounter, err)
 		}

@@ -20,11 +20,13 @@ import (
 // a single GPU streaming texture is reused across all clips.
 type GvVideoSequence struct {
 	BaseVisual
-	gvs        []*gvvideo.GVVideo
-	offsets    []int  // offsets[i] = first global frame index of gvs[i]
-	frameBytes uint32 // decompression buffer size (max across all clips)
-	texture    *sdl.Texture
-	rgba       []byte
+	gvs              []*gvvideo.GVVideo
+	offsets          []int   // offsets[i] = first global frame index of gvs[i]
+	frameBytes       uint32  // max decompressed frame size across all clips
+	maxCompressedBytes uint64 // max LZ4-compressed frame size across all clips
+	texture          *sdl.Texture
+	rgba             []byte // decompressed RGBA buffer, one frame
+	compressedBuf    []byte // LZ4-compressed scratch buffer, max frame size
 	Width      float32
 	Height     float32
 	FPS        float64
@@ -93,15 +95,23 @@ func NewGvVideoSequence(paths []string) (*GvVideoSequence, error) {
 		gvs = append(gvs, gv)
 	}
 
+	var maxCompressedBytes uint64
+	for _, gv := range gvs {
+		if c := gvMaxCompressedSize(gv); c > maxCompressedBytes {
+			maxCompressedBytes = c
+		}
+	}
+
 	h := gvs[0].Header
 	return &GvVideoSequence{
-		gvs:        gvs,
-		offsets:    offsets,
-		frameBytes: frameBytes,
-		Width:      float32(h.Width),
-		Height:     float32(h.Height),
-		FPS:        float64(h.FPS),
-		FrameCount: total,
+		gvs:                gvs,
+		offsets:            offsets,
+		frameBytes:         frameBytes,
+		maxCompressedBytes: maxCompressedBytes,
+		Width:              float32(h.Width),
+		Height:             float32(h.Height),
+		FPS:                float64(h.FPS),
+		FrameCount:         total,
 	}, nil
 }
 
@@ -129,12 +139,13 @@ func (s *GvVideoSequence) preload(screen *xio.Screen) error {
 	}
 	s.texture = tex
 	s.rgba = make([]byte, s.frameBytes)
+	s.compressedBuf = make([]byte, s.maxCompressedBytes)
 	return nil
 }
 
 func (s *GvVideoSequence) updateFrame(globalFrame int) error {
 	gv, localFrame := s.segmentFor(globalFrame)
-	if err := gv.ReadFrameCompressedTo(localFrame, s.rgba); err != nil {
+	if err := gvReadFrameInto(gv, localFrame, s.compressedBuf, s.rgba); err != nil {
 		return fmt.Errorf("GvVideoSequence updateFrame %d: %w", globalFrame, err)
 	}
 	return s.texture.Update(nil, s.rgba, int32(s.gvs[0].Header.Width*4))
@@ -154,6 +165,8 @@ func (s *GvVideoSequence) Unload() error {
 		}
 	}
 	s.gvs = nil
+	s.rgba = nil
+	s.compressedBuf = nil
 	return nil
 }
 
