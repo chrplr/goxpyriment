@@ -58,6 +58,7 @@ func main() {
 	}
 
 	vk := apparatus.NewVoiceKey(exp.Microphone, float32(*threshold), 128)
+	vk.OnOnset = func() { exp.Screen.ClearAndUpdate() }
 
 	// -------------------------------------------------------------------------
 	// Build trial stimuli.
@@ -123,8 +124,9 @@ func main() {
 			item.text.Draw(exp.Screen)
 			imageOnsetNS, _ := exp.Screen.FlipTS()
 
-			// Wait for voice onset (2-second response window).
-			onsetNS, pcm, vkErr := vk.WaitOnset(captureStartNS, 2000)
+			// Wait for voice onset (2-second response window); record 1500 ms
+			// after onset to capture the full vocal response.
+			onsetNS, pcm, vkErr := vk.WaitOnset(captureStartNS, 2000, 1500)
 
 			var rtMs int64
 			detected := vkErr == nil
@@ -134,14 +136,20 @@ func main() {
 
 			exp.Data.Add(trial+1, item.label, rtMs, detected)
 
-			// Save WAV for offline verification.
+			// Save WAV for offline verification, with an "onset" cue marker at the
+			// precise sample where the voice key triggered.
 			if *saveWav && len(pcm) > 0 {
 				wavPath := filepath.Join(
 					exp.OutputDirectory,
 					fmt.Sprintf("sub-%03d_trial-%02d_%s.wav",
 						exp.SubjectID, trial+1, item.label),
 				)
-				if werr := apparatus.WriteWAV(wavPath, exp.Microphone.Spec, pcm); werr != nil {
+				var cues []apparatus.WAVCue
+				if detected {
+					onsetSample := uint32((onsetNS - captureStartNS) * uint64(exp.Microphone.Spec.Freq) / 1_000_000_000)
+					cues = append(cues, apparatus.WAVCue{SampleOffset: onsetSample, Label: "onset"})
+				}
+				if werr := apparatus.WriteWAV(wavPath, exp.Microphone.Spec, pcm, cues...); werr != nil {
 					log.Printf("trial %d: could not save WAV: %v", trial+1, werr)
 				}
 			}

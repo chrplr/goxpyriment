@@ -23,7 +23,7 @@ Flags:
 Two files are written to the current directory (or `-output` path if set):
 
 - `Picture Naming_sub-NNN_date-YYYYMMDD-HHMM.csv` — trial data with columns `trial`, `label`, `rt_ms`, `detected`
-- `sub-NNN_trial-TT_label.wav` per trial (when `-save-wav=true`) — raw F32LE mono 44100 Hz PCM, useful for verifying that the voice key triggered correctly
+- `sub-NNN_trial-TT_label.wav` per trial (when `-save-wav=true`) — raw F32LE mono 44100 Hz PCM, covering the full trial: pre-onset silence, the naming response, and up to 1 500 ms of post-onset audio. Each file embeds a WAV cue marker labelled `onset` at the exact sample where the voice key triggered; audio editors that support WAV cue chunks (e.g. [ocenaudio](https://www.ocenaudio.com), [Reaper](https://www.reaper.fm)) display it as a named marker on the waveform.
 
 ## Timing model
 
@@ -37,11 +37,16 @@ vk.Arm()              ← mic buffer flushed; recording starts
      │   [participant sees image, starts speaking]
      │
      └── WaitOnset() detects amplitude threshold ── onsetNS
-                                                       │
-                      RT = (onsetNS − imageOnsetNS) / 1 000 000  [ms]
+              │                                        │
+              │  screen blanked (ClearAndUpdate)       │
+              │                                        RT = (onsetNS − imageOnsetNS) / 1 000 000  [ms]
+              │
+              └── 1 500 ms post-onset recording ── WAV saved
 ```
 
 `vk.Arm()` is called immediately before the screen flip so the microphone is already capturing when the image appears. Both `imageOnsetNS` (returned by `FlipTS`) and `onsetNS` (computed from the capture start timestamp plus sample count) are on the same SDL3 nanosecond clock, so no cross-clock conversion is needed.
+
+When vocal onset is detected the picture disappears immediately (via `vk.OnOnset`), giving the participant a clear end-of-trial signal. Recording then continues for 1 500 ms so that the saved WAV captures the full naming response, not just the pre-onset silence.
 
 Unlike the shadowing task, there is no audio playback here, so acoustic feedback is not a concern and headphones are not required.
 
@@ -80,10 +85,10 @@ stimuli.PreloadVisualOnScreen(exp.Screen, pic)
 
 ## Verifying the saved WAV files
 
-Always spot-check a random subset of the WAV files after each session. Look for:
+Always spot-check a random subset of the WAV files after each session. Open them in an editor that shows WAV cue markers (e.g. ocenaudio or Reaper) to see the `onset` marker overlaid on the waveform. Look for:
 
-- **Correct onset**: the waveform should be flat for several hundred milliseconds, then show a clear onset. If it rises immediately (within the first 50 ms), the threshold may be too low.
+- **Correct onset**: the waveform should be flat for several hundred milliseconds, then show a clear onset aligned with the `onset` marker. If the marker falls within the first 50 ms, the threshold may be too low.
 - **No double-trigger**: a single clean onset per file. Multiple peaks suggest the threshold is too low or the participant produced a pre-articulatory breath.
-- **Complete recording**: the file should capture the full naming response. If it is cut off, the response window (`timeoutMS = 2000`) may need to be increased.
+- **Complete recording**: the file should contain the full naming response followed by roughly 1 500 ms of trailing audio. If the response is cut off, increase the `postOnsetMS` argument in the `WaitOnset` call.
 
 The `apparatus.ScanOnset` function can be used in a post-processing script to re-analyse saved WAVs with a different threshold without re-running the experiment.

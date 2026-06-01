@@ -24,10 +24,15 @@ var ErrVoiceTimeout = errors.New("voice key: response timeout")
 // you get false triggers from breathing or room noise.
 //
 // Recommended WindowSz: 128 samples at 44100 Hz ≈ 2.9 ms resolution.
+//
+// OnOnset, if non-nil, is called on the calling goroutine immediately after
+// onset is detected and before the post-onset recording window begins. Use it
+// to update the display (e.g. blank the screen) at the moment of vocal onset.
 type VoiceKey struct {
 	Mic       *Microphone
 	Threshold float32
 	WindowSz  int
+	OnOnset   func()
 }
 
 // NewVoiceKey constructs a VoiceKey for the given Microphone.
@@ -56,16 +61,20 @@ func (vk *VoiceKey) Arm() (captureStartNS uint64, err error) {
 // WaitOnset polls the microphone until a vocal onset is detected or the timeout
 // expires. captureStartNS must be the value returned by Arm.
 //
+// postOnsetMS controls how long recording continues after onset detection so
+// that the returned pcm contains the actual vocal response, not just the
+// pre-onset silence. Pass 0 to stop immediately on onset (the old behaviour).
+// A value of 1000–1500 is suitable for single-word responses.
+//
 // On success: returns (onsetNS, pcm, nil) where onsetNS is the SDL3 nanosecond
 // timestamp of the detected onset and pcm contains all raw PCM bytes captured
-// from the start of capture through detection (useful for saving a WAV for
-// offline verification).
+// from the start of capture through the end of the post-onset window.
 //
 // On timeout: returns (0, pcm, ErrVoiceTimeout). pcm still contains any audio
 // that was captured before the timeout.
 //
 // timeoutMS < 0 means no timeout (wait indefinitely).
-func (vk *VoiceKey) WaitOnset(captureStartNS uint64, timeoutMS int) (onsetNS uint64, pcm []byte, err error) {
+func (vk *VoiceKey) WaitOnset(captureStartNS uint64, timeoutMS int, postOnsetMS int) (onsetNS uint64, pcm []byte, err error) {
 	const readBufBytes = 2048 // read up to 2048 bytes at a time (~11.6 ms at 44100 Hz F32LE mono)
 
 	sampleRate := uint64(vk.Mic.Spec.Freq)
@@ -106,8 +115,26 @@ func (vk *VoiceKey) WaitOnset(captureStartNS uint64, timeoutMS int) (onsetNS uin
 		for len(accumulated) >= windowBytes {
 			window := accumulated[:windowBytes]
 			if rmsF32(window) > vk.Threshold {
-				_ = vk.Mic.StopCapture()
 				onsetNS = captureStartNS + totalSamplesRead*1_000_000_000/sampleRate
+				if vk.OnOnset != nil {
+					vk.OnOnset()
+				}
+				// Continue recording for postOnsetMS to capture the vocal response.
+				if postOnsetMS > 0 {
+					postDeadline := time.Now().Add(time.Duration(postOnsetMS) * time.Millisecond)
+					for time.Now().Before(postDeadline) {
+						m, rErr := vk.Mic.ReadSamples(readBuf)
+						if rErr != nil {
+							break
+						}
+						if m > 0 {
+							pcm = append(pcm, readBuf[:m]...)
+						} else {
+							time.Sleep(500 * time.Microsecond)
+						}
+					}
+				}
+				_ = vk.Mic.StopCapture()
 				return onsetNS, pcm, nil
 			}
 			totalSamplesRead += uint64(vk.WindowSz)

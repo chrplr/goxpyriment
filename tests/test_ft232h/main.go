@@ -24,14 +24,21 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"log"
+	"os"
+	"os/signal"
 	"time"
 
 	"github.com/chrplr/goxpyriment/triggers"
 )
 
 func main() {
+	period := flag.Duration("period", 100*time.Millisecond, "square wave period")
+	duty := flag.Float64("duty", 10.0, "duty cycle in percent (0–100)")
+	flag.Parse()
+
 	dev, err := triggers.NewFT232H()
 	if err != nil {
 		log.Fatalf("open FT232H: %v", err)
@@ -103,6 +110,31 @@ func main() {
 		fmt.Printf("  no input detected (timeout or cancel): %v\n", err)
 	} else {
 		fmt.Printf("  input detected: mask=0x%02X  rt=%v\n", imask, rt)
+	}
+
+	// --- Square wave ---
+	highDur := time.Duration(float64(*period) * *duty / 100.0)
+	fmt.Printf("\n--- Square wave on AD0: period=%v duty=%.1f%% high=%v low=%v (Ctrl-C to stop) ---\n",
+		*period, *duty, highDur, *period-highDur)
+
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, os.Interrupt)
+	defer signal.Stop(stop)
+
+	_ = dev.AllLow()
+	ticker := time.NewTicker(*period)
+	defer ticker.Stop()
+squareWave:
+	for {
+		select {
+		case <-stop:
+			break squareWave
+		case <-ticker.C:
+			if err := dev.Pulse(0, highDur); err != nil {
+				log.Printf("Pulse: %v", err)
+				break squareWave
+			}
+		}
 	}
 
 	_ = dev.AllLow()

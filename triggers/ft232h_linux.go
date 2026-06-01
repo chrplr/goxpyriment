@@ -53,9 +53,10 @@ const (
 	mpsseLoopbackOff = 0x85 // LOOPBACK_END — disable internal loopback
 
 	// MPSSE sync: send 0xAA (bad command), device echoes 0xFA 0xAA.
-	mpsseSyncByte    = 0xAA
-	mpsseEchoFail    = 0xFA
-	ft232hModemBytes = 2 // modem-status prefix bytes on every bulk IN packet
+	mpsseSyncByte     = 0xAA
+	mpsseEchoFail     = 0xFA
+	mpsseFlushTxBuf   = 0x87 // SEND_IMMEDIATE: flush MPSSE TX buffer to USB
+	ft232hModemBytes  = 2    // modem-status prefix bytes on every bulk IN packet
 )
 
 // usbdevfs ioctl numbers on 64-bit Linux.
@@ -156,7 +157,9 @@ func (t *FT232HTrigger) ft232hWriteOutputs(mask byte) error {
 func (t *FT232HTrigger) ft232hReadInputs() (byte, error) {
 	t.handle.mu.Lock()
 	defer t.handle.mu.Unlock()
-	if err := ft232hBulkWrite(t.handle.fd, []byte{mpsseGetBitsHigh}); err != nil {
+	// SEND_IMMEDIATE (0x87) flushes the MPSSE TX buffer to USB right away so
+	// the GET_BITS_HIGH response arrives without waiting for the latency timer.
+	if err := ft232hBulkWrite(t.handle.fd, []byte{mpsseGetBitsHigh, mpsseFlushTxBuf}); err != nil {
 		return 0, err
 	}
 	return ft232hReadOneByte(t.handle.fd)
@@ -213,34 +216,56 @@ func ft232hInitMPSSE(fd int) error {
 		return fmt.Errorf("purge TX: %w", err)
 	}
 
+	// Explicitly reset bitmode to 0 (UART/reset) before switching to MPSSE.
+	// This clears any lingering MPSSE state from a previous session.
+	if err := ft232hControl(fd, ftdiReqOut, ftdiSioSetBitmode, 0x0000, ft232hIfaceIndex, nil); err != nil {
+		return fmt.Errorf("bitmode reset: %w", err)
+	}
+
 	// Set latency timer to 1 ms for fast MPSSE responses.
 	if err := ft232hControl(fd, ftdiReqOut, ftdiSioSetLatency, 1, ft232hIfaceIndex, nil); err != nil {
 		return fmt.Errorf("set latency: %w", err)
 	}
 
-	// Enable MPSSE mode. wValue = (pin_mask << 8) | mode; mask 0xFF = all pins.
-	if err := ft232hControl(fd, ftdiReqOut, ftdiSioSetBitmode, (0xFF<<8)|ftdiMpsseBitmode, ft232hIfaceIndex, nil); err != nil {
+	// Enable MPSSE mode. wValue: low byte = I/O mask, high byte = mode (per FTDI AN_108).
+	if err := ft232hControl(fd, ftdiReqOut, ftdiSioSetBitmode, (ftdiMpsseBitmode<<8)|0xFF, ft232hIfaceIndex, nil); err != nil {
 		return fmt.Errorf("enable MPSSE: %w", err)
 	}
 
 	// Wait for MPSSE to stabilise.
-	time.Sleep(5 * time.Millisecond)
+	time.Sleep(50 * time.Millisecond)
 
-	// Flush any leftover IN data.
-	flush := make([]byte, 64)
-	bt := usbdevfsBulktransfer{ep: ft232hEPIn, len: uint32(len(flush)), timeout: 10, data: uintptr(unsafe.Pointer(&flush[0]))}
-	syscall.Syscall(syscall.SYS_IOCTL, uintptr(fd), usbdevfsBulk, uintptr(unsafe.Pointer(&bt)))
+	// Purge the RX buffer again now that MPSSE is active, then drain any
+	// in-flight USB IN packets (modem-status heartbeats from the 50 ms window).
+	if err := ft232hControl(fd, ftdiReqOut, ftdiSioReset, ftdiResetPurgeRX, ft232hIfaceIndex, nil); err != nil {
+		return fmt.Errorf("purge RX post-MPSSE: %w", err)
+	}
+	for i := 0; i < 4; i++ {
+		var buf [64]byte
+		bt := usbdevfsBulktransfer{ep: ft232hEPIn, len: uint32(len(buf)), timeout: 10, data: uintptr(unsafe.Pointer(&buf[0]))}
+		syscall.Syscall(syscall.SYS_IOCTL, uintptr(fd), usbdevfsBulk, uintptr(unsafe.Pointer(&bt)))
+	}
 
-	// Sync: send bad command 0xAA; device echoes back 0xFA 0xAA to confirm MPSSE.
-	if err := ft232hBulkWrite(fd, []byte{mpsseSyncByte}); err != nil {
+	// Sync: send bad command 0xAA followed by SEND_IMMEDIATE (0x87) so the
+	// MPSSE engine flushes its TX buffer to USB without waiting for it to fill.
+	// The device echoes back 0xFA 0xAA to confirm the MPSSE engine is running.
+	// The echo may arrive in a separate USB packet, so accumulate across reads.
+	if err := ft232hBulkWrite(fd, []byte{mpsseSyncByte, mpsseFlushTxBuf}); err != nil {
 		return fmt.Errorf("MPSSE sync write: %w", err)
 	}
-	resp, err := ft232hBulkReadRaw(fd, 16)
-	if err != nil {
-		return fmt.Errorf("MPSSE sync read: %w", err)
+	deadline := time.Now().Add(500 * time.Millisecond)
+	var syncBuf []byte
+	for time.Now().Before(deadline) {
+		chunk, err := ft232hBulkReadRaw(fd, 64)
+		if err == nil {
+			syncBuf = append(syncBuf, chunk...)
+			if ft232hContainsSeq(syncBuf, mpsseEchoFail, mpsseSyncByte) {
+				break
+			}
+		}
 	}
-	if !ft232hContainsSeq(resp, mpsseEchoFail, mpsseSyncByte) {
-		return fmt.Errorf("MPSSE sync failed: unexpected response % X", resp)
+	if !ft232hContainsSeq(syncBuf, mpsseEchoFail, mpsseSyncByte) {
+		return fmt.Errorf("MPSSE sync failed: unexpected response % X", syncBuf)
 	}
 
 	// Disable internal loopback.
@@ -318,15 +343,22 @@ func ft232hBulkReadRaw(fd int, n int) ([]byte, error) {
 // ft232hReadOneByte reads the 1-byte MPSSE GPIO response.
 // Every FT232H bulk IN packet starts with 2 modem-status bytes followed by
 // the actual payload; the GPIO state byte is at index [ft232hModemBytes].
+// Modem-status-only heartbeat packets (2 bytes, no payload) are skipped until
+// the real response arrives or the timeout expires.
 func ft232hReadOneByte(fd int) (byte, error) {
-	data, err := ft232hBulkReadRaw(fd, 64)
-	if err != nil {
-		return 0, err
+	deadline := time.Now().Add(time.Duration(ft232hBulkTimeoutMs) * time.Millisecond)
+	for time.Now().Before(deadline) {
+		data, err := ft232hBulkReadRaw(fd, 64)
+		if err != nil {
+			return 0, err
+		}
+		if len(data) >= ft232hModemBytes+1 {
+			return data[ft232hModemBytes], nil
+		}
+		// Modem-status heartbeat with no payload — the MPSSE response hasn't
+		// arrived yet; try again.
 	}
-	if len(data) < ft232hModemBytes+1 {
-		return 0, fmt.Errorf("ft232h: short response (%d bytes)", len(data))
-	}
-	return data[ft232hModemBytes], nil
+	return 0, fmt.Errorf("ft232h: GPIO read timeout")
 }
 
 // ft232hContainsSeq reports whether buf contains the two-byte sequence [a, b].

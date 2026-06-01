@@ -133,7 +133,7 @@ func main() {
 				}
 
 				// Wait for voice onset (3-second window).
-				onsetNS, pcm, vkErr := vk.WaitOnset(captureStartNS, 3000)
+				onsetNS, pcm, vkErr := vk.WaitOnset(captureStartNS, 3000, 1500)
 
 				var shadowingMs int64
 				detected := vkErr == nil
