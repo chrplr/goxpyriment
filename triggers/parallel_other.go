@@ -22,4 +22,9 @@ func (p *ParallelPort) writeData(_ byte) error {
 	return fmt.Errorf("parallel port: not supported on this platform (Linux only)")
 }
 
+// ReadStatus returns an error on non-Linux platforms.
+func (p *ParallelPort) ReadStatus() (byte, error) {
+	return 0, fmt.Errorf("parallel port: not supported on this platform (Linux only)")
+}
+
 func availableParallelPorts() []string { return nil }
