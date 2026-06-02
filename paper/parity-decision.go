@@ -11,30 +11,30 @@ import (
 
 func main() {
 	exp := control.NewExperimentFromFlags("Parity Decision",
-		                  control.Black, control.White, 32)
+		control.Black, control.White, 32)
 	defer exp.End()
 
 	Targets := []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}
 	NTrialsPerTarget := 2
-	EvenResponse     := control.K_F
-	OddResponse      := control.K_J
-	Instructions := "When you'll see a number, your task to decide,
-                as quickly as possible, whether it is even or odd.\n\n
-                if it is even, press 'F'\n\nif it is odd, press 'J'"
+	EvenResponse := control.K_F
+	OddResponse := control.K_J
+	Instructions := "When you'll see a number, your task to decide, " +
+		"as quickly as possible, whether it is even or odd.\n\n" +
+		"if it is even, press 'F'\n\nif it is odd, press 'J'"
 
 	cue := stimuli.NewFixCross(25, 2, control.DefaultTextColor)
-        // creates a map number -> image
-	Image := make(map[int]*stimuli.TextLine)  
+	// creates a map number -> image
+	Image := make(map[int]*stimuli.TextLine)
 	for _, num := range Targets {
 		Image[num] = stimuli.NewTextLine(strconv.Itoa(num),
-			              0, 0, control.DefaultTextColor)
+			0, 0, control.DefaultTextColor)
 	}
 
 	trials := slices.Repeat(Targets, NTrialsPerTarget)
 	design.ShuffleList(trials)
 
 	exp.AddDataVariableNames([]string{"number", "key", "rt",
-		                                           "correct"})
+		"correct"})
 
 	exp.Run(func() error {
 		exp.ShowInstructions(Instructions)
@@ -56,6 +56,6 @@ func main() {
 		return control.EndLoop
 	})
 
-	exp.ShowEndMessage("Experiment complete. Thank you!\n\n
-	                    Press any key to exit.")
+	exp.ShowEndMessage("Experiment complete. Thank you!\n\n" +
+		"Press any key to exit.")
 }

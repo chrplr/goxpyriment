@@ -36,16 +36,31 @@ type Face struct {
 }
 
 type Metadata struct {
-	TrialID         string     `json:"trial_id"`
-	IsSame          bool       `json:"is_same"`
-	RotationAngle   float64    `json:"rotation_angle"`
-	RotationAxis    string     `json:"rotation_axis"`
-	CubeCoordinates [][3]int   `json:"cube_coordinates"`
+	TrialID         string   `json:"trial_id"`
+	IsSame          bool     `json:"is_same"`
+	RotationAngle   float64  `json:"rotation_angle"`
+	RotationAxis    string   `json:"rotation_axis"`
+	CubeCoordinates [][3]int `json:"cube_coordinates"`
 }
 
-func min(a, b int) int { if a < b { return a }; return b }
-func max(a, b int) int { if a > b { return a }; return b }
-func abs(x int) int    { if x < 0 { return -x }; return x }
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
+}
+func max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}
+func abs(x int) int {
+	if x < 0 {
+		return -x
+	}
+	return x
+}
 
 func canonicalize(pts []Vector3) []Vector3 {
 	if len(pts) == 0 {
@@ -53,17 +68,27 @@ func canonicalize(pts []Vector3) []Vector3 {
 	}
 	minX, minY, minZ := pts[0].X, pts[0].Y, pts[0].Z
 	for _, p := range pts {
-		if p.X < minX { minX = p.X }
-		if p.Y < minY { minY = p.Y }
-		if p.Z < minZ { minZ = p.Z }
+		if p.X < minX {
+			minX = p.X
+		}
+		if p.Y < minY {
+			minY = p.Y
+		}
+		if p.Z < minZ {
+			minZ = p.Z
+		}
 	}
 	res := make([]Vector3, len(pts))
 	for i, p := range pts {
 		res[i] = Vector3{p.X - minX, p.Y - minY, p.Z - minZ}
 	}
 	sort.Slice(res, func(i, j int) bool {
-		if res[i].X != res[j].X { return res[i].X < res[j].X }
-		if res[i].Y != res[j].Y { return res[i].Y < res[j].Y }
+		if res[i].X != res[j].X {
+			return res[i].X < res[j].X
+		}
+		if res[i].Y != res[j].Y {
+			return res[i].Y < res[j].Y
+		}
 		return res[i].Z < res[j].Z
 	})
 	return res
@@ -79,30 +104,54 @@ func isChiral(pts []Vector3) bool {
 	rotate := func(p Vector3, i int) Vector3 {
 		x, y, z := p.X, p.Y, p.Z
 		switch i {
-		case 0: return Vector3{x, y, z}
-		case 1: return Vector3{x, -z, y}
-		case 2: return Vector3{x, -y, -z}
-		case 3: return Vector3{x, z, -y}
-		case 4: return Vector3{-x, -y, z}
-		case 5: return Vector3{-x, -z, -y}
-		case 6: return Vector3{-x, y, -z}
-		case 7: return Vector3{-x, z, y}
-		case 8: return Vector3{-y, x, z}
-		case 9: return Vector3{-y, -z, x}
-		case 10: return Vector3{-y, -x, -z}
-		case 11: return Vector3{-y, z, -x}
-		case 12: return Vector3{y, -x, z}
-		case 13: return Vector3{y, -z, -x}
-		case 14: return Vector3{y, x, -z}
-		case 15: return Vector3{y, z, x}
-		case 16: return Vector3{-z, y, x}
-		case 17: return Vector3{-z, -x, y}
-		case 18: return Vector3{-z, -y, -x}
-		case 19: return Vector3{-z, x, -y}
-		case 20: return Vector3{z, y, -x}
-		case 21: return Vector3{z, -x, -y}
-		case 22: return Vector3{z, -y, x}
-		case 23: return Vector3{z, x, y}
+		case 0:
+			return Vector3{x, y, z}
+		case 1:
+			return Vector3{x, -z, y}
+		case 2:
+			return Vector3{x, -y, -z}
+		case 3:
+			return Vector3{x, z, -y}
+		case 4:
+			return Vector3{-x, -y, z}
+		case 5:
+			return Vector3{-x, -z, -y}
+		case 6:
+			return Vector3{-x, y, -z}
+		case 7:
+			return Vector3{-x, z, y}
+		case 8:
+			return Vector3{-y, x, z}
+		case 9:
+			return Vector3{-y, -z, x}
+		case 10:
+			return Vector3{-y, -x, -z}
+		case 11:
+			return Vector3{-y, z, -x}
+		case 12:
+			return Vector3{y, -x, z}
+		case 13:
+			return Vector3{y, -z, -x}
+		case 14:
+			return Vector3{y, x, -z}
+		case 15:
+			return Vector3{y, z, x}
+		case 16:
+			return Vector3{-z, y, x}
+		case 17:
+			return Vector3{-z, -x, y}
+		case 18:
+			return Vector3{-z, -y, -x}
+		case 19:
+			return Vector3{-z, x, -y}
+		case 20:
+			return Vector3{z, y, -x}
+		case 21:
+			return Vector3{z, -x, -y}
+		case 22:
+			return Vector3{z, -y, x}
+		case 23:
+			return Vector3{z, x, y}
 		}
 		return p
 	}
@@ -120,7 +169,9 @@ func isChiral(pts []Vector3) bool {
 				break
 			}
 		}
-		if match { return false }
+		if match {
+			return false
+		}
 	}
 	return true
 }
@@ -153,7 +204,9 @@ func generateBaseShape(numCubes int) []Vector3 {
 				orthos2 = append(orthos2, d)
 			}
 		}
-		if len(orthos2) == 0 { continue }
+		if len(orthos2) == 0 {
+			continue
+		}
 		d3 := orthos2[rand.Intn(len(orthos2))]
 
 		var orthos3 []Vector3
@@ -165,7 +218,9 @@ func generateBaseShape(numCubes int) []Vector3 {
 				orthos3 = append(orthos3, d)
 			}
 		}
-		if len(orthos3) == 0 { continue }
+		if len(orthos3) == 0 {
+			continue
+		}
 		d4 := orthos3[rand.Intn(len(orthos3))]
 
 		// Distribute remaining cubes (numCubes - 1) among 4 segments, each at least 1 cube.
@@ -193,7 +248,9 @@ func generateBaseShape(numCubes int) []Vector3 {
 				visited[curr] = true
 				pts = append(pts, curr)
 			}
-			if !valid { break }
+			if !valid {
+				break
+			}
 		}
 
 		if len(pts) == numCubes && valid && isChiral(pts) {
@@ -222,11 +279,11 @@ func centerShape(pts []Vector3) []Vector3f {
 
 func getCubeFaces(c Vector3f, idx int) [6]Face {
 	s := 0.5
-	f0 := [4]Vector3f{{-s, -s, s}, {s, -s, s}, {s, s, s}, {-s, s, s}} // Front
+	f0 := [4]Vector3f{{-s, -s, s}, {s, -s, s}, {s, s, s}, {-s, s, s}}     // Front
 	f1 := [4]Vector3f{{-s, -s, -s}, {-s, s, -s}, {s, s, -s}, {s, -s, -s}} // Back
-	f2 := [4]Vector3f{{-s, s, s}, {s, s, s}, {s, s, -s}, {-s, s, -s}} // Top
+	f2 := [4]Vector3f{{-s, s, s}, {s, s, s}, {s, s, -s}, {-s, s, -s}}     // Top
 	f3 := [4]Vector3f{{-s, -s, s}, {-s, -s, -s}, {s, -s, -s}, {s, -s, s}} // Bottom
-	f4 := [4]Vector3f{{s, -s, s}, {s, -s, -s}, {s, s, -s}, {s, s, s}} // Right
+	f4 := [4]Vector3f{{s, -s, s}, {s, -s, -s}, {s, s, -s}, {s, s, s}}     // Right
 	f5 := [4]Vector3f{{-s, -s, s}, {-s, s, s}, {-s, s, -s}, {-s, -s, -s}} // Left
 
 	normals := []Vector3f{
@@ -300,10 +357,18 @@ func fillTriangleWithID(img *image.RGBA, p1, p2, p3 Point2D, col color.RGBA, buf
 	maxY := max(p1.Y, max(p2.Y, p3.Y))
 
 	b := img.Bounds()
-	if minX < b.Min.X { minX = b.Min.X }
-	if maxX >= b.Max.X { maxX = b.Max.X - 1 }
-	if minY < b.Min.Y { minY = b.Min.Y }
-	if maxY >= b.Max.Y { maxY = b.Max.Y - 1 }
+	if minX < b.Min.X {
+		minX = b.Min.X
+	}
+	if maxX >= b.Max.X {
+		maxX = b.Max.X - 1
+	}
+	if minY < b.Min.Y {
+		minY = b.Min.Y
+	}
+	if maxY >= b.Max.Y {
+		maxY = b.Max.Y - 1
+	}
 
 	edgeFunc := func(a, b, c Point2D) int {
 		return (c.X-a.X)*(b.Y-a.Y) - (c.Y-a.Y)*(b.X-a.X)
@@ -339,7 +404,9 @@ func renderCondition(faces []Face, mirror bool, taskAxis string, taskDeg float64
 
 	// Buffer to track which cube is visible at each pixel
 	cubeBuffer := make([]int, size*size)
-	for i := range cubeBuffer { cubeBuffer[i] = -1 }
+	for i := range cubeBuffer {
+		cubeBuffer[i] = -1
+	}
 
 	var transformed []Face
 	for _, f := range faces {
@@ -471,7 +538,9 @@ func generateStimuli(numCubes int, scaling float64) {
 						break
 					}
 				}
-				if !allVisible { break }
+				if !allVisible {
+					break
+				}
 			}
 		}
 

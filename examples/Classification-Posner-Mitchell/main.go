@@ -211,7 +211,7 @@ func main() {
 
 	// ── Stimuli ───────────────────────────────────────────────────────────────
 	// Pre-create one TextLine per letter × position to avoid per-trial allocation.
-	leftStim  := make(map[string]*stimuli.TextLine, len(allLetters))
+	leftStim := make(map[string]*stimuli.TextLine, len(allLetters))
 	rightStim := make(map[string]*stimuli.TextLine, len(allLetters))
 	for _, l := range allLetters {
 		ls := stimuli.NewTextLine(l, -letterOffset, 0, control.Black)

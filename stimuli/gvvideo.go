@@ -28,16 +28,16 @@ type VideoFrameLog struct {
 // Embeds BaseVisual for position management. Overrides Unload to destroy
 // the GPU texture and close the underlying file handle.
 type GvVideo struct {
-	BaseVisual // Position, GetPosition, SetPosition, Preload, Unload (Unload overridden below)
-	gv         *gvvideo.GVVideo
+	BaseVisual    // Position, GetPosition, SetPosition, Preload, Unload (Unload overridden below)
+	gv            *gvvideo.GVVideo
 	texture       *sdl.Texture
 	rgba          []byte // decompressed RGBA buffer, one frame
 	compressedBuf []byte // LZ4-compressed scratch buffer, max frame size
 	Width         float32
-	Height     float32
-	FrameCount int
-	FPS        float64
-	filePath   string
+	Height        float32
+	FrameCount    int
+	FPS           float64
+	filePath      string
 
 	currentFrame int
 	playing      bool

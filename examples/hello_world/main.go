@@ -6,10 +6,10 @@ import (
 )
 
 func main() {
-      exp := control.NewExperimentFromFlags("Hello World", control.Black, control.White, 32)
-      defer exp.End()
+	exp := control.NewExperimentFromFlags("Hello World", control.Black, control.White, 32)
+	defer exp.End()
 
-      hello := stimuli.NewTextBox("Hello, World!", 600, control.FPoint{}, control.White)
-      exp.Show(hello)
-      exp.Keyboard.Wait()
+	hello := stimuli.NewTextBox("Hello, World!", 600, control.FPoint{}, control.White)
+	exp.Show(hello)
+	exp.Keyboard.Wait()
 }

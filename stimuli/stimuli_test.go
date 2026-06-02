@@ -8,7 +8,7 @@ import (
 
 func TestBaseVisual(t *testing.T) {
 	bv := &BaseVisual{Position: sdl.FPoint{X: 10, Y: 20}}
-	
+
 	pos := bv.GetPosition()
 	if pos.X != 10 || pos.Y != 20 {
 		t.Errorf("Expected (10, 20), got (%f, %f)", pos.X, pos.Y)

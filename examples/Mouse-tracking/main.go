@@ -171,12 +171,12 @@ type trialResult struct {
 
 func runTrial(exp *control.Experiment, t trialDef) (trialResult, error) {
 	// Persistent stimuli for this trial
-	leftBox   := stimuli.NewRectangle(imageLeftX, imageTopY, imageW, imageH, imageBoxColor)
+	leftBox := stimuli.NewRectangle(imageLeftX, imageTopY, imageW, imageH, imageBoxColor)
 	leftLabel := stimuli.NewTextLine(t.leftItem, imageLeftX, imageTopY, imageTextColor)
-	rightBox   := stimuli.NewRectangle(imageRightX, imageTopY, imageW, imageH, imageBoxColor)
+	rightBox := stimuli.NewRectangle(imageRightX, imageTopY, imageW, imageH, imageBoxColor)
 	rightLabel := stimuli.NewTextLine(t.rightItem, imageRightX, imageTopY, imageTextColor)
 
-	startBox      := stimuli.NewRectangle(0, startBoxY, startBoxW, startBoxH, startBoxColor)
+	startBox := stimuli.NewRectangle(0, startBoxY, startBoxW, startBoxH, startBoxColor)
 	startBoxLabel := stimuli.NewTextLine("CLICK HERE TO START", 0, startBoxY, control.White)
 
 	wordStim := stimuli.NewTextLine(t.target, 0, startBoxY, wordColor)

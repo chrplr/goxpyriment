@@ -23,12 +23,12 @@ exp.Run(func() error {
 
 | Field | Type | Description |
 |---|---|---|
-| `Screen` | `*io.Screen` | Window + renderer |
-| `Keyboard` | `*io.Keyboard` | Blocking/non-blocking key input |
-| `Mouse` | `*io.Mouse` | Mouse button + position input |
+| `Screen` | `*apparatus.Screen` | Window + renderer |
+| `Keyboard` | `*apparatus.Keyboard` | Blocking/non-blocking key input |
+| `Mouse` | `*apparatus.Mouse` | Mouse button + position input |
 | `AudioDevice` | `sdl.AudioDeviceID` | Passed to `Sound.PreloadDevice` |
 | `Audio` | `*AudioManager` | High-level audio playback |
-| `Data` | `*io.DataFile` | `.csv` experiment data file |
+| `Data` | `*results.DataFile` | `.csv` experiment data file |
 | `Design` | `*design.Experiment` | Trial/block structure |
 | `Info` | `map[string]string` | Participant metadata (from `GetParticipantInfo`) |
 | `SubjectID` | `int` | Set by `-s` flag or `GetParticipantInfo` |

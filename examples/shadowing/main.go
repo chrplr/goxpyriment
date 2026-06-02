@@ -73,11 +73,11 @@ func main() {
 	//   // then call snd.PlaySyncedWithFlip(exp.Screen) in the trial loop
 	// -------------------------------------------------------------------------
 	items := []item{
-		newItem("low",    200, exp),
-		newItem("mid",    440, exp),
-		newItem("high",   880, exp),
+		newItem("low", 200, exp),
+		newItem("mid", 440, exp),
+		newItem("high", 880, exp),
 		newItem("rising", 330, exp),
-		newItem("falling",660, exp),
+		newItem("falling", 660, exp),
 	}
 
 	fixCross := stimuli.NewFixCross(30, 3, control.White)

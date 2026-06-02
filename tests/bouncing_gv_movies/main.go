@@ -245,20 +245,20 @@ func scheduleAtPlusN(exp *control.Experiment, left, right, target *media.Movie, 
 // dataColumns matches AddDataVariableNames below; kept as a const so the
 // Add-call ordering is auditable in one place.
 var dataColumns = []string{
-	"ts_ns",       // sdl.TicksNS at event time (Onset.TimestampNS for triggers)
-	"ts_source",   // hardware-verified | vsync-estimated | look-ahead | wall-clock
-	"event",       // human-readable event name
-	"movie",       // tag of the movie this row describes
-	"frame",       // current cumulative 1-based displayed frame
-	"time_ms",     // effective media time in ms
-	"rate",        // current playback rate
-	"loop",        // current 0-based loop iteration
-	"cx",          // center X (screen-center-relative px)
-	"cy",          // center Y
-	"w",           // explicit destination width (px); 0 if scale-derived
-	"h",           // explicit destination height
-	"blend",       // blend mode name
-	"is_paused",   // true / false
+	"ts_ns",          // sdl.TicksNS at event time (Onset.TimestampNS for triggers)
+	"ts_source",      // hardware-verified | vsync-estimated | look-ahead | wall-clock
+	"event",          // human-readable event name
+	"movie",          // tag of the movie this row describes
+	"frame",          // current cumulative 1-based displayed frame
+	"time_ms",        // effective media time in ms
+	"rate",           // current playback rate
+	"loop",           // current 0-based loop iteration
+	"cx",             // center X (screen-center-relative px)
+	"cy",             // center Y
+	"w",              // explicit destination width (px); 0 if scale-derived
+	"h",              // explicit destination height
+	"blend",          // blend mode name
+	"is_paused",      // true / false
 	"loop_window_ms", // PauseWithLoop window in ms (0 if not in loop)
 }
 
@@ -478,7 +478,7 @@ func main() {
 		case control.K_SPACE:
 			togglePauseBoth(mgr, leftMov, rightMov)
 		case control.K_L:
-			window := time.Duration(10.0/leftMov.FPS()*float64(time.Second))
+			window := time.Duration(10.0 / leftMov.FPS() * float64(time.Second))
 			pauseLoopBoth(mgr, leftMov, rightMov, window)
 			log.Printf("[L] PauseWithLoop window = %v (10 frames @ %v fps)", window, leftMov.FPS())
 		case control.K_1:

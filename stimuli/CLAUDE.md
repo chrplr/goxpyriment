@@ -9,14 +9,14 @@ All visual and audio stimulus types, plus high-precision VSYNC-locked presentati
 
 ```go
 type Stimulus interface {
-    Present(screen *io.Screen, clear, update bool) error
+    Present(screen *apparatus.Screen, clear, update bool) error
     Preload() error   // no-op for most visual stimuli
     Unload() error    // destroy GPU texture / audio stream
 }
 
 type VisualStimulus interface {
     Stimulus
-    Draw(screen *io.Screen) error
+    Draw(screen *apparatus.Screen) error
     GetPosition() sdl.FPoint
     SetPosition(pos sdl.FPoint)
 }

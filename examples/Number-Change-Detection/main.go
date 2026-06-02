@@ -78,7 +78,7 @@ var (
 
 func initLayout(px float32) {
 	pxPerCm = px
-	leftCtr  = control.FPoint{X: -(43*px/2 + 68*px/2), Y: 0}
+	leftCtr = control.FPoint{X: -(43*px/2 + 68*px/2), Y: 0}
 	rightCtr = control.FPoint{X: 43*px/2 + 68*px/2, Y: 0}
 }
 
@@ -112,9 +112,9 @@ func physParams(px float32, nDots int, minDotCm, maxDotCm, minCloudCm, maxCloudC
 var extParams5, extParams20, intParams5, intParams20 dotParams
 
 func initDotParams(px float32) {
-	extParams5  = physParams(px, numerosityLow,  1.35, 2.30, 10.0, 22.5)
+	extParams5 = physParams(px, numerosityLow, 1.35, 2.30, 10.0, 22.5)
 	extParams20 = physParams(px, numerosityHigh, 0.65, 1.15, 10.0, 22.5)
-	intParams5  = physParams(px, numerosityLow,  1.15, 2.30,  7.5, 12.5)
+	intParams5 = physParams(px, numerosityLow, 1.15, 2.30, 7.5, 12.5)
 	intParams20 = physParams(px, numerosityHigh, 1.15, 2.30, 12.5, 25.0)
 }
 
@@ -123,7 +123,7 @@ func initDotParams(px float32) {
 type streamType int
 
 const (
-	streamConstant    streamType = iota
+	streamConstant streamType = iota
 	streamAlternating
 	streamRandom
 )

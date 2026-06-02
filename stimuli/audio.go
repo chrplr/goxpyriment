@@ -51,9 +51,9 @@ func (s *Sound) PreloadDevice(audioDevice sdl.AudioDeviceID) error {
 	var err error
 
 	if s.Memory != nil {
-		ioStream, err := sdl.IOFromBytes(s.Memory)
-		if err != nil {
-			return err
+		ioStream, ioErr := sdl.IOFromBytes(s.Memory)
+		if ioErr != nil {
+			return ioErr
 		}
 		data, err = sdl.LoadWAV_IO(ioStream, true, &spec)
 		if err != nil {
@@ -381,7 +381,13 @@ func (s *Sound) PlaySegment(onset, offset, rampSec float64) error {
 	}
 
 	s.Stream.Clear()
-	return s.Stream.PutData(seg)
+	if err := s.Stream.PutData(seg); err != nil {
+		return err
+	}
+	// Flush so the resampler emits its lookahead frames; without it
+	// Stream.Queued() never reaches 0 (so Wait() spins) and the tail is
+	// truncated when the WAV rate differs from the device rate. Mirrors Play().
+	return s.Stream.Flush()
 }
 
 // PlaySoundFromMemory is a helper to play a sound from a byte slice on a given audio device in the background.

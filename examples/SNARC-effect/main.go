@@ -111,10 +111,10 @@ func drawFrame(exp *control.Experiment, color control.Color) {
 	hh := float32(frameH) / 2
 
 	lines := []*stimuli.Line{
-		stimuli.NewLine(control.Point(-hw, -hh), control.Point(hw, -hh), color, lineWidth),  // top
-		stimuli.NewLine(control.Point(hw, -hh), control.Point(hw, hh), color, lineWidth),    // right
-		stimuli.NewLine(control.Point(hw, hh), control.Point(-hw, hh), color, lineWidth),    // bottom
-		stimuli.NewLine(control.Point(-hw, hh), control.Point(-hw, -hh), color, lineWidth),  // left
+		stimuli.NewLine(control.Point(-hw, -hh), control.Point(hw, -hh), color, lineWidth), // top
+		stimuli.NewLine(control.Point(hw, -hh), control.Point(hw, hh), color, lineWidth),   // right
+		stimuli.NewLine(control.Point(hw, hh), control.Point(-hw, hh), color, lineWidth),   // bottom
+		stimuli.NewLine(control.Point(-hw, hh), control.Point(-hw, -hh), color, lineWidth), // left
 	}
 	for _, l := range lines {
 		_ = l.Draw(exp.Screen)

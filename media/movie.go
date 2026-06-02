@@ -485,8 +485,8 @@ type Snapshot struct {
 	TotalFramesDecoded int           // cumulative 1-based decoded-frame counter (look-ahead)
 	Time               time.Duration // effective media time (rate-scaled, cumulative)
 	Rate               float64
-	LoopCounter        int           // 0-based loop iteration
-	Repeat             int           // configured loop count (-1 = infinite)
+	LoopCounter        int // 0-based loop iteration
+	Repeat             int // configured loop count (-1 = infinite)
 	IsActive           bool
 	IsPaused           bool
 	IsDone             bool

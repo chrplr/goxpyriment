@@ -76,9 +76,9 @@ const (
 
 // Sentinel errors returned by MEGTTLBox methods.
 var (
-	ErrMEGNotOpen    = errors.New("megttlbox: port not open")
-	ErrMEGTimeout    = errors.New("megttlbox: read timeout")
-	ErrMEGBadLine    = errors.New("megttlbox: line out of range (0–7)")
+	ErrMEGNotOpen     = errors.New("megttlbox: port not open")
+	ErrMEGTimeout     = errors.New("megttlbox: read timeout")
+	ErrMEGBadLine     = errors.New("megttlbox: line out of range (0–7)")
 	ErrMEGBadDuration = errors.New("megttlbox: duration out of range (0–65535 ms)")
 )
 

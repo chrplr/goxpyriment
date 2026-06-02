@@ -88,11 +88,11 @@ type machTimebase struct {
 
 // Library handles + bound function pointers (initialised once).
 var (
-	cvOnce       sync.Once
-	cvLoadErr    error
-	cvCoreVideo  uintptr
-	cvLibSystem  uintptr
-	cvAPI        struct {
+	cvOnce      sync.Once
+	cvLoadErr   error
+	cvCoreVideo uintptr
+	cvLibSystem uintptr
+	cvAPI       struct {
 		// CoreVideo
 		CVDisplayLinkCreateWithActiveCGDisplays func(out *uintptr) int32
 		CVDisplayLinkSetOutputCallback          func(link uintptr, callback uintptr, ctx uintptr) int32
@@ -149,10 +149,10 @@ type cvBackend struct {
 	// thread), read by OnsetForFlip (main thread). All values are SDL
 	// ticks, never zero (we coerce a 0 reading to 1 to keep "0 = unset"
 	// sentinel semantics).
-	mu       sync.Mutex
-	ring     [vsyncRingSize]uint64
-	ringIdx  int
-	closed   atomic.Bool
+	mu      sync.Mutex
+	ring    [vsyncRingSize]uint64
+	ringIdx int
+	closed  atomic.Bool
 
 	// mach_absolute_time → SDL ticks conversion: sdl_ns = mach_ns - epochOffsetNS.
 	// machRatioNumer/Denom are mach_timebase_info; the conversion is

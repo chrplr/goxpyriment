@@ -52,9 +52,9 @@ import (
 	"time"
 
 	"github.com/Zyko0/go-sdl3/sdl"
+	"github.com/chrplr/goxpyriment/apparatus"
 	"github.com/chrplr/goxpyriment/control"
 	"github.com/chrplr/goxpyriment/design"
-	"github.com/chrplr/goxpyriment/apparatus"
 	"github.com/chrplr/goxpyriment/stimuli"
 )
 

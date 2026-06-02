@@ -218,7 +218,7 @@ func (m *Menu) Get(screen *apparatus.Screen, kb *apparatus.Keyboard, initialSel 
 				var idx int
 				var matched bool
 				if key >= sdl.K_1 && key <= sdl.K_9 {
-					idx = int(key-sdl.K_1)
+					idx = int(key - sdl.K_1)
 					matched = true
 				} else if key == sdl.K_0 && n >= 10 {
 					idx = 9

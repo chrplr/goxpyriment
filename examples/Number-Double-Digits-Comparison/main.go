@@ -242,11 +242,11 @@ Press SPACE to begin.`, *expNum, largerKey, standard, smallerKey, standard)
 
 The experiment will now begin (%d trials).
 Press SPACE to start.`, func() int {
-		if *expNum == 1 {
-			return len(buildExp1Trials())
-		}
-		return len(buildExp2Trials())
-	}())
+			if *expNum == 1 {
+				return len(buildExp1Trials())
+			}
+			return len(buildExp2Trials())
+		}())
 
 	// ── build trial lists ─────────────────────────────────────────────────────
 

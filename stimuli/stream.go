@@ -87,9 +87,17 @@ func PresentStreamOfImages(screen *apparatus.Screen, elements []VisualStreamElem
 
 	// 4. Presentation Loop
 	for i, el := range elements {
-		// Round duration to the nearest frame count
+		// Round duration to the nearest frame count. A positive but
+		// sub-half-frame duration is clamped to a single frame so that a
+		// requested stimulus (or ISI) is never silently dropped to 0 frames.
 		framesOn := int((el.DurationOn + frameDuration/2) / frameDuration)
+		if framesOn == 0 && el.DurationOn > 0 {
+			framesOn = 1
+		}
 		framesOff := int((el.DurationOff + frameDuration/2) / frameDuration)
+		if framesOff == 0 && el.DurationOff > 0 {
+			framesOff = 1
+		}
 
 		// Center the stimulus on (x, y) before drawing
 		el.Stimulus.SetPosition(sdl.FPoint{X: x, Y: y})

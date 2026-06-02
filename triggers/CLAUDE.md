@@ -230,4 +230,4 @@ line, _ := sp.ReadLine()
 - Always `defer dev.Close()` — drives all lines LOW and releases the port.
 - For `OutputTTLDevice`, send the trigger as close as possible to the `exp.ShowNS` VSYNC flip; latency is typically <1 ms.
 - For `InputTTLDevice`, call `DrainInputs(ctx)` before `WaitForInput(ctx)` between trials to clear latched presses.
-- To use a MEGTTLBox or DLPIO8 as a `ResponseDevice` in the `io` package: `io.NewTTLResponseDevice(box, 5*time.Millisecond)`.
+- To use a MEGTTLBox or DLPIO8 as a `ResponseDevice` in the `apparatus` package: `apparatus.NewTTLResponseDevice(box, 5*time.Millisecond)`.

@@ -55,12 +55,12 @@ import (
 
 // Timing (ms), matching the paper exactly.
 const (
-	fixMS  = 500  // fixation warning interval
+	fixMS   = 500  // fixation warning interval
 	maxRTms = 1000 // response window from letter onset (letter shown for 500 ms in
 	//               the original; we keep it visible until response or 1000 ms)
-	itiMS  = 2500 // blank inter-trial interval after letter offset
+	itiMS = 2500 // blank inter-trial interval after letter offset
 
-	nBlocks        = 8  // 4 simple + 4 choice
+	nBlocks        = 8 // 4 simple + 4 choice
 	trialsPerBlock = 80
 	nGoPerBlock    = 64 // 80 % go trials  (16 per letter)
 	nStopPerBlock  = 16 // 20 % stop trials (4 delays × 4 letters)

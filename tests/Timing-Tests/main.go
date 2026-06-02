@@ -115,31 +115,31 @@ import (
 // ── Flags ─────────────────────────────────────────────────────────────────────
 
 var (
-	fTest       = flag.String("test", "", "Sub-test: check | display | latency | stream | vrr | trigger | frames | tones | av | rt\n\t(legacy aliases: jitter=display  drain=latency  square=trigger  sound=tones  audio=check  flash=frames)")
-	fPort       = flag.String("port", "", "Serial port for DLP-IO8-G (empty = auto-detect)")
-	fTriggerPin = flag.Int("trigger-pin", 1, "DLP-IO8-G output pin (1–8)")
-	fTriggerMs  = flag.Int("trigger-ms", 5, "Trigger pulse duration (ms)")
-	fCycles     = flag.Int("cycles", 120, "Number of cycles / flashes")
-	fLevelA     = flag.Int("level-a", 0, "Dark luminance 0–255")
-	fLevelB     = flag.Int("level-b", 255, "Bright luminance 0–255")
-	fFramesOn   = flag.Int("frames-on", 1, "Bright frames per cycle [frames / stream / av tests]")
-	fFramesOff  = flag.Int("frames-off", 9, "Dark frames per cycle [frames / stream / av tests]")
-	fSoaMs          = flag.Float64("soa-ms", 0, "Visual-to-audio SOA ms; negative = audio first [av test]")
-	fItiMs          = flag.Float64("iti-ms", 1000, "Inter-trial interval ms [av test]")
-	fFreqHz         = flag.Float64("freq-hz", 1000, "Tone frequency Hz [av test]")
-	fToneMs         = flag.Int("tone-ms", 50, "Tone duration ms [av test]")
-	fDurationS      = flag.Float64("duration-s", 10, "Measurement duration in seconds [jitter / square]")
-	fPeriodMs       = flag.Float64("period-ms", 100, "Square-wave period ms [square test]")
-	fDuty           = flag.Float64("duty", 50, "Duty cycle 0–100 %% [square test]")
-	fAudioFrames    = flag.Int("audio-frames", 0, "Audio hardware buffer size in sample frames (0=SDL default). Must be set before SDL audio opens; e.g. 256, 512, 1024.")
-	fHz             = flag.Float64("hz", 60.0, "Expected display refresh rate in Hz; used to compute frame-interval targets [stream / display]")
-	fWarmup         = flag.Int("warmup", 10, "Frames to discard at the start of visual tests before recording statistics")
-	fDrainReps      = flag.Int("drain-reps", 10, "Repetitions per tone duration [drain test]")
-	fVRRMaxMs       = flag.Int("vrr-max-ms", 50, "Maximum stimulus duration to sweep in VRR test (ms, in 1 ms steps) [vrr test]")
-	fWindowed       = flag.Bool("w", false, "Windowed mode (1024×768 window instead of fullscreen)")
-	fDisplay        = flag.Int("d", -1, "Display index: monitor where the window/fullscreen will open (-1 = primary)")
-	fSysInfo        = flag.Bool("sysinfo", false, "Print system information and exit")
-	fPacedFlip      = flag.Bool("paced-flip", false, "Use PacedFlip() instead of Update() for frame pacing in frames/av tests")
+	fTest        = flag.String("test", "", "Sub-test: check | display | latency | stream | vrr | trigger | frames | tones | av | rt\n\t(legacy aliases: jitter=display  drain=latency  square=trigger  sound=tones  audio=check  flash=frames)")
+	fPort        = flag.String("port", "", "Serial port for DLP-IO8-G (empty = auto-detect)")
+	fTriggerPin  = flag.Int("trigger-pin", 1, "DLP-IO8-G output pin (1–8)")
+	fTriggerMs   = flag.Int("trigger-ms", 5, "Trigger pulse duration (ms)")
+	fCycles      = flag.Int("cycles", 120, "Number of cycles / flashes")
+	fLevelA      = flag.Int("level-a", 0, "Dark luminance 0–255")
+	fLevelB      = flag.Int("level-b", 255, "Bright luminance 0–255")
+	fFramesOn    = flag.Int("frames-on", 1, "Bright frames per cycle [frames / stream / av tests]")
+	fFramesOff   = flag.Int("frames-off", 9, "Dark frames per cycle [frames / stream / av tests]")
+	fSoaMs       = flag.Float64("soa-ms", 0, "Visual-to-audio SOA ms; negative = audio first [av test]")
+	fItiMs       = flag.Float64("iti-ms", 1000, "Inter-trial interval ms [av test]")
+	fFreqHz      = flag.Float64("freq-hz", 1000, "Tone frequency Hz [av test]")
+	fToneMs      = flag.Int("tone-ms", 50, "Tone duration ms [av test]")
+	fDurationS   = flag.Float64("duration-s", 10, "Measurement duration in seconds [jitter / square]")
+	fPeriodMs    = flag.Float64("period-ms", 100, "Square-wave period ms [square test]")
+	fDuty        = flag.Float64("duty", 50, "Duty cycle 0–100 %% [square test]")
+	fAudioFrames = flag.Int("audio-frames", 0, "Audio hardware buffer size in sample frames (0=SDL default). Must be set before SDL audio opens; e.g. 256, 512, 1024.")
+	fHz          = flag.Float64("hz", 60.0, "Expected display refresh rate in Hz; used to compute frame-interval targets [stream / display]")
+	fWarmup      = flag.Int("warmup", 10, "Frames to discard at the start of visual tests before recording statistics")
+	fDrainReps   = flag.Int("drain-reps", 10, "Repetitions per tone duration [drain test]")
+	fVRRMaxMs    = flag.Int("vrr-max-ms", 50, "Maximum stimulus duration to sweep in VRR test (ms, in 1 ms steps) [vrr test]")
+	fWindowed    = flag.Bool("w", false, "Windowed mode (1024×768 window instead of fullscreen)")
+	fDisplay     = flag.Int("d", -1, "Display index: monitor where the window/fullscreen will open (-1 = primary)")
+	fSysInfo     = flag.Bool("sysinfo", false, "Print system information and exit")
+	fPacedFlip   = flag.Bool("paced-flip", false, "Use PacedFlip() instead of Update() for frame pacing in frames/av tests")
 )
 
 // ── Screen fill helper ─────────────────────────────────────────────────────────
@@ -298,7 +298,6 @@ func runFrames(exp *control.Experiment, trig triggers.OutputTTLDevice) error {
 		return control.EndLoop
 	})
 }
-
 
 // ── Test: av ──────────────────────────────────────────────────────────────────
 
@@ -732,7 +731,7 @@ func runRT(exp *control.Experiment, trig triggers.OutputTTLDevice) error {
 		for i := 0; i < nTrials; i++ {
 			// Jittered ITI: meanItiMs ± 50 %
 			jitter := (rand.Float64() - 0.5) * meanItiMs
-			itiDur := time.Duration((meanItiMs+jitter)*float64(time.Millisecond))
+			itiDur := time.Duration((meanItiMs + jitter) * float64(time.Millisecond))
 			exp.Screen.Clear()
 			exp.Screen.Update()
 			time.Sleep(itiDur)

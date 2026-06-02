@@ -37,10 +37,10 @@ import (
 	"math/rand"
 	"strconv"
 
+	gxio "github.com/chrplr/goxpyriment/apparatus"
 	"github.com/chrplr/goxpyriment/assets_embed"
 	"github.com/chrplr/goxpyriment/control"
 	"github.com/chrplr/goxpyriment/design"
-	gxio "github.com/chrplr/goxpyriment/apparatus"
 	"github.com/chrplr/goxpyriment/stimuli"
 )
 
@@ -259,8 +259,8 @@ func main() {
 
 	// ── Load group-specific stimuli ───────────────────────────────────────────
 
-	var digitStims [10]*stimuli.TextLine  // indices 1–9
-	var dotPics [10]*stimuli.Picture      // indices 1–9; used for regular/irregular
+	var digitStims [10]*stimuli.TextLine // indices 1–9
+	var dotPics [10]*stimuli.Picture     // indices 1–9; used for regular/irregular
 
 	switch group {
 	case "digits":

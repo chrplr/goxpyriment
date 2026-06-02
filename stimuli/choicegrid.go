@@ -57,7 +57,7 @@ type ChoiceGrid struct {
 // cgButton holds the pre-computed geometry for a single button.
 type cgButton struct {
 	label  string
-	cx, cy float32  // center in screen-center (center-origin) coordinates
+	cx, cy float32   // center in screen-center (center-origin) coordinates
 	bounds sdl.FRect // in SDL top-left coordinates, used for mouse hit-testing
 }
 
@@ -280,9 +280,9 @@ func (cg *ChoiceGrid) Get(screen *apparatus.Screen, kb *apparatus.Keyboard) ([]s
 		// Auto-submit once MaxSelect items have been collected.
 		if cg.MaxSelect > 0 && len(response) >= cg.MaxSelect {
 			// One final render to show the complete response before returning.
-			screen.Clear()         //nolint:errcheck
+			screen.Clear()                     //nolint:errcheck
 			cg.draw(screen, buttons, response) //nolint:errcheck
-			screen.Update()        //nolint:errcheck
+			screen.Update()                    //nolint:errcheck
 			return response, nil
 		}
 	}

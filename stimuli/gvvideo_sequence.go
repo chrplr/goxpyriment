@@ -20,17 +20,17 @@ import (
 // a single GPU streaming texture is reused across all clips.
 type GvVideoSequence struct {
 	BaseVisual
-	gvs              []*gvvideo.GVVideo
-	offsets          []int   // offsets[i] = first global frame index of gvs[i]
-	frameBytes       uint32  // max decompressed frame size across all clips
+	gvs                []*gvvideo.GVVideo
+	offsets            []int  // offsets[i] = first global frame index of gvs[i]
+	frameBytes         uint32 // max decompressed frame size across all clips
 	maxCompressedBytes uint64 // max LZ4-compressed frame size across all clips
-	texture          *sdl.Texture
-	rgba             []byte // decompressed RGBA buffer, one frame
-	compressedBuf    []byte // LZ4-compressed scratch buffer, max frame size
-	Width      float32
-	Height     float32
-	FPS        float64
-	FrameCount int
+	texture            *sdl.Texture
+	rgba               []byte // decompressed RGBA buffer, one frame
+	compressedBuf      []byte // LZ4-compressed scratch buffer, max frame size
+	Width              float32
+	Height             float32
+	FPS                float64
+	FrameCount         int
 
 	currentFrame int
 	playing      bool

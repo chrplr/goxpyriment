@@ -10,16 +10,17 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"sync"
 	"sync/atomic"
 	"syscall"
 	"time"
 
 	"github.com/Zyko0/go-sdl3/sdl"
 	"github.com/Zyko0/go-sdl3/ttf"
+	"github.com/chrplr/goxpyriment/apparatus"
 	"github.com/chrplr/goxpyriment/assets_embed"
 	"github.com/chrplr/goxpyriment/clock"
 	"github.com/chrplr/goxpyriment/design"
-	"github.com/chrplr/goxpyriment/apparatus"
 	"github.com/chrplr/goxpyriment/results"
 	"github.com/chrplr/goxpyriment/stimuli"
 )
@@ -27,15 +28,15 @@ import (
 // EventState provides a convenient summary of the last processed input events.
 // It is updated by Experiment.PollEvents.
 type EventState struct {
-	LastKey              sdl.Keycode
-	LastMouseButton      uint32
-	LastKeyTimestamp     uint64 // SDL3 event timestamp in nanoseconds (same clock as TicksNS)
-	LastMouseTimestamp   uint64 // SDL3 event timestamp in nanoseconds
-	LastKeyUp                sdl.Keycode
-	LastKeyUpTimestamp       uint64 // SDL3 event timestamp in nanoseconds for KEY_UP
-	LastMouseButtonUp        uint32
+	LastKey                    sdl.Keycode
+	LastMouseButton            uint32
+	LastKeyTimestamp           uint64 // SDL3 event timestamp in nanoseconds (same clock as TicksNS)
+	LastMouseTimestamp         uint64 // SDL3 event timestamp in nanoseconds
+	LastKeyUp                  sdl.Keycode
+	LastKeyUpTimestamp         uint64 // SDL3 event timestamp in nanoseconds for KEY_UP
+	LastMouseButtonUp          uint32
 	LastMouseButtonUpTimestamp uint64 // SDL3 event timestamp in nanoseconds for MOUSE_BUTTON_UP
-	QuitRequested            bool
+	QuitRequested              bool
 }
 
 // ---------------------------------------------------------------------------
@@ -88,13 +89,13 @@ type Experiment struct {
 	ScreenNumber    int
 	OutputDirectory string
 	// Info holds the key→value map returned by GetParticipantInfo, if called.
-	Info            map[string]string
+	Info map[string]string
 	// GammaCorrector, when non-nil, is applied by CorrectColor.
-	// Set via SetGamma or by assigning io.NewGammaCorrector(...) directly.
-	GammaCorrector  *apparatus.GammaCorrector
+	// Set via SetGamma or by assigning apparatus.NewGammaCorrector(...) directly.
+	GammaCorrector *apparatus.GammaCorrector
 	// Microphone, when non-nil, is the audio recording device opened by
 	// OpenMicrophone. Closed automatically by End().
-	Microphone      *apparatus.Microphone
+	Microphone *apparatus.Microphone
 
 	sdlLoader interface{ Unload() }
 	imgLoader interface{ Unload() }
@@ -102,6 +103,22 @@ type Experiment struct {
 
 	event    EventState
 	quitFlag atomic.Int32 // set to 1 by signal handler goroutine; checked by pumpFrame
+	endOnce  sync.Once    // guards finalizeData so the footer is written exactly once
+}
+
+// finalizeData writes the end-time footer and flushes the data file exactly
+// once, whether the experiment ends normally (End) or via the Ctrl-C/SIGTERM
+// signal handler. The sync.Once guard prevents duplicate footer lines and a
+// concurrent append to the output buffer from the two goroutines.
+func (e *Experiment) finalizeData() {
+	e.endOnce.Do(func() {
+		if e.Data != nil {
+			e.Data.WriteEndTime()
+			if err := e.Data.Save(); err == nil {
+				log.Printf("Results saved in %s (info: %s)", e.Data.FullPath, e.Data.InfoFile.FullPath)
+			}
+		}
+	})
 }
 
 // Do executes the given function on the current goroutine (which is the
@@ -467,16 +484,13 @@ func (e *Experiment) Initialize() error {
 		e.ttfLoader = loadTTF()
 	}
 
-	log.Printf("DEBUG: calling sdl.Init flags=%v", platformSDLInitFlags())
 	if err := sdl.Init(platformSDLInitFlags()); err != nil {
 		return fmt.Errorf("sdl.Init: %w", err)
 	}
-	log.Printf("DEBUG: sdl.Init OK")
 
 	if err := ttf.Init(); err != nil {
 		return fmt.Errorf("ttf.Init: %w", err)
 	}
-	log.Printf("DEBUG: ttf.Init OK")
 
 	// If no explicit window size was provided, we use the autodetect mode (0,0)
 	// which apparatus.NewScreen handles by using native resolution and high pixel density.
@@ -492,13 +506,11 @@ func (e *Experiment) Initialize() error {
 	if err := e.platformInitAudio(); err != nil {
 		return fmt.Errorf("platformInitAudio: %w", err)
 	}
-	log.Printf("DEBUG: audio OK")
 
 	screen, err := apparatus.NewScreen(e.Name, e.WindowWidth, e.WindowHeight, e.BackgroundColor, e.Fullscreen, e.ScreenNumber)
 	if err != nil {
 		return fmt.Errorf("NewScreen: %w", err)
 	}
-	log.Printf("DEBUG: NewScreen OK")
 	e.Screen = screen
 	e.Keyboard = &apparatus.Keyboard{
 		PollKeys: func() (sdl.Keycode, bool) {
@@ -578,12 +590,7 @@ func (e *Experiment) Initialize() error {
 		signal.Notify(ch, os.Interrupt, syscall.SIGTERM)
 		<-ch
 		e.quitFlag.Store(1)
-		if e.Data != nil {
-			e.Data.WriteEndTime()
-			if err := e.Data.Save(); err == nil {
-				log.Printf("Results saved in %s (info: %s)", e.Data.FullPath, e.Data.InfoFile.FullPath)
-			}
-		}
+		e.finalizeData()
 		// Give pumpFrame up to 3 s to detect the flag so defer End() can run
 		// from the main goroutine. If the main goroutine is blocked outside Run(),
 		// force-exit as a last resort.
@@ -600,7 +607,6 @@ var pollEvent = sdl.PollEvent
 
 // getTicks is a hook for sdl.Ticks to allow unit testing.
 var getTicks = sdl.Ticks
-
 
 // ---------------------------------------------------------------------------
 // Event handling
@@ -682,7 +688,7 @@ func (e *Experiment) HandleEvents() (sdl.Keycode, uint32, error) {
 	if state.QuitRequested {
 		return 0, 0, sdl.EndLoop
 	}
-	// Note: HandleEvents from logic thread will return the sticky key, 
+	// Note: HandleEvents from logic thread will return the sticky key,
 	// but it won't clear it. Users should prefer Keyboard.Wait() or similar.
 	return state.LastKey, state.LastMouseButton, nil
 }
@@ -861,12 +867,7 @@ func (e *Experiment) OpenMicrophone(spec *sdl.AudioSpec) error {
 }
 
 func (e *Experiment) End() {
-	if e.Data != nil {
-		e.Data.WriteEndTime()
-		if err := e.Data.Save(); err == nil {
-			log.Printf("Results saved in %s", e.Data.FullPath)
-		}
-	}
+	e.finalizeData()
 	if e.DefaultFont != nil {
 		e.DefaultFont.Close()
 	}

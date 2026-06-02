@@ -129,7 +129,7 @@ func NewDataFile(directory string, subjectID int, expName string) (*DataFile, er
 	}
 	df.WriteComment(fmt.Sprintf("e os: %s/%s", runtime.GOOS, runtime.GOARCH))
 	df.WriteComment(fmt.Sprintf("e framework: goxpyriment %s --- see http://chrplr.github.io/goxpyriment", Version))
-	df.WriteComment("e framework_author: Christophe Pallier <christophe.pallier.org>")
+	df.WriteComment("e framework_author: Christophe Pallier <christophe@pallier.org>")
 	df.WriteComment("--SUBJECT INFO")
 	df.WriteComment(fmt.Sprintf("s id: %d", subjectID))
 	df.WriteComment("#")

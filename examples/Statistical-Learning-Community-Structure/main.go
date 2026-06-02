@@ -5,16 +5,16 @@
 //
 // Implements the behavioral protocol of Experiment 2:
 //
-//   Exposure phase (1,400 trials): a continuous random walk on a 15-node graph
-//   with 3 densely-connected communities (5 nodes each). Cover task: press F
-//   (normal orientation) or J (rotated 90°). Rotation rate ≈ 20 %.
+//	Exposure phase (1,400 trials): a continuous random walk on a 15-node graph
+//	with 3 densely-connected communities (5 nodes each). Cover task: press F
+//	(normal orientation) or J (rotated 90°). Rotation rate ≈ 20 %.
 //
-//   Parsing phase (600 trials): 40 alternating blocks of 15 stimuli — random
-//   walk and fixed Hamiltonian path. The Hamiltonian cycle is entered at the
-//   last node of the preceding random-walk block; traversal direction
-//   (forward/backward) is chosen randomly for each Hamiltonian block.
-//   Participants press SPACE at perceived natural breaking points while
-//   continuing the cover task.
+//	Parsing phase (600 trials): 40 alternating blocks of 15 stimuli — random
+//	walk and fixed Hamiltonian path. The Hamiltonian cycle is entered at the
+//	last node of the preceding random-walk block; traversal direction
+//	(forward/backward) is chosen randomly for each Hamiltonian block.
+//	Participants press SPACE at perceived natural breaking points while
+//	continuing the cover task.
 //
 // Graph: 15 nodes in 3 communities (C0 = 0–4, C1 = 5–9, C2 = 10–14).
 // Within each community the induced subgraph is K5 minus the edge between the
@@ -53,9 +53,9 @@ import (
 // ── Timing ────────────────────────────────────────────────────────────────────
 
 const (
-	stimDurMS    = 1500  // ms per stimulus (exposure and parsing phases)
-	rotatedFrac  = 0.20  // fraction of stimuli presented rotated 90°
-	symbolRadius = 60.0  // outer bounding radius of each symbol (logical px)
+	stimDurMS    = 1500 // ms per stimulus (exposure and parsing phases)
+	rotatedFrac  = 0.20 // fraction of stimuli presented rotated 90°
+	symbolRadius = 60.0 // outer bounding radius of each symbol (logical px)
 )
 
 // ── Graph ─────────────────────────────────────────────────────────────────────
@@ -171,21 +171,21 @@ func buildSymbols(color sdl.Color) {
 	in := func(f float64) float64 { return r * f }
 
 	ptsDefs := [nNodes][]sdl.FPoint{
-		regPoly(3, r, -90),                // 0: triangle pointing up
-		regPoly(4, r, -45),               // 1: square (flat sides)
-		regPoly(5, r, -90),               // 2: pentagon pointing up
-		regPoly(6, r, 0),                 // 3: hexagon flat-top
-		regPoly(8, r, 0),                 // 4: octagon
-		starPoly(3, r, in(0.38), -90),    // 5: 3-point star
-		starPoly(4, r, in(0.35), -45),    // 6: 4-point star, narrow
-		starPoly(5, r, in(0.38), -90),    // 7: 5-point star, classic
-		starPoly(5, r, in(0.62), -90),    // 8: 5-point star, fat
-		starPoly(6, r, in(0.45), 0),      // 9: 6-point star, narrow
-		starPoly(6, r, in(0.68), 0),      // 10: 6-point star, fat
-		starPoly(7, r, in(0.45), 0),      // 11: 7-point star
-		starPoly(8, r, in(0.40), -22.5),  // 12: 8-point star
-		regPoly(3, r, 90),                // 13: triangle pointing down
-		regPoly(4, r, 0),                 // 14: diamond (square rotated 45°)
+		regPoly(3, r, -90),              // 0: triangle pointing up
+		regPoly(4, r, -45),              // 1: square (flat sides)
+		regPoly(5, r, -90),              // 2: pentagon pointing up
+		regPoly(6, r, 0),                // 3: hexagon flat-top
+		regPoly(8, r, 0),                // 4: octagon
+		starPoly(3, r, in(0.38), -90),   // 5: 3-point star
+		starPoly(4, r, in(0.35), -45),   // 6: 4-point star, narrow
+		starPoly(5, r, in(0.38), -90),   // 7: 5-point star, classic
+		starPoly(5, r, in(0.62), -90),   // 8: 5-point star, fat
+		starPoly(6, r, in(0.45), 0),     // 9: 6-point star, narrow
+		starPoly(6, r, in(0.68), 0),     // 10: 6-point star, fat
+		starPoly(7, r, in(0.45), 0),     // 11: 7-point star
+		starPoly(8, r, in(0.40), -22.5), // 12: 8-point star
+		regPoly(3, r, 90),               // 13: triangle pointing down
+		regPoly(4, r, 0),                // 14: diamond (square rotated 45°)
 	}
 
 	for i, pts := range ptsDefs {
@@ -353,8 +353,8 @@ func runExposurePhase(exp *control.Experiment) (lastNode int, err error) {
 
 func runParsingPhase(exp *control.Experiment, startNode int) error {
 	const (
-		nBlocks   = 40 // 20 random-walk + 20 Hamiltonian, alternating
-		blockSize = 15 // nodes per block
+		nBlocks   = 40                  // 20 random-walk + 20 Hamiltonian, alternating
+		blockSize = 15                  // nodes per block
 		nTrials   = nBlocks * blockSize // = 600
 	)
 

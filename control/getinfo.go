@@ -193,9 +193,9 @@ func GetParticipantInfo(title string, fields []InfoField) (map[string]string, er
 	}
 
 	// Split fields by type for layout and event handling.
-	var textIdx   []int // positions in fields where Type == FieldText or FieldNumber
+	var textIdx []int   // positions in fields where Type == FieldText or FieldNumber
 	var selectIdx []int // positions in fields where Type == FieldSelect
-	var checkIdx  []int // positions in fields where Type == FieldCheckbox
+	var checkIdx []int  // positions in fields where Type == FieldCheckbox
 	for i, f := range fields {
 		switch f.Type {
 		case FieldCheckbox:
@@ -227,16 +227,16 @@ func GetParticipantInfo(title string, fields []InfoField) (map[string]string, er
 
 	// ── Geometry ─────────────────────────────────────────────────────────────
 	const (
-		winW        = 620
-		margin      = 30
-		boxW        = winW - 2*margin
-		boxH        = 28
-		rowH        = 58 // label + box + gap per text field
-		selectRowH  = 58 // label + button row + gap per select field
-		labelH      = 20 // approximate text height at 18 pt
-		checkRowH   = 32 // height per checkbox row
-		headerH     = 58 // title + separator
-		footerH     = 65 // OK / Cancel strip
+		winW       = 620
+		margin     = 30
+		boxW       = winW - 2*margin
+		boxH       = 28
+		rowH       = 58 // label + box + gap per text field
+		selectRowH = 58 // label + button row + gap per select field
+		labelH     = 20 // approximate text height at 18 pt
+		checkRowH  = 32 // height per checkbox row
+		headerH    = 58 // title + separator
+		footerH    = 65 // OK / Cancel strip
 	)
 
 	winH := headerH + len(textIdx)*rowH + len(selectIdx)*selectRowH + len(checkIdx)*checkRowH + footerH
@@ -257,14 +257,14 @@ func GetParticipantInfo(title string, fields []InfoField) (map[string]string, er
 	defer window.StopTextInput()
 
 	// ── Colours ───────────────────────────────────────────────────────────────
-	colBg     := sdl.Color{R: 245, G: 245, B: 245, A: 255}
-	colBlack  := sdl.Color{R: 0, G: 0, B: 0, A: 255}
-	colWhite  := sdl.Color{R: 255, G: 255, B: 255, A: 255}
-	colFocus  := sdl.Color{R: 0, G: 100, B: 220, A: 255}
+	colBg := sdl.Color{R: 245, G: 245, B: 245, A: 255}
+	colBlack := sdl.Color{R: 0, G: 0, B: 0, A: 255}
+	colWhite := sdl.Color{R: 255, G: 255, B: 255, A: 255}
+	colFocus := sdl.Color{R: 0, G: 100, B: 220, A: 255}
 	colBorder := sdl.Color{R: 180, G: 180, B: 180, A: 255}
-	colGreen  := sdl.Color{R: 0, G: 140, B: 0, A: 255}
-	colRed    := sdl.Color{R: 180, G: 0, B: 0, A: 255}
-	colCheck  := sdl.Color{R: 0, G: 150, B: 0, A: 255}
+	colGreen := sdl.Color{R: 0, G: 140, B: 0, A: 255}
+	colRed := sdl.Color{R: 180, G: 0, B: 0, A: 255}
+	colCheck := sdl.Color{R: 0, G: 150, B: 0, A: 255}
 
 	// ── Render helpers ────────────────────────────────────────────────────────
 

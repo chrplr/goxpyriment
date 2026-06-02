@@ -38,14 +38,14 @@ import (
 // ── Experiment parameters ────────────────────────────────────────────────────
 
 const (
-	nRepsPerCell  = 20   // repetitions per (task × presence × set_size) cell
-	fixationMs    = 500  // fixation cross duration (ms)
-	feedbackMs    = 500  // feedback duration (ms)
-	itiMs         = 1000 // inter-trial interval (ms)
-	tooSlowMs     = 2000 // RT threshold for "Too slow!" feedback (ms)
-	stimFontSize  = 36   // point size for search-array letters
-	keyPresent    = control.K_J
-	keyAbsent     = control.K_F
+	nRepsPerCell = 20   // repetitions per (task × presence × set_size) cell
+	fixationMs   = 500  // fixation cross duration (ms)
+	feedbackMs   = 500  // feedback duration (ms)
+	itiMs        = 1000 // inter-trial interval (ms)
+	tooSlowMs    = 2000 // RT threshold for "Too slow!" feedback (ms)
+	stimFontSize = 36   // point size for search-array letters
+	keyPresent   = control.K_J
+	keyAbsent    = control.K_F
 )
 
 var setSizes = []int{4, 12, 24}

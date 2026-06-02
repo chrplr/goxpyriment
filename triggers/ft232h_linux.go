@@ -53,10 +53,10 @@ const (
 	mpsseLoopbackOff = 0x85 // LOOPBACK_END — disable internal loopback
 
 	// MPSSE sync: send 0xAA (bad command), device echoes 0xFA 0xAA.
-	mpsseSyncByte     = 0xAA
-	mpsseEchoFail     = 0xFA
-	mpsseFlushTxBuf   = 0x87 // SEND_IMMEDIATE: flush MPSSE TX buffer to USB
-	ft232hModemBytes  = 2    // modem-status prefix bytes on every bulk IN packet
+	mpsseSyncByte    = 0xAA
+	mpsseEchoFail    = 0xFA
+	mpsseFlushTxBuf  = 0x87 // SEND_IMMEDIATE: flush MPSSE TX buffer to USB
+	ft232hModemBytes = 2    // modem-status prefix bytes on every bulk IN packet
 )
 
 // usbdevfs ioctl numbers on 64-bit Linux.

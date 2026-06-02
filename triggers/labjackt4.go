@@ -14,9 +14,9 @@ import (
 )
 
 const (
-	t4DefaultPollInterval = 5 * time.Millisecond
-	t4DefaultTimeout      = 1 * time.Second
-	t4DefaultUnitID  byte = 1
+	t4DefaultPollInterval      = 5 * time.Millisecond
+	t4DefaultTimeout           = 1 * time.Second
+	t4DefaultUnitID       byte = 1
 
 	t4RegFIOState     uint16 = 2500
 	t4RegEIOState     uint16 = 2501

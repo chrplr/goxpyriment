@@ -16,7 +16,7 @@ func TestRunRecovery(t *testing.T) {
 	defer func() { pollEvent = oldPoll }()
 
 	exp := &Experiment{}
-	
+
 	// Mock a logic function that triggers an exit panic
 	logic := func() error {
 		panic(exitPanic{err: sdl.EndLoop})
@@ -28,11 +28,11 @@ func TestRunRecovery(t *testing.T) {
 	}
 }
 
-// TestStickyEvents verifies the "sticky" input mechanism. Keys should be 
+// TestStickyEvents verifies the "sticky" input mechanism. Keys should be
 // captured by the main thread and held until the logic thread consumes them.
 func TestStickyEvents(t *testing.T) {
 	exp := &Experiment{}
-	
+
 	// 1. Simulate a key press in PollEvents (as if from SDL)
 	// We'll bypass the actual SDL polling for this unit test
 	exp.event.LastKey = sdl.K_SPACE
@@ -70,7 +70,7 @@ func TestWaitAbort(t *testing.T) {
 	defer func() { pollEvent = oldPoll }()
 
 	exp := &Experiment{}
-	
+
 	// Simulate a quit request
 	exp.event.QuitRequested = true
 

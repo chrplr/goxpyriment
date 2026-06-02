@@ -135,7 +135,12 @@ func (t *Tone) PlaySyncedWithFlip(screen *apparatus.Screen) (uint64, error) {
 func (t *Tone) Play() error {
 	if t.Stream != nil {
 		t.Stream.Clear()
-		return t.Stream.PutData(t.Data)
+		if err := t.Stream.PutData(t.Data); err != nil {
+			return err
+		}
+		// Flush emits the resampler's lookahead frames so playback is not
+		// truncated on devices whose rate differs from the tone's 44100 Hz.
+		return t.Stream.Flush()
 	}
 	return nil
 }

@@ -14,9 +14,9 @@ import (
 // Stats holds summary statistics for a slice of frame-interval measurements.
 type Stats struct {
 	Mean, SD, MinV, MaxV, P5, P95 float64
-	Late05, Late1                  int // count > 0.5 ms and > 1 ms from target
-	N                              int
-	Vals                           []float64 // raw values, kept for histogram
+	Late05, Late1                 int // count > 0.5 ms and > 1 ms from target
+	N                             int
+	Vals                          []float64 // raw values, kept for histogram
 }
 
 // ComputeStats computes summary statistics for deltas (in ms).

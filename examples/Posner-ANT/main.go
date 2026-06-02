@@ -47,8 +47,8 @@ const (
 	FeedbackMS          = 400
 
 	// Visual layout (pixels in logical 1920×1080 space)
-	BoxW    = 400 // frame width around flanker arrows
-	BoxH    = 80  // frame height
+	BoxW     = 400 // frame width around flanker arrows
+	BoxH     = 80  // frame height
 	BoxShift = 100 // vertical distance from center to box center
 	BorderW  = 3   // outline thickness (simulated via nested filled rectangles)
 
@@ -169,27 +169,27 @@ func main() {
 		return s
 	}
 
-	arrowCongLeft    := makeArrow(" < < < < < ")
-	arrowCongRight   := makeArrow(" > > > > > ")
-	arrowIncongLeft  := makeArrow(" > > < > > ")
+	arrowCongLeft := makeArrow(" < < < < < ")
+	arrowCongRight := makeArrow(" > > > > > ")
+	arrowIncongLeft := makeArrow(" > > < > > ")
 	arrowIncongRight := makeArrow(" < < > < < ")
 
 	crossBlack := stimuli.NewFixCross(30, 4, control.Black)
-	crossGreen  := stimuli.NewFixCross(30, 4, green)
-	crossRed    := stimuli.NewFixCross(30, 4, red)
+	crossGreen := stimuli.NewFixCross(30, 4, green)
+	crossRed := stimuli.NewFixCross(30, 4, red)
 
 	// Outlined frames: outer filled rect (border color) + inner filled rect
 	// (background color) to simulate a BorderW-pixel outline.
 	iw := float32(BoxW - 2*BorderW)
 	ih := float32(BoxH - 2*BorderW)
 
-	boxTopOuter    := stimuli.NewRectangle(0,  BoxShift, BoxW, BoxH, control.Black)
-	boxTopInner    := stimuli.NewRectangle(0,  BoxShift, iw, ih, grey)
+	boxTopOuter := stimuli.NewRectangle(0, BoxShift, BoxW, BoxH, control.Black)
+	boxTopInner := stimuli.NewRectangle(0, BoxShift, iw, ih, grey)
 	boxBottomOuter := stimuli.NewRectangle(0, -BoxShift, BoxW, BoxH, control.Black)
 	boxBottomInner := stimuli.NewRectangle(0, -BoxShift, iw, ih, grey)
 
-	cueTopOuter    := stimuli.NewRectangle(0,  BoxShift, BoxW, BoxH, control.White)
-	cueTopInner    := stimuli.NewRectangle(0,  BoxShift, iw, ih, grey)
+	cueTopOuter := stimuli.NewRectangle(0, BoxShift, BoxW, BoxH, control.White)
+	cueTopInner := stimuli.NewRectangle(0, BoxShift, iw, ih, grey)
 	cueBottomOuter := stimuli.NewRectangle(0, -BoxShift, BoxW, BoxH, control.White)
 	cueBottomInner := stimuli.NewRectangle(0, -BoxShift, iw, ih, grey)
 

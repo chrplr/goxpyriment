@@ -228,6 +228,11 @@ func (e *Experiment) AddBWSFactor(name string, conditions []interface{}) {
 
 // GetPermutedBWSFactorCondition returns the condition for the given factor
 // for the given subject ID, according to the experiment's permutation scheme.
+//
+// Subject IDs are 1-based: subject 1 gets the first condition, subject 2 the
+// second, and so on (wrapping with the number of conditions). The default
+// subject ID 0 and any negative ID are normalized into range so the result is
+// always a valid condition and the call never panics.
 func (e *Experiment) GetPermutedBWSFactorCondition(name string, subjectID int) interface{} {
 	conditions, ok := e.BWSFactors[name]
 	if !ok || len(conditions) == 0 {
@@ -244,7 +249,13 @@ func (e *Experiment) GetPermutedBWSFactorCondition(name string, subjectID int) i
 	for _, f := range e.BWSFactorNames {
 		nLower /= len(e.BWSFactors[f])
 		if f == name {
+			// Floored modulo so the index stays in [0, len) even for the
+			// default subjectID 0 (which would otherwise yield -1 and panic)
+			// or negative IDs.
 			idx := ((subjectID - 1) / nLower) % len(conditions)
+			if idx < 0 {
+				idx += len(conditions)
+			}
 			return conditions[idx]
 		}
 	}

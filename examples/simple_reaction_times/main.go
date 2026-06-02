@@ -24,7 +24,7 @@ func main() {
 	exp := control.NewExperimentFromFlags("Visual Detection", control.Black, control.White, 32)
 	defer exp.End()
 
-        exp.HideCursor()
+	exp.HideCursor()
 	exp.AddDataVariableNames([]string{"trial", "wait_time", "key", "rt"})
 
 	// 2. Prepare stimuli

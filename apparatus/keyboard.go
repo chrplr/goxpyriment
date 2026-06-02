@@ -334,7 +334,6 @@ func (k *Keyboard) GetKeyEventsTS(keys []sdl.Keycode, timeoutMS int) ([]InputEve
 	return all, nil
 }
 
-
 // CollectKeyEventsTS records all matching key events that occur during a fixed
 // time window and returns them ordered by hardware timestamp (earliest first).
 //

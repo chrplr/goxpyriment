@@ -299,9 +299,9 @@ func runAdultExposure(exp *control.Experiment, words [][]string, tones map[strin
 // ── Test phase (adults, 2AFC) ─────────────────────────────────────────────────
 
 type testPair struct {
-	item1   []string // first sequence played
-	item2   []string // second sequence played
-	wordIs  int      // 1 or 2: which item is the trained word
+	item1  []string // first sequence played
+	item2  []string // second sequence played
+	wordIs int      // 1 or 2: which item is the trained word
 }
 
 // buildTestPairs2AFC creates 36 test pairs by crossing each of 6 trained words
@@ -606,9 +606,9 @@ func main() {
 			},
 		},
 		{
-			Name:  "language",
-			Label: "Language assignment",
-			Type:  control.FieldSelect,
+			Name:    "language",
+			Label:   "Language assignment",
+			Type:    control.FieldSelect,
 			Options: []string{"Language 1", "Language 2"},
 		},
 		control.FullscreenField,

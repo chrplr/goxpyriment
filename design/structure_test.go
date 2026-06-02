@@ -7,11 +7,11 @@ import (
 // TestExperimentStructure verifies that blocks and trials are correctly added.
 func TestExperimentStructure(t *testing.T) {
 	exp := NewExperiment("Test Exp")
-	
+
 	block := NewBlock("Block 1")
 	trial := NewTrial()
 	trial.SetFactor("type", "target")
-	
+
 	block.AddTrial(trial, 10, false)
 	if len(block.Trials) != 10 {
 		t.Errorf("Expected 10 trials in block, got %d", len(block.Trials))
@@ -25,6 +25,36 @@ func TestExperimentStructure(t *testing.T) {
 	// Verify deep copy
 	if exp.Blocks[0].Trials[0] == exp.Blocks[1].Trials[0] {
 		t.Error("Trials were not deep-copied between blocks")
+	}
+}
+
+// TestGetPermutedBWSFactorCondition verifies 1-based counterbalancing
+// assignment wraps with the number of conditions and never panics — in
+// particular for the default subject 0 and negative IDs, which previously
+// produced a -1 index and an out-of-range panic.
+func TestGetPermutedBWSFactorCondition(t *testing.T) {
+	exp := NewExperiment("BWS Test")
+	conds := []interface{}{"A", "B", "C"}
+	exp.AddBWSFactor("hand", conds)
+
+	// 1-based: subject 1 -> first condition, wrapping every len(conds).
+	cases := map[int]interface{}{
+		1:  "A",
+		2:  "B",
+		3:  "C",
+		4:  "A", // wraps
+		0:  "C", // default subject ID: must not panic (floored modulo)
+		-1: "B", // negative ID: normalized into range
+	}
+	for subj, want := range cases {
+		if got := exp.GetPermutedBWSFactorCondition("hand", subj); got != want {
+			t.Errorf("subject %d: got %v, want %v", subj, got, want)
+		}
+	}
+
+	// Unknown factor returns nil rather than panicking.
+	if got := exp.GetPermutedBWSFactorCondition("missing", 0); got != nil {
+		t.Errorf("unknown factor: got %v, want nil", got)
 	}
 }
 
@@ -50,10 +80,10 @@ func TestTrialFactors(t *testing.T) {
 // TestLatinSquare verifies the between-subjects counterbalancing logic.
 func TestLatinSquare(t *testing.T) {
 	exp := NewExperiment("Counterbalancing")
-	
+
 	// Factor A: 2 conditions
 	exp.AddBWSFactor("Group", []interface{}{"A", "B"})
-	
+
 	// Subject 1 -> Condition 0 (A)
 	c1 := exp.GetPermutedBWSFactorCondition("Group", 1)
 	if c1 != "A" {

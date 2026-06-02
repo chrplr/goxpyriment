@@ -161,7 +161,7 @@ func animLoop(exp *control.Experiment, imagePath string, speed, slitW, slitGap f
 		// Tracking dot: moves at the same speed as the image.
 		// When the user tracks this dot, temporal integration reveals the hidden image.
 		dotSDLX := imageX
-		dotSDLY := sh / 2 // vertical center
+		dotSDLY := sh / 2                                  // vertical center
 		_ = screen.Renderer.SetDrawColor(255, 215, 0, 255) // gold
 		drawFilledCircle(screen.Renderer, dotSDLX, dotSDLY, dotRadius)
 
