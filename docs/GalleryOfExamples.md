@@ -27,13 +27,13 @@ go run . -w -d 1    # windowed on monitor 1
 go build .          # build a standalone binary
 ```
 
-To build all examples at once (binaries go to `examples/_build/`):
+To build all examples (and tests) at once (binaries go to `_build/`):
 
 ```bash
-make examples       # from the repo root
-# or, from inside the examples/ directory:
-bash build.sh
+./build-all.sh      # from the repo root — works on Linux, macOS, and Windows (Git Bash)
 ```
+
+(On Linux/macOS you can also use `make examples` or `make all`.)
 
 Programs that open a **GetParticipantInfo** dialog collect all setup interactively (subject ID, monitor dimensions, fullscreen toggle, and any experiment-specific options). Pass `-headless` on the command line to skip the dialog and use field defaults — useful for scripted runs and automated testing. Programs that do not use the dialog still accept `-w` for windowed mode, `-d N` to select a monitor, and `-s <id>` for a subject ID.
 

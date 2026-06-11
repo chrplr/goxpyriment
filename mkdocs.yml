@@ -35,6 +35,7 @@ theme:
 nav:
   - Home: index.md
   - Getting Started: GettingStarted.md
+  - Creating Your Own Experiment: CreatingYourOwnExperiment.md
   - User Manual: UserManual.md
   - API Reference: API.md
   - Gallery of Examples: GalleryOfExamples.md

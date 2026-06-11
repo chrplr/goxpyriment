@@ -73,7 +73,7 @@ If you do not already have a favourite editor (Vim or Emacs work great too), ins
 
 1. **Download:** [git-scm.com/download/win](https://git-scm.com/download/win).
 2. Run the `.exe` installer. On most screens you can click **Next**, but note:
-   - **Editor:** choose "Visual Studio Code as Git's default editor" (if already installed).
+   - **Editor:** keep the default (you can change it later).
    - **PATH:** select "Git from the command line and also from 3rd-party software".
    - **Line endings:** choose "Checkout Windows-style, commit Unix-style line endings".
 3. **Verify** — open **Command Prompt** (`Win + R`, type `cmd`) and run:
@@ -92,7 +92,26 @@ If you do not already have a favourite editor (Vim or Emacs work great too), ins
    ```
    You should see something like `go version go1.26.x windows/amd64`.
 
-### 3. Editor: Visual Studio Code (VS Code)
+### 3. Editor
+
+Any text editor works. If you are new to programming, start with one of the
+simpler options below and switch later if you outgrow it.
+
+**Notepad++ (simplest)** — tiny and instant, with Go syntax highlighting. Ideal if
+you just want to edit a file (no autocomplete or error checking).
+
+1. **Download:** [notepad-plus-plus.org](https://notepad-plus-plus.org/).
+2. Run the installer and accept the defaults.
+
+**Zed (lightweight, with Go support)** — a fast, uncluttered editor that still
+gives you autocomplete and inline error checking.
+
+1. **Download:** [zed.dev](https://zed.dev/).
+2. Run the installer. The first time you open a `.go` file, Zed offers to install
+   the Go tools — accept.
+
+**Visual Studio Code (most popular, more features)** — powerful but can feel
+overwhelming at first.
 
 1. **Download:** [code.visualstudio.com](https://code.visualstudio.com/).
 2. Run the installer and make sure **"Add to PATH"** is checked.
@@ -100,6 +119,11 @@ If you do not already have a favourite editor (Vim or Emacs work great too), ins
    - Open VS Code and click the **Extensions** icon (four squares).
    - Search for **"Go"** (by the Go Team at Google) and click **Install**.
    - Press `Ctrl + Shift + P`, type `Go: Install/Update Tools`, select all boxes, and click **OK**.
+
+> **No `make` needed.** To build all the bundled examples and tests at once, run
+> `./build-all.sh` from the repository root — it works in Git Bash without any
+> extra tools. (The `Makefile` is only a convenience for developers on
+> Linux/macOS.)
 
 ---
 

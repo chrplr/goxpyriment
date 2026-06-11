@@ -14,10 +14,10 @@
 
    ```
    cd goxpyriment
-   make all
+   ./build-all.sh
    ```
 
-   This compiles the codes in [examples/*](https://github.com/chrplr/goxpyriment/tree/main/examples). If all goes well, the `_build` folder should now contain  executable (apps) for many experiments. 
+   This compiles the codes in [examples/*](https://github.com/chrplr/goxpyriment/tree/main/examples). If all goes well, the `_build` folder should now contain  executable (apps) for many experiments. (On Linux/macOS you can also use `make all`.)
 
    The first time, it will take a while because Go needs to download several libraries. Once done, compilation will be fast.
 

@@ -18,6 +18,7 @@
 |---|---|---|
 | [Presentation](https://github.com/chrplr/goxpyriment/blob/main/paper/goxpyriment_paper.pdf) | short paper | | 
 | [Getting Started](GettingStarted.md) | Tutorials | [↓](GettingStarted.pdf) |
+| [Creating Your Own Experiment](CreatingYourOwnExperiment.md) | Beginner guide: new project, embedding assets, sharing binaries | |
 | [Gallery of Examples](GalleryOfExamples.md) | Ready-to-run experiments and demos | |
 | [Installation](Installation.md) | Install Go and build the examples | [↓](Installation.pdf) |
 | [User Manual](UserManual.md) | Core concepts explained in depth | [↓](UserManual.pdf) |
@@ -46,7 +47,7 @@ Note: If you are looking for a simpler, *no-code experiment generator*, check ou
 
         git clone https://github.com/chrplr/goxpyriment.git
         cd goxpyriment
-        make examples
+        ./build-all.sh
 
 
 * Create a `hello` folder somewhere on your computer, and create  `main.go` inside it, containing the following code:
