@@ -190,27 +190,151 @@ Ubuntu's packaged Go is often outdated. Install the latest version directly from
 
 ## Your First Program (Hello World)
 
-Once Go is installed on any platform, verify everything works:
+Once Go is installed, let's check that everything works by writing and running a
+tiny program. If you have never used a command line before, don't worry — every
+step is spelled out below.
 
-1. Create a project folder and initialise a module:
+### Step 0 — Open a terminal
+
+Almost everything in Go is done from a **terminal** (also called a *command
+line*, *command prompt*, or *shell*). This is a window where you type commands
+and press **Enter** to run them, instead of clicking buttons. Open it like this:
+
+- **Windows:** the easiest option is the **Git Bash** terminal that was installed
+  together with Git. Click the **Start** menu, type `Git Bash`, and press
+  **Enter**. (You can also use the built-in **Command Prompt**: press
+  `Win + R`, type `cmd`, and press **Enter** — but the commands below assume Git
+  Bash.)
+- **macOS:** press `Cmd + Space`, type `Terminal`, and press **Enter**.
+- **Linux (Ubuntu):** press `Ctrl + Alt + T`, or search for **Terminal** in the
+  applications menu.
+
+A new window opens with a blinking cursor, ready for you to type. From here on,
+each time you see a command in a grey box, **type it into this terminal and press
+Enter**.
+
+> **Tip:** when a command box shows several lines, run them one at a time.
+
+### Step 1 — Create a project folder
+
+A Go program lives in its own folder. The commands below create a folder called
+`hello`, move into it, and tell Go that this folder is a *module* (a self-
+contained project):
+
+```bash
+mkdir hello
+cd hello
+go mod init hello
+```
+
+- `mkdir hello` — **m**a**k**e a new **dir**ectory (folder) named `hello`.
+- `cd hello` — **c**hange **d**irectory: step inside the folder you just made.
+  Every command you type from now on runs *inside* this folder.
+- `go mod init hello` — set up the folder as a Go project.
+
+> **Where did the folder go?** It is created inside whatever folder the terminal
+> is currently "in" — usually your home folder (e.g. `C:\Users\YourName` on
+> Windows, or `/home/yourname` on Linux). That is fine for now.
+
+### Step 2 — Create the program file
+
+Now create a text file named `main.go` inside the `hello` folder, using your
+editor (VS Code, Zed, Notepad++, …). Open the editor, create a **new file**,
+paste the lines below, and save it as `main.go` **inside the `hello` folder**:
+
+```go
+package main
+
+import "fmt"
+
+func main() {
+    fmt.Println("Hello, Gopher! Your environment is ready.")
+}
+```
+
+> **Make sure the file is named exactly `main.go`** (not `main.go.txt`). In
+> Notepad++ or VS Code, choose *Save As* and type the full name `main.go`.
+
+### Step 3 — Run the program
+
+Back in the terminal (still inside the `hello` folder), type:
+
+```bash
+go run .
+```
+
+The `.` means "run the program in the current folder". You should see this line
+printed in the terminal:
+
+```
+Hello, Gopher! Your environment is ready.
+```
+
+🎉 Congratulations — your Go environment is fully working, and you have just
+written and run your first program.
+
+---
+
+## (Optional) Installing an AI Coding Agent: Claude Code
+
+[Claude Code](https://claude.com/claude-code) is Anthropic's AI coding assistant
+that runs **inside your terminal**. You describe what you want in plain English,
+and it reads your files, writes code, runs commands, and explains what it is
+doing. It is entirely optional, but many people find it a helpful companion when
+learning Go or working with this project.
+
+> **You will need an account.** Claude Code requires either a Claude
+> subscription (Pro or Max) or an Anthropic API account with billing set up. The
+> first time you run it, it walks you through signing in.
+
+### Install
+
+Open a **terminal** (see [Step 0](#step-0--open-a-terminal) above if you are not
+sure how) and run the command for your platform.
+
+- **macOS / Linux:**
+  ```bash
+  curl -fsSL https://claude.ai/install.sh | bash
+  ```
+
+- **Windows** — open **PowerShell** (click **Start**, type `PowerShell`, press
+  **Enter**) and run:
+  ```powershell
+  irm https://claude.ai/install.ps1 | iex
+  ```
+
+Alternatively, on **any platform** that has [Node.js](https://nodejs.org/) 18 or
+newer installed, you can install it with npm:
+
+```bash
+npm install -g @anthropic-ai/claude-code
+```
+
+> You may need to **close and reopen your terminal** after installing so that the
+> `claude` command becomes available.
+
+### First run
+
+1. In your terminal, move into a project folder (for example the `hello` folder
+   you created above, or your copy of this repository):
    ```bash
-   mkdir hello && cd hello
-   go mod init hello
+   cd hello
    ```
-
-2. Create `main.go`:
-   ```go
-   package main
-   import "fmt"
-
-   func main() {
-       fmt.Println("Hello, Gopher! Your environment is ready.")
-   }
-   ```
-
-3. Run it:
+2. Start Claude Code:
    ```bash
-   go run .
+   claude
+   ```
+3. The first time, it asks you to log in — follow the on-screen instructions to
+   sign in with your Claude or Anthropic account.
+4. Once you see the prompt, just type a request in plain English and press
+   **Enter**, for example:
+   ```
+   Explain what the main.go file does, line by line.
    ```
 
-You should see `Hello, Gopher! Your environment is ready.` printed in the terminal.
+To leave Claude Code, type `/exit` (or press `Ctrl + C` twice).
+
+> **Verify the install** at any time with:
+> ```bash
+> claude --version
+> ```
