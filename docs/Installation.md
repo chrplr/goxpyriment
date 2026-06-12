@@ -28,7 +28,10 @@ After having a look at [Getting Started](GettingStarted.md), and the examples' [
  the [available functions](API.md)
 
 
-* Create a folder for your experiment and start coding a `main.go` file. You can test it by running `go run main.go`. 
+* Create a folder for your experiment and start coding a `main.go` file with a code editor. You can test it by opening a terminal, using the command `cd` to navigate to the folder containing `main.go` (see https://linuxcommand.org/lc3_lts0020.php to learn how to use `cd`), and entering the command: 
+   ```
+   go run main.go
+   ```
 
    > 💡 **TIP**
    > *Vibe-coding:* Launch an AI coding agent (Claude, Gemini, etc.) inside the `goxpyriment` folder and ask it to add a new experiment to the `examples` folder — this leads the agent to read the existing examples for context. Describe the experiment (stimuli, design, etc.) in plain language and enjoy.  Recommendation: save your prompt in a `description.md` file.
