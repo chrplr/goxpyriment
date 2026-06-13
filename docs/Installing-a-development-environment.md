@@ -222,7 +222,7 @@ A new window opens with a blinking cursor, ready for you to type. From here on,
 each time you see a command in a grey box, **type it into this terminal and press
 Enter**.
 
-> **Tip:** when a command box shows several lines, run them one at a time.
+> **Tip:** If you want to understand what is going on when you interact with your computer from a terminal, I recommend that you read https://linuxcommand.org/lc3_learning_the_shell.php
 
 ### Step 1 — Create a project folder
 
