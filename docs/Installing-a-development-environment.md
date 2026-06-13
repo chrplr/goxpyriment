@@ -81,7 +81,7 @@ If you do not already have a favourite editor (Vim or Emacs work great too), ins
 
 1. **Download:** [git-scm.com/download/win](https://git-scm.com/download/win).
 2. Run the `.exe` installer. On most screens you can click **Next**, but note:
-   - **Editor:** keep the default (you can change it later).
+   - **Editor:** select "nano" if it not the default (you can change it later).
    - **PATH:** select "Git from the command line and also from 3rd-party software".
    - **Line endings:** choose "Checkout Windows-style, commit Unix-style line endings".
 3. **Verify** — open **Command Prompt** (`Win + R`, type `cmd`) and run:
