@@ -2,7 +2,7 @@
 
 This guide sets up **Git**, **Go**, and a code editor, then has you write and run
 your first Go program. By the end you'll have a working Go environment and a
-program printing to your terminal.
+program printing to your terminal. Once done, you can go back to the [instructions for installing goxpyriment](Installation.md)
 
 **What you'll do**
 
@@ -284,45 +284,24 @@ written and run your first program.
 
 ---
 
-## (Optional) Claude Code — an AI Coding Agent
+## (Optional) Install an AI Coding Agent
 
-[Claude Code](https://claude.com/claude-code) is Anthropic's AI coding assistant
-that runs **inside your terminal**. You describe what you want in plain English,
+An AI Coding agent runs **inside your terminal**. You describe what you want in plain English,
 and it reads your files, writes code, runs commands, and explains what it is
 doing. It is entirely optional, but many people find it a helpful companion when
 learning Go or working with this project.
+
+There exists several AI coding agents. Here I describe [Claude Code](https://claude.com/claude-code). 
+Instructions for installation are available at https://code.claude.com/docs/en/quickstart
 
 > **You will need an account.** Claude Code requires either a Claude
 > subscription (Pro or Max) or an Anthropic API account with billing set up. The
 > first time you run it, it walks you through signing in.
 
-### Install
-
-Open a **terminal** (see [Step 0](#step-0--open-a-terminal) above if you are not
-sure how) and run the command for your platform.
-
-- **macOS / Linux:**
-  ```bash
-  curl -fsSL https://claude.ai/install.sh | bash
-  ```
-
-- **Windows** — open **PowerShell** (click **Start**, type `PowerShell`, press
-  **Enter**) and run:
-  ```powershell
-  irm https://claude.ai/install.ps1 | iex
-  ```
-
-Alternatively, on **any platform** that has [Node.js](https://nodejs.org/) 18 or
-newer installed, you can install it with npm:
-
-```bash
-npm install -g @anthropic-ai/claude-code
-```
+### First run
 
 > You may need to **close and reopen your terminal** after installing so that the
 > `claude` command becomes available.
-
-### First run
 
 1. In your terminal, move into a project folder (for example the `hello` folder
    you created above, or your copy of this repository):
