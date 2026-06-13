@@ -120,11 +120,6 @@ overwhelming at first.
    - Search for **"Go"** (by the Go Team at Google) and click **Install**.
    - Press `Ctrl + Shift + P`, type `Go: Install/Update Tools`, select all boxes, and click **OK**.
 
-> **No `make` needed.** To build all the bundled examples and tests at once, run
-> `./build-all.sh` from the repository root — it works in Git Bash without any
-> extra tools. (The `Makefile` is only a convenience for developers on
-> Linux/macOS.)
-
 ---
 
 ## 🐧 Linux (Ubuntu)
@@ -145,13 +140,13 @@ git --version
 
 ### 2. Install Go
 
-Ubuntu's packaged Go is often outdated. Install the latest version directly from the official site.
+Install the latest version directly from the official site.
 
-1. **Download** the Linux tarball from [go.dev/dl](https://go.dev/dl/) (choose the `linux-amd64` build for most machines):
+1. **Download** the Linux tarball from [go.dev/dl](https://go.dev/dl/):
    ```bash
-   wget https://go.dev/dl/go1.24.3.linux-amd64.tar.gz
+   wget https://go.dev/dl/go1.26.4.linux-amd64.tar.gz
    ```
-   Replace the filename with the latest version shown on the downloads page.
+   Note: Replace the filename with the latest version shown on the downloads page (and the version for your computer arch (amd vs. arm)).
 
 2. **Extract** to `/usr/local` (this is the standard location):
    ```bash
@@ -174,6 +169,8 @@ Ubuntu's packaged Go is often outdated. Install the latest version directly from
    ```
 
 ### 3. Editor: Visual Studio Code (VS Code)
+
+Do this only if you do not already have a favorite code editor. 
 
 1. **Install** via Snap (simplest method):
    ```bash
@@ -248,7 +245,7 @@ package main
 import "fmt"
 
 func main() {
-    fmt.Println("Hello, Gopher! Your environment is ready.")
+    fmt.Println("Hello! Your environment is ready.")
 }
 ```
 
@@ -267,7 +264,7 @@ The `.` means "run the program in the current folder". You should see this line
 printed in the terminal:
 
 ```
-Hello, Gopher! Your environment is ready.
+Hello! Your environment is ready.
 ```
 
 🎉 Congratulations — your Go environment is fully working, and you have just
