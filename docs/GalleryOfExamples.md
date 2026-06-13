@@ -65,16 +65,19 @@ Full experiments that record and save behavioural data to an `.csv` file in `gox
 | [Mental-Logic-Card-Game](https://github.com/chrplr/goxpyriment/tree/main/examples/Mental-Logic-Card-Game) | Mental logic and inference task using a card-game paradigm |  |
 | [Mental-Rotation-2D](https://github.com/chrplr/goxpyriment/tree/main/examples/Mental-Rotation-2D) | Decide whether two 3-D figures are identical or mirror images; RT increases linearly with angular disparity | Shepard & Metzler (1971) |
 | [Mental-Rotation-3D](https://github.com/chrplr/goxpyriment/tree/main/examples/Mental-Rotation-3D) | Decide whether two 3D figures (procedurally generated assemblies of cubes) are identical or mirror images; RT increases linearly with angular disparity. | Shepard & Metzler (1971) |
+| [Mouse-tracking](https://github.com/chrplr/goxpyriment/tree/main/examples/Mouse-tracking) | Mouse-trajectory paradigm: click the image matching a spoken-onset target while the cursor path is sampled at ~36 Hz, revealing continuous attraction toward phonological competitors | Spivey et al. (2005) |
 | [Multiple-Object-Tracking](https://github.com/chrplr/goxpyriment/tree/main/examples/Multiple-Object-Tracking) | Track a subset of identical moving targets among distractors; evidence for a parallel tracking mechanism | Pylyshyn & Storm (1988) |
 | [Number-Change-Detection](https://github.com/chrplr/goxpyriment/tree/main/examples/Number-Change-Detection) | Two concurrent dot-array streams (5 vs 20 dots) test infants' preference for numerosity change; experimenter codes looking direction in real time | Decarli, Piazza & Izard (2023) |
 | [Number-Comparison](https://github.com/chrplr/goxpyriment/tree/main/examples/Number-Comparison) | Compare numerical magnitudes of digits and dot patterns; stimulus group (digits / regular / irregular / random) selected via GetParticipantInfo UI | Buckley & Gillman (1974) |
 | [Number-Double-Digits-Comparison](https://github.com/chrplr/goxpyriment/tree/main/examples/Number-Double-Digits-Comparison) | Compare two-digit numbers against a fixed standard (55 or 65); two experiments with different response-key mappings | Dehaene et al. (1990) |
 | [parity_decision](https://github.com/chrplr/goxpyriment/tree/main/examples/parity_decision) | Classify single digits (0–9) as even or odd (F / J keys) |  |
 | [Perception-of-Temporal-Patterns](https://github.com/chrplr/goxpyriment/tree/main/examples/Perception-of-Temporal-Patterns) | Reproduction of isochronous and non-isochronous rhythmic patterns; tests internal clock induction and coding complexity | Povel & Essens (1985) |
+| [picture_naming](https://github.com/chrplr/goxpyriment/tree/main/examples/picture_naming) | Vocal naming-latency task: a picture is named aloud while a microphone voice key measures RT from image onset; per-trial WAV files are saved for offline verification |  |
 | [Posner-ANT](https://github.com/chrplr/goxpyriment/tree/main/examples/Posner-ANT) | Attention Network Task (vertical variant): flanker arrows above/below fixation measure alerting, orienting, and executive attention networks | Fan et al. (2009) |
 | [Psychological-Refractory-Period](https://github.com/chrplr/goxpyriment/tree/main/examples/Psychological-Refractory-Period) | Two tasks presented in rapid succession; the second response is delayed when the SOA is short | Welford (1952) |
 | [Retinotopy](https://github.com/chrplr/goxpyriment/tree/main/examples/Retinotopy) | HCP retinotopic mapping paradigm (ported from Python); flickering wedge/ring/bar stimuli for visual cortex mapping; run type selected via GetParticipantInfo UI |  |
 | [Sensory-Threshold-Estimation-Auditory](https://github.com/chrplr/goxpyriment/tree/main/examples/Sensory-Threshold-Estimation-Auditory) | 1-up/2-down adaptive staircase with 2-IFC to estimate pure-tone hearing thresholds across multiple frequencies | Levitt (1971) |
+| [shadowing](https://github.com/chrplr/goxpyriment/tree/main/examples/shadowing) | Vocal shadowing-latency task: repeat a played sound aloud while a microphone voice key measures the delay between audio onset and speech onset |  |
 | [Simon_task](https://github.com/chrplr/goxpyriment/tree/main/examples/Simon_task) | Identify colour of a square regardless of its screen position; congruent trials are faster | Simon (1969) |
 | [simple_reaction_times](https://github.com/chrplr/goxpyriment/tree/main/examples/simple_reaction_times) | 20-trial simple RT task: press any key as quickly as possible when a target appears |  |
 | [SNARC-effect](https://github.com/chrplr/goxpyriment/tree/main/examples/SNARC-effect) | Parity judgment on digits 0–9 with reversed key mappings across blocks; demonstrates the SNARC effect | Dehaene, Bossini & Giraux (1993) |
@@ -86,6 +89,7 @@ Full experiments that record and save behavioural data to an `.csv` file in `gox
 | [Temporal-Integration-Word-Recognition](https://github.com/chrplr/goxpyriment/tree/main/examples/Temporal-Integration-Word-Recognition) | Alternating odd/even letter components at variable SOA; Exp 1 (subjective report: 0/1/2 words perceived) and Exp 2 (lexical decision with RT); experiment selected via GetParticipantInfo UI | Forget et al. (2010) |
 | [Trubutschek_Unconscious_Working_Memory](https://github.com/chrplr/goxpyriment/tree/main/examples/Trubutschek_Unconscious_Working_Memory) | Probe access to briefly presented stimuli below and above the threshold of consciousness | Trübutschek et al. (2017) |
 | [Visual-Illusion-Lilac-Chaser](https://github.com/chrplr/goxpyriment/tree/main/examples/Visual-Illusion-Lilac-Chaser) | Lilac chaser illusion: a ring of disappearing disks produces a rotating green afterimage |  |
+| [Visual-Search](https://github.com/chrplr/goxpyriment/tree/main/examples/Visual-Search) | Feature vs. conjunction visual search across set sizes (4/12/24), measuring how reaction time scales with the number of distractors | Treisman & Gelade (1980) |
 <!-- END:experiments -->
 
 ---
@@ -98,16 +102,23 @@ Visual illusions, interactive showcases, and minimal templates. Most do not writ
 | Directory | Description |
 |-----------|-------------|
 | [canvas_demo](https://github.com/chrplr/goxpyriment/tree/main/examples/canvas_demo) | Drawing on an off-screen `Canvas` surface before presenting it in one frame |
+| [follow-mouse](https://github.com/chrplr/goxpyriment/tree/main/examples/follow-mouse) | A white dot follows the mouse cursor every frame — minimal real-time input loop |
 | [getinfo_demo](https://github.com/chrplr/goxpyriment/tree/main/examples/getinfo_demo) | Demonstrates the `GetParticipantInfo` dialog: collects participant demographics and monitor characteristics before the experiment window opens |
 | [hello_world](https://github.com/chrplr/goxpyriment/tree/main/examples/hello_world) | Simplest possible goxpyriment program — good starting point for new users |
+| [joystick_cursor](https://github.com/chrplr/goxpyriment/tree/main/examples/joystick_cursor) | Move a cursor with a joystick (analog axes, dead zone, button-click to stop) — joystick input handling |
 | [Motion-Blur](https://github.com/chrplr/goxpyriment/tree/main/examples/Motion-Blur) | Motion blur vs. phantom array demo: animated bar demonstrates retinal blur and the strobe effect at 60 Hz |
 | [mouse_audio_feedback](https://github.com/chrplr/goxpyriment/tree/main/examples/mouse_audio_feedback) | Left/right mouse clicks trigger ping/buzzer audio; useful for testing sound output |
+| [play_two_gvvideos](https://github.com/chrplr/goxpyriment/tree/main/examples/play_two_gvvideos) | Plays two .gv videos side by side, synchronised, logging keypresses with their time relative to video onset |
+| [play_two_videos](https://github.com/chrplr/goxpyriment/tree/main/examples/play_two_videos) | Plays two MPEG videos side by side, synchronised, logging keypresses with their time relative to video onset |
+| [play_videos](https://github.com/chrplr/goxpyriment/tree/main/examples/play_videos) | Plays a sequence of MPEG video files found in the assets folder |
 | [random-dot-stereogram](https://github.com/chrplr/goxpyriment/tree/main/examples/random-dot-stereogram) | Random-dot stereogram that reveals a 3-D shape when fused binocularly |
+| [simple-rt-example](https://github.com/chrplr/goxpyriment/tree/main/examples/simple-rt-example) | Minimal 10-trial reaction-time loop using ShowTS / GetKeyEventTS for hardware-timestamped RT |
 | [stimuli_extras](https://github.com/chrplr/goxpyriment/tree/main/examples/stimuli_extras) | Showcase of advanced stimuli: visual mask, Gabor patch, dot cloud, stimulus circle, thermometer |
 | [text_input](https://github.com/chrplr/goxpyriment/tree/main/examples/text_input) | Demonstration of the `TextInput` stimulus collecting free-text keyboard input |
 | [Visual-Angle-Calibration](https://github.com/chrplr/goxpyriment/tree/main/examples/Visual-Angle-Calibration) | Draws concentric rings at 2°, 5°, and 10° of visual angle for a quick sanity-check of the `units.Monitor` calibration |
 | [Visual-Illusion-Ebbginghaus](https://github.com/chrplr/goxpyriment/tree/main/examples/Visual-Illusion-Ebbginghaus) | Animated Ebbinghaus (Titchener circles) size-contrast illusion |
 | [Visual-Illusion-Kanizsa](https://github.com/chrplr/goxpyriment/tree/main/examples/Visual-Illusion-Kanizsa) | Kanizsa illusory-contour square: a square is perceived where none is drawn |
+| [Visual-Persistence](https://github.com/chrplr/goxpyriment/tree/main/examples/Visual-Persistence) | Persistence-of-vision illusion: an image seen only through moving vertical slits integrates into a whole when the eyes track a moving dot |
 <!-- END:demos -->
 
 ---

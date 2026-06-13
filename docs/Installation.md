@@ -24,19 +24,9 @@
 
 ### Program your own experiment
 
-After having a look at [Getting Started](GettingStarted.md), and the examples' [source codes](https://github.com/chrplr/goxpyriment/tree/main/examples).
- the [available functions](API.md)
-
-
-* Create a folder for your experiment and start coding a `main.go` file with a code editor. You can test it by opening a terminal, using the command `cd` to navigate to the folder containing `main.go` (see https://linuxcommand.org/lc3_lts0020.php to learn how to use `cd`), and entering the command: 
-   ```
-   go run main.go
-   ```
-
-   > 💡 **TIP**
-   > *Vibe-coding:* Launch an AI coding agent (Claude, Gemini, etc.) inside the `goxpyriment` folder and ask it to add a new experiment to the `examples` folder — this leads the agent to read the existing examples for context. Describe the experiment (stimuli, design, etc.) in plain language and enjoy.  Recommendation: save your prompt in a `description.md` file.
-
-
-* Once satisfied with the code, compile your experiment into an executable with `go build .`. This executable will run on any machine with the same OS and architecture.
-
-* If you need to distribute your experiment to colleagues who use another operating system or architecture, you can easily [cross-compile](https://golangcookbook.com/chapters/running/cross-compiling/).
+Once goxpyriment is installed, follow the step-by-step guide in
+[Creating Your Own Experiment](CreatingYourOwnExperiment.md), which walks you
+through writing, running, building, and sharing your own experiment. For
+background and reference, see [Getting Started](GettingStarted.md), the examples'
+[source codes](https://github.com/chrplr/goxpyriment/tree/main/examples), and the
+[available functions](API.md).

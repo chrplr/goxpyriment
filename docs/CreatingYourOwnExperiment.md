@@ -19,15 +19,18 @@ copy an example, change a few lines, and run it.
 
 ## Before you start
 
-You need the Go compiler installed. Open a terminal and check:
+Make sure goxpyriment is installed first — follow [Installation](Installation.md),
+which walks you through installing Git and Go, cloning the repository, and building
+the examples. (If you are new to setting up Go, that page links to a more
+[detailed development-environment guide](Installing-a-development-environment.md).)
+
+Once that is done, open a terminal and confirm the Go compiler is available:
 
 ```bash
 go version
 ```
 
-If you see something like `go version go1.25 ...`, you are ready. If the command
-is not found, install Go first — see
-[Installing a development environment](Installing-a-development-environment.md).
+If you see something like `go version go1.25 ...`, you are ready.
 
 > **What is a terminal?** A text window where you type commands.
 > On Windows, use **Git Bash** (installed with Git). On macOS use **Terminal**,
@@ -85,6 +88,12 @@ You don't need to understand every line yet. The pattern is always the same:
 > **Tip:** Start by copying an existing example from the
 > [`examples/`](GalleryOfExamples.md) folder that resembles your paradigm, then
 > modify it. That is far easier than writing from a blank page.
+
+> 💡 **Vibe-coding:** Launch an AI coding agent (Claude, Gemini, etc.) inside the
+> `goxpyriment` folder and ask it to add a new experiment to the `examples` folder —
+> this leads the agent to read the existing examples for context. Describe the
+> experiment (stimuli, design, etc.) in plain language and enjoy. Recommendation:
+> save your prompt in a `description.md` file.
 
 ---
 

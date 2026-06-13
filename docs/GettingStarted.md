@@ -37,7 +37,7 @@ If you've ever spent three hours fixing a `conda` environment or `pip` conflict 
 
 ---
 
-To run the following tutorials, you need a Go development environement. See [here](Installing-a-development-environment.md) for installation instructions.
+To run the following tutorials, you need goxpyriment installed and a working Go toolchain. See [Installation](Installation.md) for instructions.
 
 ---
 
@@ -324,10 +324,10 @@ Key observations:
 
 ---
 
-5. Test AI Coding
+## Tutorial 5 — Test AI Coding
 
-1. Take the pdf of a scientific paper about a psychology experiment and ask Gemini or CLaude to read it and to generate a detailed description (stimuli, design, timings) to give to a coder to replicate it. Save the answer in a `description.md` file.
-2. Open Gemini or Claude (command line tool), and asked it to implement the experiment detailed in `description.md`, using the goxperiment library (provide the path of your local clone of the repository) taking inspiration from the examples provided in the `examples/` folder.
+1. Take the PDF of a scientific paper about a psychology experiment and ask Gemini or Claude to read it and generate a detailed description (stimuli, design, timings) to give to a coder to replicate it. Save the answer in a `description.md` file.
+2. Open Gemini or Claude (command-line tool), and ask it to implement the experiment detailed in `description.md`, using the goxpyriment library (provide the path of your local clone of the repository) and taking inspiration from the examples provided in the `examples/` folder.
 
 ---
 

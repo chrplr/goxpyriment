@@ -18,12 +18,12 @@
 |---|---|---|
 | [Presentation](https://github.com/chrplr/goxpyriment/blob/main/paper/goxpyriment_paper.pdf) | short paper | | 
 | [Getting Started](GettingStarted.md) | Tutorials | [↓](GettingStarted.pdf) |
-| [Creating Your Own Experiment](CreatingYourOwnExperiment.md) | Beginner guide: new project, embedding assets, sharing binaries | |
-| [Gallery of Examples](GalleryOfExamples.md) | Ready-to-run experiments and demos | |
 | [Installation](Installation.md) | Install Go and build the examples | [↓](Installation.pdf) |
+| [Creating Your Own Experiment](CreatingYourOwnExperiment.md) | Beginner guide: new project, embedding assets, sharing binaries | |
 | [User Manual](UserManual.md) | Core concepts explained in depth | [↓](UserManual.pdf) |
 | [Migration Guide](MigrationGuide.md) | Coming from Expyriment, PsychoPy, or Psychtoolbox? | [↓](MigrationGuide.pdf) |
 | [API Reference](API.md) | Complete function and type reference | [↓](API.pdf) |
+| [Gallery of Examples](GalleryOfExamples.md) | Ready-to-run experiments and demos | |
 | [Timing-Tests](TimingTests.md) | Check the timing of your computer | [↓](TimingTests.pdf) |
 
 
@@ -40,53 +40,9 @@ Note: If you are looking for a simpler, *no-code experiment generator*, check ou
 
 ## Quick Start
 
-* Download and install Go from <https://go.dev> (See [Installing-a-development-environment.md](Installing-a-development-environment.md) if you are new to this).
-
-* Clone goxpriment and check that you can compile the examples, by executing the following commands in a Terminal (`Git Bash` for Windows):
-
-
-        git clone https://github.com/chrplr/goxpyriment.git
-        cd goxpyriment
-        ./build-all.sh
-
-
-* Create a `hello` folder somewhere on your computer, and create  `main.go` inside it, containing the following code:
-
-    ```go
-    package main
-
-    import (
-      "github.com/chrplr/goxpyriment/control"
-      "github.com/chrplr/goxpyriment/stimuli"
-    )
-
-    func main() {
-      exp := control.NewExperimentFromFlags("Hello World", control.Black, control.White, 32)
-      defer exp.End()
-
-      hello := stimuli.NewTextBox("Hello, World!", 600, control.FPoint{}, control.White)
-
-      exp.Run(func() error {
-        exp.Show(hello)
-        exp.Keyboard.Wait()
-        return control.EndLoop
-      })
-    }
-    ```
-
-* Initialize dependencies in the `hello` folder:
-
-    ```bash
-    go mod init hello
-    go mod tidy
-    ```
-
-* Run your program
-
-
-    ```bash
-    go run .
-    ```
+1. **[Install](Installation.md)** Go and build the bundled examples.
+2. **[Create your own experiment](CreatingYourOwnExperiment.md)** — a step-by-step beginner guide from an empty folder to a shareable executable.
+3. **[Getting Started](GettingStarted.md)** walks through worked tutorials (trials, data logging, RSVP, reaction times).
 
 ---
 
