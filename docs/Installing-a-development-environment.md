@@ -1,14 +1,20 @@
 # Installing a Go Development Environment
 
-This guide walks you through setting up **Git**, **Go**, and a code editor on **macOS**, **Windows**, and **Linux (Ubuntu)**.
+This guide sets up **Git**, **Go**, and a code editor, then has you write and run
+your first Go program. By the end you'll have a working Go environment and a
+program printing to your terminal.
 
-- [macOS](#-macos)
-- [Windows](#-windows)
-- [Linux (Ubuntu)](#-linux-ubuntu)
+**What you'll do**
+
+1. Install the tools for your operating system — [macOS](#macos) ·
+   [Windows](#windows) · [Linux (Ubuntu)](#linux-ubuntu)
+2. [Write and run your first program](#your-first-program-hello-world)
+3. (Optional) [Install Claude Code](#optional-claude-code--an-ai-coding-agent),
+   an AI coding assistant
 
 ---
 
-## 🍎 macOS
+## macOS
 
 If [Homebrew](https://brew.sh/) is installed, you can install Git and Go with two commands:
 
@@ -65,9 +71,11 @@ If you do not already have a favourite editor (Vim or Emacs work great too), ins
    - Click the **Extensions** icon (four squares) in the left sidebar.
    - Search for **"Go"** and install the one by the Go Team at Google.
 
+> ✅ **Tools installed.** Continue to [Your First Program](#your-first-program-hello-world).
+
 ---
 
-## 🪟 Windows
+## Windows
 
 ### 1. Install Git
 
@@ -120,9 +128,11 @@ overwhelming at first.
    - Search for **"Go"** (by the Go Team at Google) and click **Install**.
    - Press `Ctrl + Shift + P`, type `Go: Install/Update Tools`, select all boxes, and click **OK**.
 
+> ✅ **Tools installed.** Continue to [Your First Program](#your-first-program-hello-world).
+
 ---
 
-## 🐧 Linux (Ubuntu)
+## Linux (Ubuntu)
 
 ### 1. Install Git
 
@@ -151,7 +161,7 @@ Install the latest version directly from the official site.
 2. **Extract** to `/usr/local` (this is the standard location):
    ```bash
    sudo rm -rf /usr/local/go
-   sudo tar -C /usr/local -xzf go1.24.3.linux-amd64.tar.gz
+   sudo tar -C /usr/local -xzf go1.26.4.linux-amd64.tar.gz
    ```
 
 3. **Add Go to your PATH.** Append the following lines to `~/.bashrc` (or `~/.zshrc` if you use Zsh):
@@ -182,6 +192,8 @@ Do this only if you do not already have a favorite code editor.
    - Click the **Extensions** icon (four squares) in the left sidebar.
    - Search for **"Go"** and install the one by the Go Team at Google.
    - Press `Ctrl + Shift + P`, type `Go: Install/Update Tools`, select all, and click **OK**.
+
+> ✅ **Tools installed.** Continue to [Your First Program](#your-first-program-hello-world).
 
 ---
 
@@ -272,7 +284,7 @@ written and run your first program.
 
 ---
 
-## (Optional) Installing an AI Coding Agent: Claude Code
+## (Optional) Claude Code — an AI Coding Agent
 
 [Claude Code](https://claude.com/claude-code) is Anthropic's AI coding assistant
 that runs **inside your terminal**. You describe what you want in plain English,
