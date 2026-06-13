@@ -15,6 +15,16 @@ colleagues on Windows, macOS, or Linux.
 You do **not** need to learn the whole Go language. For most experiments you only
 copy an example, change a few lines, and run it.
 
+> **Tip:** The easiest way to start is to copy an existing example from the
+> [`examples/`](GalleryOfExamples.md) folder that resembles your paradigm, then
+> change a few lines. That is far easier than writing from a blank page.
+
+> 💡 **Vibe-coding:** You can also let an AI coding agent (Claude, Gemini, etc.)
+> write the experiment for you. Open the agent inside the `goxpyriment` folder and
+> describe your experiment (stimuli, design, etc.) in plain language — asking it to
+> add a new experiment to the `examples` folder leads it to read the existing
+> examples for context. Recommendation: save your prompt in a `description.md` file.
+
 ---
 
 ## Before you start
@@ -85,15 +95,9 @@ You don't need to understand every line yet. The pattern is always the same:
 - `defer exp.End()` makes sure everything is closed cleanly when the program stops.
 - `exp.Run(func() error { ... })` is your experiment body. Return `control.EndLoop` to finish.
 
-> **Tip:** Start by copying an existing example from the
-> [`examples/`](GalleryOfExamples.md) folder that resembles your paradigm, then
-> modify it. That is far easier than writing from a blank page.
-
-> 💡 **Vibe-coding:** Launch an AI coding agent (Claude, Gemini, etc.) inside the
-> `goxpyriment` folder and ask it to add a new experiment to the `examples` folder —
-> this leads the agent to read the existing examples for context. Describe the
-> experiment (stimuli, design, etc.) in plain language and enjoy. Recommendation:
-> save your prompt in a `description.md` file.
+> **Remember:** you rarely start from a blank page like this. The copy-an-example
+> and vibe-coding tips at the top of this page are the easiest way in — this section
+> just shows what the generated code looks like.
 
 ---
 
