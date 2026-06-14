@@ -14,10 +14,14 @@
 //	description: One-line task summary.
 //	reference:   Author (year)  # empty string for demos
 //
+// Technical tests in the sibling tests/ module are documented the same way;
+// each test directory should carry a meta.yaml (category "test").
+//
 // The script rewrites the content between these sentinel comments in GalleryOfExamples.md:
 //
 //	<!-- BEGIN:experiments -->  …  <!-- END:experiments -->
 //	<!-- BEGIN:demos -->        …  <!-- END:demos -->
+//	<!-- BEGIN:tests -->        …  <!-- END:tests -->
 //
 // All other content in GalleryOfExamples.md is left untouched.
 package main
@@ -69,14 +73,14 @@ func readMeta(dir string) (meta, bool) {
 	return m, m.category != "" && m.description != ""
 }
 
-// collectExamples walks examples/ for direct subdirectories that contain a
-// main.go, and returns:
+// collect walks root/ for direct subdirectories that contain a main.go, and
+// returns:
 //   - metas: all entries with a valid meta.yaml, sorted case-insensitively
 //   - undocumented: directory names without a meta.yaml, sorted
-func collectExamples() ([]meta, []string) {
-	entries, err := os.ReadDir("examples")
+func collect(root string) ([]meta, []string) {
+	entries, err := os.ReadDir(root)
 	if err != nil {
-		log.Fatalf("reading examples dir: %v", err)
+		log.Fatalf("reading %s dir: %v", root, err)
 	}
 
 	var metas []meta
@@ -95,10 +99,10 @@ func collectExamples() ([]meta, []string) {
 			continue
 		}
 		// Only include directories that directly contain a main.go.
-		if _, err := os.Stat(filepath.Join("examples", name, "main.go")); err != nil {
+		if _, err := os.Stat(filepath.Join(root, name, "main.go")); err != nil {
 			continue
 		}
-		m, ok := readMeta(filepath.Join("examples", name))
+		m, ok := readMeta(filepath.Join(root, name))
 		if !ok {
 			undocumented = append(undocumented, name)
 			continue
@@ -114,6 +118,7 @@ func collectExamples() ([]meta, []string) {
 }
 
 const repoExamplesURL = "https://github.com/chrplr/goxpyriment/tree/main/examples"
+const repoTestsURL = "https://github.com/chrplr/goxpyriment/tree/main/tests"
 
 // experimentTable returns the Markdown table body for experiments.
 func experimentTable(metas []meta) string {
@@ -139,6 +144,17 @@ func demoTable(metas []meta) string {
 			continue
 		}
 		fmt.Fprintf(&sb, "| [%s](%s/%s) | %s |\n", m.dir, repoExamplesURL, m.dir, m.description)
+	}
+	return sb.String()
+}
+
+// testsTable returns the Markdown table body for the technical tests in tests/.
+func testsTable(metas []meta) string {
+	var sb strings.Builder
+	sb.WriteString("| Directory | Description |\n")
+	sb.WriteString("|-----------|-------------|\n")
+	for _, m := range metas {
+		fmt.Fprintf(&sb, "| [%s](%s/%s) | %s |\n", m.dir, repoTestsURL, m.dir, m.description)
 	}
 	return sb.String()
 }
@@ -195,7 +211,8 @@ func countCategory(metas []meta, cat string) int {
 func main() {
 	const galleryPath = "docs/GalleryOfExamples.md"
 
-	metas, undocumented := collectExamples()
+	metas, undocumented := collect("examples")
+	testMetas, testUndocumented := collect("tests")
 
 	// Read GalleryOfExamples.md line by line.
 	f, err := os.Open(galleryPath)
@@ -219,6 +236,9 @@ func main() {
 	lines = rewriteSentinel(lines,
 		"<!-- BEGIN:demos -->", "<!-- END:demos -->",
 		demoTable(metas))
+	lines = rewriteSentinel(lines,
+		"<!-- BEGIN:tests -->", "<!-- END:tests -->",
+		testsTable(testMetas))
 
 	// Write the result back.
 	out, err := os.Create(galleryPath)
@@ -236,11 +256,17 @@ func main() {
 		log.Fatalf("close: %v", err)
 	}
 
-	fmt.Printf("Wrote %d experiments, %d demos.\n",
-		countCategory(metas, "experiment"), countCategory(metas, "demo"))
+	fmt.Printf("Wrote %d experiments, %d demos, %d tests.\n",
+		countCategory(metas, "experiment"), countCategory(metas, "demo"), len(testMetas))
 	if len(undocumented) > 0 {
 		fmt.Printf("WARNING: %d example(s) have no meta.yaml and were skipped:\n", len(undocumented))
 		for _, name := range undocumented {
+			fmt.Printf("  - %s\n", name)
+		}
+	}
+	if len(testUndocumented) > 0 {
+		fmt.Printf("WARNING: %d test(s) have no meta.yaml and were skipped:\n", len(testUndocumented))
+		for _, name := range testUndocumented {
 			fmt.Printf("  - %s\n", name)
 		}
 	}

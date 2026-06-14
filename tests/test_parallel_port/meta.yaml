@@ -1,0 +1,3 @@
+category: test
+description: Reads and writes a Linux LPT parallel port via the ppdev kernel interface
+reference: ""

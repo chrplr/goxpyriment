@@ -1,2 +1,2 @@
-category: demo
+category: test
 description: Two .gv movies bounce around the screen, additively blend on overlap, fire beep tones at frame markers, and log full state to the data file on every key press; demonstrates every runtime mutator media.Movie exposes (Pause, PauseWithLoop, SetRate, SeekFrame, SetPosition, SetSize, SetBlendMode) with the multi-movie synchrony invariant preserved via BeginBurst/EndBurst

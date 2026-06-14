@@ -101,20 +101,14 @@ Visual illusions, interactive showcases, and minimal templates. Most do not writ
 <!-- BEGIN:demos -->
 | Directory | Description |
 |-----------|-------------|
-| [canvas_demo](https://github.com/chrplr/goxpyriment/tree/main/examples/canvas_demo) | Drawing on an off-screen `Canvas` surface before presenting it in one frame |
-| [follow-mouse](https://github.com/chrplr/goxpyriment/tree/main/examples/follow-mouse) | A white dot follows the mouse cursor every frame — minimal real-time input loop |
-| [getinfo_demo](https://github.com/chrplr/goxpyriment/tree/main/examples/getinfo_demo) | Demonstrates the `GetParticipantInfo` dialog: collects participant demographics and monitor characteristics before the experiment window opens |
 | [hello_world](https://github.com/chrplr/goxpyriment/tree/main/examples/hello_world) | Simplest possible goxpyriment program — good starting point for new users |
-| [joystick_cursor](https://github.com/chrplr/goxpyriment/tree/main/examples/joystick_cursor) | Move a cursor with a joystick (analog axes, dead zone, button-click to stop) — joystick input handling |
 | [Motion-Blur](https://github.com/chrplr/goxpyriment/tree/main/examples/Motion-Blur) | Motion blur vs. phantom array demo: animated bar demonstrates retinal blur and the strobe effect at 60 Hz |
-| [mouse_audio_feedback](https://github.com/chrplr/goxpyriment/tree/main/examples/mouse_audio_feedback) | Left/right mouse clicks trigger ping/buzzer audio; useful for testing sound output |
 | [play_two_gvvideos](https://github.com/chrplr/goxpyriment/tree/main/examples/play_two_gvvideos) | Plays two .gv videos side by side, synchronised, logging keypresses with their time relative to video onset |
 | [play_two_videos](https://github.com/chrplr/goxpyriment/tree/main/examples/play_two_videos) | Plays two MPEG videos side by side, synchronised, logging keypresses with their time relative to video onset |
 | [play_videos](https://github.com/chrplr/goxpyriment/tree/main/examples/play_videos) | Plays a sequence of MPEG video files found in the assets folder |
 | [random-dot-stereogram](https://github.com/chrplr/goxpyriment/tree/main/examples/random-dot-stereogram) | Random-dot stereogram that reveals a 3-D shape when fused binocularly |
 | [simple-rt-example](https://github.com/chrplr/goxpyriment/tree/main/examples/simple-rt-example) | Minimal 10-trial reaction-time loop using ShowTS / GetKeyEventTS for hardware-timestamped RT |
 | [stimuli_extras](https://github.com/chrplr/goxpyriment/tree/main/examples/stimuli_extras) | Showcase of advanced stimuli: visual mask, Gabor patch, dot cloud, stimulus circle, thermometer |
-| [text_input](https://github.com/chrplr/goxpyriment/tree/main/examples/text_input) | Demonstration of the `TextInput` stimulus collecting free-text keyboard input |
 | [Visual-Angle-Calibration](https://github.com/chrplr/goxpyriment/tree/main/examples/Visual-Angle-Calibration) | Draws concentric rings at 2°, 5°, and 10° of visual angle for a quick sanity-check of the `units.Monitor` calibration |
 | [Visual-Illusion-Ebbginghaus](https://github.com/chrplr/goxpyriment/tree/main/examples/Visual-Illusion-Ebbginghaus) | Animated Ebbinghaus (Titchener circles) size-contrast illusion |
 | [Visual-Illusion-Kanizsa](https://github.com/chrplr/goxpyriment/tree/main/examples/Visual-Illusion-Kanizsa) | Kanizsa illusory-contour square: a square is perceived where none is drawn |
@@ -125,4 +119,32 @@ Visual illusions, interactive showcases, and minimal templates. Most do not writ
 
 ## Technical Tests
 
-Hardware and timing tests live in the [`tests/`](../tests/) directory at the repository root (separate Go module).
+Hardware, timing, and feature tests live in the [`tests/`](../tests/) directory at the repository root (separate Go module). Build them with `make tests`.
+
+<!-- BEGIN:tests -->
+| Directory | Description |
+|-----------|-------------|
+| [bouncing_gv_movies](https://github.com/chrplr/goxpyriment/tree/main/tests/bouncing_gv_movies) | Two .gv movies bounce around the screen, additively blend on overlap, fire beep tones at frame markers, and log full state to the data file on every key press; demonstrates every runtime mutator media.Movie exposes (Pause, PauseWithLoop, SetRate, SeekFrame, SetPosition, SetSize, SetBlendMode) with the multi-movie synchrony invariant preserved via BeginBurst/EndBurst |
+| [GvFiles](https://github.com/chrplr/goxpyriment/tree/main/tests/GvFiles) | Plays sequences of .gv movies while flashing a white square and pulsing DLP-IO8 line 0 at frame markers, for photodiode+oscilloscope display/TTL synchrony checks (port of PsyScope WhiteSquareSync) |
+| [set_fullscreen](https://github.com/chrplr/goxpyriment/tree/main/tests/set_fullscreen) | Minimal SDL program that toggles exclusive fullscreen mode — sanity check for the fullscreen video path |
+| [sync_two_gv_movies](https://github.com/chrplr/goxpyriment/tree/main/tests/sync_two_gv_movies) | Two .gv movies played side by side under a shared MasterClock; demonstrates media.MovieManager multi-movie sync, burst-pause, Movie[At]/Movie[AtDisplay], and Display[Onset/Offset] events with optional TTL-trigger wiring |
+| [tearing_test](https://github.com/chrplr/goxpyriment/tree/main/tests/tearing_test) | Full-height white bar sweeping horizontally to reveal screen tearing; prints frame-interval statistics on exit |
+| [test_av_sync](https://github.com/chrplr/goxpyriment/tree/main/tests/test_av_sync) | Verifies PlaySyncedWithFlip aligns audio onset with the VSYNC flip (icon flash + 1 kHz tone each second) |
+| [test_canvas](https://github.com/chrplr/goxpyriment/tree/main/tests/test_canvas) | Drawing on an off-screen `Canvas` surface before presenting it in one frame |
+| [test_follow_mouse](https://github.com/chrplr/goxpyriment/tree/main/tests/test_follow_mouse) | A white dot follows the mouse cursor every frame — minimal real-time input loop |
+| [test_ft232h](https://github.com/chrplr/goxpyriment/tree/main/tests/test_ft232h) | Exercises an Adafruit FT232H breakout as an 8-bit TTL trigger device (output + input loopback) |
+| [test_fullscreen](https://github.com/chrplr/goxpyriment/tree/main/tests/test_fullscreen) | Sanity check for fullscreen rendering through the control facade |
+| [test_getinfo](https://github.com/chrplr/goxpyriment/tree/main/tests/test_getinfo) | Demonstrates the `GetParticipantInfo` dialog: collects participant demographics and monitor characteristics before the experiment window opens |
+| [test_joystick](https://github.com/chrplr/goxpyriment/tree/main/tests/test_joystick) | Move a cursor with a joystick (analog axes, dead zone, button-click to stop) — joystick input handling |
+| [test_keyboard](https://github.com/chrplr/goxpyriment/tree/main/tests/test_keyboard) | Demonstrates every keyboard input method provided by the framework, section by section |
+| [test_labjackt4](https://github.com/chrplr/goxpyriment/tree/main/tests/test_labjackt4) | Exercises a LabJack T4 as an 8-bit TTL trigger device (output + input loopback) |
+| [test_linuxgpio](https://github.com/chrplr/goxpyriment/tree/main/tests/test_linuxgpio) | Exercises a Linux GPIO character-device (v2) trigger as an 8-bit TTL device (output + input loopback) |
+| [test_menu](https://github.com/chrplr/goxpyriment/tree/main/tests/test_menu) | Demonstrates the stimuli.Menu widget |
+| [test_mouse_audio_feedback](https://github.com/chrplr/goxpyriment/tree/main/tests/test_mouse_audio_feedback) | Left/right mouse clicks trigger ping/buzzer audio; useful for testing sound output |
+| [test_parallel_port](https://github.com/chrplr/goxpyriment/tree/main/tests/test_parallel_port) | Reads and writes a Linux LPT parallel port via the ppdev kernel interface |
+| [test_playgv](https://github.com/chrplr/goxpyriment/tree/main/tests/test_playgv) | Plays a single .gv video through the control facade |
+| [test_stream_images](https://github.com/chrplr/goxpyriment/tree/main/tests/test_stream_images) | High-precision RSVP loop streaming a sequence of images (PresentStreamOfImages) |
+| [test_stream_text](https://github.com/chrplr/goxpyriment/tree/main/tests/test_stream_text) | High-precision RSVP loop streaming a sequence of text strings |
+| [test_text_input](https://github.com/chrplr/goxpyriment/tree/main/tests/test_text_input) | Demonstration of the `TextInput` stimulus collecting free-text keyboard input |
+| [Timing-Tests](https://github.com/chrplr/goxpyriment/tree/main/tests/Timing-Tests) | Hardware timing verification suite: eleven sub-tests (frame jitter, true refresh rate, audio latency, photodiode/BBTK/oscilloscope checks) selected with -test <name> |
+<!-- END:tests -->

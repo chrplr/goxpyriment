@@ -1,0 +1,3 @@
+category: test
+description: Exercises a LabJack T4 as an 8-bit TTL trigger device (output + input loopback)
+reference: ""

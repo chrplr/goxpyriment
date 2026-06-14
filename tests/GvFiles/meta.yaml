@@ -1,0 +1,3 @@
+category: test
+description: Plays sequences of .gv movies while flashing a white square and pulsing DLP-IO8 line 0 at frame markers, for photodiode+oscilloscope display/TTL synchrony checks (port of PsyScope WhiteSquareSync)
+reference: ""

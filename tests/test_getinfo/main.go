@@ -2,13 +2,13 @@
 // Co-authored by Claude Sonnet 4.6
 // Distributed under the GNU General Public License v3.
 
-// getinfo_demo demonstrates control.GetParticipantInfo: a graphical setup
+// test_getinfo demonstrates control.GetParticipantInfo: a graphical setup
 // dialog that collects participant demographics and monitor characteristics
 // before the experiment window is opened.
 //
 // Usage:
 //
-//	go run examples/getinfo_demo/main.go
+//	go run tests/test_getinfo/main.go
 package main
 
 import (

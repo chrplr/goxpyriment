@@ -1,0 +1,3 @@
+category: test
+description: Hardware timing verification suite: eleven sub-tests (frame jitter, true refresh rate, audio latency, photodiode/BBTK/oscilloscope checks) selected with -test <name>
+reference: ""

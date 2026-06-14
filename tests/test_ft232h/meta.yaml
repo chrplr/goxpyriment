@@ -1,0 +1,3 @@
+category: test
+description: Exercises an Adafruit FT232H breakout as an 8-bit TTL trigger device (output + input loopback)
+reference: ""

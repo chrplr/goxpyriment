@@ -1,7 +1,7 @@
 // Copyright (2026) Christophe Pallier <christophe@pallier.org>
 // Distributed under the GNU General Public License v3.
 
-// joystick_cursor demonstrates joystick input: use the joystick to move a red
+// test_joystick demonstrates joystick input: use the joystick to move a red
 // circle around the screen. Click on the circle to stop. ESC to quit.
 package main
 

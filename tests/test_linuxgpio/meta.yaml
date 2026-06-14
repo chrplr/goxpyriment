@@ -1,0 +1,3 @@
+category: test
+description: Exercises a Linux GPIO character-device (v2) trigger as an 8-bit TTL device (output + input loopback)
+reference: ""

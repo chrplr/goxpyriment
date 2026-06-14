@@ -1,0 +1,3 @@
+category: test
+description: Verifies PlaySyncedWithFlip aligns audio onset with the VSYNC flip (icon flash + 1 kHz tone each second)
+reference: ""
