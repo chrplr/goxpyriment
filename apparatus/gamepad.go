@@ -34,6 +34,17 @@ func GetGamePads() ([]*GamePad, error) {
 	return res, nil
 }
 
+// Axis returns the current value of a gamepad axis in the range −32768..32767.
+//
+// Unlike the raw Joystick API, the gamepad axes are standardized via SDL's
+// controller mapping database: the left analog stick is always
+// GAMEPAD_AXIS_LEFTX / LEFTY and the right stick GAMEPAD_AXIS_RIGHTX / RIGHTY,
+// regardless of how the underlying device numbers its raw HID axes. The D-pad
+// is reported as buttons (GAMEPAD_BUTTON_DPAD_*), not as these analog axes.
+func (g *GamePad) Axis(axis sdl.GamepadAxis) int16 {
+	return g.Handle.Axis(axis)
+}
+
 // WaitPress blocks until a gamepad button is pressed.
 func (g *GamePad) WaitPress() (sdl.GamepadButton, error) {
 	for {
