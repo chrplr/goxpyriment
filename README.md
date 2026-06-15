@@ -15,7 +15,10 @@ If you are looking for a simpler, *no-code experiment generator*, check out [Gos
 
 1. **Zero-dependency deployment.** Your experiments compile to a standalone executables. No Python, no conda, noFont issue, no DLL hell on lab computers.
 2. **Timing precision.** The stimulus loop runs VSYNC-locked with GC pauses disabled, giving sub-millisecond frame jitter on typical hardware.
-3. **AI-friendly API.** The consistent API is well suited to "vibe-coding" — describe your paradigm in plain language to Claude, Gemini, or ChatGPT and the generated code is usually ready to run immediately.
+3. **Hardware synchronization.** Send TTL triggers to synchronize with external devices (EEG, MEG, eye-trackers, fMRI) over parallel port, USB (DLP-IO8), or generic serial.
+4. **Rich stimuli.** Beyond text and images, present video clips and audio, generate visual patterns (gratings, Gabor patches), and run high-precision RSVP streams.
+5. **Response recording.** Collect responses from keyboard, mouse, and gamepads — and record vocal responses to an audio file for picture-naming and other speech-production paradigms.
+6. **AI-friendly API.** The consistent API is well suited to "vibe-coding" — describe your paradigm in plain language to Claude, Gemini, or ChatGPT and the generated code is usually ready to run immediately.
 
 
 > ⚠️ **Beta:** This software is in beta-testing. Report bugs at <https://github.com/chrplr/goxpyriment/issues>

@@ -380,7 +380,7 @@ Use this decision guide before committing to a timing strategy.
 | Single-stimulus trial, RT relative to onset | `key, rt, err := exp.ShowAndGetRT(stim, keys, timeout)` — hardware-precise RT, clears stale events automatically |
 | Stimulus duration measured in frames (e.g. 2-frame mask) | Per-frame loop with `screen.PacedFlip()` (safe on all drivers), or `PresentStreamOfImages` (Section 10) |
 | Multi-stimulus sequence, RT relative to a specific stimulus | `exp.ShowTS(stim)` + `exp.Keyboard.GetKeyEventTS(...)` — nanosecond timestamps on the same SDL clock; subtract directly |
-| RSVP or rapid animation (frame-accurate presentation of many items) | `PresentStreamOfImages` / `PresentStreamOfTexts` (Section 10) — GC disabled, VSYNC-locked, full timing log |
+| RSVP or rapid animation (frame-accurate presentation of many items) | `PresentStreamOfImages` / `PresentStreamOfText` (Section 10) — GC disabled, VSYNC-locked, full timing log |
 | EEG/MEG synchronisation required | Add a TTL pulse via `triggers` immediately after `exp.ShowTS` (Section 15) |
 | Stimulus duration not a multiple of the frame period (e.g. 10 ms, 17 ms) | Variable Refresh Rate mode — see below |
 
