@@ -266,6 +266,71 @@ This script may look a bit intinmidating. This is because especially the lines:
 
 Their purpose is to prepare in advanced the images (stimuli.Textline) that will displayed on the screen during the main loop: One image is created for each number and saved in a map associating a number to an image (Go maps are similar to Python's dict). 
 
+Note: it is a generally a good habit to prepare the stimuli in advance, but we could have written the script without creating the map, and calling NewTextLine in the main loop, like this:
+
+```
+package main
+
+import (
+	"slices"
+	"strconv"
+
+	"github.com/chrplr/goxpyriment/control"
+	"github.com/chrplr/goxpyriment/design"
+	"github.com/chrplr/goxpyriment/stimuli"
+)
+
+func main() {
+	exp := control.NewExperimentFromFlags("Parity Decision",
+		control.Black, control.White, 32)
+	defer exp.End()
+
+	Instructions := "When you'll see a number, your task to decide, " +
+		"as quickly as possible, whether it is even or odd.\n\n" +
+		"if it is even, press 'F'\n\nif it is odd, press 'J'"
+
+	Targets := []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}
+	NTrialsPerTarget := 2
+	trials := slices.Repeat(Targets, NTrialsPerTarget)
+	design.ShuffleList(trials)
+
+	EvenResponse := control.K_F
+	OddResponse := control.K_J
+
+	cue := stimuli.NewFixCross(25, 2, control.DefaultTextColor)
+
+	exp.AddDataVariableNames([]string{"number", "key", "rt",
+		"correct"})
+
+	exp.Run(func() error {
+		exp.ShowInstructions(Instructions)
+
+		for _, t := range trials {
+			exp.Blank(1000)
+			exp.ShowTimed(cue, 500)
+			key, rt, _ := exp.ShowAndGetRT(stimuli.NewTextLine(strconv.Itoa(t), 0, 0, control.White),
+				[]control.Keycode{EvenResponse, OddResponse},
+				-1)
+			correct := (t%2 == 0) == (key == EvenResponse)
+			exp.Data.Add(t, key, rt, correct)
+			if !correct {
+				exp.Audio.PlayBuzzer()
+			}
+			exp.Wait(500)
+		}
+
+		return control.EndLoop
+	})
+
+	exp.ShowEndMessage("Experiment complete. Thank you!\n\n" +
+		"Press any key to exit.")
+}
+```
+
+The function `stimuli.NewTextLine()`  converts a string into displayable image. The `stimuli` package provides many other functions, such as `NewPicture()` which loadds an imapge, `NewSound()` which loads a sound file, etc. All stimuli can be presented with the method `Present()` (in the above example, the function `ShowAndGetRT()` called `Present()` behind the scene)
+
+If you have installed [pkgsite](https://github.com/golang/pkgsite) and launched it from the `goxperiment` folder, you can check the list of available functions in `stimuli` by pointing your browser to http://localhost:8080/github.com/chrplr/goxpyriment@v0.0.0/stimuli
+
 
 ---
 
@@ -273,7 +338,8 @@ Their purpose is to prepare in advanced the images (stimuli.Textline) that will 
 
 A built program is just one file. If your experiment loads images, sounds, or a
 list of trials from a CSV, those files would normally be missing on someone
-else's computer. The solution is to **embed** them inside the program with Go's
+else's computer (unless the user copied them at the expected location). 
+The solution is to **embed** them inside the program with Go's
 `//go:embed` directive. Embedded files travel inside the executable — nothing to
 copy alongside it.
 

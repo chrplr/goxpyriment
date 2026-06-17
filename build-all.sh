@@ -17,10 +17,14 @@ cd "$ROOT"
 
 mkdir -p _build
 
-# Build every directory that contains a main.go under examples/ and tests/.
-find examples tests -maxdepth 2 -name main.go 2>/dev/null \
-  | xargs -I{} dirname {} | sort | while read -r dir; do
-    name=$(basename "$dir")
+# Build every directory that contains a main.go directly under examples/ or
+# tests/. We use shell globbing rather than `find` on purpose: on Windows with
+# Git Bash, `find` (and `sort`) are frequently shadowed by the DOS find.exe /
+# sort.exe on PATH, which have completely different semantics and break this
+# script. Globbing is a bash builtin and has no such conflict.
+for dir in examples/*/ tests/*/; do
+    [ -f "${dir}main.go" ] || continue
+    name=${dir%/}; name=${name##*/}
     echo "Building $name..."
     ( cd "$dir" && CGO_ENABLED=0 go build -o "$ROOT/_build/$name" . ) \
       || echo "  !! failed to build $name"
