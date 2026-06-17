@@ -7,8 +7,10 @@
 ## Features
 
 1. **Zero-dependency deployment.** Your experiments compile to standalone executables.
-2. **Timing precision.** The stimulus loop runs VSYNC-locked with GC pauses disabled, giving sub-millisecond frame jitter on typical hardware (VSYNC can be disabled to support Variable Refresh Rate monitors).
-3. **AI-friendly API.** The API is well suited to "vibe-coding": after cloning the repository, describe your paradigm in plain language to Claude, Gemini, or ChatGPT and try the generated code. Given the examples and the constraints afforded by the framework, the experiment is likely to work as expected (but must be checked, of course).
+2. **Rich stimuli.** Beyond text and images, present video clips and audio, generate visual patterns (gratings, Gabor patches), and run high-precision RSVP streams.
+3. **Response recording.** Collect responses from keyboard, mouse, and gamepads — and record vocal responses to an audio file for picture-naming and other speech-production paradigms.
+4. **Timing precision.** The stimulus loop runs VSYNC-locked with GC pauses disabled, giving sub-millisecond frame jitter on typical hardware (VSYNC can be disabled to support Variable Refresh Rate monitors).
+5. **AI-friendly API.** The API is well suited to "vibe-coding": after cloning the repository, describe your paradigm in plain language to Claude, Gemini, or ChatGPT and try the generated code. Given the examples and the constraints afforded by the framework, the experiment is likely to work as expected (but must be checked, of course).
 
 ---
 
