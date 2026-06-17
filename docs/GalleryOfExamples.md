@@ -135,6 +135,7 @@ Hardware, timing, and feature tests live in the [`tests/`](../tests/) directory 
 | [test_ft232h](https://github.com/chrplr/goxpyriment/tree/main/tests/test_ft232h) | Exercises an Adafruit FT232H breakout as an 8-bit TTL trigger device (output + input loopback) |
 | [test_fullscreen](https://github.com/chrplr/goxpyriment/tree/main/tests/test_fullscreen) | Sanity check for fullscreen rendering through the control facade |
 | [test_getinfo](https://github.com/chrplr/goxpyriment/tree/main/tests/test_getinfo) | Demonstrates the `GetParticipantInfo` dialog: collects participant demographics and monitor characteristics before the experiment window opens |
+| [test_images](https://github.com/chrplr/goxpyriment/tree/main/tests/test_images) | Loads every PNG file in the current directory and displays each one centered for one second |
 | [test_joystick](https://github.com/chrplr/goxpyriment/tree/main/tests/test_joystick) | Move a cursor with a controller's analog stick (gamepad API with raw-joystick fallback, dead zone, live axis readout) — analog input handling |
 | [test_keyboard](https://github.com/chrplr/goxpyriment/tree/main/tests/test_keyboard) | Demonstrates every keyboard input method provided by the framework, section by section |
 | [test_labjackt4](https://github.com/chrplr/goxpyriment/tree/main/tests/test_labjackt4) | Exercises a LabJack T4 as an 8-bit TTL trigger device (output + input loopback) |

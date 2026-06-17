@@ -14,24 +14,26 @@ func main() {
 		control.Black, control.White, 32)
 	defer exp.End()
 
-	Targets := []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}
-	NTrialsPerTarget := 2
-	EvenResponse := control.K_F
-	OddResponse := control.K_J
 	Instructions := "When you'll see a number, your task to decide, " +
 		"as quickly as possible, whether it is even or odd.\n\n" +
 		"if it is even, press 'F'\n\nif it is odd, press 'J'"
 
+	Targets := []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}
+	NTrialsPerTarget := 2
+	trials := slices.Repeat(Targets, NTrialsPerTarget)
+	design.ShuffleList(trials)
+
+	EvenResponse := control.K_F
+	OddResponse := control.K_J
+
 	cue := stimuli.NewFixCross(25, 2, control.DefaultTextColor)
+
 	// creates a map number -> image
 	Image := make(map[int]*stimuli.TextLine)
 	for _, num := range Targets {
 		Image[num] = stimuli.NewTextLine(strconv.Itoa(num),
 			0, 0, control.DefaultTextColor)
 	}
-
-	trials := slices.Repeat(Targets, NTrialsPerTarget)
-	design.ShuffleList(trials)
 
 	exp.AddDataVariableNames([]string{"number", "key", "rt",
 		"correct"})

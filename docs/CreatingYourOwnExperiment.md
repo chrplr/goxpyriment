@@ -113,7 +113,7 @@ go mod tidy                 # downloads goxpyriment and everything it needs
 
 `go mod tidy` reads your `import` lines, downloads the missing packages, and
 records exact versions in `go.mod` / `go.sum`. Run it again any time you add a
-new `import` and Go complains it can't find a package.
+new `import` or when Go complains it can't find a package.
 
 You should now have these files:
 
@@ -179,7 +179,97 @@ go build -o builds/my_experiment .
 
 ---
 
-## Step 6 — Embed your stimuli (images, sounds, CSV)
+## Step 6 — A more advanced example
+
+Here is a script implementing a parity decision task (inspired from https://docs.expyriment.org/0.6.3/Examples.html)
+
+```
+package main
+
+import (
+	"slices"
+	"strconv"
+
+	"github.com/chrplr/goxpyriment/control"
+	"github.com/chrplr/goxpyriment/design"
+	"github.com/chrplr/goxpyriment/stimuli"
+)
+
+func main() {
+	exp := control.NewExperimentFromFlags("Parity Decision",
+		control.Black, control.White, 32)
+	defer exp.End()
+
+	Instructions := "When you'll see a number, your task to decide, " +
+		"as quickly as possible, whether it is even or odd.\n\n" +
+		"if it is even, press 'F'\n\nif it is odd, press 'J'"
+
+	Targets := []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}
+	NTrialsPerTarget := 2
+	trials := slices.Repeat(Targets, NTrialsPerTarget)
+	design.ShuffleList(trials)
+
+	EvenResponse := control.K_F
+	OddResponse := control.K_J
+
+	cue := stimuli.NewFixCross(25, 2, control.DefaultTextColor)
+
+	// creates a map number -> image
+	Image := make(map[int]*stimuli.TextLine)
+	for _, num := range Targets {
+		Image[num] = stimuli.NewTextLine(strconv.Itoa(num),
+			0, 0, control.DefaultTextColor)
+	}
+
+	exp.AddDataVariableNames([]string{"number", "key", "rt",
+		"correct"})
+
+	exp.Run(func() error {
+		exp.ShowInstructions(Instructions)
+
+		for _, t := range trials {
+			exp.Blank(1000)
+			exp.ShowTimed(cue, 500)
+			key, rt, _ := exp.ShowAndGetRT(Image[t],
+				[]control.Keycode{EvenResponse, OddResponse},
+				-1)
+			correct := (t%2 == 0) == (key == EvenResponse)
+			exp.Data.Add(t, key, rt, correct)
+			if !correct {
+				exp.Audio.PlayBuzzer()
+			}
+			exp.Wait(500)
+		}
+
+		return control.EndLoop
+	})
+
+	exp.ShowEndMessage("Experiment complete. Thank you!\n\n" +
+		"Press any key to exit.")
+}
+```
+
+Save this script in a folder 'parity-decision', open a Terminal, cd to this folder and type:
+
+    go mod init parity-decision
+    go mod tidy
+    go run .
+
+This script may look a bit intinmidating. This is because especially the lines:
+
+	// creates a map number -> image
+	Image := make(map[int]*stimuli.TextLine)
+	for _, num := range Targets {
+		Image[num] = stimuli.NewTextLine(strconv.Itoa(num),
+			0, 0, control.DefaultTextColor)
+	}
+
+Their purpose is to prepare in advanced the images (stimuli.Textline) that will displayed on the screen during the main loop: One image is created for each number and saved in a map associating a number to an image (Go maps are similar to Python's dict). 
+
+
+---
+
+## Step 7 — Embed your stimuli (images, sounds, CSV)
 
 A built program is just one file. If your experiment loads images, sounds, or a
 list of trials from a CSV, those files would normally be missing on someone
@@ -256,7 +346,7 @@ Rules to remember:
 
 ---
 
-## Step 7 — Build for other operating systems (to share with colleagues)
+## Step 8 — Build for other operating systems (to share with colleagues)
 
 Here is where Go shines. Because `goxpyriment` is pure Go (no C compiler needed),
 you can build a Windows program **from a Mac**, a Mac program **from Linux**, and
