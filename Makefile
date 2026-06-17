@@ -1,10 +1,14 @@
 .PHONY: all examples update-examples-gallery tests pdfs docs serve deploy clean help
 
-EXAMPLES := $(shell find examples -maxdepth 2 -name main.go \
-               | xargs -I{} dirname {} | sort)
+# Discover every directory holding a main.go directly under examples/ or
+# tests/. We use make's built-in $(wildcard)/$(patsubst) rather than `find`
+# (piped through `sort`) on purpose: on Windows with Git Bash, `find` and
+# `sort` are frequently shadowed by the DOS find.exe / sort.exe on PATH, which
+# have completely different semantics and break these shell-outs. The wildcard
+# functions are pure make and have no such conflict. (Mirrors build-all.sh.)
+EXAMPLES := $(patsubst %/main.go,%,$(wildcard examples/*/main.go))
 
-TESTS := $(shell find tests -maxdepth 2 -name main.go \
-            | xargs -I{} dirname {} | sort)
+TESTS := $(patsubst %/main.go,%,$(wildcard tests/*/main.go))
 
 
 # ---------------------------------------------------------------------------
