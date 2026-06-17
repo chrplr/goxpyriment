@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "f=$(jq -r '.tool_input.file_path // empty' 2>/dev/null); case \"$f\" in */vendor/*) ;; *.go) gofmt -w \"$f\" && go vet \"$(dirname \"$f\")\" 2>&1 | head -20 ;; esac"
+          }
+        ]
+      }
+    ]
+  }
+}

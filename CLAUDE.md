@@ -165,3 +165,16 @@ New files must include this header.
 - **go.mod indirect → direct:** when a new package starts importing a previously-indirect dependency, move it to the direct `require` block manually (or run `go mod tidy`).
 - **Error handling:** functions return `error`; callers use `log.Fatalf` or propagate. No panics in library code.
 - **GC during timing:** disable with `debug.SetGCPercent(-1)` and defer restore around any VSYNC-locked loop, following the pattern in `stimuli/stream.go` and `stimuli/gvvideo.go`.
+
+## Go Development
+
+- After writing or modifying Go code, always run `go build ./...` and `go vet ./...` to verify the project compiles and vets cleanly before reporting completion. (The `/verify` skill does both.)
+- Never silently swallow errors; always check and surface error returns (especially in rendering/SDL code) so failures are visible instead of producing blank screens.
+
+## Build & Environment
+
+- This project uses Go modules in vendor mode; do not edit vendored libraries directly—use package-level helper functions instead, and ensure cross-platform (Windows Git Bash) compatibility for scripts.
+
+## Workflow Conventions
+
+- Wait for explicit confirmation before starting edits when the user is discussing or agreeing with a prior suggestion, and actually start any server/process you offer to start.

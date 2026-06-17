@@ -5,7 +5,14 @@
 \usepackage{newunicodechar}
 \usepackage{amssymb}          % \checkmark, \geq, \approx fallbacks
 
-\newunicodechar{≥}{\ensuremath{\geq}}
-\newunicodechar{≈}{\ensuremath{\approx}}
-\newunicodechar{γ}{\ensuremath{\gamma}}
-\newunicodechar{✓}{\checkmark}
+% pandoc loads unicode-math, which claims these codepoints as math-class
+% characters and overrides newunicodechar's text-mode remap at
+% \begin{document}. Defining the remaps inside \AtBeginDocument runs them
+% after unicode-math finishes, so the substitutions actually take effect
+% (otherwise ✓ U+2713 falls through to DejaVu Serif, which lacks the glyph).
+\AtBeginDocument{%
+  \newunicodechar{≥}{\ensuremath{\geq}}%
+  \newunicodechar{≈}{\ensuremath{\approx}}%
+  \newunicodechar{γ}{\ensuremath{\gamma}}%
+  \newunicodechar{✓}{\ensuremath{\checkmark}}%
+}

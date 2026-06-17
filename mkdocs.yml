@@ -34,14 +34,31 @@ theme:
 
 nav:
   - Home: index.md
-  - Getting Started: GettingStarted.md
-  - Installation: Installation.md
-  - Creating Your Own Experiment: CreatingYourOwnExperiment.md
-  - User Manual: UserManual.md
-  - Migration Guide: MigrationGuide.md
-  - API Reference: API.md
-  - Gallery of Examples: GalleryOfExamples.md
-  - Timing Tests: TimingTests.md
+  - Getting Started:
+      - Getting Started: GettingStarted.md
+      - Go vs Python: gemini-about-go-vs-python.md
+  - Installation:
+      - Installation: Installation.md
+      - Development environment: Installing-a-development-environment.md
+      - Pre-built examples: pre-built-examples.md
+  - Guides:
+      - Creating Your Own Experiment: CreatingYourOwnExperiment.md
+      - User Manual: UserManual.md
+      - Migration Guide: MigrationGuide.md
+      - Packaging your experiment: How_to_package_your_experiment.md
+      - Movies / media: MediaMovies.md
+  - Reference:
+      - API Reference: API.md
+      - Gallery of Examples: GalleryOfExamples.md
+  - Timing & Display:
+      - Timing Tests: TimingTests.md
+      - Frame syncing: frame-syncing.md
+      - Fullscreen & high pixel density: Fullscreen_high_pixel_density.md
+      - Setting priority under Linux: SettingPriorityUnderLinux.md
+      - Linux virtual console: LinuxVirtualConsoleSDL.md
+  - Advanced:
+      - WASM build: WASM.md
+      - Library usage: library_usage.md
 
 markdown_extensions:
   - admonition

@@ -3,9 +3,7 @@
 This document describes the `media/` package added to goxpyriment for
 multi-movie playback synchronised to a shared master clock, with
 hardware-verified display-onset events suitable for wiring to external
-EEG / MEG / TMS triggers. It complements the package-internal design
-notes in [`media/Plan.md`](../media/Plan.md) and the per-package
-guidance in [`media/CLAUDE.md`](../media/CLAUDE.md).
+EEG / MEG / TMS triggers.
 
 ## Table of Contents
 
@@ -115,7 +113,7 @@ func main() {
 
 A more comprehensive walkthrough with composited overlays, burst pause,
 seek-back, and `Display[Onset/Offset]` events lives in
-[`examples/sync_two_gv_movies/`](../examples/sync_two_gv_movies/).
+[`tests/sync_two_gv_movies/`](../tests/sync_two_gv_movies/).
 
 ---
 
@@ -770,9 +768,7 @@ mgr.EndBurst()
 
 In this repository:
 
-- [`media/Plan.md`](../media/Plan.md) — design rationale, stage history, deferred decisions
-- [`media/CLAUDE.md`](../media/CLAUDE.md) — package notes for the next contributor
-- [`examples/sync_two_gv_movies/`](../examples/sync_two_gv_movies/) — comprehensive walkthrough example
+- [`tests/sync_two_gv_movies/`](../tests/sync_two_gv_movies/) — comprehensive walkthrough example
 - [`tests/Timing-Tests/`](../tests/Timing-Tests/) — empirical timing-measurement framework
 
 External / upstream:

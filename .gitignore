@@ -41,6 +41,9 @@ Thumbs.db
 # Generated documentation artefacts
 site/
 
+# Claude Code personal/local settings (project settings.json is shared)
+.claude/settings.local.json
+
 # LaTeX build artefacts
 paper/*.aux
 paper/*.bcf

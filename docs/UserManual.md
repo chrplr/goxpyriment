@@ -28,8 +28,8 @@ This manual explains the key concepts of the library. It assumes you have read t
 14. [Animated Stimuli](#14-animated-stimuli)
 15. [Gamma Correction and Luminance Linearity](#15-gamma-correction-and-luminance-linearity)
 16. [Hardware Triggers and TTL Devices](#16-hardware-triggers-and-ttl-devices)
-17. [Display Compositor Bypass](#17-display-compositor-bypass)
-18. [Variable Refresh Rate (VRR) Stimulus Presentation](#18-variable-refresh-rate-vrr-stimulus-presentation)
+17. [Display Compositor Bypass](#compositor-bypass)
+18. [Variable Refresh Rate (VRR) Stimulus Presentation](#vrr)
 19. [Putting It All Together](#19-putting-it-all-together)
 
 ---

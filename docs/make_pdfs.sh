@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Generate PDF versions of the documentation using pandoc + xelatex.
+# Generate PDF versions of the documentation using pandoc + latexmk (xelatex).
 # Run this before "mkdocs gh-deploy" to include PDFs on the GitHub Pages site.
 #
-# Requirements: pandoc, xelatex, DejaVu fonts
-#   Ubuntu/Debian: sudo apt install pandoc texlive-xetex fonts-dejavu
+# Requirements: pandoc, latexmk, xelatex, DejaVu fonts
+#   Ubuntu/Debian: sudo apt install pandoc latexmk texlive-xetex fonts-dejavu
 #   macOS:         brew install pandoc && brew install --cask mactex
-#                  (DejaVu fonts are included with MacTeX)
+#                  (latexmk and DejaVu fonts are included with MacTeX)
 
 set -euo pipefail
 
@@ -13,8 +13,17 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # DejaVu fonts have broad Unicode coverage (Greek, math operators, check mark).
 # unicode-fixes.tex is a safety net for any remaining missing characters.
+# latexmk drives xelatex through as many passes as needed so the table of
+# contents and intra-document hyperlinks (\ref/hyperref anchors) resolve
+# instead of emitting "undefined reference" warnings from a single pass.
 PANDOC_OPTS=(
-  --pdf-engine=xelatex
+  # GitHub-style header IDs keep section numbers (e.g. "6-timing-architecture")
+  # so the hand-written tables of contents — and MkDocs/python-markdown, which
+  # uses the same scheme — resolve. Pandoc's default strips leading numbers,
+  # which silently breaks every numbered TOC link.
+  --from=markdown+gfm_auto_identifiers
+  --pdf-engine=latexmk
+  --pdf-engine-opt=-xelatex
   --toc
   --toc-depth=2
   -V geometry:margin=25mm
