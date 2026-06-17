@@ -49,3 +49,4 @@ for i, trial := range trials {
 - `GetTime()` and `Clock.NowMillis()` both return `int64` milliseconds; prefer `Clock` when you need sub-millisecond accuracy via `time.Duration`.
 - For VSYNC-locked loops, rely on `Screen.Update()` blocking on VSYNC rather than `SleepUntil` — the display refresh is the authoritative clock for frame-by-frame timing.
 - Use `SleepUntil` for inter-trial intervals and non-VSYNC audio timing.
+- **Two clocks — never mix them.** Everything in this package (`GetTime`, `GetTimeNS`, `Clock.Now*`) reads the **Go monotonic clock**, whose zero point differs from the **SDL event clock** used by `Screen.FlipTS`, `exp.ShowTS`, and `Keyboard.GetKeyEventTS`. Measure reaction times entirely on the SDL clock; use this package only for scheduling (ISIs, pacing) and log timestamps. See *User Manual §6 "Two clocks"*.

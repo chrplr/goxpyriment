@@ -10,6 +10,7 @@ import (
 	"log"
 	"os"
 	"os/signal"
+	"runtime"
 	"sync"
 	"sync/atomic"
 	"syscall"
@@ -398,7 +399,9 @@ func (e *Experiment) ShowInstructions(text string) error {
 		w = 400
 	}
 	tb := stimuli.NewTextBox(text, w, sdl.FPoint{}, e.ForegroundColor)
-	e.Show(tb)
+	if err := e.Show(tb); err != nil {
+		return err
+	}
 	return e.Keyboard.WaitKey(K_SPACE)
 }
 
@@ -415,9 +418,6 @@ func (e *Experiment) Blank(ms int) error {
 	return e.Wait(ms)
 }
 
-// Wait blocks for the given number of milliseconds while keeping the OS
-// responsive by pumping SDL events. If a quit event or ESC key is detected
-// during the wait, it panics with an internal sentinel to exit gracefully.
 // pumpFrame pumps OS events for one frame: keeps the window responsive on all
 // platforms (including Wayland), updates input-device state (mouse position,
 // keyboard state), and checks for quit/ESC — all without dequeuing events, so
@@ -426,6 +426,12 @@ func (e *Experiment) Blank(ms int) error {
 //
 // Returns sdl.EndLoop if quit or ESC was detected, nil otherwise.
 func (e *Experiment) pumpFrame() error {
+	// Honor a quit requested by the signal handler before issuing any SDL
+	// calls, so a pending shutdown is detected even while SDL is mid-teardown
+	// (and so this is checkable without a live SDL context).
+	if e.quitFlag.Load() != 0 {
+		return sdl.EndLoop
+	}
 	sdl.PumpEvents()
 	if sdl.HasEvent(sdl.EVENT_QUIT) {
 		return sdl.EndLoop
@@ -434,12 +440,13 @@ func (e *Experiment) pumpFrame() error {
 	if len(kbState) > int(sdl.SCANCODE_ESCAPE) && kbState[sdl.SCANCODE_ESCAPE] {
 		return sdl.EndLoop
 	}
-	if e.quitFlag.Load() != 0 {
-		return sdl.EndLoop
-	}
 	return nil
 }
 
+// Wait blocks for the given number of milliseconds while keeping the OS
+// responsive by pumping SDL events each frame (see pumpFrame). If a quit
+// request, quit event, or ESC key is detected during the wait, it panics with
+// an internal sentinel so the run loop exits gracefully.
 func (e *Experiment) Wait(ms int) error {
 	start := getTicks()
 	for {
@@ -601,11 +608,12 @@ func (e *Experiment) Initialize() error {
 	return nil
 }
 
-// pollEvent is a hook for sdl.PollEvent to allow unit testing without
-// a live SDL context.
+// pollEvent and getTicks are test seams: indirection over sdl.PollEvent and
+// sdl.Ticks so that event-loop and timing logic can be exercised without a live
+// SDL context (which would crash in a headless CI environment). They are
+// reassigned only by experiment_test.go, which restores them via defer. Do not
+// mutate them in production code.
 var pollEvent = sdl.PollEvent
-
-// getTicks is a hook for sdl.Ticks to allow unit testing.
 var getTicks = sdl.Ticks
 
 // ---------------------------------------------------------------------------
@@ -906,18 +914,30 @@ func (e *Experiment) Fatal(format string, args ...any) {
 
 // Run executes the main experiment logic inside SDL's run loop.
 //
-// The logic callback runs directly on the main (OS) thread so that all SDL
-// calls inside it — screen rendering, event polling, etc. — are issued from
-// the correct thread. This preserves compatibility with every example that
-// calls exp.Screen.Clear(), stim.Draw(), and exp.Screen.Update() directly.
+// Threading contract: SDL3 video, rendering, and event calls must all happen on
+// a single OS thread (on macOS, the main thread). The logic callback therefore
+// runs synchronously on the goroutine that calls Run — there is no goroutine
+// dispatch. All SDL/stimulus/event work (exp.Screen.*, stim.Draw, exp.Show,
+// keyboard/mouse polling, …) must stay on this goroutine; never issue it from a
+// goroutine spawned by experiment code, or SDL will crash or corrupt state.
 //
-// For code that wants to compose rendering steps before presenting, use
-// exp.Screen methods directly (they're on the main thread here).
-// For code that wants automatic thread dispatch, use exp.Show / exp.Blank.
+// The required thread pinning is provided by the go-sdl3 sdl package, whose
+// init() calls runtime.LockOSThread() on the main goroutine at startup. We
+// reassert it here (idempotent) so the invariant is visible and self-documented
+// in this codebase rather than relying solely on a dependency's init side effect.
+//
+// This preserves compatibility with every example that calls exp.Screen.Clear(),
+// stim.Draw(), and exp.Screen.Update() directly. To compose rendering steps
+// before presenting, use exp.Screen methods directly; for the common
+// clear+draw+flip case use exp.Show / exp.Blank.
 //
 // If the callback (or any Experiment method called from it) panics with an
 // internal sentinel, Run will recover and return the original error.
 func (e *Experiment) Run(logic func() error) error {
+	// Pin this goroutine to its OS thread for the lifetime of the run loop so
+	// every SDL call is issued from the same thread. See the threading contract
+	// above. Idempotent with go-sdl3's own init-time LockOSThread.
+	runtime.LockOSThread()
 	return sdl.RunLoop(func() (err error) {
 		defer func() {
 			if r := recover(); r != nil {

@@ -133,8 +133,8 @@ func main() {
 exp.Run handles the detection of the ESC keypress to interrupt the experiment.
 Two files are written to `~/goxpy_data/` automatically when the experiment ends:
 
-- `<expName>_sub-<NNN>_date-<YYYYMMDD>-<HHMM>.csv` — pure CSV data rows, directly importable by Excel, R, or pandas.
-- `<expName>_sub-<NNN>_date-<YYYYMMDD>-<HHMM>-info.txt` — session metadata (start/end time, hostname, OS, framework version, display and audio configuration, participant info).
+- `<expName>_sub-<NNN>_date-<YYYYMMDD>-<HHMMSS>.csv` — pure CSV data rows, directly importable by Excel, R, or pandas.
+- `<expName>_sub-<NNN>_date-<YYYYMMDD>-<HHMMSS>-info.txt` — session metadata (start/end time, hostname, OS, framework version, display and audio configuration, participant info).
 
 ---
 

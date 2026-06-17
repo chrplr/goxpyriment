@@ -23,7 +23,7 @@ Flags:
 
 Two files are written to the current directory (or `-output` path if set):
 
-- `Shadowing_sub-NNN_date-YYYYMMDD-HHMM.csv` — trial data with columns `trial`, `rep`, `label`, `shadowing_ms`, `detected`
+- `Shadowing_sub-NNN_date-YYYYMMDD-HHMMSS.csv` — trial data with columns `trial`, `rep`, `label`, `shadowing_ms`, `detected`
 - `sub-NNN_trial-TTT_repR_label.wav` per trial (when `-save-wav=true`) — raw F32LE mono 44100 Hz PCM, useful for verifying that the voice key triggered correctly
 
 ## Timing model

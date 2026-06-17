@@ -699,8 +699,8 @@ For the most accurate RT measurement:
 
 Each test run writes two files to `~/goxpy_data/`:
 
-- `Timing-Tests_sub-000_date-<YYYYMMDD>-<HHMM>.csv` — plain CSV data rows, no comment lines.
-- `Timing-Tests_sub-000_date-<YYYYMMDD>-<HHMM>-info.txt` — session metadata (start/end time, hostname, OS, display and audio configuration).
+- `Timing-Tests_sub-000_date-<YYYYMMDD>-<HHMMSS>.csv` — plain CSV data rows, no comment lines.
+- `Timing-Tests_sub-000_date-<YYYYMMDD>-<HHMMSS>-info.txt` — session metadata (start/end time, hostname, OS, display and audio configuration).
 
 Load any run in Python with:
 

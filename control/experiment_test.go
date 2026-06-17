@@ -57,22 +57,19 @@ func TestStickyEvents(t *testing.T) {
 	}
 }
 
-// TestWaitAbort verifies that Experiment.Wait(ms) correctly detects a quit
-// request and panics with exitPanic.
+// TestWaitAbort verifies that Experiment.Wait(ms) detects a quit request and
+// panics with exitPanic. getTicks is stubbed to 0 so the wait never reaches its
+// timeout — Wait must exit via the quit path instead. No SDL context is needed
+// because pumpFrame checks the quit flag before making any SDL calls.
 func TestWaitAbort(t *testing.T) {
-	// Mock getTicks and pollEvent to avoid SDL initialization crash
 	oldTicks := getTicks
 	getTicks = func() uint64 { return 0 }
 	defer func() { getTicks = oldTicks }()
 
-	oldPoll := pollEvent
-	pollEvent = func(ev *sdl.Event) bool { return false }
-	defer func() { pollEvent = oldPoll }()
-
 	exp := &Experiment{}
 
-	// Simulate a quit request
-	exp.event.QuitRequested = true
+	// Simulate a quit request from the signal handler.
+	exp.quitFlag.Store(1)
 
 	defer func() {
 		if r := recover(); r != nil {
@@ -80,7 +77,7 @@ func TestWaitAbort(t *testing.T) {
 				t.Errorf("expected exitPanic, got %v", r)
 			}
 		} else {
-			t.Error("Wait did not panic after QuitRequested")
+			t.Error("Wait did not panic after quit was requested")
 		}
 	}()
 

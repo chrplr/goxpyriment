@@ -353,7 +353,11 @@ func main() {
 		// ── Interleaved staircase loop ───────────────────────────────────────
 		trialNum := 0
 		for !runner.Done() {
-			sc := runner.Next().(*staircase.UpDown)
+			next, err := runner.Next()
+			if err != nil {
+				return err
+			}
+			sc := next.(*staircase.UpDown)
 			trialNum++
 			correct, err := runTrial(exp, sc, freqFor[sc], maxReversals, player, trialNum)
 			if err != nil {

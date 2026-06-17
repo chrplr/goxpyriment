@@ -84,7 +84,10 @@ cfg := staircase.QuestConfig{
     MaxTrials:      40,
     EstimateMethod: "mean", // "mean" (default) or "mode"
 }
-sc := staircase.NewQuest(cfg)
+sc, err := staircase.NewQuest(cfg)
+if err != nil {
+    log.Fatal(err) // invalid config (see Key behaviors below)
+}
 ```
 
 ### Key behaviors
@@ -94,7 +97,7 @@ sc := staircase.NewQuest(cfg)
 - `Threshold()` recalculates from the posterior on every call; use sparingly in tight loops.
 - `SD()` returns the posterior standard deviation — a natural stopping criterion.
 - No reversal concept; `History()[i].Reversal` is always false.
-- `NewQuest` panics if `IntensityStep ≤ 0`, `IntensityMin ≥ IntensityMax`, or `TGuessSd ≤ 0`.
+- `NewQuest` returns an error if `IntensityStep ≤ 0`, `IntensityMin ≥ IntensityMax`, or `TGuessSd ≤ 0`.
 
 ### Intensity units
 
@@ -105,7 +108,10 @@ Quest works in any monotonic scale. Log-contrast is conventional (`TGuess = log1
 ```go
 runner := staircase.NewRunner(nil, sc1, sc2, sc3)  // nil = time-seeded RNG
 for !runner.Done() {
-    sc := runner.Next()           // random non-done staircase
+    sc, err := runner.Next()      // random non-done staircase
+    if err != nil {
+        break                     // all done (guarded by !runner.Done() above)
+    }
     intensity := sc.Intensity()
     // present stimulus…
     sc.Update(correct)
@@ -116,7 +122,7 @@ for _, sc := range runner.All() {
 }
 ```
 
-- `Next()` panics if all staircases are done — always guard with `!runner.Done()`.
+- `Next()` returns an error if all staircases are done — always guard with `!runner.Done()`.
 - `All()` returns the original staircases in order (same pointers passed at construction).
 - Interleaving prevents order effects and keeps multiple threshold estimates independent.
 

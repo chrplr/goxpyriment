@@ -92,7 +92,7 @@ a 1080p display, that's roughly the upper-center of the screen.
 
 ## Data file
 
-Output: `goxpy_data/<expname>_sub-<NNN>_date-<YYYYMMDD>-<HHMM>.csv`
+Output: `goxpy_data/<expname>_sub-<NNN>_date-<YYYYMMDD>-<HHMMSS>.csv`
 (standard goxpyriment data file location).
 
 Columns:

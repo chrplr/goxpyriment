@@ -17,7 +17,7 @@ This manual explains the key concepts of the library. It assumes you have read t
 3. [The Run Loop and Error Handling](#3-the-run-loop-and-error-handling)
 4. [The Coordinate System](#4-the-coordinate-system)
 5. [The Rendering Model](#5-the-rendering-model)
-6. [Timing Architecture](#6-timing-architecture) — frame cadence, GC, nanosecond RT, VRR
+6. [Timing Architecture](#6-timing-architecture) — frame cadence, the two clocks, GC, nanosecond RT, VRR
 7. [Input Handling](#7-input-handling)
 8. [Data Collection](#8-data-collection)
 9. [Stimuli: Lifecycle and Preloading](#9-stimuli-lifecycle-and-preloading)
@@ -357,6 +357,34 @@ rtToStim1 := int64(keyTS - onset)   // correct even if pressed during Wait
 ```
 
 This is especially useful when you need RT relative to a specific stimulus in a multi-stimulus sequence — something that `WaitKeysRT` cannot express directly, since it measures from the call site rather than from a recorded onset.
+
+### Two clocks: the Go clock and the SDL clock
+
+goxpyriment exposes time through **two independent clocks with different zero points**. A value read from one must never be subtracted from a value read from the other — the difference would silently include the unknown, machine-dependent offset between their origins.
+
+| Clock | Read it via | Zero point | Use it for |
+|---|---|---|---|
+| **Go monotonic clock** | `clock.GetTime()`, `clock.GetTimeNS()`, `Clock.Now()`, `Clock.NowMillis()`, `Clock.NowNanos()` | First use of the `clock` package, or `clock.NewClock()` | *Scheduling and logging in your own code*: inter-trial and inter-stimulus intervals, drift-free trial pacing (`SleepUntil`), and "time since start of block" columns in your data file |
+| **SDL event clock** | `exp.ShowTS()`, `Screen.FlipTS()`, `Screen.PacedFlipTS()`, `Keyboard.GetKeyEventTS()`, `WaitAnyEventTS()`, and the `Timestamp` field of any SDL event (all on `sdl.TicksNS()`) | SDL initialisation | **Reaction-time measurement**: whenever you subtract a stimulus onset from a response, *both* values must come from this clock |
+
+**The rule.** Measure reaction times entirely on the SDL clock — subtract a `FlipTS`/`ShowTS` onset from a `GetKeyEventTS` response. Use the Go clock only for things you *schedule* rather than *measure*: ISIs, fixation durations, block pacing, and log timestamps. Crossing the two — e.g. `keyTS - clock.GetTimeNS()` — is meaningless.
+
+**Why two clocks?** The SDL clock is the one SDL stamps onto hardware input events at interrupt time (see the previous subsection), so it is the only clock that can measure RT without inflation from intervening code. The Go clock needs no SDL context, is what `exp.Wait`, `clock.Wait`, and `Clock.SleepUntil` are built on, and is the natural choice for scheduling and for log timestamps that just need to be internally consistent.
+
+The two roles coexist cleanly in a single trial loop — Go clock for pacing and logging, SDL clock for the RT:
+
+```go
+c := clock.NewClock()                                  // Go clock: pacing + logging
+for i, trial := range block.Trials {
+    c.SleepUntil(time.Duration(i) * 2 * time.Second)   // Go clock: drift-free onset cadence
+    onset, _ := exp.ShowTS(trial.Stimulus)             // SDL clock: stimulus onset
+    key, keyTS, _ := exp.Keyboard.GetKeyEventTS(responseKeys, -1)
+    rtMs := float64(keyTS-onset) / 1e6                  // SDL − SDL  ✓ valid RT
+    exp.Data.Add(trial.Label, key, rtMs, c.NowMillis())// log time on the Go clock
+}
+```
+
+Here `keyTS - onset` stays within the SDL clock (a real RT), while `c.SleepUntil` and `c.NowMillis()` stay within the Go clock (scheduling and a log column). The two are never subtracted from each other.
 
 ### Disabling garbage collection
 
@@ -833,8 +861,8 @@ When `exp.End()` is called, two files are written to `~/goxpy_data/`:
 
 | File | Contents |
 |------|----------|
-| `<expName>_sub-<NNN>_date-<YYYYMMDD>-<HHMM>.csv` | Pure CSV data rows — directly importable by Excel, R, or pandas |
-| `<expName>_sub-<NNN>_date-<YYYYMMDD>-<HHMM>-info.txt` | Session metadata: start/end time, hostname, OS, framework version, display and audio configuration, participant info |
+| `<expName>_sub-<NNN>_date-<YYYYMMDD>-<HHMMSS>.csv` | Pure CSV data rows — directly importable by Excel, R, or pandas |
+| `<expName>_sub-<NNN>_date-<YYYYMMDD>-<HHMMSS>-info.txt` | Session metadata: start/end time, hostname, OS, framework version, display and audio configuration, participant info |
 
 Both files open automatically on `Initialize()` and are flushed to disk when `exp.End()` is called.
 

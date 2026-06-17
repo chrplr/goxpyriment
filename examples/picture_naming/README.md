@@ -22,7 +22,7 @@ Flags:
 
 Two files are written to the current directory (or `-output` path if set):
 
-- `Picture Naming_sub-NNN_date-YYYYMMDD-HHMM.csv` — trial data with columns `trial`, `label`, `rt_ms`, `detected`
+- `Picture Naming_sub-NNN_date-YYYYMMDD-HHMMSS.csv` — trial data with columns `trial`, `label`, `rt_ms`, `detected`
 - `sub-NNN_trial-TT_label.wav` per trial (when `-save-wav=true`) — raw F32LE mono 44100 Hz PCM, covering the full trial: pre-onset silence, the naming response, and up to 1 500 ms of post-onset audio. Each file embeds a WAV cue marker labelled `onset` at the exact sample where the voice key triggered; audio editors that support WAV cue chunks (e.g. [ocenaudio](https://www.ocenaudio.com), [Reaper](https://www.reaper.fm)) display it as a named marker on the waveform.
 
 ## Timing model

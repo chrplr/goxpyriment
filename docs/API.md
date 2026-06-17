@@ -783,8 +783,8 @@ Two files are written to `~/goxpy_data/` for each session:
 
 | File | Contents |
 |------|----------|
-| `<expname>_sub-<NNN>_date-<YYYYMMDD>-<HHMM>.csv` | Pure CSV data rows — directly importable by Excel, R, or pandas |
-| `<expname>_sub-<NNN>_date-<YYYYMMDD>-<HHMM>-info.txt` | `#`-prefixed metadata: start/end time, hostname, OS, framework version, display and audio configuration, participant info |
+| `<expname>_sub-<NNN>_date-<YYYYMMDD>-<HHMMSS>.csv` | Pure CSV data rows — directly importable by Excel, R, or pandas |
+| `<expname>_sub-<NNN>_date-<YYYYMMDD>-<HHMMSS>-info.txt` | `#`-prefixed metadata: start/end time, hostname, OS, framework version, display and audio configuration, participant info |
 
 ---
 

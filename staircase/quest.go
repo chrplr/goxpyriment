@@ -4,7 +4,10 @@
 
 package staircase
 
-import "math"
+import (
+	"fmt"
+	"math"
+)
 
 // QuestConfig configures a QUEST adaptive staircase (Watson & Pelli 1983).
 //
@@ -55,16 +58,17 @@ type Quest struct {
 
 // NewQuest returns a Quest staircase with the given configuration.
 //
-// Panics if IntensityStep ≤ 0, IntensityMin ≥ IntensityMax, or TGuessSd ≤ 0.
-func NewQuest(cfg QuestConfig) *Quest {
+// It returns an error if IntensityStep ≤ 0, IntensityMin ≥ IntensityMax, or
+// TGuessSd ≤ 0.
+func NewQuest(cfg QuestConfig) (*Quest, error) {
 	if cfg.IntensityStep <= 0 {
-		panic("staircase: QuestConfig.IntensityStep must be > 0")
+		return nil, fmt.Errorf("staircase: QuestConfig.IntensityStep must be > 0, got %v", cfg.IntensityStep)
 	}
 	if cfg.IntensityMin >= cfg.IntensityMax {
-		panic("staircase: QuestConfig.IntensityMin must be < IntensityMax")
+		return nil, fmt.Errorf("staircase: QuestConfig.IntensityMin (%v) must be < IntensityMax (%v)", cfg.IntensityMin, cfg.IntensityMax)
 	}
 	if cfg.TGuessSd <= 0 {
-		panic("staircase: QuestConfig.TGuessSd must be > 0")
+		return nil, fmt.Errorf("staircase: QuestConfig.TGuessSd must be > 0, got %v", cfg.TGuessSd)
 	}
 	if cfg.EstimateMethod == "" {
 		cfg.EstimateMethod = "mean"
@@ -92,7 +96,7 @@ func NewQuest(cfg QuestConfig) *Quest {
 		xL:     xL,
 	}
 	q.current = q.estimate()
-	return q
+	return q, nil
 }
 
 // questXL computes the Weibull offset xL such that p(T|T) = pThreshold.

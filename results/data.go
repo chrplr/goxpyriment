@@ -94,7 +94,7 @@ func NewDataFile(directory string, subjectID int, expName string) (*DataFile, er
 	}
 
 	now := time.Now()
-	basename := fmt.Sprintf("%s_sub-%03d_date-%s-%s", expName, subjectID, now.Format("20060102"), now.Format("1504"))
+	basename := fmt.Sprintf("%s_sub-%03d_date-%s-%s", expName, subjectID, now.Format("20060102"), now.Format("150405"))
 	filename := basename + ".csv"
 	infoFilename := basename + "-info.txt"
 

@@ -13,8 +13,8 @@ df, err := results.NewDataFile(directory, subjectID, expName)
 
 Creates two files in `<directory>`:
 
-- `<expName>_sub-<NNN>_date-<YYYYMMDD>-<HHMM>.csv` — pure CSV data, directly importable by Excel and R.
-- `<expName>_sub-<NNN>_date-<YYYYMMDD>-<HHMM>-info.txt` — `#`-prefixed metadata (start time, hostname, OS, framework version, system info, display info, participant info).
+- `<expName>_sub-<NNN>_date-<YYYYMMDD>-<HHMMSS>.csv` — pure CSV data, directly importable by Excel and R.
+- `<expName>_sub-<NNN>_date-<YYYYMMDD>-<HHMMSS>-info.txt` — `#`-prefixed metadata (start time, hostname, OS, framework version, system info, display info, participant info).
 
 The directory is created if absent.
 

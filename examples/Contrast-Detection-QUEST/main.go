@@ -303,7 +303,7 @@ func main() {
 		}
 
 		// ── QUEST staircase ──────────────────────────────────────────────────
-		sc := staircase.NewQuest(staircase.QuestConfig{
+		sc, err := staircase.NewQuest(staircase.QuestConfig{
 			TGuess:         *initGuess,
 			TGuessSd:       1.5,  // wide prior: ±1.5 log-units covers the plausible range
 			PThreshold:     0.82, // 2AFC d′ ≈ 1 threshold criterion
@@ -316,6 +316,9 @@ func main() {
 			MaxTrials:      *nTrials,
 			EstimateMethod: "mean",
 		})
+		if err != nil {
+			return err
+		}
 
 		// ── Trial loop ───────────────────────────────────────────────────────
 		for trialNum := 1; !sc.Done(); trialNum++ {

@@ -150,3 +150,4 @@ control.SetAudioSampleFrames(256) // lower = less latency; default 4096
 - `exp.End()` must always be deferred to clean up SDL, TTF, and the audio device.
 - `QuitRequested` in `EventState` is sticky — once true it stays true for that `PollEvents` result. Check it immediately.
 - `exitPanic` is an internal sentinel; never compare against it directly. Use `IsEndLoop`.
+- **Single-thread contract:** all SDL/stimulus/event work must run on the goroutine that calls `exp.Run` (which pins itself with `runtime.LockOSThread`). Never call `exp.Screen.*`, `stim.Draw`, `exp.Show`, or input polling from a goroutine you spawn — SDL3 video is single-threaded and will crash or corrupt state otherwise. Background goroutines (e.g. the audio manager, the signal handler) deliberately avoid SDL video calls.

@@ -5,6 +5,7 @@
 package staircase
 
 import (
+	"errors"
 	"math/rand"
 	"time"
 )
@@ -37,9 +38,9 @@ func (r *Runner) Done() bool {
 	return true
 }
 
-// Next returns a randomly selected non-done staircase.
-// Panics if all staircases are done — check Done first.
-func (r *Runner) Next() Staircase {
+// Next returns a randomly selected non-done staircase. It returns an error if
+// all staircases are done — guard the loop with !Done() so this cannot happen.
+func (r *Runner) Next() (Staircase, error) {
 	var active []Staircase
 	for _, sc := range r.staircases {
 		if !sc.Done() {
@@ -47,9 +48,9 @@ func (r *Runner) Next() Staircase {
 		}
 	}
 	if len(active) == 0 {
-		panic("staircase: Runner.Next called when all staircases are done")
+		return nil, errors.New("staircase: Runner.Next called when all staircases are done")
 	}
-	return active[r.rng.Intn(len(active))]
+	return active[r.rng.Intn(len(active))], nil
 }
 
 // All returns all staircases in the order they were passed to NewRunner.

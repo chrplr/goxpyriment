@@ -195,7 +195,7 @@ state at the moment of trigger is captured atomically. Key snapshots
 (`A`, `B`) write **one row** for the targeted movie only.
 
 Output file pattern:
-`goxpy_data/<expname>_sub-<NNN>_date-<YYYYMMDD>-<HHMM>.csv`. See
+`goxpy_data/<expname>_sub-<NNN>_date-<YYYYMMDD>-<HHMMSS>.csv`. See
 [docs/UserManual.md §8](../../docs/UserManual.md) for the data-file
 format details.
 
