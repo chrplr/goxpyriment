@@ -11,33 +11,7 @@ Welcome! If you are a psychologist or neuroscientist used to building experiment
 
 `goxpyriment` brings the high-level simplicity of those tools to the **Go** programming language, offering significant advantages in timing precision and ease of sharing your work.
 
----
-
-## Why Go? (and why goxpyriment?)
-
-If you've ever spent three hours fixing a `conda` environment or `pip` conflict just to run a simple experiment on a lab computer, you'll love Go.
-
-1. **Zero-Dependency Deployment**: When you build a Go experiment, it produces a **standalone executable program** . Drop it on any lab computer and it just works — no Python and or Library Installation required.
-2. **Timing Precision**: Go is a compiled language with a very efficient runtime. `goxpyriment` runs the stimulus loop VSYNC-locked with GC pauses disabled, giving you sub-millisecond frame jitter on typical hardware.
-3. **AI-friendly API**: The linear, consistent API makes it very well suited to "vibe-coding" — describe your paradigm in plain language to Claude Code or Gemini CLI  and the generated code is usually 90 % ready to run immediately.
-4. Go is simple (see what Gemini has to say about [Go. vs. Python](gemini-about-go-vs-python.md))
----
-
-## Mapping Concepts: Python to Go
-
-| Expyriment (Python) | goxpyriment (Go) | Note |
-| :--- | :--- | :--- |
-| `exp = design.Experiment(...)` | `exp := control.NewExperimentFromFlags(...)` | The central manager (flag-aware). |
-| `exp.initialize()` | (handled by `NewExperimentFromFlags`) | SDL, audio and font all initialized. |
-| `stim.present()` | `exp.Show(stim)` | Clear → draw → flip. |
-| `exp.clock.wait(1000)` | `exp.Wait(1000)` | OS-responsive wait; aborts on ESC. |
-| `stim.present()` + `exp.clock.wait(500)` | `exp.ShowTimed(stim, 500)` | Show + timed wait in one call. |
-| `key, rt = exp.keyboard.wait()` | `key, rt, err := exp.Keyboard.WaitKeysRT(keys, timeout)` | Response + reaction time (call-site precision). |
-| `stim.present()` + `exp.keyboard.wait()` with RT | `key, rt, err := exp.ShowAndGetRT(stim, keys, timeout)` | Hardware-precise RT from VSYNC flip. |
-
----
-
-To run the following tutorials, you need goxpyriment installed and a working Go toolchain. See [Installation](Installation.md) for instructions.
+This document provides a few example. Browse through them to get acquainted with the bases of the framework. Then, to run the tutorial, you will need goxpyriment installed and a working Go toolchain. See [Installation](Installation.md) for instructions.
 
 ---
 
