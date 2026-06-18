@@ -9,9 +9,9 @@ date: 2026-04-06
 
 Welcome! If you are a psychologist or neuroscientist used to building experiments in Python (with **Expyriment** or **PsychoPy**), you are in the right place.
 
-`goxpyriment` brings the high-level simplicity of those tools to the **Go** programming language, offering significant advantages in timing precision and ease of sharing your work.
+`goxpyriment` is a alternative framework to build experiments using the **Go** programming language, offering significant advantages in timing precision and ease of sharing your work.
 
-This document provides a few example. Browse through them to get acquainted with the bases of the framework. Then, to run the tutorial, you will need goxpyriment installed and a working Go toolchain. See [Installation](Installation.md) for instructions.
+This document provides a few examples for you to get acquainted with the framework (if you want to run the examples, you will need goxpyriment installed and a working Go toolchain. See [Installation](Installation.md) for instructions).
 
 ---
 
@@ -104,7 +104,7 @@ func main() {
 ```
 
 
-exp.Run handles the detection of the ESC keypress to interrupt the experiment.
+`exp.Run()` handles the detection of the ESC keypress to interrupt the experiment.
 Two files are written to `~/goxpy_data/` automatically when the experiment ends:
 
 - `<expName>_sub-<NNN>_date-<YYYYMMDD>-<HHMMSS>.csv` — pure CSV data rows, directly importable by Excel, R, or pandas.
@@ -187,7 +187,7 @@ func main() {
 }
 ```
 
-The same pattern exists for images and sounds:
+Similar functions exist to present streams of images or sounds:
 
 
 * Images: 
@@ -214,7 +214,7 @@ The same pattern exists for images and sounds:
    events, logs, err := stimuli.PlayStreamOfSounds(elements)
    ```
 
-All three stream functions return `([]UserEvent, []TimingLog, error)` to analyse timing quality and log participant responses.
+All stream functions return `([]UserEvent, []TimingLog, error)` to analyse timing quality and log participant responses.
 
 ---
 

@@ -1,6 +1,10 @@
 # Running goxpyriment experiments in a web browser (WASM)
 
-goxpyriment experiments can be compiled to WebAssembly and run in a browser.
+Hopefuly, one day, goxpyiment experiments will be runnable in a browser.
+This is a work in progress at the moment.
+
+This document records our attemps to (unsuccessfuly) implement this functionality in early 2026.
+
 The setup requires two WASM runtimes in the same page:
 
 1. **SDL3.wasm** — SDL3 compiled by Emscripten, which provides the graphics, audio, and event-loop APIs.
