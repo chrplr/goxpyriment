@@ -5,11 +5,11 @@
 
     * Clone [goxpyriment Github repository](http://github.com/chrplr/goxpyriment), by opening a Terminal (App `Git Bash` under Windows), and executing the command-line
 
-         git clone https://github.com/chrplr/goxpyriment.git
+            git clone https://github.com/chrplr/goxpyriment.git
 
-       Later, a simple `git pull` will suffice to upgrade goxpyriement to the latest version.
+      In the future, to update goxpyriment to the latest version, a simple `git pull` from within the `goxpyriment` folder will be sufficient. 
 
-    * Or download and unzip [main.zip](https://github.com/chrplr/goxpyriment/archive/refs/heads/main.zip). 
+    * Or download and unzip [main.zip](https://github.com/chrplr/goxpyriment/archive/refs/heads/main.zip).
 
 
 3. On a command line in a Terminal, navigate to the `goxpyriment` folder and execute:
