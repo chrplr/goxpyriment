@@ -1,47 +1,7 @@
 # Goxpyriment Example Experiments
 
-
-[Pre-built executable programs](pre-built-examples.md) for all [examples](https://github.com/chrplr/goxpyriment/tree/main/examples).
-
-
-If you want to compile these experiments from source on your computer, e.g. because you have Windows/ARM or macOS/Intel,  read on. 
-
-
-## Building from source
-
-If [Go](https://go.dev) is installed, you can run any example directly from a clone of the repository:
-
-```bash
-go run ./examples/parity_decision/ -w -s 1
-```
-
-Or build and run from inside the example directory:
-
-```bash
-cd examples/hello_world
-go run .            # fullscreen by default
-go run . -w         # windowed 1024×768
-go run . -w -s 1    # windowed, subject ID = 1
-go run . -d 1       # fullscreen on monitor 1
-go run . -w -d 1    # windowed on monitor 1
-go build .          # build a standalone binary
-```
-
-To build all examples (and tests) at once (binaries go to `_build/`):
-
-```bash
-./build-all.sh      # from the repo root — works on Linux, macOS, and Windows (Git Bash)
-```
-
-(On Linux/macOS you can also use `make examples` or `make all`.)
-
-Programs that open a **GetParticipantInfo** dialog collect all setup interactively (subject ID, monitor dimensions, fullscreen toggle, and any experiment-specific options). Pass `-headless` on the command line to skip the dialog and use field defaults — useful for scripted runs and automated testing. Programs that do not use the dialog still accept `-w` for windowed mode, `-d N` to select a monitor, and `-s <id>` for a subject ID.
-
----
-
 ## Psychological Experiments
 
-Full experiments that record and save behavioural data to an `.csv` file in `goxpy_data/`.
 
 <!-- BEGIN:experiments -->
 | Directory | Task | Reference |
@@ -52,6 +12,7 @@ Full experiments that record and save behavioural data to an `.csv` file in `gox
 | [Classification-Posner-Mitchell](https://github.com/chrplr/goxpyriment/tree/main/examples/Classification-Posner-Mitchell) | Classify letter pairs at three levels (physical, name, rule identity); RT increases with depth of processing required | Posner & Mitchell (1967) |
 | [Contrast-Detection-QUEST](https://github.com/chrplr/goxpyriment/tree/main/examples/Contrast-Detection-QUEST) | 2-IFC adaptive staircase estimating the contrast detection threshold for a Gabor patch; converges on the 82 % correct point | Watson & Pelli (1983) |
 | [Finger-Tapping](https://github.com/chrplr/goxpyriment/tree/main/examples/Finger-Tapping) | Patterned finger-tapping: memorise a key sequence then reproduce it 6 times consecutively as fast as possible; only error-free runs recorded | Povel & Collard (1982) |
+| [Finger-Tracking](https://github.com/chrplr/goxpyriment/tree/main/examples/Finger-Tracking) | Number-to-position task: drag the finger (or mouse, button held) from a bottom box up to an unmarked 0-40 number line, aiming at a target number; the full trajectory, endpoint, bias, and movement time are recorded | Dotan & Dehaene (2013) |
 | [Go-NoGo](https://github.com/chrplr/goxpyriment/tree/main/examples/Go-NoGo) | Stop-signal task: respond to letters on go-trials; withhold response when a stop-signal tone is played at variable delays | Logan et al. (1984) |
 | [Hemispheric-differences-word-processing](https://github.com/chrplr/goxpyriment/tree/main/examples/Hemispheric-differences-word-processing) | Lateralised recognition memory: words studied in LVF or RVF, tested centrally with old/new judgements | Federmeier & Benjamin (2005) |
 | [Letter-size-illusion](https://github.com/chrplr/goxpyriment/tree/main/examples/Letter-size-illusion) | Compare heights of letters vs. mirror/pseudo-letters; replicates the letter height superiority illusion (two experiments) | New et al. (2015) |
@@ -91,6 +52,11 @@ Full experiments that record and save behavioural data to an `.csv` file in `gox
 | [Visual-Illusion-Lilac-Chaser](https://github.com/chrplr/goxpyriment/tree/main/examples/Visual-Illusion-Lilac-Chaser) | Lilac chaser illusion: a ring of disappearing disks produces a rotating green afterimage |  |
 | [Visual-Search](https://github.com/chrplr/goxpyriment/tree/main/examples/Visual-Search) | Feature vs. conjunction visual search across set sizes (4/12/24), measuring how reaction time scales with the number of distractors | Treisman & Gelade (1980) |
 <!-- END:experiments -->
+
+Programs that open a **GetParticipantInfo** dialog collect all setup interactively (subject ID, monitor dimensions, fullscreen toggle, and any experiment-specific options). Pass `-headless` on the command line to skip the dialog and use field defaults — useful for scripted runs and automated testing. Programs that do not use the dialog still accept `-w` for windowed mode, `-d N` to select a monitor, and `-s <id>` for a subject ID.
+
+Note: These experiments record and save behavioural data to an `.csv` file in `goxpy_data/`.
+
 
 ---
 
@@ -150,3 +116,43 @@ Hardware, timing, and feature tests live in the [`tests/`](../tests/) directory 
 | [test_text_input](https://github.com/chrplr/goxpyriment/tree/main/tests/test_text_input) | Demonstration of the `TextInput` stimulus collecting free-text keyboard input |
 | [Timing-Tests](https://github.com/chrplr/goxpyriment/tree/main/tests/Timing-Tests) | Hardware timing verification suite: eleven sub-tests (frame jitter, true refresh rate, audio latency, photodiode/BBTK/oscilloscope checks) selected with -test <name> |
 <!-- END:tests -->
+
+
+## Binaries
+
+If you have followed the [installation instructions](Instructions.md), running the script `build-all.sh` has created binaries for all examples in the subfolder `_build`
+
+You can download [pre-built executable programs](pre-built-examples.md) for all [examples](https://github.com/chrplr/goxpyriment/tree/main/examples).
+
+Alternatively, you can read the next section if you want to compile these experiments on your computer. 
+
+## Building from source
+
+If you have installed [go](https://go.dev) on your computer, you can run any example directly from a local clone of the [goxpyriment repository](https://github.com/chrplr/goxpyriment):
+
+```bash
+go run ./examples/parity_decision/ -w -s 1
+```
+
+Or build and run from inside the example directory:
+
+```bash
+cd examples/hello_world
+go run .            # fullscreen by default
+go run . -w         # windowed 1024×768
+go run . -w -s 1    # windowed, subject ID = 1
+go run . -d 1       # fullscreen on monitor 1
+go run . -w -d 1    # windowed on monitor 1
+go build .          # build a standalone binary
+```
+
+To build all examples (and tests) at once (binaries go to `_build/`):
+
+```bash
+./build-all.sh      # from the repo root — works on Linux, macOS, and Windows (Git Bash)
+```
+
+(On Linux/macOS you can also use `make examples` or `make all`.)
+
+
+
