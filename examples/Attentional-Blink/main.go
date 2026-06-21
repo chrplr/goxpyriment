@@ -4,6 +4,8 @@
 package main
 
 import (
+	"time"
+
 	"github.com/chrplr/goxpyriment/clock"
 	"github.com/chrplr/goxpyriment/control"
 	"github.com/chrplr/goxpyriment/design"
@@ -124,13 +126,13 @@ func main() {
 		}
 		clock.Wait(FixationDuration)
 
-		// B. RSVP Stream
-		for _, char := range items {
-			txt := stimuli.NewTextLine(char, 0, 0, control.Black)
-			if err := exp.Show(txt); err != nil {
-				return "", false, 0, err
-			}
-			clock.Wait(ItemDuration)
+		// B. RSVP Stream (VSYNC-locked, frame-accurate item onsets)
+		if _, _, err := stimuli.PresentStreamOfText(
+			exp.Screen, items,
+			ItemDuration*time.Millisecond, 0,
+			0, 0, control.Black,
+		); err != nil {
+			return "", false, 0, err
 		}
 
 		// C. Response Screen

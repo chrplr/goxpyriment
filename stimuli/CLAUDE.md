@@ -181,9 +181,47 @@ events, timing, err := stimuli.PlayStreamOfSounds(elements)
 
 Uses `time.Sleep(1ms)` polling (not VSYNC) for audio timing. `Sound` field in `SoundStreamElement` may be nil for silence.
 
+### Mixed streams
+
+```go
+elements := stimuli.MakeRegularStream(stims, durationOn, durationOff) // stims is []Stimulus
+// or per-item: stimuli.MakeStream(stims, onsetMs, durationMs)
+events, timing, err := stimuli.PresentStreamOfStimuli(exp.Screen, elements, x, y)
+```
+
+`PresentStreamOfStimuli` presents a heterogeneous **sequential** stream mixing visual and audio stimulus types, on the same VSYNC-locked GC-disabled loop as `PresentStreamOfImages` (which now delegates to it). Per element it type-switches on `VisualStimulus`:
+- **Visual** → centered on `(x,y)`, redrawn every frame for `DurationOn`, blanked for `DurationOff`.
+- **Audio / non-visual** (and `nil`) → triggered once via `Present(screen,false,false)` right after the slot's first VSYNC flip; the screen is **not cleared** (previous frame held for the whole slot). `OnsetNS` = that flip's timestamp.
+
+Audio elements must be device-bound (`PreloadDevice`) beforehand — only visual elements are auto-preloaded. No concurrent AV overlap (strictly one slot at a time). For pure audio, prefer `PlayStreamOfSounds` (finer sub-frame timing).
+
+### Per-frame callback
+
+`PresentStreamOfStimuliFunc(screen, elements, x, y, onFrame)` is `PresentStreamOfStimuli` plus an optional `FrameCallback` invoked once per frame, **just before each flip**, on every on- and off-phase frame:
+
+```go
+header := stimuli.NewTextLine("3 / 40", 0, -300, control.White) // trial counter
+cb := func(ctx stimuli.FrameContext) error {
+    _ = header.Draw(ctx.Screen)              // (a) persistent overlay (drawn over the stimulus)
+    if ctx.OnPhase && ctx.FirstFrame {       // (b) real-time logic at each element onset
+        // e.g. fire feedback off ctx.NowNS / ctx.Events, return sdl.EndLoop to stop
+    }
+    return nil
+}
+events, timing, err := stimuli.PresentStreamOfStimuliFunc(screen, elements, 0, 0, cb)
+```
+
+`FrameContext` carries `Screen, Index, Frame, OnPhase, FirstFrame, NowNS` (pre-flip `sdl.TicksNS()`), `Elapsed`, and `Events` (through the previous frame). Return `nil` to continue, `sdl.EndLoop` to stop gracefully, any other error to abort. This unlocks persistent overlays (trial counters, frame borders, fixation) and mid-stream feedback that the plain stream functions can't express. Overlays are for visual streams — on held (audio) frames the screen isn't cleared, so repeated draws accumulate.
+
 ### Stream types
 
 ```go
+type StreamElement struct {       // heterogeneous (PresentStreamOfStimuli)
+    Stimulus    Stimulus          // visual or audio; nil = held delay
+    DurationOn  time.Duration
+    DurationOff time.Duration
+}
+
 type VisualStreamElement struct {
     Stimulus   VisualStimulus
     DurationOn  time.Duration

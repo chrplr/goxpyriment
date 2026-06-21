@@ -211,19 +211,20 @@ func waitMS(exp *control.Experiment, ms int) error {
 	return nil
 }
 
-// playSequence plays all notes in a 3-tone sequence with toneDurMS between each
-// onset.  Returns an error if ESC is pressed.
+// playSequence plays all notes in a short sequence with toneDurMS between each
+// onset, using the VSYNC-independent PlayStreamOfSounds loop (1 ms-polled).
+// The inter-tone SOA is fixed at toneDurMS and only ESC aborts the sequence.
+// Returns sdl.EndLoop on ESC / window-close.
 func playSequence(exp *control.Experiment, notes []string, tones map[string]*stimuli.Tone) error {
-	for _, note := range notes {
-		if err := tones[note].Play(); err != nil {
-			return err
-		}
-		_, _, err := exp.Keyboard.GetKeyEventTS(nil, toneDurMS)
-		if err != nil {
-			return err
+	elements := make([]stimuli.SoundStreamElement, len(notes))
+	for i, note := range notes {
+		elements[i] = stimuli.SoundStreamElement{
+			Sound:      tones[note],
+			DurationOn: toneDurMS * time.Millisecond,
 		}
 	}
-	return nil
+	_, _, err := stimuli.PlayStreamOfSounds(elements)
+	return err
 }
 
 // blinkUntilSpace blinks a stimulus at 2 Hz until the observer presses SPACE.

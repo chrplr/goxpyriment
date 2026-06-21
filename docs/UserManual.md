@@ -1149,6 +1149,28 @@ elements := stimuli.MakeRegularSoundStream(tones, 200*time.Millisecond, 100*time
 events, logs, err := stimuli.PlayStreamOfSounds(elements)
 ```
 
+### Mixed stream
+
+`PresentStreamOfStimuli` presents a single **sequential** stream that mixes visual
+and audio stimulus types. It reuses the VSYNC-locked visual loop, so visual
+elements are frame-accurate; audio elements are triggered once at the slot's
+first flip and the previous frame is **held** (not cleared) for the slot — place
+a visual just before a sound to keep it visible while the sound plays.
+
+```go
+tone.PreloadDevice(exp.AudioDevice) // audio elements must be device-bound first
+
+elements := []stimuli.StreamElement{
+    {Stimulus: stimuli.NewTextLine("Ready?", 0, 0, control.White), DurationOn: 600 * time.Millisecond, DurationOff: 200 * time.Millisecond},
+    {Stimulus: pic,  DurationOn: 800 * time.Millisecond}, // stays on screen during the tone
+    {Stimulus: tone, DurationOn: 400 * time.Millisecond, DurationOff: 200 * time.Millisecond},
+}
+events, logs, err := stimuli.PresentStreamOfStimuli(exp.Screen, elements, 0, 0)
+```
+
+Concurrent audio-visual overlap (a sound and an animating visual at the same
+instant) is not yet supported; the stream is strictly one slot at a time.
+
 ---
 
 ## 11. Audio

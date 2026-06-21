@@ -404,7 +404,10 @@ func flipStim(screen *apparatus.Screen, stim stimuli.VisualStimulus, frame *sdl.
 	if stim != nil {
 		_ = stim.Draw(screen)
 	}
-	ts, _ := screen.FlipTS()
+	// PacedFlipTS busy-waits the frame boundary on drivers that do not block in
+	// Present (NVIDIA+compositor, Wayland mailbox, Pi), so single-frame stimuli
+	// are not swallowed before the monitor scans them out.
+	ts, _ := screen.PacedFlipTS()
 	return ts
 }
 
@@ -414,7 +417,7 @@ func flipStim(screen *apparatus.Screen, stim stimuli.VisualStimulus, frame *sdl.
 func flipBlank(screen *apparatus.Screen, frame *sdl.FRect) {
 	_ = screen.Clear()
 	drawFrame(screen, frame)
-	_ = screen.Update()
+	_ = screen.PacedFlip()
 }
 
 // drainEvents discards pending SDL events and returns true if ESC or quit was seen.

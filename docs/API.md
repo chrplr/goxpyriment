@@ -498,6 +498,66 @@ events, logs, err := stimuli.PlayStreamOfSounds(elements)
 
 `sounds` is `[]stimuli.AudioPlayable` — satisfied by both `*Sound` and `*Tone`.
 
+#### Mixed Streams
+
+`PresentStreamOfStimuli` presents a heterogeneous, **sequential** stream that
+freely mixes visual and audio stimulus types (anything satisfying the broad
+`Stimulus` interface). It uses the same VSYNC-locked, GC-disabled loop as
+`PresentStreamOfImages` (which now delegates to it).
+
+```go
+elements := []stimuli.StreamElement{
+    {Stimulus: stimuli.NewTextLine("Ready?", 0, 0, color), DurationOn: 600 * time.Millisecond, DurationOff: 200 * time.Millisecond},
+    {Stimulus: pic,  DurationOn: 800 * time.Millisecond}, // held while the tone plays
+    {Stimulus: tone, DurationOn: 400 * time.Millisecond, DurationOff: 200 * time.Millisecond},
+}
+events, logs, err := stimuli.PresentStreamOfStimuli(exp.Screen, elements, x, y)
+
+// Builders mirror the visual/sound ones but take []stimuli.Stimulus:
+elements = stimuli.MakeRegularStream(stims, durationOn, durationOff)
+elements, err = stimuli.MakeStream(stims, onsetMs, durationMs)
+```
+
+Per-element semantics:
+
+- **Visual** elements (those satisfying `VisualStimulus`) are centered on `(x, y)`
+  and redrawn every frame for `DurationOn`, then blanked for `DurationOff`.
+- **Audio / non-visual** elements (and a `nil` Stimulus) are triggered once,
+  right after the slot's first VSYNC flip, and **do not clear the screen** — the
+  previous frame is held for the whole slot. Place a visual just before a sound
+  to keep it on screen while the sound plays. `TimingLog.OnsetNS` is the VSYNC
+  reference at which the audio was triggered.
+
+Audio elements must already be bound to the device via
+`PreloadDevice(exp.AudioDevice)` before the call (same precondition as
+`PlayStreamOfSounds`). For pure-audio streams prefer `PlayStreamOfSounds`, whose
+sub-frame sleep-polling gives finer timing than 60 Hz frame quantization.
+
+#### Per-frame callback
+
+`PresentStreamOfStimuliFunc` adds an optional `FrameCallback` invoked once per
+frame, **just before each flip**. Use it to draw a persistent overlay (trial
+counter, frame border, fixation) on top of the stimulus, or to run real-time
+logic such as firing feedback the instant a response window lapses — things the
+plain stream functions cannot express.
+
+```go
+header := stimuli.NewTextLine("3 / 40", 0, -300, control.White)
+cb := func(ctx stimuli.FrameContext) error {
+    _ = header.Draw(ctx.Screen)           // overlay, rendered over the stimulus
+    if ctx.OnPhase && ctx.FirstFrame {    // onset of element ctx.Index
+        // real-time feedback using ctx.NowNS / ctx.Events;
+        // return sdl.EndLoop to stop early, any other error to abort
+    }
+    return nil
+}
+events, logs, err := stimuli.PresentStreamOfStimuliFunc(exp.Screen, elements, x, y, cb)
+```
+
+`FrameContext` fields: `Screen, Index, Frame, OnPhase, FirstFrame, NowNS`
+(pre-flip `sdl.TicksNS()`), `Elapsed`, `Events` (through the previous frame).
+Passing `nil` for the callback is identical to `PresentStreamOfStimuli`.
+
 ### Audio Stimuli
 
 ```go
