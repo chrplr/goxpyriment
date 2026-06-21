@@ -23,6 +23,7 @@ package stimuli
 
 import (
 	"fmt"
+	"runtime/debug"
 
 	"github.com/Zyko0/go-sdl3/sdl"
 	"github.com/chrplr/goxpyriment/apparatus"
@@ -109,4 +110,35 @@ func PresentDrawable(d Drawable, screen *apparatus.Screen, clear, update bool) e
 		return screen.Update()
 	}
 	return nil
+}
+
+// ---------------------------------------------------------------------------
+// destroyTexture — shared Unload helper for texture-backed stimuli
+// ---------------------------------------------------------------------------
+
+// destroyTexture releases an SDL texture and nils the pointer. It is safe to
+// call when *tex is already nil. Every texture-backed stimulus delegates its
+// Unload to this helper rather than copy-pasting the destroy-and-nil dance:
+//
+//	func (p *Picture) Unload() error { return destroyTexture(&p.Texture) }
+func destroyTexture(tex **sdl.Texture) error {
+	if *tex != nil {
+		(*tex).Destroy()
+		*tex = nil
+	}
+	return nil
+}
+
+// ---------------------------------------------------------------------------
+// disableGC — GC discipline for VSYNC-locked loops
+// ---------------------------------------------------------------------------
+
+// disableGC turns off the garbage collector and returns a function that
+// restores the previous setting. Every VSYNC-locked presentation loop disables
+// GC to avoid mid-frame collection pauses; use it as:
+//
+//	defer disableGC()()
+func disableGC() func() {
+	old := debug.SetGCPercent(-1)
+	return func() { debug.SetGCPercent(old) }
 }

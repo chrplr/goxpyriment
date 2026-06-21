@@ -90,6 +90,15 @@ func (s *Screen) LogicalCenterToSDL(x, y float32, width, height float32) (float3
 	return width/2 + x, height/2 - y
 }
 
+// CenteredRect returns the SDL destination rectangle for a w×h texture centered
+// at the center-based position pos. It converts pos via CenterToSDL and offsets
+// by half the size, factoring out the destX/destY + FRect idiom repeated by
+// every texture-backed stimulus's Draw method.
+func (s *Screen) CenteredRect(pos sdl.FPoint, w, h float32) *sdl.FRect {
+	cx, cy := s.CenterToSDL(pos.X, pos.Y)
+	return &sdl.FRect{X: cx - w/2, Y: cy - h/2, W: w, H: h}
+}
+
 // MousePosition returns the current mouse cursor position in the center-based
 // coordinate system used by visual stimuli (0,0 = screen center).
 //

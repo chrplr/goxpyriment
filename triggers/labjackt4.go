@@ -169,51 +169,19 @@ func (t *LabJackT4) ReadAll() (byte, error) {
 // ReadLine returns the state (0 or 1) of a single EIO input line (0-indexed).
 // Implements [InputTTLDevice].
 func (t *LabJackT4) ReadLine(line int) (byte, error) {
-	if line < 0 || line > 7 {
-		return 0, fmt.Errorf("labjackt4: line %d out of range (0–7)", line)
-	}
-	mask, err := t.ReadAll()
-	if err != nil {
-		return 0, fmt.Errorf("labjackt4.ReadLine: %w", err)
-	}
-	return (mask >> uint(line)) & 0x01, nil
+	return readLineFromMask("labjackt4", t.ReadAll, line)
 }
 
 // WaitForInput blocks until any EIO0–EIO7 input line becomes active or ctx is
 // cancelled. Returns the active-line bitmask and the elapsed reaction time.
 // Implements [InputTTLDevice].
 func (t *LabJackT4) WaitForInput(ctx context.Context) (byte, time.Duration, error) {
-	start := time.Now()
-	for {
-		if err := ctx.Err(); err != nil {
-			return 0, time.Since(start), err
-		}
-		mask, err := t.ReadAll()
-		if err != nil {
-			return 0, time.Since(start), fmt.Errorf("labjackt4.WaitForInput: reading inputs: %w", err)
-		}
-		if mask != 0 {
-			return mask, time.Since(start), nil
-		}
-		time.Sleep(t.pollInterval)
-	}
+	return pollWaitForInput(ctx, "labjackt4", t.ReadAll, t.pollInterval)
 }
 
 // DrainInputs polls until all EIO0–EIO7 input lines are inactive or ctx is
 // cancelled. Call before [LabJackT4.WaitForInput] to clear latched presses
 // from a previous trial. Implements [InputTTLDevice].
 func (t *LabJackT4) DrainInputs(ctx context.Context) error {
-	for {
-		if err := ctx.Err(); err != nil {
-			return err
-		}
-		mask, err := t.ReadAll()
-		if err != nil {
-			return fmt.Errorf("labjackt4.DrainInputs: reading inputs: %w", err)
-		}
-		if mask == 0 {
-			return nil
-		}
-		time.Sleep(t.pollInterval)
-	}
+	return pollDrainInputs(ctx, "labjackt4", t.ReadAll, t.pollInterval)
 }

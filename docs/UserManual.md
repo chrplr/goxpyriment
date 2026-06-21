@@ -238,7 +238,7 @@ stimuli.NewCircle(30, control.Red).SetPosition(control.Point(200, 0))
 stimuli.NewTextLine("Score", -400, -250, control.White)
 ```
 
-The conversion to SDL coordinates (top-left origin) is handled internally by `screen.CenterToSDL(x, y)`. You never call this yourself unless you are writing a custom stimulus type.
+The conversion to SDL coordinates (top-left origin) is handled internally by `screen.CenterToSDL(x, y)`. You never call this yourself unless you are writing a custom stimulus type — in which case `screen.CenteredRect(pos, w, h)` returns the SDL destination rectangle for a `w×h` texture centered at `pos`, factoring out the convert-and-offset step.
 
 ### Logical size
 
@@ -769,14 +769,14 @@ Pass `keys = nil` to accept any key. Pass `catchMouse = false` to ignore the mou
 
 ### Key codes
 
-Key codes are re-exported in `control` for the most common experiment keys. For anything not listed there, use `go-sdl3/sdl` directly:
+Key codes are re-exported in `control` so experiment code never needs to import `go-sdl3` just to name a key. Coverage includes the full alphabet (`K_A` … `K_Z`), the digit row (`K_0` … `K_9`), the numeric keypad (`K_KP_0` … `K_KP_9`, `K_KP_ENTER`, `K_KP_PLUS`, `K_KP_MINUS`), navigation/control keys (`K_SPACE`, `K_ESCAPE`, `K_RETURN`, `K_BACKSPACE`, `K_TAB`, the arrow keys), and common punctuation (`K_MINUS`, `K_PLUS`, `K_EQUALS`, `K_LEFTBRACKET`, `K_RIGHTBRACKET`):
 
 ```go
-import "github.com/Zyko0/go-sdl3/sdl"
-
 key, _ := exp.Keyboard.Wait()
-if key == sdl.K_A { ... }
+if key == control.K_A { ... }
 ```
+
+For a rarely-used code not in `defaults.go`, fall back to `go-sdl3/sdl` directly (e.g. `sdl.K_SEMICOLON`).
 
 ### Response Devices
 

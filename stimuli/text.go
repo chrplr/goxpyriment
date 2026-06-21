@@ -83,13 +83,7 @@ func (t *TextLine) Draw(screen *apparatus.Screen) error {
 		}
 
 		if t.Texture != nil {
-			destX, destY := screen.CenterToSDL(t.Position.X, t.Position.Y)
-			destRect := &sdl.FRect{
-				X: destX - t.Width/2,
-				Y: destY - t.Height/2,
-				W: t.Width,
-				H: t.Height,
-			}
+			destRect := screen.CenteredRect(t.Position, t.Width, t.Height)
 			return screen.Renderer.RenderTexture(t.Texture, nil, destRect)
 		}
 	}
@@ -109,11 +103,7 @@ func (t *TextLine) Present(screen *apparatus.Screen, clear, update bool) error {
 
 // Unload overrides BaseVisual.Unload to destroy the GPU texture.
 func (t *TextLine) Unload() error {
-	if t.Texture != nil {
-		t.Texture.Destroy()
-		t.Texture = nil
-	}
-	return nil
+	return destroyTexture(&t.Texture)
 }
 
 // GetPosition, SetPosition are provided by BaseVisual.

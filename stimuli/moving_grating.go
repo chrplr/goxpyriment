@@ -32,7 +32,6 @@ package stimuli
 
 import (
 	"math"
-	"runtime/debug"
 	"time"
 
 	"github.com/Zyko0/go-sdl3/sdl"
@@ -165,13 +164,10 @@ func presentGratingLoop(
 	}
 
 	// Drain stale input events before starting.
-	var ev sdl.Event
-	for sdl.PollEvent(&ev) {
-	}
+	drainStaleEvents()
 
 	// Disable GC during the animation loop to prevent jitter.
-	oldGC := debug.SetGCPercent(-1)
-	defer debug.SetGCPercent(oldGC)
+	defer disableGC()()
 
 	twoPiTF := 2.0 * math.Pi * temporalFreq
 	start := time.Now()
@@ -215,28 +211,8 @@ func presentGratingLoop(
 		rtMs := time.Since(start).Milliseconds()
 
 		// ── Poll events ───────────────────────────────────────────────────────
-		for sdl.PollEvent(&ev) {
-			switch ev.Type {
-			case sdl.EVENT_KEY_DOWN:
-				k := ev.KeyboardEvent().Key
-				if k == sdl.K_ESCAPE {
-					return MotionResult{RTms: rtMs}, sdl.EndLoop
-				}
-				if interruptKeys != nil {
-					for _, ik := range interruptKeys {
-						if k == ik {
-							return MotionResult{Key: k, RTms: rtMs}, nil
-						}
-					}
-				}
-			case sdl.EVENT_MOUSE_BUTTON_DOWN:
-				if catchMouse {
-					btn := ev.MouseButtonEvent().Button
-					return MotionResult{Button: uint8(btn), RTms: rtMs}, nil
-				}
-			case sdl.EVENT_QUIT:
-				return MotionResult{RTms: rtMs}, sdl.EndLoop
-			}
+		if res, handled, err := pollMotionEvents(interruptKeys, catchMouse, rtMs); handled {
+			return res, err
 		}
 
 		// ── Timeout ───────────────────────────────────────────────────────────

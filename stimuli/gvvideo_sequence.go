@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"math"
-	"runtime/debug"
 	"time"
 
 	"github.com/Zyko0/go-sdl3/sdl"
@@ -153,10 +152,7 @@ func (s *GvVideoSequence) updateFrame(globalFrame int) error {
 
 // Unload destroys the GPU texture and closes all file handles.
 func (s *GvVideoSequence) Unload() error {
-	if s.texture != nil {
-		s.texture.Destroy()
-		s.texture = nil
-	}
+	_ = destroyTexture(&s.texture)
 	for _, gv := range s.gvs {
 		if gv != nil {
 			if c, ok := gv.Reader.(io.Closer); ok {
@@ -178,13 +174,7 @@ func (s *GvVideoSequence) Draw(screen *xio.Screen) error {
 			return fmt.Errorf("GvVideoSequence.Draw: %w", err)
 		}
 	}
-	destX, destY := screen.CenterToSDL(s.Position.X, s.Position.Y)
-	destRect := &sdl.FRect{
-		X: destX - s.Width/2,
-		Y: destY - s.Height/2,
-		W: s.Width,
-		H: s.Height,
-	}
+	destRect := screen.CenteredRect(s.Position, s.Width, s.Height)
 	return screen.Renderer.RenderTexture(s.texture, nil, destRect)
 }
 
@@ -271,8 +261,7 @@ func PlayGvSequence(screen *xio.Screen, paths []string, x, y float32) ([]UserEve
 		return nil, nil, fmt.Errorf("PlayGvSequence: %w", err)
 	}
 
-	oldGC := debug.SetGCPercent(-1)
-	defer debug.SetGCPercent(oldGC)
+	defer disableGC()()
 
 	seq.Position = sdl.FPoint{X: x, Y: y}
 

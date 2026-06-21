@@ -23,7 +23,6 @@ package stimuli
 import (
 	"math"
 	"math/rand"
-	"runtime/debug"
 	"time"
 
 	"github.com/Zyko0/go-sdl3/sdl"
@@ -79,6 +78,47 @@ func drawFilledCircle(r *sdl.Renderer, cx, cy, radius float32) {
 	}
 }
 
+// drainStaleEvents empties the SDL event queue. The motion loops call it once
+// before the first frame so presses left over from the previous trial are not
+// reported as responses.
+func drainStaleEvents() {
+	var ev sdl.Event
+	for sdl.PollEvent(&ev) {
+	}
+}
+
+// pollMotionEvents drains the SDL event queue once and reports the first
+// response relevant to a motion loop. When handled is true the caller must
+// return (res, err) immediately: ESC or window-close yields sdl.EndLoop, an
+// interruptKeys match or (if catchMouse) a mouse-button press yields a normal
+// result. When handled is false the queue was empty of relevant events and the
+// loop should continue. rtMs is stamped into the returned result.
+func pollMotionEvents(interruptKeys []sdl.Keycode, catchMouse bool, rtMs int64) (res MotionResult, handled bool, err error) {
+	var ev sdl.Event
+	for sdl.PollEvent(&ev) {
+		switch ev.Type {
+		case sdl.EVENT_KEY_DOWN:
+			k := ev.KeyboardEvent().Key
+			if k == sdl.K_ESCAPE {
+				return MotionResult{RTms: rtMs}, true, sdl.EndLoop
+			}
+			for _, ik := range interruptKeys {
+				if k == ik {
+					return MotionResult{Key: k, RTms: rtMs}, true, nil
+				}
+			}
+		case sdl.EVENT_MOUSE_BUTTON_DOWN:
+			if catchMouse {
+				btn := ev.MouseButtonEvent().Button
+				return MotionResult{Button: uint8(btn), RTms: rtMs}, true, nil
+			}
+		case sdl.EVENT_QUIT:
+			return MotionResult{RTms: rtMs}, true, sdl.EndLoop
+		}
+	}
+	return MotionResult{}, false, nil
+}
+
 // PresentMovingDotCloud displays an animated cloud of randomly moving dots
 // for up to maxDurationMs milliseconds and optionally waits for a response.
 //
@@ -126,13 +166,10 @@ func PresentMovingDotCloud(
 	}
 
 	// ── Drain stale events ────────────────────────────────────────────────────
-	var ev sdl.Event
-	for sdl.PollEvent(&ev) {
-	}
+	drainStaleEvents()
 
 	// ── Disable GC during the animation loop ──────────────────────────────────
-	oldGC := debug.SetGCPercent(-1)
-	defer debug.SetGCPercent(oldGC)
+	defer disableGC()()
 
 	// SDL-space centre coordinates (computed once).
 	cx, cy := screen.CenterToSDL(center.X, center.Y)
@@ -171,28 +208,8 @@ func PresentMovingDotCloud(
 		rtMs := time.Since(start).Milliseconds()
 
 		// ── Poll events ───────────────────────────────────────────────────────
-		for sdl.PollEvent(&ev) {
-			switch ev.Type {
-			case sdl.EVENT_KEY_DOWN:
-				k := ev.KeyboardEvent().Key
-				if k == sdl.K_ESCAPE {
-					return MotionResult{RTms: rtMs}, sdl.EndLoop
-				}
-				if interruptKeys != nil {
-					for _, ik := range interruptKeys {
-						if k == ik {
-							return MotionResult{Key: k, RTms: rtMs}, nil
-						}
-					}
-				}
-			case sdl.EVENT_MOUSE_BUTTON_DOWN:
-				if catchMouse {
-					btn := ev.MouseButtonEvent().Button
-					return MotionResult{Button: uint8(btn), RTms: rtMs}, nil
-				}
-			case sdl.EVENT_QUIT:
-				return MotionResult{RTms: rtMs}, sdl.EndLoop
-			}
+		if res, handled, err := pollMotionEvents(interruptKeys, catchMouse, rtMs); handled {
+			return res, err
 		}
 
 		// ── Timeout check ─────────────────────────────────────────────────────

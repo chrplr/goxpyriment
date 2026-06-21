@@ -258,19 +258,19 @@ control.FontFromMemory(data []byte, size float32) (*ttf.Font, error)
 control.EndLoop          // sentinel error: return from Run callback to exit
 control.IsEndLoop(err)   // test whether an error is the EndLoop sentinel
 
-// Keyboard codes (only the exported subset)
-control.K_SPACE, K_ESCAPE, K_RETURN, K_BACKSPACE
+// Keyboard codes
+control.K_SPACE, K_ESCAPE, K_RETURN, K_BACKSPACE, K_TAB
 control.K_UP, K_DOWN, K_LEFT, K_RIGHT
-control.K_S, K_D, K_F, K_J, K_K, K_L
-control.K_Q, K_R, K_G, K_B, K_Y, K_N, K_P
-control.K_1, K_2, K_3, K_4
-control.K_KP_1, K_KP_2, K_KP_3, K_KP_4
+control.K_A … K_Z                                  // full alphabet
+control.K_0 … K_9                                  // digit row
+control.K_KP_0 … K_KP_9, K_KP_ENTER, K_KP_PLUS, K_KP_MINUS   // numeric keypad
+control.K_MINUS, K_PLUS, K_EQUALS, K_LEFTBRACKET, K_RIGHTBRACKET  // punctuation
 
 // Mouse buttons
 control.BUTTON_LEFT, BUTTON_RIGHT
 ```
 
-> **Tip:** For key codes not listed above (e.g. `K_A`), import `go-sdl3/sdl` directly and use `sdl.K_A`.
+> **Tip:** The full alphabet, digit row, keypad, and common punctuation keys are re-exported, so experiment code never needs to import `go-sdl3` just to name a key. For a rarely-used code not listed in `defaults.go`, import `go-sdl3/sdl` directly and use `sdl.K_…`.
 
 ### Audio
 
@@ -540,6 +540,7 @@ All stimulus positions use a **center-origin coordinate system**: `(0, 0)` is th
 
 ```go
 screen.CenterToSDL(x, y float32) (float32, float32)  // convert to SDL top-left coords
+screen.CenteredRect(pos FPoint, w, h float32) *FRect  // SDL dest rect for a w×h texture centered at pos
 screen.MousePosition() (float32, float32)              // current cursor in center coords
 screen.Clear() error                                   // fill with background color
 screen.Update() error                                  // present (VSYNC-blocks)

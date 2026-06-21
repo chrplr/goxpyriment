@@ -132,51 +132,19 @@ func (t *FT232HTrigger) ReadAll() (byte, error) {
 // ReadLine returns the state (0 or 1) of a single AC0–AC7 input line (0-indexed).
 // Implements [InputTTLDevice].
 func (t *FT232HTrigger) ReadLine(line int) (byte, error) {
-	if line < 0 || line > 7 {
-		return 0, fmt.Errorf("ft232h: line %d out of range (0–7)", line)
-	}
-	mask, err := t.ReadAll()
-	if err != nil {
-		return 0, fmt.Errorf("ft232h.ReadLine: %w", err)
-	}
-	return (mask >> uint(line)) & 0x01, nil
+	return readLineFromMask("ft232h", t.ReadAll, line)
 }
 
 // WaitForInput blocks until any AC0–AC7 input line becomes active or ctx is
 // cancelled. Returns the active-line bitmask and the elapsed reaction time.
 // Implements [InputTTLDevice].
 func (t *FT232HTrigger) WaitForInput(ctx context.Context) (byte, time.Duration, error) {
-	start := time.Now()
-	for {
-		if err := ctx.Err(); err != nil {
-			return 0, time.Since(start), err
-		}
-		mask, err := t.ReadAll()
-		if err != nil {
-			return 0, time.Since(start), fmt.Errorf("ft232h.WaitForInput: reading inputs: %w", err)
-		}
-		if mask != 0 {
-			return mask, time.Since(start), nil
-		}
-		time.Sleep(t.pollInterval)
-	}
+	return pollWaitForInput(ctx, "ft232h", t.ReadAll, t.pollInterval)
 }
 
 // DrainInputs polls until all AC0–AC7 input lines are inactive or ctx is
 // cancelled. Call before [FT232HTrigger.WaitForInput] to clear latched presses
 // from a previous trial. Implements [InputTTLDevice].
 func (t *FT232HTrigger) DrainInputs(ctx context.Context) error {
-	for {
-		if err := ctx.Err(); err != nil {
-			return err
-		}
-		mask, err := t.ReadAll()
-		if err != nil {
-			return fmt.Errorf("ft232h.DrainInputs: reading inputs: %w", err)
-		}
-		if mask == 0 {
-			return nil
-		}
-		time.Sleep(t.pollInterval)
-	}
+	return pollDrainInputs(ctx, "ft232h", t.ReadAll, t.pollInterval)
 }

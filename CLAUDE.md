@@ -108,6 +108,7 @@ The packages form a deliberate layered stack. Each package has its own `CLAUDE.m
 |---|---|
 | `control/` | Top-level experiment orchestration — `Experiment` facade, SDL re-exports, participant info dialog |
 | `stimuli/` | All visual and audio stimuli, VSYNC-locked animation loops, RSVP streams |
+| `media/` | Multi-clip `.gv` video playback — `MovieManager`/`Movie` for back-to-back movies; complements the single-clip `stimuli.GvVideo`. See `media/CLAUDE.md` |
 | `apparatus/` | SDL window/renderer (`Screen`), keyboard, mouse, gamepad, gamma corrector, response device abstraction |
 | `results/` | Experiment data file (`.csv` with `#`-prefixed metadata), buffered output file |
 | `design/` | Trial/block structure, randomization utilities, Latin-square counterbalancing |

@@ -72,7 +72,7 @@ exp.AddBWSFactor("hand", []string{"left", "right"})
 hand := exp.GetPermutedBWSFactorCondition("hand", subjectID)
 ```
 
-`GetPermutedBWSFactorCondition` indexes into a Latin-square row derived from `subjectID`, ensuring balanced assignment across subjects. The `subjectID` string is parsed as an integer; non-numeric IDs are handled gracefully.
+`GetPermutedBWSFactorCondition(name string, subjectID int)` indexes into a Latin-square row derived from `subjectID`, ensuring balanced assignment across subjects. `subjectID` is an **int** (1-based: subject 1 → first condition). The default ID 0 and negative IDs are normalized into range via floored modulo, so the call never panics.
 
 ## Randomization utilities
 
@@ -137,5 +137,5 @@ The algorithm is greedy-constructive with random restarts. It returns an error i
 
 - `Factors` values are `interface{}`; use type assertions when reading back in experiment code.
 - `AddTrial(t, copies, randomPosition)` inserts `copies` independent copies via `t.Copy()`, so modifying `t` after the call does not affect added trials.
-- `GetPermutedBWSFactorCondition` requires `AddBWSFactor` to be called first with the same name; panics otherwise.
+- `GetPermutedBWSFactorCondition` returns `nil` if `AddBWSFactor` was not called first with the same name (it does not panic).
 - For constrained shuffles, prefer meaningful factor names (`"condition"`, `"target"`) over numeric indices — constraints are keyed by factor name, not column index.

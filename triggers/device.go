@@ -107,13 +107,70 @@ func precisionSleep(dur time.Duration) {
 }
 
 // defaultPulse is a shared Pulse implementation built on SetHigh/SetLow.
-// Used by DLPIO8 and ParallelPort.
+// Used by every OutputTTLDevice except MEGTTLBox, which pulses autonomously
+// in firmware.
 func defaultPulse(d OutputTTLDevice, line int, dur time.Duration) error {
 	if err := d.SetHigh(line); err != nil {
 		return fmt.Errorf("triggers: pulse SetHigh on line %d: %w", line, err)
 	}
 	time.Sleep(dur)
 	return d.SetLow(line)
+}
+
+// readLineFromMask is a shared ReadLine implementation for devices whose
+// per-line state is derived from the full input bitmask returned by readAll.
+// name is the device prefix used in error messages (e.g. "ft232h"). Devices
+// that read a single line directly from hardware (DLPIO8) or use a sentinel
+// range error (MEGTTLBox) implement ReadLine themselves instead.
+func readLineFromMask(name string, readAll func() (byte, error), line int) (byte, error) {
+	if line < 0 || line > 7 {
+		return 0, fmt.Errorf("%s: line %d out of range (0–7)", name, line)
+	}
+	mask, err := readAll()
+	if err != nil {
+		return 0, fmt.Errorf("%s.ReadLine: %w", name, err)
+	}
+	return (mask >> uint(line)) & 0x01, nil
+}
+
+// pollWaitForInput is the shared [InputTTLDevice.WaitForInput] loop: it polls
+// readAll every poll interval until a nonzero mask appears or ctx is cancelled,
+// returning the active-line mask and the elapsed reaction time. name is the
+// device prefix used in error messages.
+func pollWaitForInput(ctx context.Context, name string, readAll func() (byte, error), poll time.Duration) (byte, time.Duration, error) {
+	start := time.Now()
+	for {
+		if err := ctx.Err(); err != nil {
+			return 0, time.Since(start), err
+		}
+		mask, err := readAll()
+		if err != nil {
+			return 0, time.Since(start), fmt.Errorf("%s.WaitForInput: reading inputs: %w", name, err)
+		}
+		if mask != 0 {
+			return mask, time.Since(start), nil
+		}
+		time.Sleep(poll)
+	}
+}
+
+// pollDrainInputs is the shared [InputTTLDevice.DrainInputs] loop: it polls
+// readAll every poll interval until all input lines are inactive or ctx is
+// cancelled. name is the device prefix used in error messages.
+func pollDrainInputs(ctx context.Context, name string, readAll func() (byte, error), poll time.Duration) error {
+	for {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		mask, err := readAll()
+		if err != nil {
+			return fmt.Errorf("%s.DrainInputs: reading inputs: %w", name, err)
+		}
+		if mask == 0 {
+			return nil
+		}
+		time.Sleep(poll)
+	}
 }
 
 // NullOutputTTLDevice is a no-op [OutputTTLDevice]. It is returned by

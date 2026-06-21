@@ -20,7 +20,6 @@ type Circle struct {
 	BaseVisual // Position, GetPosition, SetPosition, Preload, Unload
 	Radius     float32
 	Color      sdl.Color
-	Texture    *sdl.Texture
 }
 
 // NewCircle creates a new Circle stimulus.
@@ -32,7 +31,7 @@ func NewCircle(radius float32, color sdl.Color) *Circle {
 	}
 }
 
-// Draw draws the circle using multiple lines or points.
+// Draw draws the circle using horizontal scanlines.
 // For better performance, we could use a texture.
 func (c *Circle) Draw(screen *apparatus.Screen) error {
 	if err := screen.Renderer.SetDrawColor(c.Color.R, c.Color.G, c.Color.B, c.Color.A); err != nil {
@@ -40,15 +39,7 @@ func (c *Circle) Draw(screen *apparatus.Screen) error {
 	}
 
 	cX, cY := screen.CenterToSDL(c.Position.X, c.Position.Y)
-
-	// Draw a filled circle using horizontal lines
-	for dy := -c.Radius; dy <= c.Radius; dy++ {
-		dx := float32(math.Sqrt(float64(c.Radius*c.Radius - dy*dy)))
-		x1, y := cX-dx, cY+dy
-		x2 := cX + dx
-		screen.Renderer.RenderLine(x1, y, x2, y)
-	}
-
+	drawFilledCircle(screen.Renderer, cX, cY, c.Radius)
 	return nil
 }
 

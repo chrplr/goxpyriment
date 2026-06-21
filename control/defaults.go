@@ -55,37 +55,82 @@ type FPoint = sdl.FPoint
 // FRect re-exports SDL FRect struct so callers can use control.FRect{X:..., Y:..., W:..., H:...} without importing go-sdl3.
 type FRect = sdl.FRect
 
-// Common key codes (re-exported from SDL for convenience).
+// Key codes (re-exported from SDL for convenience). The full alphabet, digit
+// row, keypad, and common navigation/punctuation keys are re-exported so
+// experiment code never needs to import go-sdl3 just to name a key.
 const (
+	// Navigation and control keys.
 	K_SPACE     = sdl.K_SPACE
 	K_ESCAPE    = sdl.K_ESCAPE
 	K_RETURN    = sdl.K_RETURN
 	K_BACKSPACE = sdl.K_BACKSPACE
+	K_TAB       = sdl.K_TAB
 	K_UP        = sdl.K_UP
 	K_DOWN      = sdl.K_DOWN
 	K_LEFT      = sdl.K_LEFT
 	K_RIGHT     = sdl.K_RIGHT
-	K_S         = sdl.K_S
-	K_D         = sdl.K_D
-	K_F         = sdl.K_F
-	K_J         = sdl.K_J
-	K_K         = sdl.K_K
-	K_L         = sdl.K_L
-	K_Q         = sdl.K_Q
-	K_R         = sdl.K_R
-	K_G         = sdl.K_G
-	K_B         = sdl.K_B
-	K_Y         = sdl.K_Y
-	K_N         = sdl.K_N
-	K_P         = sdl.K_P
-	K_1         = sdl.K_1
-	K_2         = sdl.K_2
-	K_3         = sdl.K_3
-	K_4         = sdl.K_4
-	K_KP_1      = sdl.K_KP_1
-	K_KP_2      = sdl.K_KP_2
-	K_KP_3      = sdl.K_KP_3
-	K_KP_4      = sdl.K_KP_4
+
+	// Letters A–Z.
+	K_A = sdl.K_A
+	K_B = sdl.K_B
+	K_C = sdl.K_C
+	K_D = sdl.K_D
+	K_E = sdl.K_E
+	K_F = sdl.K_F
+	K_G = sdl.K_G
+	K_H = sdl.K_H
+	K_I = sdl.K_I
+	K_J = sdl.K_J
+	K_K = sdl.K_K
+	K_L = sdl.K_L
+	K_M = sdl.K_M
+	K_N = sdl.K_N
+	K_O = sdl.K_O
+	K_P = sdl.K_P
+	K_Q = sdl.K_Q
+	K_R = sdl.K_R
+	K_S = sdl.K_S
+	K_T = sdl.K_T
+	K_U = sdl.K_U
+	K_V = sdl.K_V
+	K_W = sdl.K_W
+	K_X = sdl.K_X
+	K_Y = sdl.K_Y
+	K_Z = sdl.K_Z
+
+	// Digit row 0–9.
+	K_0 = sdl.K_0
+	K_1 = sdl.K_1
+	K_2 = sdl.K_2
+	K_3 = sdl.K_3
+	K_4 = sdl.K_4
+	K_5 = sdl.K_5
+	K_6 = sdl.K_6
+	K_7 = sdl.K_7
+	K_8 = sdl.K_8
+	K_9 = sdl.K_9
+
+	// Numeric keypad.
+	K_KP_0     = sdl.K_KP_0
+	K_KP_1     = sdl.K_KP_1
+	K_KP_2     = sdl.K_KP_2
+	K_KP_3     = sdl.K_KP_3
+	K_KP_4     = sdl.K_KP_4
+	K_KP_5     = sdl.K_KP_5
+	K_KP_6     = sdl.K_KP_6
+	K_KP_7     = sdl.K_KP_7
+	K_KP_8     = sdl.K_KP_8
+	K_KP_9     = sdl.K_KP_9
+	K_KP_ENTER = sdl.K_KP_ENTER
+	K_KP_PLUS  = sdl.K_KP_PLUS
+	K_KP_MINUS = sdl.K_KP_MINUS
+
+	// Punctuation.
+	K_MINUS        = sdl.K_MINUS
+	K_PLUS         = sdl.K_PLUS
+	K_EQUALS       = sdl.K_EQUALS
+	K_LEFTBRACKET  = sdl.K_LEFTBRACKET
+	K_RIGHTBRACKET = sdl.K_RIGHTBRACKET
 )
 
 // Mouse button constants (re-exported from SDL).

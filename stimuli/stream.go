@@ -5,7 +5,6 @@ package stimuli
 
 import (
 	"fmt"
-	"runtime/debug"
 	"time"
 
 	"github.com/Zyko0/go-sdl3/sdl"
@@ -80,8 +79,7 @@ func PresentStreamOfImages(screen *apparatus.Screen, elements []VisualStreamElem
 	var timingLogs []TimingLog
 
 	// 3. Performance Optimization: Disable GC to prevent jitter during presentation
-	oldGC := debug.SetGCPercent(-1)
-	defer debug.SetGCPercent(oldGC)
+	defer disableGC()()
 
 	streamStartTime := time.Now()
 
@@ -287,8 +285,7 @@ type SoundStreamElement struct {
 // GC is disabled during playback to reduce timing jitter.
 // ESC causes early return with sdl.EndLoop.
 func PlayStreamOfSounds(elements []SoundStreamElement) ([]UserEvent, []TimingLog, error) {
-	oldGC := debug.SetGCPercent(-1)
-	defer debug.SetGCPercent(oldGC)
+	defer disableGC()()
 
 	var userEvents []UserEvent
 	var timingLogs []TimingLog

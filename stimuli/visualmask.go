@@ -84,14 +84,7 @@ func (vm *VisualMask) Draw(screen *apparatus.Screen) error {
 		}
 	}
 
-	destX, destY := screen.CenterToSDL(vm.Position.X, vm.Position.Y)
-	destRect := &sdl.FRect{
-		X: destX - vm.Size.X/2,
-		Y: destY - vm.Size.Y/2,
-		W: vm.Size.X,
-		H: vm.Size.Y,
-	}
-
+	destRect := screen.CenteredRect(vm.Position, vm.Size.X, vm.Size.Y)
 	return screen.Renderer.RenderTexture(vm.Texture, nil, destRect)
 }
 
@@ -102,11 +95,7 @@ func (vm *VisualMask) Present(screen *apparatus.Screen, clear, update bool) erro
 
 // Unload overrides BaseVisual.Unload to destroy the GPU texture.
 func (vm *VisualMask) Unload() error {
-	if vm.Texture != nil {
-		vm.Texture.Destroy()
-		vm.Texture = nil
-	}
-	return nil
+	return destroyTexture(&vm.Texture)
 }
 
 // GetPosition, SetPosition are provided by BaseVisual.

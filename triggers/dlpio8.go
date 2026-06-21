@@ -199,38 +199,13 @@ func (d *DLPIO8) ReadAll() (byte, error) {
 // Returns the active-line bitmask and the elapsed reaction time.
 // Implements [InputTTLDevice].
 func (d *DLPIO8) WaitForInput(ctx context.Context) (byte, time.Duration, error) {
-	start := time.Now()
-	for {
-		if err := ctx.Err(); err != nil {
-			return 0, time.Since(start), err
-		}
-		mask, err := d.ReadAll()
-		if err != nil {
-			return 0, time.Since(start), fmt.Errorf("dlpio8.WaitForInput: reading inputs: %w", err)
-		}
-		if mask != 0 {
-			return mask, time.Since(start), nil
-		}
-		time.Sleep(d.pollInterval)
-	}
+	return pollWaitForInput(ctx, "dlpio8", d.ReadAll, d.pollInterval)
 }
 
 // DrainInputs polls until all input lines are inactive or ctx is cancelled.
 // Implements [InputTTLDevice].
 func (d *DLPIO8) DrainInputs(ctx context.Context) error {
-	for {
-		if err := ctx.Err(); err != nil {
-			return err
-		}
-		mask, err := d.ReadAll()
-		if err != nil {
-			return fmt.Errorf("dlpio8.DrainInputs: reading inputs: %w", err)
-		}
-		if mask == 0 {
-			return nil
-		}
-		time.Sleep(d.pollInterval)
-	}
+	return pollDrainInputs(ctx, "dlpio8", d.ReadAll, d.pollInterval)
 }
 
 // Close sets all lines LOW and closes the serial port.

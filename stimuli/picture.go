@@ -88,15 +88,8 @@ func (p *Picture) Draw(screen *apparatus.Screen) error {
 		}
 	}
 
-	destX, destY := screen.CenterToSDL(p.Position.X, p.Position.Y)
 	// Centering the image at the target position
-	destRect := &sdl.FRect{
-		X: destX - p.Width/2,
-		Y: destY - p.Height/2,
-		W: p.Width,
-		H: p.Height,
-	}
-
+	destRect := screen.CenteredRect(p.Position, p.Width, p.Height)
 	return screen.Renderer.RenderTexture(p.Texture, nil, destRect)
 }
 
@@ -107,11 +100,7 @@ func (p *Picture) Present(screen *apparatus.Screen, clear, update bool) error {
 
 // Unload overrides BaseVisual.Unload to destroy the GPU texture.
 func (p *Picture) Unload() error {
-	if p.Texture != nil {
-		p.Texture.Destroy()
-		p.Texture = nil
-	}
-	return nil
+	return destroyTexture(&p.Texture)
 }
 
 // GetPosition, SetPosition are provided by BaseVisual.

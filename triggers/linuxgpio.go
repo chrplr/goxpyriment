@@ -154,51 +154,19 @@ func (t *LinuxGPIOTrigger) ReadAll() (byte, error) {
 // ReadLine returns the state (0 or 1) of a single input line (0-indexed).
 // Implements [InputTTLDevice].
 func (t *LinuxGPIOTrigger) ReadLine(line int) (byte, error) {
-	if line < 0 || line > 7 {
-		return 0, fmt.Errorf("linuxgpio: line %d out of range (0–7)", line)
-	}
-	mask, err := t.ReadAll()
-	if err != nil {
-		return 0, fmt.Errorf("linuxgpio.ReadLine: %w", err)
-	}
-	return (mask >> uint(line)) & 0x01, nil
+	return readLineFromMask("linuxgpio", t.ReadAll, line)
 }
 
 // WaitForInput blocks until any input line becomes active or ctx is cancelled.
 // Returns the active-line bitmask and the elapsed reaction time.
 // Implements [InputTTLDevice].
 func (t *LinuxGPIOTrigger) WaitForInput(ctx context.Context) (byte, time.Duration, error) {
-	start := time.Now()
-	for {
-		if err := ctx.Err(); err != nil {
-			return 0, time.Since(start), err
-		}
-		mask, err := t.ReadAll()
-		if err != nil {
-			return 0, time.Since(start), fmt.Errorf("linuxgpio.WaitForInput: reading inputs: %w", err)
-		}
-		if mask != 0 {
-			return mask, time.Since(start), nil
-		}
-		time.Sleep(t.pollInterval)
-	}
+	return pollWaitForInput(ctx, "linuxgpio", t.ReadAll, t.pollInterval)
 }
 
 // DrainInputs polls until all input lines are inactive or ctx is cancelled.
 // Call before [LinuxGPIOTrigger.WaitForInput] to clear latched presses.
 // Implements [InputTTLDevice].
 func (t *LinuxGPIOTrigger) DrainInputs(ctx context.Context) error {
-	for {
-		if err := ctx.Err(); err != nil {
-			return err
-		}
-		mask, err := t.ReadAll()
-		if err != nil {
-			return fmt.Errorf("linuxgpio.DrainInputs: reading inputs: %w", err)
-		}
-		if mask == 0 {
-			return nil
-		}
-		time.Sleep(t.pollInterval)
-	}
+	return pollDrainInputs(ctx, "linuxgpio", t.ReadAll, t.pollInterval)
 }

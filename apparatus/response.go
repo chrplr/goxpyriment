@@ -61,6 +61,41 @@ type ResponseDevice interface {
 
 // ── SDL-based response devices ──────────────────────────────────────────────
 
+// waitSDLResponse runs the slice-polling WaitResponse loop shared by the
+// keyboard, mouse, and gamepad devices. poll is invoked with a slice timeout
+// (ms) and returns the detected code (0 = nothing this slice) and its SDL3
+// hardware event timestamp. The loop re-checks ctx between slices and converts
+// the timestamp into an RT measured from the call (Precise: true).
+func waitSDLResponse(ctx context.Context, source DeviceKind, poll func(sliceMS int) (uint32, uint64, error)) (Response, error) {
+	startNS := sdl.TicksNS()
+	const sliceMS = 50
+	for {
+		if err := ctx.Err(); err != nil {
+			return Response{}, err
+		}
+		code, ts, err := poll(sliceMS)
+		if err != nil {
+			return Response{}, err
+		}
+		if code != 0 {
+			var rt time.Duration
+			if ts >= startNS {
+				rt = time.Duration(ts - startNS)
+			}
+			return Response{Source: source, Code: code, RT: rt, Precise: true}, nil
+		}
+		// Slice timed out — loop and re-check ctx.
+	}
+}
+
+// drainSDLEvents discards every pending SDL event. Shared by the mouse and
+// gamepad DrainResponses implementations.
+func drainSDLEvents() {
+	var event sdl.Event
+	for sdl.PollEvent(&event) {
+	}
+}
+
 // KeyboardResponseDevice wraps a [Keyboard] as a [ResponseDevice].
 // RT is derived from the SDL3 hardware event timestamp (Precise: true).
 type KeyboardResponseDevice struct {
@@ -70,30 +105,10 @@ type KeyboardResponseDevice struct {
 // WaitResponse blocks until any key is pressed or ctx is cancelled.
 // It polls in 50 ms slices so that context cancellation is checked regularly.
 func (d *KeyboardResponseDevice) WaitResponse(ctx context.Context) (Response, error) {
-	startNS := sdl.TicksNS()
-	const sliceMS = 50
-	for {
-		if err := ctx.Err(); err != nil {
-			return Response{}, err
-		}
+	return waitSDLResponse(ctx, DeviceKeyboard, func(sliceMS int) (uint32, uint64, error) {
 		key, ts, err := d.KB.GetKeyEventTS(nil, sliceMS)
-		if err != nil {
-			return Response{}, err
-		}
-		if key != 0 {
-			var rt time.Duration
-			if ts >= startNS {
-				rt = time.Duration(ts - startNS)
-			}
-			return Response{
-				Source:  DeviceKeyboard,
-				Code:    uint32(key),
-				RT:      rt,
-				Precise: true,
-			}, nil
-		}
-		// Slice timed out — loop and re-check ctx.
-	}
+		return uint32(key), ts, err
+	})
 }
 
 // DrainResponses clears all pending SDL events.
@@ -113,36 +128,14 @@ type MouseResponseDevice struct {
 
 // WaitResponse blocks until any mouse button is pressed or ctx is cancelled.
 func (d *MouseResponseDevice) WaitResponse(ctx context.Context) (Response, error) {
-	startNS := sdl.TicksNS()
-	const sliceMS = 50
-	for {
-		if err := ctx.Err(); err != nil {
-			return Response{}, err
-		}
-		btn, ts, err := d.M.GetPressEventTS(sliceMS)
-		if err != nil {
-			return Response{}, err
-		}
-		if btn != 0 {
-			var rt time.Duration
-			if ts >= startNS {
-				rt = time.Duration(ts - startNS)
-			}
-			return Response{
-				Source:  DeviceMouse,
-				Code:    btn,
-				RT:      rt,
-				Precise: true,
-			}, nil
-		}
-	}
+	return waitSDLResponse(ctx, DeviceMouse, func(sliceMS int) (uint32, uint64, error) {
+		return d.M.GetPressEventTS(sliceMS)
+	})
 }
 
 // DrainResponses clears pending SDL events.
 func (d *MouseResponseDevice) DrainResponses(_ context.Context) error {
-	var event sdl.Event
-	for sdl.PollEvent(&event) {
-	}
+	drainSDLEvents()
 	return nil
 }
 
@@ -157,36 +150,15 @@ type GamepadResponseDevice struct {
 
 // WaitResponse blocks until any gamepad button is pressed or ctx is cancelled.
 func (d *GamepadResponseDevice) WaitResponse(ctx context.Context) (Response, error) {
-	startNS := sdl.TicksNS()
-	const sliceMS = 50
-	for {
-		if err := ctx.Err(); err != nil {
-			return Response{}, err
-		}
+	return waitSDLResponse(ctx, DeviceGamepad, func(sliceMS int) (uint32, uint64, error) {
 		btn, ts, err := d.GP.GetPressEventTS(sliceMS)
-		if err != nil {
-			return Response{}, err
-		}
-		if btn != 0 {
-			var rt time.Duration
-			if ts >= startNS {
-				rt = time.Duration(ts - startNS)
-			}
-			return Response{
-				Source:  DeviceGamepad,
-				Code:    uint32(btn),
-				RT:      rt,
-				Precise: true,
-			}, nil
-		}
-	}
+		return uint32(btn), ts, err
+	})
 }
 
 // DrainResponses clears pending SDL events.
 func (d *GamepadResponseDevice) DrainResponses(_ context.Context) error {
-	var event sdl.Event
-	for sdl.PollEvent(&event) {
-	}
+	drainSDLEvents()
 	return nil
 }
 

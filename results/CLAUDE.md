@@ -24,6 +24,8 @@ In normal experiments, access via `exp.Data` — do not create a `DataFile` dire
 |---|---|
 | `AddVariableNames(names []string)` | Write CSV header row (`subject_id` is always prepended automatically — do not include it) |
 | `Add(...interface{})` | Append a data row — numbers/bools bare, all other fields always quoted (RFC 4180) |
+| `WriteComment(string)` | Write a `#`-prefixed line to the info file |
+| `WriteSystemInfo(apparatus.SystemInfo)` | Write SDL/renderer/audio metadata to the info file |
 | `WriteDisplayInfo(apparatus.DisplayInfo)` | Write display metadata to the info file |
 | `WriteParticipantInfo(map[string]string)` | Write participant metadata to the info file (keys sorted) |
 | `WriteEndTime()` | Write session end time and duration to the info file |

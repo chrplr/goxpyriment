@@ -155,14 +155,7 @@ func (rds *RDS) Draw(screen *xio.Screen) error {
 		return fmt.Errorf("stimuli.RDS.Draw: querying texture size: %w", err)
 	}
 
-	destX, destY := screen.CenterToSDL(rds.Position.X, rds.Position.Y)
-	destRect := &sdl.FRect{
-		X: destX - float32(w)/2,
-		Y: destY - float32(h)/2,
-		W: float32(w),
-		H: float32(h),
-	}
-
+	destRect := screen.CenteredRect(rds.Position, float32(w), float32(h))
 	return screen.Renderer.RenderTexture(rds.Texture, nil, destRect)
 }
 
@@ -175,9 +168,5 @@ func (rds *RDS) Present(screen *xio.Screen, clear, update bool) error {
 
 // Unload overrides BaseVisual.Unload to destroy the GPU texture.
 func (rds *RDS) Unload() error {
-	if rds.Texture != nil {
-		rds.Texture.Destroy()
-		rds.Texture = nil
-	}
-	return nil
+	return destroyTexture(&rds.Texture)
 }

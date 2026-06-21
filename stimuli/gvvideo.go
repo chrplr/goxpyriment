@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"math"
-	"runtime/debug"
 	"time"
 
 	"github.com/Zyko0/go-sdl3/sdl"
@@ -115,13 +114,7 @@ func (v *GvVideo) Draw(screen *xio.Screen) error {
 			return fmt.Errorf("GvVideo.Draw: %w", err)
 		}
 	}
-	destX, destY := screen.CenterToSDL(v.Position.X, v.Position.Y)
-	destRect := &sdl.FRect{
-		X: destX - v.Width/2,
-		Y: destY - v.Height/2,
-		W: v.Width,
-		H: v.Height,
-	}
+	destRect := screen.CenteredRect(v.Position, v.Width, v.Height)
 	return screen.Renderer.RenderTexture(v.texture, nil, destRect)
 }
 
@@ -220,8 +213,7 @@ func PlayGv(screen *xio.Screen, path string, x, y float32) ([]UserEvent, []Video
 		return nil, nil, fmt.Errorf("PlayGv: %w", err)
 	}
 
-	oldGC := debug.SetGCPercent(-1)
-	defer debug.SetGCPercent(oldGC)
+	defer disableGC()()
 
 	v.Position = sdl.FPoint{X: x, Y: y}
 

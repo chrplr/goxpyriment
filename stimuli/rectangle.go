@@ -35,15 +35,8 @@ func (r *Rectangle) Draw(screen *apparatus.Screen) error {
 		return fmt.Errorf("stimuli.Rectangle.Draw: setting draw color: %w", err)
 	}
 
-	destX, destY := screen.CenterToSDL(r.Position.X, r.Position.Y)
 	// Centering the rectangle at the target position
-	destRect := &sdl.FRect{
-		X: destX - r.Rect.W/2,
-		Y: destY - r.Rect.H/2,
-		W: r.Rect.W,
-		H: r.Rect.H,
-	}
-
+	destRect := screen.CenteredRect(r.Position, r.Rect.W, r.Rect.H)
 	return screen.Renderer.RenderFillRect(destRect)
 }
 

@@ -116,7 +116,7 @@ Import only `control` — do not import `go-sdl3` directly in experiment code.
 `Black`, `White`, `Red`, `Green`, `Blue`, `Yellow`, `Magenta`, `Cyan`, `Gray`, `DarkGray`, `LightGray`
 
 ### Key codes
-`K_SPACE`, `K_ESCAPE`, `K_RETURN`, `K_UP`, `K_DOWN`, `K_LEFT`, `K_RIGHT`, `K_F`, `K_J`, `K_Q`, `K_Y`, `K_N`, `K_1` … `K_9`, `K_0`, plus others; see `defaults.go` for the full list.
+Navigation/control (`K_SPACE`, `K_ESCAPE`, `K_RETURN`, `K_BACKSPACE`, `K_TAB`, `K_UP`, `K_DOWN`, `K_LEFT`, `K_RIGHT`), the full alphabet `K_A` … `K_Z`, the digit row `K_0` … `K_9`, the numeric keypad (`K_KP_0` … `K_KP_9`, `K_KP_ENTER`, `K_KP_PLUS`, `K_KP_MINUS`), and punctuation (`K_MINUS`, `K_PLUS`, `K_EQUALS`, `K_LEFTBRACKET`, `K_RIGHTBRACKET`). See `defaults.go` for the authoritative list.
 
 ### Mouse
 `BUTTON_LEFT`, `BUTTON_RIGHT`
@@ -129,8 +129,8 @@ Import only `control` — do not import `go-sdl3` directly in experiment code.
 - `Origin() sdl.FPoint` — (0, 0)
 - `RGB(r, g, b uint8) sdl.Color`
 - `RGBA(r, g, b, a uint8) sdl.Color`
-- `FontFromMemory(data []byte, size int) (*ttf.Font, error)` — load TTF from embedded bytes
-- `FontFromFile(path string, size int) (*ttf.Font, error)`
+- `FontFromMemory(data []byte, size float32) (*ttf.Font, error)` — load TTF from embedded bytes
+- `FontFromFile(path string, size float32) (*ttf.Font, error)`
 
 ### Loop sentinel
 - `EndLoop` — return from `exp.Run` callback to exit cleanly

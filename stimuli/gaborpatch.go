@@ -114,14 +114,7 @@ func (gp *GaborPatch) Draw(screen *apparatus.Screen) error {
 		}
 	}
 
-	destX, destY := screen.CenterToSDL(gp.Position.X, gp.Position.Y)
-	destRect := &sdl.FRect{
-		X: destX - gp.Size/2,
-		Y: destY - gp.Size/2,
-		W: gp.Size,
-		H: gp.Size,
-	}
-
+	destRect := screen.CenteredRect(gp.Position, gp.Size, gp.Size)
 	return screen.Renderer.RenderTexture(gp.Texture, nil, destRect)
 }
 
@@ -134,9 +127,5 @@ func (gp *GaborPatch) Present(screen *apparatus.Screen, clear, update bool) erro
 
 // Unload overrides BaseVisual.Unload to destroy the GPU texture.
 func (gp *GaborPatch) Unload() error {
-	if gp.Texture != nil {
-		gp.Texture.Destroy()
-		gp.Texture = nil
-	}
-	return nil
+	return destroyTexture(&gp.Texture)
 }

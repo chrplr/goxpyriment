@@ -274,39 +274,14 @@ func (b *MEGTTLBox) ReadLine(line int) (byte, error) {
 // Returns the active-line bitmask and the elapsed reaction time.
 // Implements [InputTTLDevice].
 func (b *MEGTTLBox) WaitForInput(ctx context.Context) (byte, time.Duration, error) {
-	start := time.Now()
-	for {
-		if err := ctx.Err(); err != nil {
-			return 0, time.Since(start), err
-		}
-		mask, err := b.ReadAll()
-		if err != nil {
-			return 0, time.Since(start), fmt.Errorf("megttlbox.WaitForInput: reading inputs: %w", err)
-		}
-		if mask != 0 {
-			return mask, time.Since(start), nil
-		}
-		time.Sleep(b.pollInterval)
-	}
+	return pollWaitForInput(ctx, "megttlbox", b.ReadAll, b.pollInterval)
 }
 
 // DrainInputs polls until all input lines are inactive or ctx is cancelled.
 // Call this before [WaitForInput] to clear any latched presses from a previous
 // trial. Implements [InputTTLDevice].
 func (b *MEGTTLBox) DrainInputs(ctx context.Context) error {
-	for {
-		if err := ctx.Err(); err != nil {
-			return err
-		}
-		mask, err := b.ReadAll()
-		if err != nil {
-			return fmt.Errorf("megttlbox.DrainInputs: reading inputs: %w", err)
-		}
-		if mask == 0 {
-			return nil
-		}
-		time.Sleep(b.pollInterval)
-	}
+	return pollDrainInputs(ctx, "megttlbox", b.ReadAll, b.pollInterval)
 }
 
 // --- FORPButton ---
