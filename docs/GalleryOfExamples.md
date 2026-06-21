@@ -117,6 +117,7 @@ Hardware, timing, and feature tests live in the [`tests/`](../tests/) directory 
 | [test_stream_mixed](https://github.com/chrplr/goxpyriment/tree/main/tests/test_stream_mixed) | Heterogeneous stream mixing visual and audio stimuli via PresentStreamOfStimuli |
 | [test_stream_text](https://github.com/chrplr/goxpyriment/tree/main/tests/test_stream_text) | High-precision RSVP loop streaming a sequence of text strings |
 | [test_text_input](https://github.com/chrplr/goxpyriment/tree/main/tests/test_text_input) | Demonstration of the `TextInput` stimulus collecting free-text keyboard input |
+| [test_vsync_blocking](https://github.com/chrplr/goxpyriment/tree/main/tests/test_vsync_blocking) | Compares FlipTS and PacedFlipTS to determine if the platform/driver blocks on VSYNC or returns immediately |
 | [Timing-Tests](https://github.com/chrplr/goxpyriment/tree/main/tests/Timing-Tests) | Hardware timing verification suite: eleven sub-tests (frame jitter, true refresh rate, audio latency, photodiode/BBTK/oscilloscope checks) selected with -test <name> |
 <!-- END:tests -->
 
