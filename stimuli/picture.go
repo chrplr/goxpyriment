@@ -5,6 +5,8 @@
 package stimuli
 
 import (
+	"fmt"
+
 	"github.com/Zyko0/go-sdl3/img"
 	"github.com/Zyko0/go-sdl3/sdl"
 	"github.com/chrplr/goxpyriment/apparatus"
@@ -47,17 +49,17 @@ func (p *Picture) preload(screen *apparatus.Screen) error {
 	if p.Memory != nil {
 		ioStream, err := sdl.IOFromBytes(p.Memory)
 		if err != nil {
-			return err
+			return fmt.Errorf("stimuli.Picture: reading image from memory: %w", err)
 		}
 		defer ioStream.Close()
 		surface, err = img.LoadIO(ioStream, false)
 		if err != nil {
-			return err
+			return fmt.Errorf("stimuli.Picture: decoding image from memory: %w", err)
 		}
 	} else {
 		surface, err = img.Load(p.FilePath)
 		if err != nil {
-			return err
+			return fmt.Errorf("stimuli.Picture: loading image %q: %w", p.FilePath, err)
 		}
 	}
 	defer surface.Destroy()
@@ -71,7 +73,7 @@ func (p *Picture) preload(screen *apparatus.Screen) error {
 
 	texture, err := screen.Renderer.CreateTextureFromSurface(surface)
 	if err != nil {
-		return err
+		return fmt.Errorf("stimuli.Picture: creating texture: %w", err)
 	}
 	p.Texture = texture
 	return nil
@@ -82,7 +84,7 @@ func (p *Picture) preload(screen *apparatus.Screen) error {
 func (p *Picture) Draw(screen *apparatus.Screen) error {
 	if p.Texture == nil {
 		if err := p.preload(screen); err != nil {
-			return err
+			return fmt.Errorf("stimuli.Picture.Draw: %w", err)
 		}
 	}
 

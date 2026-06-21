@@ -8,6 +8,7 @@ package results
 
 import (
 	"bufio"
+	"fmt"
 	"os"
 	"path/filepath"
 )
@@ -18,7 +19,7 @@ import (
 func NewOutputFile(directory, filename string) (*OutputFile, error) {
 	if _, err := os.Stat(directory); os.IsNotExist(err) {
 		if err := os.MkdirAll(directory, 0755); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("results.NewOutputFile: creating directory %q: %w", directory, err)
 		}
 	}
 
@@ -27,7 +28,7 @@ func NewOutputFile(directory, filename string) (*OutputFile, error) {
 	// Create/truncate file
 	f, err := os.Create(fullPath)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("results.NewOutputFile: creating file %q: %w", fullPath, err)
 	}
 	f.Close()
 
@@ -48,14 +49,14 @@ func (o *OutputFile) Save() error {
 
 	f, err := os.OpenFile(o.FullPath, os.O_APPEND|os.O_WRONLY, 0644)
 	if err != nil {
-		return err
+		return fmt.Errorf("results.OutputFile.Save: opening %q: %w", o.FullPath, err)
 	}
 	defer f.Close()
 
 	writer := bufio.NewWriter(f)
 	for _, line := range o.Buffer {
 		if _, err := writer.WriteString(line); err != nil {
-			return err
+			return fmt.Errorf("results.OutputFile.Save: writing to %q: %w", o.FullPath, err)
 		}
 	}
 	o.Buffer = make([]string, 0)

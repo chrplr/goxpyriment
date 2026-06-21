@@ -5,6 +5,8 @@
 package stimuli
 
 import (
+	"fmt"
+
 	"github.com/Zyko0/go-sdl3/sdl"
 	"github.com/chrplr/goxpyriment/apparatus"
 )
@@ -40,14 +42,14 @@ func (ti *TextInput) Get(screen *apparatus.Screen, keyboard *apparatus.Keyboard)
 
 	// Start SDL text input
 	if err := screen.Window.StartTextInput(); err != nil {
-		return "", err
+		return "", fmt.Errorf("stimuli.TextInput.Get: starting text input: %w", err)
 	}
 	defer screen.Window.StopTextInput()
 
 	for {
 		ti.UserText = string(runes)
 		if err := ti.Present(screen, true, true); err != nil {
-			return "", err
+			return "", fmt.Errorf("stimuli.TextInput.Get: %w", err)
 		}
 
 		var event sdl.Event
@@ -80,25 +82,25 @@ func (ti *TextInput) Draw(screen *apparatus.Screen) error {
 	// Message
 	msg := NewTextBox(ti.Message, int32(ti.BoxWidth), sdl.FPoint{X: ti.Position.X, Y: ti.Position.Y + 60}, ti.TextColor)
 	if err := msg.Draw(screen); err != nil {
-		return err
+		return fmt.Errorf("stimuli.TextInput.Draw: message: %w", err)
 	}
 
 	// Input Frame
 	frame := NewRectangle(ti.Position.X, ti.Position.Y, ti.BoxWidth, 40, ti.FrameColor)
 	if err := frame.Draw(screen); err != nil {
-		return err
+		return fmt.Errorf("stimuli.TextInput.Draw: frame: %w", err)
 	}
 
 	// Inner background (smaller than frame)
 	inner := NewRectangle(ti.Position.X, ti.Position.Y, ti.BoxWidth-2, 38, ti.BackgroundColor)
 	if err := inner.Draw(screen); err != nil {
-		return err
+		return fmt.Errorf("stimuli.TextInput.Draw: inner background: %w", err)
 	}
 
 	// User Text
 	user := NewTextLine(ti.UserText, ti.Position.X, ti.Position.Y, ti.TextColor)
 	if err := user.Draw(screen); err != nil {
-		return err
+		return fmt.Errorf("stimuli.TextInput.Draw: user text: %w", err)
 	}
 
 	return nil

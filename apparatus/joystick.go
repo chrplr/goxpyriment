@@ -4,6 +4,7 @@
 package apparatus
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/Zyko0/go-sdl3/sdl"
@@ -21,7 +22,7 @@ type Joystick struct {
 func GetJoysticks() ([]*Joystick, error) {
 	ids, err := sdl.GetJoysticks()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("apparatus.GetJoysticks: %w", err)
 	}
 
 	res := make([]*Joystick, 0, len(ids))

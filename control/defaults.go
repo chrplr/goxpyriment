@@ -7,6 +7,7 @@ package control
 
 import (
 	"errors"
+	"fmt"
 
 	"github.com/Zyko0/go-sdl3/sdl"
 	"github.com/Zyko0/go-sdl3/ttf"
@@ -128,7 +129,7 @@ func IsEndLoop(err error) bool {
 func FontFromMemory(data []byte, size float32) (*ttf.Font, error) {
 	ioStream, err := sdl.IOFromBytes(data)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("control.FontFromMemory: %w", err)
 	}
 	return ttf.OpenFontIO(ioStream, true, size)
 }

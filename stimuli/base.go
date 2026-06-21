@@ -22,6 +22,8 @@ package stimuli
 // interface with just a Draw method and a one-line Present delegation.
 
 import (
+	"fmt"
+
 	"github.com/Zyko0/go-sdl3/sdl"
 	"github.com/chrplr/goxpyriment/apparatus"
 )
@@ -97,11 +99,11 @@ type Drawable interface {
 func PresentDrawable(d Drawable, screen *apparatus.Screen, clear, update bool) error {
 	if clear {
 		if err := screen.Clear(); err != nil {
-			return err
+			return fmt.Errorf("stimuli.PresentDrawable: clearing screen: %w", err)
 		}
 	}
 	if err := d.Draw(screen); err != nil {
-		return err
+		return fmt.Errorf("stimuli.PresentDrawable: %w", err)
 	}
 	if update {
 		return screen.Update()

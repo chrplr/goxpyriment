@@ -174,7 +174,7 @@ func (t *LabJackT4) ReadLine(line int) (byte, error) {
 	}
 	mask, err := t.ReadAll()
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("labjackt4.ReadLine: %w", err)
 	}
 	return (mask >> uint(line)) & 0x01, nil
 }
@@ -190,7 +190,7 @@ func (t *LabJackT4) WaitForInput(ctx context.Context) (byte, time.Duration, erro
 		}
 		mask, err := t.ReadAll()
 		if err != nil {
-			return 0, time.Since(start), err
+			return 0, time.Since(start), fmt.Errorf("labjackt4.WaitForInput: reading inputs: %w", err)
 		}
 		if mask != 0 {
 			return mask, time.Since(start), nil
@@ -209,7 +209,7 @@ func (t *LabJackT4) DrainInputs(ctx context.Context) error {
 		}
 		mask, err := t.ReadAll()
 		if err != nil {
-			return err
+			return fmt.Errorf("labjackt4.DrainInputs: reading inputs: %w", err)
 		}
 		if mask == 0 {
 			return nil

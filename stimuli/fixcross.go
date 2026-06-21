@@ -5,6 +5,8 @@
 package stimuli
 
 import (
+	"fmt"
+
 	"github.com/Zyko0/go-sdl3/sdl"
 	"github.com/chrplr/goxpyriment/apparatus"
 )
@@ -32,7 +34,7 @@ func NewFixCross(size float32, lineWidth float32, color sdl.Color) *FixCross {
 
 func (f *FixCross) Draw(screen *apparatus.Screen) error {
 	if err := screen.Renderer.SetDrawColor(f.Color.R, f.Color.G, f.Color.B, f.Color.A); err != nil {
-		return err
+		return fmt.Errorf("stimuli.FixCross.Draw: setting draw color: %w", err)
 	}
 
 	cX, cY := screen.CenterToSDL(f.Position.X, f.Position.Y)
@@ -46,7 +48,7 @@ func (f *FixCross) Draw(screen *apparatus.Screen) error {
 		H: f.LineWidth,
 	}
 	if err := screen.Renderer.RenderFillRect(hRect); err != nil {
-		return err
+		return fmt.Errorf("stimuli.FixCross.Draw: rendering horizontal bar: %w", err)
 	}
 
 	// Vertical line

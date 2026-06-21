@@ -5,6 +5,7 @@ package apparatus
 
 import (
 	"errors"
+	"fmt"
 	"math"
 	"time"
 
@@ -190,7 +191,7 @@ func ScanOnset(pcm []byte, threshold float32, windowSz int) int {
 func DeviceNames() (map[sdl.AudioDeviceID]string, error) {
 	devices, err := GetRecordingDevices()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("apparatus.DeviceNames: %w", err)
 	}
 	names := make(map[sdl.AudioDeviceID]string, len(devices))
 	for _, d := range devices {

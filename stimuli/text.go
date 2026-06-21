@@ -5,6 +5,8 @@
 package stimuli
 
 import (
+	"fmt"
+
 	"github.com/Zyko0/go-sdl3/sdl"
 	"github.com/Zyko0/go-sdl3/ttf"
 	"github.com/chrplr/goxpyriment/apparatus"
@@ -49,7 +51,7 @@ func (t *TextLine) preload(screen *apparatus.Screen, font *ttf.Font) error {
 
 	surface, err := font.RenderTextBlended(t.Text, t.Color)
 	if err != nil {
-		return err
+		return fmt.Errorf("stimuli.TextLine: rendering text %q: %w", t.Text, err)
 	}
 	defer surface.Destroy()
 
@@ -58,7 +60,7 @@ func (t *TextLine) preload(screen *apparatus.Screen, font *ttf.Font) error {
 
 	texture, err := screen.Renderer.CreateTextureFromSurface(surface)
 	if err != nil {
-		return err
+		return fmt.Errorf("stimuli.TextLine: creating texture: %w", err)
 	}
 	t.Texture = texture
 	t.Font = font
@@ -76,7 +78,7 @@ func (t *TextLine) Draw(screen *apparatus.Screen) error {
 	if f != nil {
 		if t.Texture == nil || t.Font != f {
 			if err := t.preload(screen, f); err != nil {
-				return err
+				return fmt.Errorf("stimuli.TextLine.Draw: %w", err)
 			}
 		}
 
@@ -94,7 +96,7 @@ func (t *TextLine) Draw(screen *apparatus.Screen) error {
 
 	// Fallback to DebugText
 	if err := screen.Renderer.SetDrawColor(t.Color.R, t.Color.G, t.Color.B, t.Color.A); err != nil {
-		return err
+		return fmt.Errorf("stimuli.TextLine.Draw: setting draw color: %w", err)
 	}
 	// Note: DebugText doesn't support centering easily, just using Position
 	return screen.Renderer.DebugText(t.Position.X, t.Position.Y, t.Text)

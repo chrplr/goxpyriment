@@ -21,6 +21,7 @@
 package apparatus
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/Zyko0/go-sdl3/sdl"
@@ -241,7 +242,7 @@ func (s *Screen) Size() (int32, int32, error) {
 // Clear clears the screen with the background color.
 func (s *Screen) Clear() error {
 	if err := s.Renderer.SetDrawColor(s.BgColor.R, s.BgColor.G, s.BgColor.B, s.BgColor.A); err != nil {
-		return err
+		return fmt.Errorf("apparatus.Screen.Clear: setting draw color: %w", err)
 	}
 	return s.Renderer.Clear()
 }
@@ -250,7 +251,7 @@ func (s *Screen) Clear() error {
 // It is a convenience for the common pattern Clear() then Update().
 func (s *Screen) ClearAndUpdate() error {
 	if err := s.Clear(); err != nil {
-		return err
+		return fmt.Errorf("apparatus.Screen.ClearAndUpdate: %w", err)
 	}
 	return s.Update()
 }
@@ -260,7 +261,7 @@ func (s *Screen) Update() error {
 	// Ensure we are presenting the window, not a texture
 	if s.Renderer.RenderTarget() != nil {
 		if err := s.Renderer.SetRenderTarget(nil); err != nil {
-			return err
+			return fmt.Errorf("apparatus.Screen.Update: resetting render target: %w", err)
 		}
 	}
 	return s.Renderer.Present()
@@ -286,7 +287,7 @@ func (s *Screen) Flip() error {
 //	rtNS := int64(eventTS - onset)
 func (s *Screen) FlipTS() (uint64, error) {
 	if err := s.Update(); err != nil {
-		return 0, err
+		return 0, fmt.Errorf("apparatus.Screen.FlipTS: %w", err)
 	}
 	return sdl.TicksNS(), nil
 }
@@ -303,7 +304,7 @@ func (s *Screen) FlipTS() (uint64, error) {
 // before the monitor scans them out.
 func (s *Screen) PacedFlip() error {
 	if err := s.Update(); err != nil {
-		return err
+		return fmt.Errorf("apparatus.Screen.PacedFlip: %w", err)
 	}
 	now := time.Now()
 	if !s.lastFlipTime.IsZero() {
@@ -321,7 +322,7 @@ func (s *Screen) PacedFlip() error {
 // where triple/mailbox buffering must be guarded against.
 func (s *Screen) PacedFlipTS() (uint64, error) {
 	if err := s.PacedFlip(); err != nil {
-		return 0, err
+		return 0, fmt.Errorf("apparatus.Screen.PacedFlipTS: %w", err)
 	}
 	return sdl.TicksNS(), nil
 }
@@ -375,10 +376,10 @@ func (s *Screen) WaitFrames(n int) (uint64, error) {
 		// Re-clear backbuffer with the current draw color so both buffers stay
 		// identical and the swap is visually a no-op.
 		if err := s.Renderer.Clear(); err != nil {
-			return 0, err
+			return 0, fmt.Errorf("apparatus.Screen.WaitFrames: clearing backbuffer: %w", err)
 		}
 		if err := s.PacedFlip(); err != nil {
-			return 0, err
+			return 0, fmt.Errorf("apparatus.Screen.WaitFrames: %w", err)
 		}
 	}
 	return sdl.TicksNS(), nil

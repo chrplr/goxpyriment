@@ -89,7 +89,7 @@ func NewLinuxGPIOTrigger(opts ...LinuxGPIOOption) (*LinuxGPIOTrigger, error) {
 		return nil, fmt.Errorf("linuxgpio: at least one of WithGPIOOutputPins or WithGPIOInputPins must be provided")
 	}
 	if err := t.open(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("triggers.NewLinuxGPIOTrigger: %w", err)
 	}
 	return t, nil
 }
@@ -103,7 +103,7 @@ func (t *LinuxGPIOTrigger) Send(mask byte) error {
 		return fmt.Errorf("linuxgpio: output pins not configured")
 	}
 	if err := t.gpioWriteOutputs(mask); err != nil {
-		return err
+		return fmt.Errorf("linuxgpio.Send: %w", err)
 	}
 	t.outputState = mask
 	return nil
@@ -159,7 +159,7 @@ func (t *LinuxGPIOTrigger) ReadLine(line int) (byte, error) {
 	}
 	mask, err := t.ReadAll()
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("linuxgpio.ReadLine: %w", err)
 	}
 	return (mask >> uint(line)) & 0x01, nil
 }
@@ -175,7 +175,7 @@ func (t *LinuxGPIOTrigger) WaitForInput(ctx context.Context) (byte, time.Duratio
 		}
 		mask, err := t.ReadAll()
 		if err != nil {
-			return 0, time.Since(start), err
+			return 0, time.Since(start), fmt.Errorf("linuxgpio.WaitForInput: reading inputs: %w", err)
 		}
 		if mask != 0 {
 			return mask, time.Since(start), nil
@@ -194,7 +194,7 @@ func (t *LinuxGPIOTrigger) DrainInputs(ctx context.Context) error {
 		}
 		mask, err := t.ReadAll()
 		if err != nil {
-			return err
+			return fmt.Errorf("linuxgpio.DrainInputs: reading inputs: %w", err)
 		}
 		if mask == 0 {
 			return nil

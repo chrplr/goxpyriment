@@ -53,16 +53,16 @@ func (s *Sound) PreloadDevice(audioDevice sdl.AudioDeviceID) error {
 	if s.Memory != nil {
 		ioStream, ioErr := sdl.IOFromBytes(s.Memory)
 		if ioErr != nil {
-			return ioErr
+			return fmt.Errorf("stimuli.Sound.PreloadDevice: reading WAV from memory: %w", ioErr)
 		}
 		data, err = sdl.LoadWAV_IO(ioStream, true, &spec)
 		if err != nil {
-			return err
+			return fmt.Errorf("stimuli.Sound.PreloadDevice: decoding WAV from memory: %w", err)
 		}
 	} else {
 		data, err = sdl.LoadWAV(s.FilePath, &spec)
 		if err != nil {
-			return err
+			return fmt.Errorf("stimuli.Sound.PreloadDevice: loading WAV %q: %w", s.FilePath, err)
 		}
 	}
 	s.Data = data
@@ -72,7 +72,7 @@ func (s *Sound) PreloadDevice(audioDevice sdl.AudioDeviceID) error {
 	// We'll just create a stream matching the file's spec.
 	stream, err := sdl.CreateAudioStream(&s.Spec, &s.Spec)
 	if err != nil {
-		return err
+		return fmt.Errorf("stimuli.Sound.PreloadDevice: creating audio stream: %w", err)
 	}
 	s.Stream = stream
 
@@ -87,7 +87,7 @@ func (s *Sound) Play() error {
 	// Clear any remaining data and put new data
 	s.Stream.Clear()
 	if err := s.Stream.PutData(s.Data); err != nil {
-		return err
+		return fmt.Errorf("stimuli.Sound.Play: queueing audio data: %w", err)
 	}
 	// Flush tells the resampler that no more input is coming so it emits its
 	// lookahead frames.  Without this, SDL_GetAudioStreamQueued never reaches
@@ -200,21 +200,21 @@ func (s *Sound) PlaySyncedWithFlip(screen *apparatus.Screen) (uint64, error) {
 // by both Sound.PlaySyncedWithFlip and Tone.PlaySyncedWithFlip.
 func syncStreamWithFlip(stream *sdl.AudioStream, data []byte, screen *apparatus.Screen) (uint64, error) {
 	if err := stream.PauseDevice(); err != nil {
-		return 0, err
+		return 0, fmt.Errorf("stimuli: pausing audio device for synced playback: %w", err)
 	}
 	stream.Clear()
 	if err := stream.PutData(data); err != nil {
 		_ = stream.ResumeDevice()
-		return 0, err
+		return 0, fmt.Errorf("stimuli: queueing audio data for synced playback: %w", err)
 	}
 	if err := stream.Flush(); err != nil {
 		_ = stream.ResumeDevice()
-		return 0, err
+		return 0, fmt.Errorf("stimuli: flushing audio stream for synced playback: %w", err)
 	}
 	flipNS, err := screen.FlipTS()
 	resumeErr := stream.ResumeDevice()
 	if err != nil {
-		return flipNS, err
+		return flipNS, fmt.Errorf("stimuli: flipping display during synced playback: %w", err)
 	}
 	return flipNS, resumeErr
 }
@@ -382,7 +382,7 @@ func (s *Sound) PlaySegment(onset, offset, rampSec float64) error {
 
 	s.Stream.Clear()
 	if err := s.Stream.PutData(seg); err != nil {
-		return err
+		return fmt.Errorf("stimuli.Sound.PlaySegment: queueing audio data: %w", err)
 	}
 	// Flush so the resampler emits its lookahead frames; without it
 	// Stream.Queued() never reaches 0 (so Wait() spins) and the tail is
@@ -394,11 +394,11 @@ func (s *Sound) PlaySegment(onset, offset, rampSec float64) error {
 func PlaySoundFromMemory(audioDevice sdl.AudioDeviceID, data []byte) error {
 	s := NewSoundFromMemory(data)
 	if err := s.PreloadDevice(audioDevice); err != nil {
-		return err
+		return fmt.Errorf("stimuli.PlaySoundFromMemory: %w", err)
 	}
 	if err := s.Play(); err != nil {
 		_ = s.Unload()
-		return err
+		return fmt.Errorf("stimuli.PlaySoundFromMemory: %w", err)
 	}
 	// Synchronous behavior: wait for the sound to finish and then clean up.
 	s.Wait()

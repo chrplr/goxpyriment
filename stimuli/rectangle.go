@@ -5,6 +5,8 @@
 package stimuli
 
 import (
+	"fmt"
+
 	"github.com/Zyko0/go-sdl3/sdl"
 	"github.com/chrplr/goxpyriment/apparatus"
 )
@@ -30,7 +32,7 @@ func NewRectangle(x, y, w, h float32, color sdl.Color) *Rectangle {
 
 func (r *Rectangle) Draw(screen *apparatus.Screen) error {
 	if err := screen.Renderer.SetDrawColor(r.Color.R, r.Color.G, r.Color.B, r.Color.A); err != nil {
-		return err
+		return fmt.Errorf("stimuli.Rectangle.Draw: setting draw color: %w", err)
 	}
 
 	destX, destY := screen.CenterToSDL(r.Position.X, r.Position.Y)

@@ -116,7 +116,7 @@ func (t *Tone) PreloadDevice(audioDevice sdl.AudioDeviceID) error {
 
 	stream, err := sdl.CreateAudioStream(spec, spec)
 	if err != nil {
-		return err
+		return fmt.Errorf("stimuli.Tone.PreloadDevice: creating audio stream: %w", err)
 	}
 	t.Stream = stream
 
@@ -136,7 +136,7 @@ func (t *Tone) Play() error {
 	if t.Stream != nil {
 		t.Stream.Clear()
 		if err := t.Stream.PutData(t.Data); err != nil {
-			return err
+			return fmt.Errorf("stimuli.Tone.Play: queueing audio data: %w", err)
 		}
 		// Flush emits the resampler's lookahead frames so playback is not
 		// truncated on devices whose rate differs from the tone's 44100 Hz.

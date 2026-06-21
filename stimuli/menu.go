@@ -144,7 +144,7 @@ func (m *Menu) draw(screen *apparatus.Screen, sel int) error {
 		line := NewTextLine(text, cx, y, color)
 		line.Font = m.Font
 		if err := line.Draw(screen); err != nil {
-			return err
+			return fmt.Errorf("stimuli.Menu: drawing item %q: %w", item, err)
 		}
 	}
 	return nil
@@ -179,13 +179,13 @@ func (m *Menu) Get(screen *apparatus.Screen, kb *apparatus.Keyboard, initialSel 
 	for {
 		// Render current state.
 		if err := screen.Clear(); err != nil {
-			return -1, err
+			return -1, fmt.Errorf("stimuli.Menu.Get: clearing screen: %w", err)
 		}
 		if err := m.draw(screen, sel); err != nil {
-			return -1, err
+			return -1, fmt.Errorf("stimuli.Menu.Get: %w", err)
 		}
 		if err := screen.Update(); err != nil {
-			return -1, err
+			return -1, fmt.Errorf("stimuli.Menu.Get: updating screen: %w", err)
 		}
 
 		// Block until the next input event.

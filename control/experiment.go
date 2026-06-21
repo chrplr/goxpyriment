@@ -224,11 +224,11 @@ func (e *Experiment) ShowTS(v stimuli.VisualStimulus) (uint64, error) {
 		if IsEndLoop(err) {
 			panic(exitPanic{err: err})
 		}
-		return 0, err
+		return 0, fmt.Errorf("control.Experiment.ShowTS: presenting stimulus: %w", err)
 	}
 	ts, err := e.Screen.FlipTS()
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("control.Experiment.ShowTS: flipping display: %w", err)
 	}
 	return ts, nil
 }
@@ -331,7 +331,7 @@ func (e *Experiment) CorrectColor(c sdl.Color) sdl.Color {
 //	exp.Wait(durationMs)
 func (e *Experiment) ShowTimed(v stimuli.VisualStimulus, durationMs int) error {
 	if err := e.Show(v); err != nil {
-		return err
+		return fmt.Errorf("control.Experiment.ShowTimed: %w", err)
 	}
 	return e.Wait(durationMs)
 }
@@ -353,11 +353,11 @@ func (e *Experiment) ShowAndGetRT(v stimuli.VisualStimulus, keys []Keycode, time
 	e.Keyboard.Clear()
 	onsetNS, err := e.ShowTS(v)
 	if err != nil {
-		return 0, 0, err
+		return 0, 0, fmt.Errorf("control.Experiment.ShowAndGetRT: %w", err)
 	}
 	key, eventTS, err := e.Keyboard.GetKeyEventTS(keys, timeoutMs)
 	if err != nil {
-		return key, 0, err
+		return key, 0, fmt.Errorf("control.Experiment.ShowAndGetRT: waiting for key: %w", err)
 	}
 	if key == 0 { // timeout
 		return 0, 0, nil
@@ -378,7 +378,7 @@ func (e *Experiment) ShowEndMessage(message string) error {
 	}
 	tb := stimuli.NewTextBox(message, w, sdl.FPoint{}, e.ForegroundColor)
 	if err := e.Show(tb); err != nil {
-		return err
+		return fmt.Errorf("control.Experiment.ShowEndMessage: %w", err)
 	}
 	_, err := e.Keyboard.Wait()
 	return err
@@ -400,7 +400,7 @@ func (e *Experiment) ShowInstructions(text string) error {
 	}
 	tb := stimuli.NewTextBox(text, w, sdl.FPoint{}, e.ForegroundColor)
 	if err := e.Show(tb); err != nil {
-		return err
+		return fmt.Errorf("control.Experiment.ShowInstructions: %w", err)
 	}
 	return e.Keyboard.WaitKey(K_SPACE)
 }
@@ -413,7 +413,7 @@ func (e *Experiment) ShowInstructions(text string) error {
 //	exp.Wait(ms)
 func (e *Experiment) Blank(ms int) error {
 	if err := e.Screen.ClearAndUpdate(); err != nil {
-		return err
+		return fmt.Errorf("control.Experiment.Blank: %w", err)
 	}
 	return e.Wait(ms)
 }
@@ -564,7 +564,7 @@ func (e *Experiment) Initialize() error {
 	outDir := e.OutputDirectory
 	dataFile, err := results.NewDataFile(outDir, e.SubjectID, e.Name)
 	if err != nil {
-		return err
+		return fmt.Errorf("control.Experiment: creating data file: %w", err)
 	}
 	e.Data = dataFile
 
@@ -795,7 +795,7 @@ func (e *Experiment) Flip() error {
 func (e *Experiment) LoadFont(path string, size float32) error {
 	font, err := ttf.OpenFont(path, size)
 	if err != nil {
-		return err
+		return fmt.Errorf("control.Experiment.LoadFont: %w", err)
 	}
 	e.DefaultFont = font
 	if e.Screen != nil {
@@ -808,12 +808,12 @@ func (e *Experiment) LoadFont(path string, size float32) error {
 func (e *Experiment) LoadFontFromMemory(data []byte, size float32) error {
 	ioStream, err := sdl.IOFromBytes(data)
 	if err != nil {
-		return err
+		return fmt.Errorf("control.Experiment.LoadFontFromMemory: %w", err)
 	}
 	// Note: OpenFontIO with closeio=true will close the IOStream
 	font, err := ttf.OpenFontIO(ioStream, true, size)
 	if err != nil {
-		return err
+		return fmt.Errorf("control.Experiment.LoadFontFromMemory: opening font: %w", err)
 	}
 	e.DefaultFont = font
 	if e.Screen != nil {
@@ -865,7 +865,7 @@ func (e *Experiment) ShowSplash(waitForKey bool) error {
 func (e *Experiment) OpenMicrophone(spec *sdl.AudioSpec) error {
 	mic, err := apparatus.NewMicrophone(spec)
 	if err != nil {
-		return err
+		return fmt.Errorf("control.Experiment.OpenMicrophone: %w", err)
 	}
 	if e.Microphone != nil {
 		e.Microphone.Close()
@@ -951,7 +951,7 @@ func (e *Experiment) Run(logic func() error) error {
 		// Pump OS events every frame so the window stays responsive (Wayland,
 		// X11, macOS) and input state is current, without draining the queue.
 		if err := e.pumpFrame(); err != nil {
-			return err
+			return fmt.Errorf("control.Experiment.Run: %w", err)
 		}
 		return logic()
 	})

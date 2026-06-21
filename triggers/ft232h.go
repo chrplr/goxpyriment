@@ -61,7 +61,7 @@ func NewFT232H(opts ...FT232HOption) (*FT232HTrigger, error) {
 		opt(t)
 	}
 	if err := t.open(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("triggers.NewFT232H: %w", err)
 	}
 	return t, nil
 }
@@ -84,7 +84,7 @@ func AutoDetectFT232H(opts ...FT232HOption) (OutputTTLDevice, error) {
 // Bit N drives line N HIGH; zero drives it LOW. Implements [OutputTTLDevice].
 func (t *FT232HTrigger) Send(mask byte) error {
 	if err := t.ft232hWriteOutputs(mask); err != nil {
-		return err
+		return fmt.Errorf("ft232h.Send: %w", err)
 	}
 	t.outputState = mask
 	return nil
@@ -137,7 +137,7 @@ func (t *FT232HTrigger) ReadLine(line int) (byte, error) {
 	}
 	mask, err := t.ReadAll()
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("ft232h.ReadLine: %w", err)
 	}
 	return (mask >> uint(line)) & 0x01, nil
 }
@@ -153,7 +153,7 @@ func (t *FT232HTrigger) WaitForInput(ctx context.Context) (byte, time.Duration, 
 		}
 		mask, err := t.ReadAll()
 		if err != nil {
-			return 0, time.Since(start), err
+			return 0, time.Since(start), fmt.Errorf("ft232h.WaitForInput: reading inputs: %w", err)
 		}
 		if mask != 0 {
 			return mask, time.Since(start), nil
@@ -172,7 +172,7 @@ func (t *FT232HTrigger) DrainInputs(ctx context.Context) error {
 		}
 		mask, err := t.ReadAll()
 		if err != nil {
-			return err
+			return fmt.Errorf("ft232h.DrainInputs: reading inputs: %w", err)
 		}
 		if mask == 0 {
 			return nil

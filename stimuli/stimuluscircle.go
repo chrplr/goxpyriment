@@ -5,6 +5,7 @@
 package stimuli
 
 import (
+	"fmt"
 	"math"
 	"math/rand"
 
@@ -68,7 +69,7 @@ func (sc *StimulusCircle) Make(shuffle bool, jitter bool) {
 func (sc *StimulusCircle) Draw(screen *apparatus.Screen) error {
 	for _, stim := range sc.Stimuli {
 		if err := stim.Draw(screen); err != nil {
-			return err
+			return fmt.Errorf("stimuli.StimulusCircle.Draw: %w", err)
 		}
 	}
 	return nil

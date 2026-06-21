@@ -5,6 +5,7 @@
 package stimuli
 
 import (
+	"fmt"
 	"image"
 	"image/color"
 	"math"
@@ -88,17 +89,17 @@ func (gp *GaborPatch) preload(screen *apparatus.Screen) error {
 
 	surface, err := sdl.CreateSurfaceFrom(w, h, sdl.PIXELFORMAT_RGBA32, img.Pix, w*4)
 	if err != nil {
-		return err
+		return fmt.Errorf("stimuli.GaborPatch: creating surface: %w", err)
 	}
 	defer surface.Destroy()
 
 	texture, err := screen.Renderer.CreateTextureFromSurface(surface)
 	if err != nil {
-		return err
+		return fmt.Errorf("stimuli.GaborPatch: creating texture: %w", err)
 	}
 	if err := texture.SetBlendMode(sdl.BLENDMODE_BLEND); err != nil {
 		texture.Destroy()
-		return err
+		return fmt.Errorf("stimuli.GaborPatch: setting blend mode: %w", err)
 	}
 	gp.Texture = texture
 	return nil
@@ -109,7 +110,7 @@ func (gp *GaborPatch) preload(screen *apparatus.Screen) error {
 func (gp *GaborPatch) Draw(screen *apparatus.Screen) error {
 	if gp.Texture == nil {
 		if err := gp.preload(screen); err != nil {
-			return err
+			return fmt.Errorf("stimuli.GaborPatch.Draw: %w", err)
 		}
 	}
 

@@ -5,6 +5,8 @@
 package stimuli
 
 import (
+	"fmt"
+
 	"github.com/Zyko0/go-sdl3/sdl"
 	"github.com/chrplr/goxpyriment/apparatus"
 )
@@ -30,7 +32,7 @@ func NewBlankScreen(color sdl.Color) *BlankScreen {
 
 func (b *BlankScreen) Draw(screen *apparatus.Screen) error {
 	if err := screen.Renderer.SetDrawColor(b.Color.R, b.Color.G, b.Color.B, b.Color.A); err != nil {
-		return err
+		return fmt.Errorf("stimuli.BlankScreen.Draw: setting draw color: %w", err)
 	}
 	// We draw a large rectangle covering the screen area
 	w, h, _ := screen.Renderer.RenderOutputSize()
@@ -43,7 +45,7 @@ func (b *BlankScreen) Draw(screen *apparatus.Screen) error {
 // BlankScreen does not delegate to PresentDrawable.
 func (b *BlankScreen) Present(screen *apparatus.Screen, clear, update bool) error {
 	if err := b.Draw(screen); err != nil {
-		return err
+		return fmt.Errorf("stimuli.BlankScreen.Present: %w", err)
 	}
 	if update {
 		return screen.Update()

@@ -160,7 +160,7 @@ func (t *FT232HTrigger) ft232hReadInputs() (byte, error) {
 	// SEND_IMMEDIATE (0x87) flushes the MPSSE TX buffer to USB right away so
 	// the GET_BITS_HIGH response arrives without waiting for the latency timer.
 	if err := ft232hBulkWrite(t.handle.fd, []byte{mpsseGetBitsHigh, mpsseFlushTxBuf}); err != nil {
-		return 0, err
+		return 0, fmt.Errorf("ft232h: reading input lines: %w", err)
 	}
 	return ft232hReadOneByte(t.handle.fd)
 }
@@ -350,7 +350,7 @@ func ft232hReadOneByte(fd int) (byte, error) {
 	for time.Now().Before(deadline) {
 		data, err := ft232hBulkReadRaw(fd, 64)
 		if err != nil {
-			return 0, err
+			return 0, fmt.Errorf("ft232h: bulk read: %w", err)
 		}
 		if len(data) >= ft232hModemBytes+1 {
 			return data[ft232hModemBytes], nil
@@ -375,11 +375,11 @@ func ft232hContainsSeq(buf []byte, a, b byte) bool {
 func ft232hReadHexFile(path string) (uint16, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("ft232h: reading %q: %w", path, err)
 	}
 	v, err := strconv.ParseUint(strings.TrimSpace(string(data)), 16, 16)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("ft232h: parsing hex from %q: %w", path, err)
 	}
 	return uint16(v), nil
 }
@@ -388,11 +388,11 @@ func ft232hReadHexFile(path string) (uint16, error) {
 func ft232hReadIntFile(path string) (int, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("ft232h: reading %q: %w", path, err)
 	}
 	v, err := strconv.Atoi(strings.TrimSpace(string(data)))
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("ft232h: parsing int from %q: %w", path, err)
 	}
 	return v, nil
 }

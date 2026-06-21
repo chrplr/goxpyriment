@@ -75,7 +75,7 @@ func (df *DataFile) WriteComment(comment string) {
 // Save flushes both the CSV file and the companion info file to disk.
 func (df *DataFile) Save() error {
 	if err := df.InfoFile.Save(); err != nil {
-		return err
+		return fmt.Errorf("results.DataFile.Save: info file: %w", err)
 	}
 	return df.OutputFile.Save()
 }
@@ -100,11 +100,11 @@ func NewDataFile(directory string, subjectID int, expName string) (*DataFile, er
 
 	base, err := NewOutputFile(directory, filename)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("results.NewDataFile: creating data file: %w", err)
 	}
 	infoFile, err := NewOutputFile(directory, infoFilename)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("results.NewDataFile: creating info file: %w", err)
 	}
 
 	start := time.Now()
@@ -135,7 +135,7 @@ func NewDataFile(directory string, subjectID int, expName string) (*DataFile, er
 	df.WriteComment("#")
 
 	if err := df.Save(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("results.NewDataFile: saving initial metadata: %w", err)
 	}
 
 	return df, nil

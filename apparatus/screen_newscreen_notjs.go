@@ -76,7 +76,7 @@ func ListDisplays() ([]DisplayInfo, error) {
 func NewScreen(title string, width, height int, bgColor sdl.Color, fullscreen bool, displayIndex int) (*Screen, error) {
 	target, err := displayByIndex(displayIndex)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("apparatus.NewScreen: selecting display %d: %w", displayIndex, err)
 	}
 
 	if fullscreen || (width == 0 && height == 0) {
@@ -114,7 +114,7 @@ func NewScreen(title string, width, height int, bgColor sdl.Color, fullscreen bo
 			window, werr = sdl.CreateWindow(title, 0, 0, sdl.WINDOW_HIGH_PIXEL_DENSITY|sdl.WINDOW_FULLSCREEN)
 		}
 		if werr != nil {
-			return nil, werr
+			return nil, fmt.Errorf("apparatus.NewScreen: creating fullscreen window: %w", werr)
 		}
 
 		// Block until the window reaches its final state (fullscreen mode
@@ -138,13 +138,13 @@ func NewScreen(title string, width, height int, bgColor sdl.Color, fullscreen bo
 		renderer, err := window.CreateRenderer("")
 		if err != nil {
 			window.Destroy()
-			return nil, err
+			return nil, fmt.Errorf("apparatus.NewScreen: creating renderer: %w", err)
 		}
 
 		if err := renderer.SetVSync(1); err != nil {
 			renderer.Destroy()
 			window.Destroy()
-			return nil, err
+			return nil, fmt.Errorf("apparatus.NewScreen: enabling vsync: %w", err)
 		}
 
 		// Warm-up: present several blank frames to flush driver state before
@@ -245,19 +245,19 @@ func NewScreen(title string, width, height int, bgColor sdl.Color, fullscreen bo
 
 	window, err := sdl.CreateWindowWithProperties(props)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("apparatus.NewScreen: creating window: %w", err)
 	}
 
 	renderer, err := window.CreateRenderer("")
 	if err != nil {
 		window.Destroy()
-		return nil, err
+		return nil, fmt.Errorf("apparatus.NewScreen: creating renderer: %w", err)
 	}
 
 	if err := renderer.SetVSync(1); err != nil {
 		renderer.Destroy()
 		window.Destroy()
-		return nil, err
+		return nil, fmt.Errorf("apparatus.NewScreen: enabling vsync: %w", err)
 	}
 
 	s := &Screen{
@@ -271,7 +271,7 @@ func NewScreen(title string, width, height int, bgColor sdl.Color, fullscreen bo
 	if err := window.Show(); err != nil {
 		renderer.Destroy()
 		window.Destroy()
-		return nil, err
+		return nil, fmt.Errorf("apparatus.NewScreen: showing window: %w", err)
 	}
 
 	// Ensure a cursor shape is loaded and visible (mirrors fullscreen path).

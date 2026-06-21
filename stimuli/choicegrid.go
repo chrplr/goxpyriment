@@ -145,7 +145,7 @@ func (cg *ChoiceGrid) draw(screen *apparatus.Screen, buttons []cgButton, respons
 	if cg.Prompt != "" {
 		p := NewTextLine(cg.Prompt, 0, H/2-60, cg.ResponseColor)
 		if err := p.Draw(screen); err != nil {
-			return err
+			return fmt.Errorf("stimuli.ChoiceGrid: drawing prompt: %w", err)
 		}
 	}
 
@@ -153,11 +153,11 @@ func (cg *ChoiceGrid) draw(screen *apparatus.Screen, buttons []cgButton, respons
 	for _, b := range buttons {
 		rect := NewRectangle(b.cx, b.cy, cg.ButtonW, cg.ButtonH, cg.ButtonColor)
 		if err := rect.Draw(screen); err != nil {
-			return err
+			return fmt.Errorf("stimuli.ChoiceGrid: drawing button %q: %w", b.label, err)
 		}
 		lbl := NewTextLine(b.label, b.cx, b.cy, cg.TextColor)
 		if err := lbl.Draw(screen); err != nil {
-			return err
+			return fmt.Errorf("stimuli.ChoiceGrid: drawing button label %q: %w", b.label, err)
 		}
 	}
 
@@ -168,7 +168,7 @@ func (cg *ChoiceGrid) draw(screen *apparatus.Screen, buttons []cgButton, respons
 	}
 	resp := NewTextLine(respStr, 0, -H/2+100, cg.ResponseColor)
 	if err := resp.Draw(screen); err != nil {
-		return err
+		return fmt.Errorf("stimuli.ChoiceGrid: drawing response line: %w", err)
 	}
 
 	// Hint line.
@@ -184,7 +184,7 @@ func (cg *ChoiceGrid) draw(screen *apparatus.Screen, buttons []cgButton, respons
 	if hint != "" {
 		h := NewTextLine(hint, 0, -H/2+55, cg.ResponseColor)
 		if err := h.Draw(screen); err != nil {
-			return err
+			return fmt.Errorf("stimuli.ChoiceGrid: drawing hint: %w", err)
 		}
 	}
 
@@ -221,13 +221,13 @@ func (cg *ChoiceGrid) Get(screen *apparatus.Screen, kb *apparatus.Keyboard) ([]s
 	for {
 		// Render.
 		if err := screen.Clear(); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("stimuli.ChoiceGrid.Get: clearing screen: %w", err)
 		}
 		if err := cg.draw(screen, buttons, response); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("stimuli.ChoiceGrid.Get: %w", err)
 		}
 		if err := screen.Update(); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("stimuli.ChoiceGrid.Get: updating screen: %w", err)
 		}
 
 		// Block until the next SDL event (no busy-spin needed — there is

@@ -7,6 +7,8 @@ package stimuli
 import (
 	"math"
 
+	"fmt"
+
 	"github.com/Zyko0/go-sdl3/sdl"
 	"github.com/chrplr/goxpyriment/apparatus"
 )
@@ -34,7 +36,7 @@ func NewCircle(radius float32, color sdl.Color) *Circle {
 // For better performance, we could use a texture.
 func (c *Circle) Draw(screen *apparatus.Screen) error {
 	if err := screen.Renderer.SetDrawColor(c.Color.R, c.Color.G, c.Color.B, c.Color.A); err != nil {
-		return err
+		return fmt.Errorf("stimuli.Circle.Draw: setting draw color: %w", err)
 	}
 
 	cX, cY := screen.CenterToSDL(c.Position.X, c.Position.Y)

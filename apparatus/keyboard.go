@@ -5,6 +5,7 @@
 package apparatus
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/Zyko0/go-sdl3/sdl"
@@ -282,7 +283,7 @@ func (k *Keyboard) GetKeyEventsTS(keys []sdl.Keycode, timeoutMS int) ([]InputEve
 	start := sdl.Ticks()
 	firstKey, firstTS, err := waitSDLKeyEvent(keys, start, timeoutMS)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("apparatus.Keyboard.GetKeyEventsTS: %w", err)
 	}
 	if firstKey == 0 {
 		return nil, nil // timeout

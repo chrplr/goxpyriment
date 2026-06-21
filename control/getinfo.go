@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"errors"
 	"flag"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -166,18 +167,18 @@ func GetParticipantInfo(title string, fields []InfoField) (map[string]string, er
 	}
 
 	if err := sdl.Init(sdl.INIT_VIDEO | sdl.INIT_EVENTS); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("control.GetParticipantInfo: initializing SDL: %w", err)
 	}
 	defer sdl.Quit()
 
 	if err := ttf.Init(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("control.GetParticipantInfo: initializing TTF: %w", err)
 	}
 	defer ttf.Quit()
 
 	font, err := FontFromMemory(assets_embed.InconsolataFont, 18)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("control.GetParticipantInfo: loading font: %w", err)
 	}
 	defer font.Close()
 
@@ -247,7 +248,7 @@ func GetParticipantInfo(title string, fields []InfoField) (map[string]string, er
 	// logical [0,winW]×[0,winH] space throughout the event and draw code.
 	window, renderer, err := sdl.CreateWindowAndRenderer(title, winW, winH, sdl.WINDOW_HIGH_PIXEL_DENSITY)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("control.GetParticipantInfo: creating window: %w", err)
 	}
 	defer window.Destroy()
 	defer renderer.Destroy()

@@ -5,6 +5,7 @@
 package stimuli
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/Zyko0/go-sdl3/sdl"
@@ -39,7 +40,7 @@ func SplashScreen(screen *apparatus.Screen, imageData []byte, message string, ti
 	if imageData != nil {
 		pic = NewPictureFromMemory(imageData, 0, 0)
 		if err := pic.preload(screen); err != nil {
-			return err
+			return fmt.Errorf("stimuli.SplashScreen: preloading image: %w", err)
 		}
 	}
 
@@ -53,7 +54,7 @@ func SplashScreen(screen *apparatus.Screen, imageData []byte, message string, ti
 		txt = NewTextBox(message, msgWidth, sdl.FPoint{}, textColor)
 		if screen.DefaultFont != nil {
 			if err := txt.preload(screen, screen.DefaultFont); err != nil {
-				return err
+				return fmt.Errorf("stimuli.SplashScreen: preloading message: %w", err)
 			}
 		}
 	}
@@ -85,20 +86,20 @@ func SplashScreen(screen *apparatus.Screen, imageData []byte, message string, ti
 	// ── 4. Render ─────────────────────────────────────────────────────────────
 
 	if err := screen.Clear(); err != nil {
-		return err
+		return fmt.Errorf("stimuli.SplashScreen: clearing screen: %w", err)
 	}
 	if pic != nil {
 		if err := pic.Draw(screen); err != nil {
-			return err
+			return fmt.Errorf("stimuli.SplashScreen: drawing image: %w", err)
 		}
 	}
 	if txt != nil {
 		if err := txt.Draw(screen); err != nil {
-			return err
+			return fmt.Errorf("stimuli.SplashScreen: drawing message: %w", err)
 		}
 	}
 	if err := screen.Update(); err != nil {
-		return err
+		return fmt.Errorf("stimuli.SplashScreen: updating screen: %w", err)
 	}
 
 	// ── 5. Wait for timeout or keypress ──────────────────────────────────────
@@ -179,7 +180,7 @@ func TwoLineSplash(screen *apparatus.Screen, imageData []byte, titleFont *ttf.Fo
 	if imageData != nil {
 		pic = NewPictureFromMemory(imageData, 0, 0)
 		if err := pic.preload(screen); err != nil {
-			return err
+			return fmt.Errorf("stimuli.TwoLineSplash: preloading image: %w", err)
 		}
 	}
 
@@ -188,7 +189,7 @@ func TwoLineSplash(screen *apparatus.Screen, imageData []byte, titleFont *ttf.Fo
 	if title != "" && titleFont != nil {
 		titleTxt = NewTextBox(title, 900, sdl.FPoint{}, textColor)
 		if err := titleTxt.preload(screen, titleFont); err != nil {
-			return err
+			return fmt.Errorf("stimuli.TwoLineSplash: preloading title: %w", err)
 		}
 	}
 
@@ -197,7 +198,7 @@ func TwoLineSplash(screen *apparatus.Screen, imageData []byte, titleFont *ttf.Fo
 	if subtitle != "" && subtitleFont != nil {
 		subTxt = NewTextBox(subtitle, 700, sdl.FPoint{}, textColor)
 		if err := subTxt.preload(screen, subtitleFont); err != nil {
-			return err
+			return fmt.Errorf("stimuli.TwoLineSplash: preloading subtitle: %w", err)
 		}
 	}
 
@@ -263,25 +264,25 @@ func TwoLineSplash(screen *apparatus.Screen, imageData []byte, titleFont *ttf.Fo
 
 	// ── Render once ───────────────────────────────────────────────────────────
 	if err := screen.Clear(); err != nil {
-		return err
+		return fmt.Errorf("stimuli.TwoLineSplash: clearing screen: %w", err)
 	}
 	if pic != nil {
 		if err := pic.Draw(screen); err != nil {
-			return err
+			return fmt.Errorf("stimuli.TwoLineSplash: drawing image: %w", err)
 		}
 	}
 	if titleTxt != nil {
 		if err := titleTxt.Draw(screen); err != nil {
-			return err
+			return fmt.Errorf("stimuli.TwoLineSplash: drawing title: %w", err)
 		}
 	}
 	if subTxt != nil {
 		if err := subTxt.Draw(screen); err != nil {
-			return err
+			return fmt.Errorf("stimuli.TwoLineSplash: drawing subtitle: %w", err)
 		}
 	}
 	if err := screen.Update(); err != nil {
-		return err
+		return fmt.Errorf("stimuli.TwoLineSplash: updating screen: %w", err)
 	}
 
 	result := splashWait(timeoutSec)

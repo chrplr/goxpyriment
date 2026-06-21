@@ -5,6 +5,8 @@
 package stimuli
 
 import (
+	"fmt"
+
 	"github.com/Zyko0/go-sdl3/sdl"
 	"github.com/Zyko0/go-sdl3/ttf"
 	"github.com/chrplr/goxpyriment/apparatus"
@@ -56,7 +58,7 @@ func (t *TextBox) preload(screen *apparatus.Screen, font *ttf.Font) error {
 
 	surface, err := font.RenderTextBlendedWrapped(t.Text, t.Color, t.BoxWidth)
 	if err != nil {
-		return err
+		return fmt.Errorf("stimuli.TextBox: rendering wrapped text: %w", err)
 	}
 	defer surface.Destroy()
 
@@ -65,7 +67,7 @@ func (t *TextBox) preload(screen *apparatus.Screen, font *ttf.Font) error {
 
 	texture, err := screen.Renderer.CreateTextureFromSurface(surface)
 	if err != nil {
-		return err
+		return fmt.Errorf("stimuli.TextBox: creating texture: %w", err)
 	}
 	t.Texture = texture
 	t.Font = font
@@ -83,7 +85,7 @@ func (t *TextBox) Draw(screen *apparatus.Screen) error {
 	if f != nil {
 		if t.Texture == nil || t.Font != f {
 			if err := t.preload(screen, f); err != nil {
-				return err
+				return fmt.Errorf("stimuli.TextBox.Draw: %w", err)
 			}
 		}
 
@@ -101,7 +103,7 @@ func (t *TextBox) Draw(screen *apparatus.Screen) error {
 
 	// Fallback to DebugText
 	if err := screen.Renderer.SetDrawColor(t.Color.R, t.Color.G, t.Color.B, t.Color.A); err != nil {
-		return err
+		return fmt.Errorf("stimuli.TextBox.Draw: setting draw color: %w", err)
 	}
 	return screen.Renderer.DebugText(t.Position.X, t.Position.Y, t.Text)
 }

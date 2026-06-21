@@ -4,6 +4,7 @@ package stimuli
 
 import (
 	"errors"
+	"fmt"
 	"io"
 
 	"github.com/funatsufumiya/go-gv-video/gvvideo"
@@ -34,13 +35,13 @@ func gvReadFrameInto(gv *gvvideo.GVVideo, frameID uint32, compressed, decompress
 	}
 	block := gv.AddressSizeBlocks[frameID]
 	if _, err := gv.Reader.Seek(int64(block.Address), io.SeekStart); err != nil {
-		return err
+		return fmt.Errorf("gvReadFrameInto: seeking to frame %d: %w", frameID, err)
 	}
 	if uint64(len(compressed)) < block.Size {
 		return errors.New("gvReadFrameInto: compressed buffer too small")
 	}
 	if _, err := io.ReadFull(gv.Reader, compressed[:block.Size]); err != nil {
-		return err
+		return fmt.Errorf("gvReadFrameInto: reading frame %d: %w", frameID, err)
 	}
 	uncompressedSize := int(gv.Header.Width) * int(gv.Header.Height) * 4
 	if len(decompressed) < uncompressedSize {

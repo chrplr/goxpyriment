@@ -112,7 +112,7 @@ func (v *GvVideo) updateFrame(frameID int) error {
 func (v *GvVideo) Draw(screen *xio.Screen) error {
 	if v.texture == nil {
 		if err := v.preload(screen); err != nil {
-			return err
+			return fmt.Errorf("GvVideo.Draw: %w", err)
 		}
 	}
 	destX, destY := screen.CenterToSDL(v.Position.X, v.Position.Y)
@@ -130,7 +130,7 @@ func (v *GvVideo) Draw(screen *xio.Screen) error {
 func (v *GvVideo) DrawAt(screen *xio.Screen, dest *sdl.FRect) error {
 	if v.texture == nil {
 		if err := v.preload(screen); err != nil {
-			return err
+			return fmt.Errorf("GvVideo.DrawAt: %w", err)
 		}
 	}
 	return screen.Renderer.RenderTexture(v.texture, nil, dest)
@@ -182,7 +182,7 @@ func (v *GvVideo) Update(screen *xio.Screen) error {
 	}
 	if v.texture == nil {
 		if err := v.preload(screen); err != nil {
-			return err
+			return fmt.Errorf("GvVideo.Update: %w", err)
 		}
 	}
 	if v.currentFrame >= v.FrameCount {
@@ -190,7 +190,7 @@ func (v *GvVideo) Update(screen *xio.Screen) error {
 		return io.EOF
 	}
 	if err := v.updateFrame(v.currentFrame); err != nil {
-		return err
+		return fmt.Errorf("GvVideo.Update: %w", err)
 	}
 	v.currentFrame++
 	return nil
@@ -212,12 +212,12 @@ func (v *GvVideo) Close() { v.Unload() }
 func PlayGv(screen *xio.Screen, path string, x, y float32) ([]UserEvent, []VideoFrameLog, error) {
 	v, err := NewGvVideo(path)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("PlayGv: %w", err)
 	}
 	defer v.Unload()
 
 	if err := v.preload(screen); err != nil {
-		return nil, nil, err
+		return nil, nil, fmt.Errorf("PlayGv: %w", err)
 	}
 
 	oldGC := debug.SetGCPercent(-1)
@@ -237,14 +237,14 @@ func PlayGv(screen *xio.Screen, path string, x, y float32) ([]UserEvent, []Video
 			return userEvents, logs, fmt.Errorf("PlayGv frame %d: %w", i, err)
 		}
 		if err := screen.Clear(); err != nil {
-			return userEvents, logs, err
+			return userEvents, logs, fmt.Errorf("PlayGv: clearing screen: %w", err)
 		}
 		if err := v.Draw(screen); err != nil {
-			return userEvents, logs, err
+			return userEvents, logs, fmt.Errorf("PlayGv: drawing frame %d: %w", i, err)
 		}
 		flipNS, err := screen.FlipTS()
 		if err != nil {
-			return userEvents, logs, err
+			return userEvents, logs, fmt.Errorf("PlayGv: flipping display: %w", err)
 		}
 
 		skipped := 0

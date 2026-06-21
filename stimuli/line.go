@@ -5,6 +5,8 @@
 package stimuli
 
 import (
+	"fmt"
+
 	"github.com/Zyko0/go-sdl3/sdl"
 	"github.com/chrplr/goxpyriment/apparatus"
 )
@@ -35,7 +37,7 @@ func NewLine(start, end sdl.FPoint, color sdl.Color, lineWidth float32) *Line {
 
 func (l *Line) Draw(screen *apparatus.Screen) error {
 	if err := screen.Renderer.SetDrawColor(l.Color.R, l.Color.G, l.Color.B, l.Color.A); err != nil {
-		return err
+		return fmt.Errorf("stimuli.Line.Draw: setting draw color: %w", err)
 	}
 
 	x1, y1 := screen.CenterToSDL(l.Start.X, l.Start.Y)

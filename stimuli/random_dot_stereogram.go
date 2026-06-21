@@ -4,6 +4,7 @@
 package stimuli
 
 import (
+	"fmt"
 	"math/rand"
 
 	"github.com/Zyko0/go-sdl3/sdl"
@@ -103,7 +104,7 @@ func (rds *RDS) preload(screen *xio.Screen) error {
 	surfH := totalCols * rds.Scale
 	surface, err := sdl.CreateSurface(int(surfW), int(surfH), sdl.PIXELFORMAT_RGBA32)
 	if err != nil {
-		return err
+		return fmt.Errorf("stimuli.RDS: creating surface: %w", err)
 	}
 	defer surface.Destroy()
 
@@ -133,7 +134,7 @@ func (rds *RDS) preload(screen *xio.Screen) error {
 
 	texture, err := screen.Renderer.CreateTextureFromSurface(surface)
 	if err != nil {
-		return err
+		return fmt.Errorf("stimuli.RDS: creating texture: %w", err)
 	}
 	rds.Texture = texture
 	return nil
@@ -145,13 +146,13 @@ func (rds *RDS) preload(screen *xio.Screen) error {
 func (rds *RDS) Draw(screen *xio.Screen) error {
 	if rds.Texture == nil {
 		if err := rds.preload(screen); err != nil {
-			return err
+			return fmt.Errorf("stimuli.RDS.Draw: %w", err)
 		}
 	}
 
 	w, h, err := rds.Texture.Size()
 	if err != nil {
-		return err
+		return fmt.Errorf("stimuli.RDS.Draw: querying texture size: %w", err)
 	}
 
 	destX, destY := screen.CenterToSDL(rds.Position.X, rds.Position.Y)

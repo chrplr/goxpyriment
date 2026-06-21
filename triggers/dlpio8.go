@@ -98,7 +98,7 @@ func AutoDetectDLPIO8() (OutputTTLDevice, string, error) {
 func (d *DLPIO8) ping() (bool, error) {
 	d.port.ResetInputBuffer()
 	if _, err := d.port.Write([]byte("'")); err != nil {
-		return false, err
+		return false, fmt.Errorf("dlpio8.ping: %w", err)
 	}
 	buf := make([]byte, 1)
 	for i := 0; i < 3; i++ {
@@ -107,7 +107,7 @@ func (d *DLPIO8) ping() (bool, error) {
 			return buf[0] == 'Q', nil
 		}
 		if err != nil {
-			return false, err
+			return false, fmt.Errorf("dlpio8.ping: reading response: %w", err)
 		}
 	}
 	return false, nil
@@ -142,7 +142,7 @@ func (d *DLPIO8) Send(mask byte) error {
 			err = d.SetLow(line)
 		}
 		if err != nil {
-			return err
+			return fmt.Errorf("dlpio8.Send: %w", err)
 		}
 	}
 	return nil
@@ -164,7 +164,7 @@ func (d *DLPIO8) ReadLine(line int) (byte, error) {
 	}
 	d.port.ResetInputBuffer()
 	if _, err := d.port.Write([]byte{readCmd[line+1]}); err != nil {
-		return 0, err
+		return 0, fmt.Errorf("dlpio8.ReadLine: %w", err)
 	}
 	buf := make([]byte, 1)
 	for i := 0; i < 3; i++ {
@@ -173,7 +173,7 @@ func (d *DLPIO8) ReadLine(line int) (byte, error) {
 			return buf[0] & 0x01, nil
 		}
 		if err != nil {
-			return 0, err
+			return 0, fmt.Errorf("dlpio8.ReadLine: reading response: %w", err)
 		}
 	}
 	return 0, fmt.Errorf("dlpio8: ReadLine timeout on line %d", line)
@@ -186,7 +186,7 @@ func (d *DLPIO8) ReadAll() (byte, error) {
 	for line := 0; line < 8; line++ {
 		v, err := d.ReadLine(line)
 		if err != nil {
-			return 0, err
+			return 0, fmt.Errorf("dlpio8.ReadAll: %w", err)
 		}
 		if v != 0 {
 			mask |= 1 << uint(line)
@@ -206,7 +206,7 @@ func (d *DLPIO8) WaitForInput(ctx context.Context) (byte, time.Duration, error) 
 		}
 		mask, err := d.ReadAll()
 		if err != nil {
-			return 0, time.Since(start), err
+			return 0, time.Since(start), fmt.Errorf("dlpio8.WaitForInput: reading inputs: %w", err)
 		}
 		if mask != 0 {
 			return mask, time.Since(start), nil
@@ -224,7 +224,7 @@ func (d *DLPIO8) DrainInputs(ctx context.Context) error {
 		}
 		mask, err := d.ReadAll()
 		if err != nil {
-			return err
+			return fmt.Errorf("dlpio8.DrainInputs: reading inputs: %w", err)
 		}
 		if mask == 0 {
 			return nil

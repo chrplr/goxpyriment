@@ -5,6 +5,7 @@
 package control
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/Zyko0/go-sdl3/sdl"
@@ -44,11 +45,11 @@ type AudioManager struct {
 // Returns the device ID (0 if unavailable) and any error from preload or play.
 func (a *AudioManager) prepareAndPlay(s *stimuli.Sound) (sdl.AudioDeviceID, error) {
 	if err := s.PreloadDevice(a.Device); err != nil {
-		return a.Device, err
+		return a.Device, fmt.Errorf("control.AudioManager: preloading sound: %w", err)
 	}
 	if err := s.Play(); err != nil {
 		_ = s.Unload()
-		return a.Device, err
+		return a.Device, fmt.Errorf("control.AudioManager: playing sound: %w", err)
 	}
 	return a.Device, nil
 }
@@ -70,7 +71,7 @@ func (a *AudioManager) PlaySync(s *stimuli.Sound) error {
 	}
 
 	if _, err := a.prepareAndPlay(s); err != nil {
-		return err
+		return fmt.Errorf("control.AudioManager.PlaySync: %w", err)
 	}
 	s.Wait()
 	return s.Unload()
@@ -96,7 +97,7 @@ func (a *AudioManager) PlayAsync(s *stimuli.Sound) error {
 
 	if _, err := a.prepareAndPlay(s); err != nil {
 		a.wg.Done()
-		return err
+		return fmt.Errorf("control.AudioManager.PlayAsync: %w", err)
 	}
 
 	go func() {

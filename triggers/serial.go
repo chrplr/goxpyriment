@@ -36,7 +36,7 @@ func (s *SerialPort) Open() error {
 	}
 	p, err := serial.Open(s.PortName, mode)
 	if err != nil {
-		return err
+		return fmt.Errorf("triggers.SerialPort.Open: opening %q: %w", s.PortName, err)
 	}
 	s.port = p
 	s.reader = bufio.NewReader(p)

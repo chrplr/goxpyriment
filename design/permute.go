@@ -161,7 +161,7 @@ func LatinSquare[T any](elements []T, permutationType string) ([][]T, error) {
 	n := len(elements)
 	idxSquare, err := LatinSquareInts(n, permutationType)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("design.LatinSquare: %w", err)
 	}
 
 	res := make([][]T, len(idxSquare))

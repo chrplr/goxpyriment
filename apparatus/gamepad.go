@@ -5,6 +5,7 @@
 package apparatus
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/Zyko0/go-sdl3/sdl"
@@ -20,7 +21,7 @@ type GamePad struct {
 func GetGamePads() ([]*GamePad, error) {
 	ids, err := sdl.GetGamepads()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("apparatus.GetGamePads: %w", err)
 	}
 
 	res := make([]*GamePad, 0, len(ids))

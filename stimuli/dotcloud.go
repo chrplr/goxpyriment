@@ -5,6 +5,7 @@
 package stimuli
 
 import (
+	"fmt"
 	"math"
 	"math/rand"
 
@@ -85,13 +86,13 @@ func (dc *DotCloud) Draw(screen *apparatus.Screen) error {
 		bgCircle := NewCircle(dc.Radius, dc.BackgroundColor)
 		bgCircle.Position = dc.Position
 		if err := bgCircle.Draw(screen); err != nil {
-			return err
+			return fmt.Errorf("stimuli.DotCloud.Draw: background: %w", err)
 		}
 	}
 
 	for _, dot := range dc.Dots {
 		if err := dot.Draw(screen); err != nil {
-			return err
+			return fmt.Errorf("stimuli.DotCloud.Draw: dot: %w", err)
 		}
 	}
 	return nil

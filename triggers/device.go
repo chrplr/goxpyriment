@@ -24,6 +24,7 @@ package triggers
 
 import (
 	"context"
+	"fmt"
 	"time"
 )
 
@@ -109,7 +110,7 @@ func precisionSleep(dur time.Duration) {
 // Used by DLPIO8 and ParallelPort.
 func defaultPulse(d OutputTTLDevice, line int, dur time.Duration) error {
 	if err := d.SetHigh(line); err != nil {
-		return err
+		return fmt.Errorf("triggers: pulse SetHigh on line %d: %w", line, err)
 	}
 	time.Sleep(dur)
 	return d.SetLow(line)

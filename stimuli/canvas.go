@@ -5,6 +5,8 @@
 package stimuli
 
 import (
+	"fmt"
+
 	"github.com/Zyko0/go-sdl3/sdl"
 	"github.com/chrplr/goxpyriment/apparatus"
 )
@@ -37,7 +39,7 @@ func (c *Canvas) preload(screen *apparatus.Screen) error {
 
 	tex, err := screen.Renderer.CreateTexture(sdl.PIXELFORMAT_RGBA32, sdl.TEXTUREACCESS_TARGET, int(c.Size.X), int(c.Size.Y))
 	if err != nil {
-		return err
+		return fmt.Errorf("stimuli.Canvas: creating render-target texture: %w", err)
 	}
 	c.Texture = tex
 
@@ -51,18 +53,18 @@ func (c *Canvas) preload(screen *apparatus.Screen) error {
 func (c *Canvas) Clear(screen *apparatus.Screen) error {
 	if c.Texture == nil {
 		if err := c.preload(screen); err != nil {
-			return err
+			return fmt.Errorf("stimuli.Canvas.Clear: %w", err)
 		}
 	}
 
 	prevTarget := screen.Renderer.RenderTarget()
 	if err := screen.Renderer.SetRenderTarget(c.Texture); err != nil {
-		return err
+		return fmt.Errorf("stimuli.Canvas.Clear: setting render target: %w", err)
 	}
 	defer screen.Renderer.SetRenderTarget(prevTarget)
 
 	if err := screen.Renderer.SetDrawColor(c.Color.R, c.Color.G, c.Color.B, c.Color.A); err != nil {
-		return err
+		return fmt.Errorf("stimuli.Canvas.Clear: setting draw color: %w", err)
 	}
 	return screen.Renderer.Clear()
 }
@@ -71,13 +73,13 @@ func (c *Canvas) Clear(screen *apparatus.Screen) error {
 func (c *Canvas) Blit(stim VisualStimulus, screen *apparatus.Screen) error {
 	if c.Texture == nil {
 		if err := c.preload(screen); err != nil {
-			return err
+			return fmt.Errorf("stimuli.Canvas.Blit: %w", err)
 		}
 	}
 
 	prevTarget := screen.Renderer.RenderTarget()
 	if err := screen.Renderer.SetRenderTarget(c.Texture); err != nil {
-		return err
+		return fmt.Errorf("stimuli.Canvas.Blit: setting render target: %w", err)
 	}
 
 	// Set the screen offset to the center of this canvas
@@ -97,7 +99,7 @@ func (c *Canvas) Blit(stim VisualStimulus, screen *apparatus.Screen) error {
 func (c *Canvas) Draw(screen *apparatus.Screen) error {
 	if c.Texture == nil {
 		if err := c.preload(screen); err != nil {
-			return err
+			return fmt.Errorf("stimuli.Canvas.Draw: %w", err)
 		}
 	}
 

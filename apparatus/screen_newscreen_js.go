@@ -7,6 +7,8 @@
 package apparatus
 
 import (
+	"fmt"
+
 	"github.com/Zyko0/go-sdl3/sdl"
 )
 
@@ -31,7 +33,7 @@ func NewScreen(title string, width, height int, bgColor sdl.Color, fullscreen bo
 
 	window, renderer, err := sdl.CreateWindowAndRenderer(title, width, height, 0)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("apparatus.NewScreen: creating window and renderer: %w", err)
 	}
 
 	logW, logH, _ := window.Size()

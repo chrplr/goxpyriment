@@ -142,7 +142,7 @@ func (b *MEGTTLBox) rx1() (byte, error) {
 			return buf[0], nil
 		}
 		if err != nil {
-			return 0, err
+			return 0, fmt.Errorf("megttlbox: reading byte: %w", err)
 		}
 	}
 	return 0, ErrMEGTimeout
@@ -161,7 +161,7 @@ func (b *MEGTTLBox) setTriggerDuration(dur time.Duration) error {
 	lo := byte(v & 0xFF)
 	hi := byte(v >> 8)
 	if err := b.tx(megOpSetTriggerDuration, lo, hi); err != nil {
-		return err
+		return fmt.Errorf("megttlbox.setTriggerDuration: %w", err)
 	}
 	b.triggerDurMS = v
 	b.triggerDurKnown = true
@@ -175,7 +175,7 @@ func (b *MEGTTLBox) setTriggerDuration(dur time.Duration) error {
 // Implements [OutputTTLDevice].
 func (b *MEGTTLBox) Send(mask byte) error {
 	if err := b.tx(megOpSetHighMask, mask); err != nil {
-		return err
+		return fmt.Errorf("megttlbox.Send: %w", err)
 	}
 	return b.tx(megOpSetLowMask, ^mask)
 }
@@ -207,10 +207,10 @@ func (b *MEGTTLBox) Pulse(line int, dur time.Duration) error {
 		return ErrMEGBadLine
 	}
 	if err := b.setTriggerDuration(dur); err != nil {
-		return err
+		return fmt.Errorf("megttlbox.Pulse: %w", err)
 	}
 	if err := b.tx(megOpSendTriggerOnLine, byte(line)); err != nil {
-		return err
+		return fmt.Errorf("megttlbox.Pulse: %w", err)
 	}
 	time.Sleep(dur)
 	return nil
@@ -220,10 +220,10 @@ func (b *MEGTTLBox) Pulse(line int, dur time.Duration) error {
 // The device executes the pulse autonomously; the host sleeps for dur.
 func (b *MEGTTLBox) PulseMask(mask byte, dur time.Duration) error {
 	if err := b.setTriggerDuration(dur); err != nil {
-		return err
+		return fmt.Errorf("megttlbox.PulseMask: %w", err)
 	}
 	if err := b.tx(megOpSendTriggerMask, mask); err != nil {
-		return err
+		return fmt.Errorf("megttlbox.PulseMask: %w", err)
 	}
 	time.Sleep(dur)
 	return nil
@@ -252,7 +252,7 @@ func (b *MEGTTLBox) Close() error {
 // Bit N reflects line N. Implements [InputTTLDevice].
 func (b *MEGTTLBox) ReadAll() (byte, error) {
 	if err := b.tx(megOpGetResponseButton); err != nil {
-		return 0, err
+		return 0, fmt.Errorf("megttlbox.ReadAll: %w", err)
 	}
 	return b.rx1()
 }
@@ -265,7 +265,7 @@ func (b *MEGTTLBox) ReadLine(line int) (byte, error) {
 	}
 	mask, err := b.ReadAll()
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("megttlbox.ReadLine: %w", err)
 	}
 	return (mask >> uint(line)) & 0x01, nil
 }
@@ -281,7 +281,7 @@ func (b *MEGTTLBox) WaitForInput(ctx context.Context) (byte, time.Duration, erro
 		}
 		mask, err := b.ReadAll()
 		if err != nil {
-			return 0, time.Since(start), err
+			return 0, time.Since(start), fmt.Errorf("megttlbox.WaitForInput: reading inputs: %w", err)
 		}
 		if mask != 0 {
 			return mask, time.Since(start), nil
@@ -300,7 +300,7 @@ func (b *MEGTTLBox) DrainInputs(ctx context.Context) error {
 		}
 		mask, err := b.ReadAll()
 		if err != nil {
-			return err
+			return fmt.Errorf("megttlbox.DrainInputs: reading inputs: %w", err)
 		}
 		if mask == 0 {
 			return nil

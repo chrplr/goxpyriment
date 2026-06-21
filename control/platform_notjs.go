@@ -5,7 +5,11 @@
 
 package control
 
-import "github.com/Zyko0/go-sdl3/sdl"
+import (
+	"fmt"
+
+	"github.com/Zyko0/go-sdl3/sdl"
+)
 
 func platformSDLInitFlags() sdl.InitFlags {
 	return sdl.INIT_VIDEO | sdl.INIT_EVENTS | sdl.INIT_AUDIO | sdl.INIT_JOYSTICK | sdl.INIT_GAMEPAD
@@ -14,7 +18,7 @@ func platformSDLInitFlags() sdl.InitFlags {
 func (e *Experiment) platformInitAudio() error {
 	dev, err := sdl.AUDIO_DEVICE_DEFAULT_PLAYBACK.OpenAudioDevice(nil)
 	if err != nil {
-		return err
+		return fmt.Errorf("control: opening default audio device: %w", err)
 	}
 	e.AudioDevice = dev
 	e.Audio = &AudioManager{Device: dev}

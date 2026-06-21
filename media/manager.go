@@ -323,14 +323,14 @@ func firePendingWithOnset(fires []stagedCallback, ts uint64, source OnsetSource)
 // Returns the post-flip SDL ticks (same reference as sdl.TicksNS).
 func (mgr *MovieManager) Draw() (uint64, error) {
 	if err := mgr.screen.Clear(); err != nil {
-		return 0, err
+		return 0, fmt.Errorf("media.MovieManager.Draw: clearing screen: %w", err)
 	}
 	if err := mgr.DrawWithoutFlip(); err != nil {
-		return 0, err
+		return 0, fmt.Errorf("media.MovieManager.Draw: %w", err)
 	}
 	ts, err := mgr.screen.FlipTS()
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("media.MovieManager.Draw: flipping display: %w", err)
 	}
 	mgr.NotifyFlipped(ts)
 	return ts, nil
@@ -357,7 +357,7 @@ func (mgr *MovieManager) DrawWithoutFlip() error {
 	for _, m := range movies {
 		s, vis, err := mgr.advanceMovie(m, now)
 		if err != nil {
-			return err
+			return fmt.Errorf("media.MovieManager.DrawWithoutFlip: advancing movie %q: %w", m.Tag, err)
 		}
 		staged = append(staged, s...)
 		if vis && m.Tag != "" {

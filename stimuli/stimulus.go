@@ -46,6 +46,8 @@
 package stimuli
 
 import (
+	"fmt"
+
 	"github.com/Zyko0/go-sdl3/sdl"
 	"github.com/chrplr/goxpyriment/apparatus"
 )
@@ -133,7 +135,7 @@ func PreloadVisualOnScreen(screen *apparatus.Screen, v VisualStimulus) error {
 func PreloadAllVisual(screen *apparatus.Screen, visuals []VisualStimulus) error {
 	for _, v := range visuals {
 		if err := PreloadVisualOnScreen(screen, v); err != nil {
-			return err
+			return fmt.Errorf("stimuli.PreloadAllVisual: %w", err)
 		}
 	}
 	return nil

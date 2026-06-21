@@ -5,6 +5,7 @@
 package stimuli
 
 import (
+	"fmt"
 	"image"
 	"image/color"
 	"image/draw"
@@ -62,13 +63,13 @@ func (vm *VisualMask) preload(screen *apparatus.Screen) error {
 	// Convert image.RGBA to sdl.Surface
 	surface, err := sdl.CreateSurfaceFrom(w, h, sdl.PIXELFORMAT_RGBA32, img.Pix, w*4)
 	if err != nil {
-		return err
+		return fmt.Errorf("stimuli.VisualMask: creating surface: %w", err)
 	}
 	defer surface.Destroy()
 
 	texture, err := screen.Renderer.CreateTextureFromSurface(surface)
 	if err != nil {
-		return err
+		return fmt.Errorf("stimuli.VisualMask: creating texture: %w", err)
 	}
 	vm.Texture = texture
 	return nil
@@ -79,7 +80,7 @@ func (vm *VisualMask) preload(screen *apparatus.Screen) error {
 func (vm *VisualMask) Draw(screen *apparatus.Screen) error {
 	if vm.Texture == nil {
 		if err := vm.preload(screen); err != nil {
-			return err
+			return fmt.Errorf("stimuli.VisualMask.Draw: %w", err)
 		}
 	}
 

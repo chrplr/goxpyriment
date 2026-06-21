@@ -5,6 +5,8 @@
 package stimuli
 
 import (
+	"fmt"
+
 	"github.com/Zyko0/go-sdl3/sdl"
 	"github.com/chrplr/goxpyriment/apparatus"
 )
@@ -47,7 +49,7 @@ func (td *ThermometerDisplay) Draw(screen *apparatus.Screen) error {
 	// Draw Frame
 	f := NewRectangle(td.Position.X, td.Position.Y, td.Size.X, td.Size.Y, td.FrameColor)
 	if err := f.Draw(screen); err != nil {
-		return err
+		return fmt.Errorf("stimuli.ThermometerDisplay.Draw: frame: %w", err)
 	}
 
 	// Inner area
@@ -80,7 +82,7 @@ func (td *ThermometerDisplay) Draw(screen *apparatus.Screen) error {
 		s.Position = sdl.FPoint{X: td.Position.X, Y: td.Position.Y + segY}
 
 		if err := s.Draw(screen); err != nil {
-			return err
+			return fmt.Errorf("stimuli.ThermometerDisplay.Draw: segment: %w", err)
 		}
 	}
 
@@ -93,7 +95,7 @@ func (td *ThermometerDisplay) Draw(screen *apparatus.Screen) error {
 		halfGoalSize := float32(5)
 
 		if err := screen.Renderer.SetDrawColor(td.GoalColor.R, td.GoalColor.G, td.GoalColor.B, td.GoalColor.A); err != nil {
-			return err
+			return fmt.Errorf("stimuli.ThermometerDisplay.Draw: setting goal color: %w", err)
 		}
 
 		// Draw two triangles/diamonds on the sides
