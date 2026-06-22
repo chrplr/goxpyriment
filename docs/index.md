@@ -1,16 +1,22 @@
 # goxpyriment
 
-`goxpyriment` is a high-level Go framework for building behavioral and psychological experiments.
+`goxpyriment` is a framework for building behavioral and psychological
+experiments, relying on the [Go programming language](https://go.dev)
+and the [SDL3 library](https://libsdl.org) thanks to the [go-sdl3](https://github.com/Zyko0/go-sdl3) bindings.
+
+
 
 * [GitHub repository](https://github.com/chrplr/goxpyriment)
 
 ## Features
 
-1. **Zero-dependency deployment.** Your experiments compile to standalone executables.
-2. **Rich stimuli.** Beyond text and images, present video clips and audio, generate visual patterns (gratings, Gabor patches), and run high-precision RSVP streams.
-3. **Response recording.** Collect responses from keyboard, mouse, and gamepads — and record vocal responses to an audio file for picture-naming and other speech-production paradigms.
-4. **Timing precision.** The stimulus loop runs VSYNC-locked with GC pauses disabled, giving sub-millisecond frame jitter on typical hardware (VSYNC can be disabled to support Variable Refresh Rate monitors).
-5. **AI-friendly API.** The API is well suited to "vibe-coding": after cloning the repository, describe your paradigm in plain language to Claude, Gemini, or ChatGPT and try the generated code. Given the examples and the constraints afforded by the framework, the experiment is likely to work as expected (but must be checked, of course).
+1. **Zero-dependency deployment.** Your experiments compile to standalone executables. No Python, no conda, no Font issue, no DLL hell on lab computers.
+2. **Timing precision.** The stimulus loop runs VSYNC-locked with GC pauses disabled, giving sub-millisecond frame jitter on typical hardware.
+3. **Hardware synchronization.** Send TTL triggers to synchronize with external devices (EEG, MEG, eye-trackers, fMRI) over parallel port, USB (DLP-IO8), or generic serial.
+4. **Rich stimuli.** Beyond text and images, present video clips and audio, generate visual patterns (gratings, Gabor patches), and run high-precision RSVP streams.
+5. **Response recording.** Collect responses from keyboard, mouse, and gamepads — and record vocal responses to an audio file for picture-naming and other speech-production paradigms.
+6. **AI-friendly API.** The consistent API is well suited to AI assisted coding — describe your paradigm in plain language to Claude, Gemini, or ChatGPT and the generated code is usually ready to run immediately.
+
 
 ---
 
@@ -35,7 +41,10 @@
 * Report bugs at <https://github.com/chrplr/goxpyriment/issues>
 
 
-Note: If you are looking for a simpler, *no-code experiment generator*, check out [Gostim2](https://chrplr.github.io/gostim2/).
+Note: If you are looking for a simpler experiment generator - with
+fixed stimulus presentation schedule -, check out
+[Gostim2](https://chrplr.github.io/gostim2/) which does not require
+any coding.
 
 
 --- 
@@ -43,22 +52,29 @@ Note: If you are looking for a simpler, *no-code experiment generator*, check ou
 ## Quick Start
 
 1. **[Install](Installation.md)** Go and build the bundled examples.
-2. **[Create your own experiment](CreatingYourOwnExperiment.md)** — a step-by-step beginner guide from an empty folder to a shareable executable.
-3. **[Getting Started](GettingStarted.md)** walks through worked tutorials (trials, data logging, RSVP, reaction times).
+2. **[Create your own experiment](CreatingYourOwnExperiment.md)** — a
+   step-by-step beginner guide from an empty folder to a shareable
+   executable.
+3. **[Getting Started](GettingStarted.md)** walks through worked
+   tutorials (trials, data logging, RSVP, reaction times).
 
 ---
 
 ## Ready-to-run experiments
 
-[Pre-built binaries](pre-built-examples.md) (ready-to run apps) of many experiments are available for Windows, macOS, and Linux.
+[Pre-built binaries](pre-built-examples.md) (ready-to run apps) of
+many experiments are available for Windows, macOS, and Linux.
 
 ---
 
 ## Background
 
-Goxpyriment relies on [libsdl](http://libsdl.org) via the [go-sdl3](https://github.com/Zyko0/go-sdl3) bindings.
+It was originaly inspired by
+[expyriment.org](https://github.com/expyriment/expyriment), a
+lightweight Python library for cognitive and neuroscientific
+experiments (Krause & Lindemann, 2014. *Behavior Research Methods*,
+46(2), 416–428. <https://doi.org/10.3758/s13428-013-0390-6>).
 
-It was inspired by [expyriment.org](https://github.com/expyriment/expyriment), a lightweight Python library for cognitive and neuroscientific experiments (Krause & Lindemann, 2014. *Behavior Research Methods*, 46(2), 416–428. <https://doi.org/10.3758/s13428-013-0390-6>). The API should feel familiar to expyriment users.
 
 ---
 
