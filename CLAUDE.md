@@ -13,19 +13,19 @@ All user-facing documentation lives in `docs/`:
 | `docs/UserManual.md` | Concept guide — rendering model, timing, input, data, streams, audio, design |
 | `docs/API.md` | Complete public API reference organized by package |
 
-Build and preview the docs site locally (Makefile targets at repo root):
+The docs site is built with [Zensical](https://zensical.org/). Build and preview locally (Makefile targets at repo root):
 
 ```bash
-pip install -r docs/requirements.txt   # install MkDocs + Material once
+pip install -r docs/requirements.txt   # install Zensical once
 
 make pdfs      # generate docs/*.pdf via pandoc + xelatex
-make serve     # live-reload preview at http://127.0.0.1:8000
-make docs      # build static HTML → site/
-make deploy    # generate PDFs + build + push to GitHub Pages
-make clean-docs  # remove site/
+make serve     # live-reload preview at http://127.0.0.1:8000 (zensical serve)
+make docs      # build static HTML → site/ (zensical build --clean)
+make deploy    # generate PDFs + build site locally
+make clean     # remove _build/ and site/
 ```
 
-PDFs and the `site/` directory are excluded from git (see `.gitignore`); they are generated locally and pushed to the `gh-pages` branch via `make deploy`.
+PDFs and the `site/` directory are excluded from git (see `.gitignore`); they are generated locally. The push to GitHub Pages is handled by GitHub Actions (`.github/workflows/docs.yml`).
 
 ## What this repo is
 

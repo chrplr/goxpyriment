@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Generate PDF versions of the documentation using pandoc + latexmk (xelatex).
-# Run this before "mkdocs gh-deploy" to include PDFs on the GitHub Pages site.
+# Run this before building the Zensical site (or `make deploy`) to include the
+# PDFs on the GitHub Pages site.
 #
 # Requirements: pandoc, latexmk, xelatex, DejaVu fonts
 #   Ubuntu/Debian: sudo apt install pandoc latexmk texlive-xetex fonts-dejavu
@@ -18,7 +19,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # instead of emitting "undefined reference" warnings from a single pass.
 PANDOC_OPTS=(
   # GitHub-style header IDs keep section numbers (e.g. "6-timing-architecture")
-  # so the hand-written tables of contents — and MkDocs/python-markdown, which
+  # so the hand-written tables of contents — and Zensical/python-markdown, which
   # uses the same scheme — resolve. Pandoc's default strips leading numbers,
   # which silently breaks every numbered TOC link.
   --from=markdown+gfm_auto_identifiers

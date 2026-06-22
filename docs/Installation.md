@@ -1,6 +1,6 @@
 # Goxpyriment installation instructions
 
-## No installation is needed to run a goxypriment app
+## No installation is needed to run a goxpyriment app
 
 If you were given a ready-to-run goxpyriment app (a compiled file,
 such as the ones provided in the [compiled
@@ -12,7 +12,7 @@ Command Prompt).
 ⚠️ **WARNING** One potential issue can arise from the antivirus or
 protection system of your computer if these binaries are unsigned:
 macOS Gatekeeper and Windows Defender will show security warnings or
-worse, _misleasding messages_ such as 'this program is damaged'. Your
+worse, _misleading messages_ such as 'this program is damaged'. Your
 antivirus may quarantine the files. Don't let them intimidate you:
 
    *  macOS: Right-click the app → **Open**, or run `xattr -dr
@@ -25,7 +25,7 @@ antivirus may quarantine the files. Don't let them intimidate you:
    a given program).
 
 
-## Minimal installation to execute a goxperiment source code
+## Minimal installation to execute a goxpyriment source code
 
 Let us consider the case where you have the _source code_ of a
 goxpyriment program (in a file with the extension `.go`)
@@ -34,10 +34,10 @@ If Go is not already installed on your computer, you
 need to download and install it following the instructions at
 <https://go.dev/doc/install>.
 
-Then, from two things one. You either have :
+Then there are two possibilities. You either have:
 
-1. A folder, containg at least the files `go.mod`, `go.sum` and the
-   source code, say `experiment.go` (it can be any any file with the
+1. A folder, containing at least the files `go.mod`, `go.sum` and the
+   source code, say `experiment.go` (it can be any file with the
    `.go` extension).
 
     Then, you can directly execute the code by typing the command
@@ -103,7 +103,7 @@ Then:
     If all goes well, this will compile codes from
     [examples/*](https://github.com/chrplr/goxpyriment/tree/main/examples)
     and
-    [test/*](https://github.com/chrplr/goxpyriment/tree/main/examples)
+    [tests/*](https://github.com/chrplr/goxpyriment/tree/main/tests)
     (Note: The first time, this will take a while because Go needs to
     download several libraries. Once this is done, future compilations
     will be fast.)
@@ -114,13 +114,13 @@ Then:
     folder.
 
 3. If you would like to access the documentations locally, install
-   [pgksite](https://github.com/golang/pkgsite) and
+   [pkgsite](https://github.com/golang/pkgsite) and
    [zensical](https://zensical.org/docs/get-started/), and launch them
    from goxpyriment root folder:
 
     ```
     cd goxpyriment
-    pkgsite     # API documentation at http://127.0.0.1/8080
+    pkgsite     # API documentation at http://127.0.0.1:8080
     zensical build --clean
     zensical serve  # Live-reload preview at http://127.0.0.1:8000
     ```
