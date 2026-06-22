@@ -13,6 +13,12 @@ All user-facing documentation lives in `docs/`:
 | `docs/UserManual.md` | Concept guide — rendering model, timing, input, data, streams, audio, design |
 | `docs/API.md` | Complete public API reference organized by package |
 
+`README.md` (repo root) is **generated** from `docs/index.md` — do not edit it by
+hand. `docs/index.md` is the single source of truth for the landing page; edit it,
+then run `make readme` (which runs `cmd/gen-readme`, copying the content and
+rewriting relative links to reach files through `docs/`). A CI guard
+(`.github/workflows/readme-sync.yml`) fails if `README.md` is out of date.
+
 The docs site is built with [Zensical](https://zensical.org/). Build and preview locally (Makefile targets at repo root):
 
 ```bash

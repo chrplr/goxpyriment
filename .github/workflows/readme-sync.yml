@@ -1,0 +1,35 @@
+name: README in sync with docs/index.md
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    paths:
+      - docs/index.md
+      - README.md
+      - cmd/gen-readme/**
+      - .github/workflows/readme-sync.yml
+  workflow_dispatch: {}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.x"
+
+      - name: Regenerate README.md from docs/index.md
+        run: go run ./cmd/gen-readme/
+
+      - name: Fail if README.md is out of date
+        run: |
+          if ! git diff --exit-code README.md; then
+            echo "::error::README.md is out of date. Run 'make readme' after editing docs/index.md and commit the result."
+            exit 1
+          fi

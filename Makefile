@@ -1,4 +1,4 @@
-.PHONY: all examples update-examples-gallery tests pdfs docs serve deploy clean help
+.PHONY: all examples update-examples-gallery readme tests pdfs docs serve deploy clean help
 
 # Discover every directory holding a main.go directly under examples/ or
 # tests/. We use make's built-in $(wildcard)/$(patsubst) rather than `find`
@@ -21,6 +21,7 @@ help:
 	@echo "  all       Build all examples and tests to _build / (default)"
 	@echo "  examples       Same as target "all"<Down>Build all examples to _build/"
 	@echo "  update-examples-gallery  Regenerate docs/GalleryOfExamples.md tables from meta.yaml files"
+	@echo "  readme    Regenerate README.md from docs/index.md (single source of truth)"
 	@echo "  run-NAME       Build and run a single example (e.g. make run-parity_decision)"
 	@echo "  tests     Build test binaries"
 	@echo "  pdfs      Generate PDF docs via pandoc + xelatex"
@@ -49,6 +50,11 @@ examples:
 # Regenerate docs/GalleryOfExamples.md tables from per-example meta.yaml files.
 update-examples-gallery:
 	@go run ./cmd/gen-gallery/
+
+# Regenerate README.md from docs/index.md (single source of truth for the
+# landing page). Rewrites relative links to reach files through docs/.
+readme:
+	@go run ./cmd/gen-readme/
 
 # Build and run a single example: make run-hello_world
 run-%:
