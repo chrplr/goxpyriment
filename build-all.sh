@@ -17,6 +17,12 @@ cd "$ROOT"
 
 mkdir -p _build
 
+# Executable suffix for the target platform (".exe" on Windows, empty elsewhere).
+# Go only appends this automatically when `-o` is NOT given; since we pass an
+# explicit output path below, we must add it ourselves or Windows binaries end
+# up without the .exe extension.
+EXE="$(go env GOEXE)"
+
 # Build every directory that contains a main.go directly under examples/ or
 # tests/. We use shell globbing rather than `find` on purpose: on Windows with
 # Git Bash, `find` (and `sort`) are frequently shadowed by the DOS find.exe /
@@ -26,7 +32,7 @@ for dir in examples/*/ tests/*/; do
     [ -f "${dir}main.go" ] || continue
     name=${dir%/}; name=${name##*/}
     echo "Building $name..."
-    ( cd "$dir" && CGO_ENABLED=0 go build -o "$ROOT/_build/$name" . ) \
+    ( cd "$dir" && CGO_ENABLED=0 go build -o "$ROOT/_build/$name$EXE" . ) \
       || echo "  !! failed to build $name"
 done
 

@@ -30,9 +30,11 @@ antivirus may quarantine the files. Don't let them intimidate you:
 Let us consider the case where you have the _source code_ of a
 goxpyriment program (in a file with the extension `.go`)
 
-If Go is not already installed on your computer, you
-need to download and install it following the instructions at
-<https://go.dev/doc/install>.
+ODIf Go is not already installed on your computer, you need to download
+and install it following the instructions at
+<https://go.dev/doc/install> (to check if Go installed, type `go
+version` on a command prompt. If it replies with a version numbner, go
+is isntalled)
 
 Then there are two possibilities. You either have:
 
@@ -47,10 +49,11 @@ Then there are two possibilities. You either have:
     go run experiment.go    # replace experiment by the actual name
     ```
 
-    Or build the app by typing:
+    Or build the app, then run it, by typing:
 
     ```
     go build experiment.go
+    ./experiment
     ```
 
 2. A single `.go` file, say `experiment.go`.
@@ -67,12 +70,15 @@ Then there are two possibilities. You either have:
     above: you can run or build the program with the commands `go run`
     or `go build`.
 
+Remark: the very first time you run or build a goxpyriment program, it will take a while as go needs to download a number of modules from the internet.
+Afterwards, running or building an app should be near instantaneous.
+
 
 ## Full installation
 
 If you want to do serious development, in addition to Go, you need to
-install [Git](https://git-scm.com/), a code editor, and an AI-coding
-agent like [Claude Code](https://claude.com/product/claude-code). If
+install [Git](https://git-scm.com/), a code editor and, probably, an AI-coding
+agent like [Claude Code](https://claude.com/product/claude-code), [Gemini cli](https://geminicli.com) or [Aider](https://aider.chat/docs/usage.html). If
 you are new to this, consult the [detailed
 instructions](Installing-a-development-environment.md)
 
@@ -88,9 +94,8 @@ Then:
     git clone https://github.com/chrplr/goxpyriment.git
     ```
 
-    In the future, to update goxpyriment to the latest version, a
-    simple `git pull` from within the `goxpyriment` folder will be
-    sufficient.
+    This will create a folder `goxpyriment` contain the entire source code, examples and documentation of the framework. 
+    In the future, you will be able run the `git pull` command within this folder to update to the latest version.
 
 2. Navigate to the `goxpyriment` folder and type the command-line:
 
@@ -105,7 +110,7 @@ Then:
     and
     [tests/*](https://github.com/chrplr/goxpyriment/tree/main/tests)
     (Note: The first time, this will take a while because Go needs to
-    download several libraries. Once this is done, future compilations
+    download several modules. Once this is done, future compilations
     will be fast.)
 
     After this operation, a new `_build` folder contains executable
