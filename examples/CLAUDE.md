@@ -1,0 +1,95 @@
+// Copyright (2026) Christophe Pallier <christophe@pallier.org>
+// Distributed under the GNU General Public License v3.
+
+# examples/ — authoring a new experiment
+
+This directory holds real experiments (record behavioural data) and demonstrations
+(illusions, feature templates). This file is the orientation for **writing a new one**.
+It points at the canonical sources rather than repeating them — when in doubt, read the
+linked docs, not this summary.
+
+## Fastest correct path: copy a sibling
+
+Don't start from a blank file. Copy the closest existing example and adapt it. Good
+templates by paradigm:
+
+| You're building | Start from |
+|---|---|
+| Single-stimulus reaction time | `Stroop_task/` |
+| Adaptive threshold (staircase / QUEST) | `Contrast-Detection-QUEST/` |
+| Rapid serial visual presentation | `Pictures-RSVP/` |
+| 2-AFC perceptual decision | `Number-Comparison/` |
+
+## Docs to consult, in order
+
+1. `docs/GettingStarted.md` — tutorial + Python/Expyriment mapping, worked examples.
+2. `docs/UserManual.md` — rendering model, timing, input, data, audio, design.
+3. The relevant package `CLAUDE.md` (`../stimuli/`, `../design/`, `../results/`,
+   `../staircase/`, `../control/`, …) — detailed API for the package you're using.
+4. `docs/API.md` — complete public API reference.
+
+Experiment code imports **only `control`** (plus `design`, `stimuli`, `results` as
+needed) — never `go-sdl3` directly. SDL colors, key codes, types and helpers are
+re-exported from `control` (see `../control/defaults.go`).
+
+## Typical program skeleton
+
+```go
+func main() {
+    exp := control.NewExperimentFromFlags("My Task", control.Black, control.White, 32)
+    defer exp.End()
+
+    // Declare the data columns (subject_id is prepended automatically).
+    exp.AddDataVariableNames([]string{"trial", "condition", "response", "rt", "correct"})
+
+    // Build the trial list (shuffle / counterbalance via design.*).
+    trials := buildTrials()
+    design.ShuffleList(trials)
+
+    exp.Run(func() error {            // all rendering happens inside Run
+        exp.ShowInstructions("…\n\nPress SPACE to start.")
+        for i, t := range trials {
+            exp.Blank(1000)          // inter-trial interval
+            stim := stimuli.NewTextLine(t.word, 0, 0, t.color)
+            key, rt, _ := exp.ShowAndGetRT(stim, responseKeys, -1)
+            exp.Data.Add(i, t.cond, keyName(key), rt, isCorrect(key, t))
+        }
+        return nil                   // return control.EndLoop to stop early
+    })
+}
+```
+
+`exp.ShowAndGetRT(stim, keys, timeoutMS)` is the canonical single-stimulus RT call:
+it clears stale events, flips with a VSYNC timestamp, waits for a key with
+hardware-precision timing, and returns `(key, rtMs, error)`.
+
+## How results are saved
+
+`exp.Data` writes **two files** per session under the data directory (see
+`../results/CLAUDE.md`):
+
+- `<name>_sub-<NNN>_date-….csv` — pure CSV, directly importable by R/Excel.
+- `<name>_sub-<NNN>_date-…-info.txt` — `#`-prefixed session metadata.
+
+Workflow: call `exp.AddDataVariableNames([...])` once (header — do **not** include
+`subject_id`, it's prepended), then `exp.Data.Add(...)` once per trial. Numbers and
+bools are written bare; everything else is RFC-4180 quoted.
+
+## Pitfalls checklist
+
+- **RT comes from the SDL event clock**, never wall-clock deltas. Use `ShowAndGetRT`,
+  or `exp.ShowTS` + `Keyboard.GetKeyEventTS` and subtract. See UserManual §6.
+- **Multi-frame loops use `screen.PacedFlip()`**, not `screen.Update()` — some systems
+  present in a non-blocking mode and a naive per-frame loop runs too fast. See
+  UserManual §5/§6.
+- **Never draw outside `exp.Run`** (the SDL main thread). Drawing from a goroutine
+  silently does nothing or crashes.
+- **Coordinates are center-relative**: `(0,0)` is screen centre, `sdl.FPoint{X,Y}`.
+- **Use `control.*` constants** for colors and key codes; don't import `go-sdl3`.
+- **Add a `meta.yaml`** (`category: experiment` or `demo`, plus `description:` and
+  `reference:`) so the example appears in `docs/GalleryOfExamples.md`. Regenerate with
+  `make update-examples-gallery`.
+- **Copyright header** on every new `.go` file (see root `CLAUDE.md`).
+- **Run from the repo root** so `go.work` resolves the workspace
+  (`go run examples/<name>/main.go`). Most examples accept `-w` (windowed), `-d N`
+  (display), `-s <id>` (subject).
