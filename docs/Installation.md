@@ -27,23 +27,20 @@ antivirus may quarantine the files. Don't let them intimidate you:
 
 ## Minimal installation to execute a goxpyriment source code
 
-Let us consider the case where you have the _source code_ of a
-goxpyriment program (in a file with the extension `.go`)
+Let us consider the case where you have the _source code_ of a goxperiment program.
 
-ODIf Go is not already installed on your computer, you need to download
-and install it following the instructions at
-<https://go.dev/doc/install> (to check if Go installed, type `go
-version` on a command prompt. If it replies with a version numbner, go
-is isntalled)
+If Go is not already installed on your computer (you can check if Go
+installed by typing `go version` on a command line. If an error
+message is displayed, then Go is not installed), download and install
+it following the instructions at <https://go.dev/doc/install>
 
-Then there are two possibilities. You either have:
+Then there are two possibilities. You have either:
 
-1. A folder, containing at least the files `go.mod`, `go.sum` and the
+1. A folder containing at least the files `go.mod`, `go.sum` and the
    source code, say `experiment.go` (it can be any file with the
    `.go` extension).
 
-    Then, you can directly execute the code by typing the command
-    line:
+    Then, execute the command line:
 
     ```
     go run experiment.go    # replace experiment by the actual name
@@ -67,19 +64,24 @@ Then there are two possibilities. You either have:
     ```
 
     This will create the missing files and you are in the situation
-    above: you can run or build the program with the commands `go run`
-    or `go build`.
+    of the previous paragraph: you can run the program with the command `go run .`
+    or `go build .`.
 
-Remark: the very first time you run or build a goxpyriment program, it will take a while as go needs to download a number of modules from the internet.
-Afterwards, running or building an app should be near instantaneous.
+Remark: the very first time you run or build a goxpyriment program, it
+will take a while as Go needs to download a number of modules from the
+Internet.  Afterwards, running or building an app should be near
+instantaneous.
 
 
 ## Full installation
 
 If you want to do serious development, in addition to Go, you need to
-install [Git](https://git-scm.com/), a code editor and, probably, an AI-coding
-agent like [Claude Code](https://claude.com/product/claude-code), [Gemini cli](https://geminicli.com) or [Aider](https://aider.chat/docs/usage.html). If
-you are new to this, consult the [detailed
+install [Git](https://git-scm.com/), a code editor and, probably, an
+AI-coding agent like [Claude
+Code](https://claude.com/product/claude-code), [Gemini
+cli](https://geminicli.com) or
+[Aider](https://aider.chat/docs/usage.html). If you are new to this,
+consult the [detailed
 instructions](Installing-a-development-environment.md)
 
 Then:

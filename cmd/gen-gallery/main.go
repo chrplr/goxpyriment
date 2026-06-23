@@ -120,43 +120,72 @@ func collect(root string) ([]meta, []string) {
 const repoExamplesURL = "https://github.com/chrplr/goxpyriment/tree/main/examples"
 const repoTestsURL = "https://github.com/chrplr/goxpyriment/tree/main/tests"
 
-// experimentTable returns the Markdown table body for experiments.
-func experimentTable(metas []meta) string {
+// ncols is the number of examples laid out per row in the compact tables.
+const ncols = 3
+
+// compactCell builds one stacked cell: bold directory link, then the
+// description, then an italic reference (each separated by a blank line so the
+// three pieces read as a vertical unit). Empty pieces are omitted.
+func compactCell(dir, urlBase, description, reference string) string {
+	parts := []string{fmt.Sprintf("**[%s](%s/%s)**", dir, urlBase, dir)}
+	if description != "" {
+		parts = append(parts, description)
+	}
+	if reference != "" {
+		parts = append(parts, fmt.Sprintf("*%s*", reference))
+	}
+	return strings.Join(parts, "<br><br>")
+}
+
+// compactTable lays cells out in an ncols-wide, center-aligned Markdown table.
+// Trailing empty cells pad the final row.
+func compactTable(cells []string) string {
 	var sb strings.Builder
-	sb.WriteString("| Directory | Task | Reference |\n")
-	sb.WriteString("|-----------|------|-----------|\n")
+	sb.WriteString("| | | |\n")
+	sb.WriteString("|:--:|:--:|:--:|\n")
+	for i := 0; i < len(cells); i += ncols {
+		row := make([]string, ncols)
+		for j := range ncols {
+			if i+j < len(cells) {
+				row[j] = cells[i+j]
+			}
+		}
+		fmt.Fprintf(&sb, "| %s |\n", strings.Join(row, " | "))
+	}
+	return sb.String()
+}
+
+// experimentTable returns the compact Markdown table body for experiments.
+func experimentTable(metas []meta) string {
+	var cells []string
 	for _, m := range metas {
 		if m.category != "experiment" {
 			continue
 		}
-		fmt.Fprintf(&sb, "| [%s](%s/%s) | %s | %s |\n", m.dir, repoExamplesURL, m.dir, m.description, m.reference)
+		cells = append(cells, compactCell(m.dir, repoExamplesURL, m.description, m.reference))
 	}
-	return sb.String()
+	return compactTable(cells)
 }
 
-// demoTable returns the Markdown table body for demonstrations.
+// demoTable returns the compact Markdown table body for demonstrations.
 func demoTable(metas []meta) string {
-	var sb strings.Builder
-	sb.WriteString("| Directory | Description |\n")
-	sb.WriteString("|-----------|-------------|\n")
+	var cells []string
 	for _, m := range metas {
 		if m.category != "demo" {
 			continue
 		}
-		fmt.Fprintf(&sb, "| [%s](%s/%s) | %s |\n", m.dir, repoExamplesURL, m.dir, m.description)
+		cells = append(cells, compactCell(m.dir, repoExamplesURL, m.description, ""))
 	}
-	return sb.String()
+	return compactTable(cells)
 }
 
-// testsTable returns the Markdown table body for the technical tests in tests/.
+// testsTable returns the compact Markdown table body for the technical tests.
 func testsTable(metas []meta) string {
-	var sb strings.Builder
-	sb.WriteString("| Directory | Description |\n")
-	sb.WriteString("|-----------|-------------|\n")
+	var cells []string
 	for _, m := range metas {
-		fmt.Fprintf(&sb, "| [%s](%s/%s) | %s |\n", m.dir, repoTestsURL, m.dir, m.description)
+		cells = append(cells, compactCell(m.dir, repoTestsURL, m.description, ""))
 	}
-	return sb.String()
+	return compactTable(cells)
 }
 
 // rewriteSentinel replaces the lines between begin and end sentinel comments

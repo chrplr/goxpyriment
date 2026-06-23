@@ -1,6 +1,7 @@
 ## Pre-built binaries of examples and tests
 
-If you prefer not to install Go on your computer and recompile the examples, you can download pre-built executables ready to run on your computer.
+
+If you prefer not to compile the [examples](GalleryOfExamples.md) with Go, you can download _pre-built executables_ ready to run on your computer.
 
 ⚠️  **WARNING** These binaries are unsigned. macOS Gatekeeper and Windows Defender will show security warnings or worse, _misleasding messages_ such as 'this program is damaged'. Your antivirus may quarantine the files. Don't let them intimidate you:
 *  macOS: Right-click the app → **Open**, or run `xattr -dr com.apple.quarantine <AppName>.app` in Terminal. See [macOS installation and security](https://chrplr.github.io/note-about-macos-unsigned-apps) for step-by-step instructions.

@@ -291,7 +291,7 @@ func main() {
 
 Key observations:
 
-- `exp.ShowTS(stim)` is a drop-in replacement for `exp.Show(stim)` — it does the same clear → draw → flip, and additionally returns the nanosecond timestamp of the flip.
+- `exp.ShowTS(stim)` does the same thing as `exp.Show(stim)` — clear → draw → flip — and additionally returns the nanosecond timestamp of the flip.
 - `GetKeyEventTS` returns the SDL3 event timestamp (not a polling delta), so subtracting any previously recorded `ShowTS` onset gives a physically meaningful RT.
 - Both timestamps are in SDL nanoseconds (divide by `1e6` for milliseconds). Storing raw nanoseconds in the data file and converting offline is the recommended practice.
 - `GetPressEventTS` provides the same capability for mouse responses.
@@ -300,7 +300,7 @@ Key observations:
 
 ## Tutorial 5 — Test AI Coding
 
-1. Take the PDF of a scientific paper about a psychology experiment and ask Gemini or Claude to read it and generate a detailed description (stimuli, design, timings) to give to a coder to replicate it. Save the answer in a `description.md` file.
+1. Take the PDF of a scientific paper about a psychology experiment and ask Gemini or Claude to read it and generate a detailed description (stimuli, design, timings) to give to n ai coder to replicate it. Save the answer in a `description.md` file.
 2. Open Gemini or Claude (command-line tool), and ask it to implement the experiment detailed in `description.md`, using the goxpyriment library (provide the path of your local clone of the repository) and taking inspiration from the examples provided in the `examples/` folder.
 
 ---

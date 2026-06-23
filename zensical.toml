@@ -1,0 +1,65 @@
+[project]
+site_name = "goxpyriment"
+site_description = "A Go framework for behavioral and psychological experiments"
+site_url = "https://chrplr.github.io/goxpyriment"
+repo_url = "https://github.com/chrplr/goxpyriment"
+repo_name = "chrplr/goxpyriment"
+
+docs_dir = "docs"
+
+# Each inline table is a single navigation entry. Sections nest an array of
+# inline tables. TOML requires each inline table to stay on one line.
+nav = [
+  { Home = "index.md" },
+  { Installation = "Installation.md" },
+  { "Gallery of Examples" = "GalleryOfExamples.md" },
+  { Documentation = [ { "Getting Started" = "GettingStarted.md" }, { "Creating Your Own Experiment" = "CreatingYourOwnExperiment.md" }, { "User Manual" = "UserManual.md" }, { "API Reference" = "API.md" }, { "Migration Guide" = "MigrationGuide.md" } ] },
+  { Advanced = [ { "Timing Tests" = "TimingTests.md" }, { "Frame syncing" = "frame-syncing.md" }, { "Packaging your experiment" = "How_to_package_your_experiment.md" }, { "Movies / media" = "MediaMovies.md" }, { "Fullscreen & high pixel density" = "Fullscreen_high_pixel_density.md" }, { "Setting priority under Linux" = "SettingPriorityUnderLinux.md" }, { "Linux virtual console" = "LinuxVirtualConsoleSDL.md" }, { "WASM build" = "WASM.md" }, { "Library usage" = "library_usage.md" }, { "Go vs Python" = "gemini-about-go-vs-python.md" }, { "Pre-built examples" = "pre-built-examples.md" } ] },
+]
+
+[project.theme]
+name = "material"
+features = [
+  "navigation.tabs",
+  "navigation.top",
+  "navigation.sections",
+  "content.code.copy",
+  "content.code.annotate",
+  "search.highlight",
+  "search.suggest",
+  # Render the page table of contents in the left sidebar instead of a
+  # separate right-hand column.
+  "toc.integrate",
+]
+
+[[project.theme.palette]]
+media = "(prefers-color-scheme: light)"
+scheme = "default"
+primary = "indigo"
+accent = "indigo"
+toggle.icon = "material/brightness-7"
+toggle.name = "Switch to dark mode"
+
+[[project.theme.palette]]
+media = "(prefers-color-scheme: dark)"
+scheme = "slate"
+primary = "indigo"
+accent = "indigo"
+toggle.icon = "material/brightness-4"
+toggle.name = "Switch to light mode"
+
+# Python-Markdown extensions. pymdownx.* entries may be nested under a
+# [project.markdown_extensions.pymdownx] table without the "pymdownx." prefix.
+[project.markdown_extensions]
+admonition = {}
+toc = { permalink = true }
+
+[project.markdown_extensions.pymdownx]
+details = {}
+superfences = {}
+inlinehilite = {}
+highlight = { anchor_linenums = true }
+tabbed = { alternate_style = true }
+
+[project.plugins]
+search = {}
