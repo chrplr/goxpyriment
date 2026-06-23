@@ -13,8 +13,9 @@ nav = [
   { Home = "index.md" },
   { Installation = "Installation.md" },
   { "Gallery of Examples" = "GalleryOfExamples.md" },
-  { Documentation = [ { "Getting Started" = "GettingStarted.md" }, { "Creating Your Own Experiment" = "CreatingYourOwnExperiment.md" }, { "User Manual" = "UserManual.md" }, { "API Reference" = "API.md" }, { "Migration Guide" = "MigrationGuide.md" } ] },
-  { Advanced = [ { "Timing Tests" = "TimingTests.md" }, { "Frame syncing" = "frame-syncing.md" }, { "Packaging your experiment" = "How_to_package_your_experiment.md" }, { "Movies / media" = "MediaMovies.md" }, { "Fullscreen & high pixel density" = "Fullscreen_high_pixel_density.md" }, { "Setting priority under Linux" = "SettingPriorityUnderLinux.md" }, { "Linux virtual console" = "LinuxVirtualConsoleSDL.md" }, { "WASM build" = "WASM.md" }, { "Library usage" = "library_usage.md" }, { "Go vs Python" = "gemini-about-go-vs-python.md" }, { "Pre-built examples" = "pre-built-examples.md" } ] },
+  { FirstSteps = [ { "Getting Started" = "GettingStarted.md" }, { "Creating Your Own Experiment" = "CreatingYourOwnExperiment.md" } ] },
+  { Manuals = [ { "User Manual" = "UserManual.md" }, { "API Reference" = "API.md" }, { "Migration Guide" = "MigrationGuide.md" } ] },
+  { Misc = [ { "Timing Tests" = "TimingTests.md" }, { "Frame syncing" = "frame-syncing.md" }, { "Packaging your experiment" = "How_to_package_your_experiment.md" }, { "Movies / media" = "MediaMovies.md" }, { "Fullscreen & high pixel density" = "Fullscreen_high_pixel_density.md" }, { "Setting priority under Linux" = "SettingPriorityUnderLinux.md" }, { "Linux virtual console" = "LinuxVirtualConsoleSDL.md" }, { "WASM build" = "WASM.md" }, { "Library usage" = "library_usage.md" }, { "Go vs Python" = "gemini-about-go-vs-python.md" }, { "Pre-built examples" = "pre-built-examples.md" } ] },
 ]
 
 [project.theme]
