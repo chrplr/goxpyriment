@@ -1,0 +1,48 @@
+# Test Stream Tones
+
+Demonstrates `MakeRegularSoundStream` + `PlayStreamOfSounds` for sequential
+auditory presentation: a sequence of pure tones is played at a fixed rate, with
+timing logs showing actual onset and offset times.
+
+Use this to verify auditory-stream timing accuracy on your hardware. It mirrors
+`test_stream_text` and `test_stream_images` for the audio domain.
+
+---
+
+## Prerequisites
+
+- Go 1.25+
+- A working audio output device
+
+---
+
+## Running
+
+```bash
+go run main.go
+```
+
+A small window opens so the stream can catch ESC / window-close, but the test is
+purely auditory.
+
+---
+
+## Output
+
+Data are saved to `goxpy_data/` as a `.csv` file (CSV with a metadata header):
+
+| Column | Description |
+|--------|-------------|
+| `tone_index` | Position in the stream |
+| `frequency_hz` | The tone's frequency (Hz) |
+| `target_on_ms` | Requested on-duration (ms) |
+| `actual_onset_ms` | Measured onset time (ms) |
+| `actual_offset_ms` | Measured offset time (ms) |
+
+---
+
+## Note
+
+`PlayStreamOfSounds` uses `time.Sleep(1ms)` polling (not VSYNC) for audio timing.
+This is a technical test for timing verification, mainly useful for framework
+developers.
