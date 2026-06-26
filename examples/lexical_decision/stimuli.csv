@@ -1,7 +1,7 @@
-item,category
-bonjour,W
-chien,W
-président,W
-lopadol,P
-mirance,P
-clapour,P
+stimulus,category,length
+bonjour,W,7
+chien,W,5
+président,W,8
+lopadol,P,7
+mirance,P,7
+clapour,P,7
