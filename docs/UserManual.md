@@ -28,8 +28,8 @@ This manual explains the key concepts of the library. It assumes you have read t
 14. [Animated Stimuli](#14-animated-stimuli)
 15. [Gamma Correction and Luminance Linearity](#15-gamma-correction-and-luminance-linearity)
 16. [Hardware Triggers and TTL Devices](#16-hardware-triggers-and-ttl-devices)
-17. [Display Compositor Bypass](#compositor-bypass)
-18. [Variable Refresh Rate (VRR) Stimulus Presentation](#vrr)
+17. [Display Compositor Bypass](#17-display-compositor-bypass)
+18. [Variable Refresh Rate (VRR) Stimulus Presentation](#18-variable-refresh-rate-vrr-stimulus-presentation)
 19. [Putting It All Together](#19-putting-it-all-together)
 
 ---
@@ -540,7 +540,7 @@ This sweeps target durations from 1 ms to 50 ms in 1 ms steps and reports
 the actual vs. target duration at each step. Duration errors below 0.5 ms
 across the sweep confirm that VRR is working; large periodic errors confirm
 that VRR is absent or the requested duration is outside the supported range.
-See [TimingTests.md — VRR section](TimingTests.md#vrr--variable-refresh-rate-duration-sweep)
+See [TimingTests.md — VRR section](TimingTests.md#vrr-variable-refresh-rate-duration-sweep)
 for detailed interpretation, including how to read the VRR boundary from the
 output and how to enable FreeSync on Linux.
 
@@ -1969,7 +1969,7 @@ The device must be reachable on the local network. Default Modbus port 502 is us
 
 ---
 
-## 17. Display Compositor Bypass {#compositor-bypass}
+## 17. Display Compositor Bypass
 
 A compositing window manager (compositor) intercepts every application
 frame and blends it with other on-screen elements before sending the
@@ -2011,7 +2011,7 @@ These platform differences can be quantified empirically with the
 
 ---
 
-## 18. Variable Refresh Rate (VRR) Stimulus Presentation {#vrr}
+## 18. Variable Refresh Rate (VRR) Stimulus Presentation
 
 Standard displays refresh at a fixed rate (e.g., 60 Hz), which quantises
 every stimulus duration to multiples of the frame period (16.67 ms at

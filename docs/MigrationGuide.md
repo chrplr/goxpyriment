@@ -222,7 +222,7 @@ func main() {
 
 **`callOnFlip` is not needed.** PsychoPy's `win.callOnFlip(clock.reset)` is a workaround for the fact that `flip()` and the clock reset are separate operations. `exp.ShowTS(stim)` captures the SDL nanosecond timestamp atomically at the VSYNC flip — no workaround needed.
 
-**Builder vs Coder.** PsychoPy Builder generates Python Coder scripts. There is no Builder equivalent in goxpyriment; all experiments are written in code. The [vibe-coding tip](../README.md) in the README describes how AI coding agents can generate Go experiment code from a plain-language description.
+**Builder vs Coder.** PsychoPy Builder generates Python Coder scripts. There is no Builder equivalent in goxpyriment; all experiments are written in code. 
 
 **Spatial frequency.** PsychoPy's `GratingStim` spatial frequency is in cycles/degree (when `units='deg'`). Goxpyriment's `spatialFreq` is in **cycles per pixel**. Convert: `sf_cpx = sf_cpd / mon.DegToPx(1)`.
 

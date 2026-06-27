@@ -9,7 +9,7 @@ program printing to your terminal. Once done, you can go back to the [instructio
 1. Install the tools for your operating system — [macOS](#macos) ·
    [Windows](#windows) · [Linux (Ubuntu)](#linux-ubuntu)
 2. [Write and run your first program](#your-first-program-hello-world)
-3. (Optional) [Install Claude Code](#optional-claude-code--an-ai-coding-agent),
+3. (Optional) [Install Claude Code](#optional-install-an-ai-coding-agent),
    an AI coding assistant
 
 ---
