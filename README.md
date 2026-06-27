@@ -2,20 +2,19 @@
 
 # goxpyriment
 
-* [Homepage](https://github.io/chrplr/goxpyriment)
+* [Homepage](https://chrplr.github.io/goxpyriment)
 * [GitHub repository](https://github.com/chrplr/goxpyriment)
 
-`goxpyriment` is a framework for building behavioral and psychological
-experiments.
+`goxpyriment` is a framework for building behavioral and psychological experiments (currently, as Desktop App).
 
 ## Features
 
 1. **Zero-dependency deployment.** Your experiments compile to standalone executables. No Python, no conda, no Font issue, no DLL hell on lab computers.
-2. **Rich stimuli.** Beyond text and images and audio, present video, generate visual patterns (gratings, Gabor patches, clouds of dots,...), and run high-precision RSVP streams.
-3. **Response recording.** Collect responses from keyboard, mouse, and gamepads. Records vocal responses.
-4. **Timing precision.** The stimulus loop runs VSYNC-locked with GC pauses disabled, giving sub-millisecond frame jitter on typical hardware.
-5. **Hardware synchronization.** Send TTL triggers to synchronize with external devices (EEG, MEG, eye-trackers, fMRI) over parallel port, USB (DLP-IO8), or generic serial.
-6. **AI-friendly API.** The consistent API is well suited to AI assisted coding: describe your paradigm in plain language to Claude, Gemini, or ChatGPT and the generated code is usually ready to run immediately.
+2. **AI-friendly API.** The consistent API is well suited to AI assisted coding: describe your paradigm in plain language to Claude, Gemini, or ChatGPT and the generated code is usually ready to run immediately.
+3. **Rich stimuli.** Beyond text and images and audio, present video, generate visual patterns (gratings, Gabor patches, clouds of dots,...), and run high-precision RSVP streams.
+4. **Response recording.** Collect responses from keyboard, mouse, and gamepads. Records vocal responses.
+5. **Timing precision.** The stimulus loop runs VSYNC-locked with GC pauses disabled, giving sub-millisecond frame jitter on typical hardware.
+6. **Hardware synchronization.** Send TTL triggers to synchronize with external devices (EEG, MEG, eye-trackers, fMRI) over parallel port, USB (DLP-IO8), or generic serial.
 
 Remark: If you are looking for a simple experiment generator - with
 fixed stimulus presentation schedule, check out

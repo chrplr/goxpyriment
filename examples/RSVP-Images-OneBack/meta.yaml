@@ -1,0 +1,3 @@
+category: experiment
+description: "One-back RSVP picture task: images from images/ flash by in random order (200 ms on, 100 ms blank); ~10% are immediate repeats and the participant presses SPACE on repeats, with a buzzer on misses. VSYNC-locked, with per-image onset/offset, response, and hit/false-alarm logging"
+reference: ""
