@@ -462,12 +462,7 @@ frame-interval jitter typically below 0.3 ms (one standard deviation), comparabl
 
 **macOS.** Apple's Metal pipeline always delivers frames through the
 WindowServer compositor, and no third-party application can bypass it — even
-in fullscreen. The WindowServer typically adds one frame of fixed latency
-(8–17 ms depending on refresh rate) and 2–5 ms of frame-interval jitter.
-This onset uncertainty — larger than many SOAs of experimental interest — makes
-macOS unsuitable for production data collection. Researchers should prefer
-Linux or Windows hardware for laboratory deployments; macOS is adequate for
-pilot testing and paradigm development.
+in fullscreen. 
 
 These platform differences can be measured empirically with the `display` and
 `frames` sub-tests of the bundled `Timing-Tests` suite (see
@@ -864,7 +859,27 @@ When `exp.End()` is called, two files are written to `~/goxpy_data/`:
 | `<expName>_sub-<NNN>_date-<YYYYMMDD>-<HHMMSS>.csv` | Pure CSV data rows — directly importable by Excel, R, or pandas |
 | `<expName>_sub-<NNN>_date-<YYYYMMDD>-<HHMMSS>-info.txt` | Session metadata: start/end time, hostname, OS, framework version, display and audio configuration, participant info |
 
-Both files open automatically on `Initialize()` and are flushed to disk when `exp.End()` is called.
+Both files open automatically on `Initialize()` and are flushed to disk when `exp.End()` is called. Any spaces in `<expName>` are replaced by `-` so the resulting filenames never contain whitespace.
+
+### Choosing the output directory
+
+By default, data files are written to `~/goxpy_data/` (the folder name is the
+`results.DataFileDirectory` constant, appended to the user's home directory).
+To write them elsewhere, call `exp.SetOutputDirectory()` **before**
+`Initialize()` opens the files:
+
+```go
+exp := control.NewExperiment("My Experiment", control.Black, control.White, 32)
+exp.SetOutputDirectory("/path/to/mydata")  // must come before Initialize()
+if err := exp.Initialize(); err != nil { log.Fatal(err) }
+defer exp.End()
+```
+
+The directory is created if it does not exist.
+
+Because `NewExperimentFromFlags` calls `Initialize()` for you, overriding the
+directory requires the lower-level `NewExperiment(...) + Initialize()` path shown
+above rather than `NewExperimentFromFlags`.
 
 ### Declaring column names
 
@@ -1118,8 +1133,7 @@ Jitter below ±1 frame (±8–17 ms depending on monitor) is normal and expected
 **macOS (Metal)**
 
 - The macOS WindowServer compositor is **always active** — exclusive fullscreen does not bypass it. SDL3 submits each frame to the compositor, which forwards it to the display at the next VSYNC.
-- `FlipTS` captures `sdl.TicksNS()` immediately after `Present()` returns; this reflects when the frame was *submitted to the compositor*, not when photons reached the screen. The additional compositor latency is typically **0–1 frames** (~0–17 ms at 60 Hz) and is consistent across trials, so it does not inflate RT variance but does add a fixed bias.
-- Onset jitter (as measured by the Go monotonic clock) is typically **2–5 ms** on macOS, owing to Metal's internal frame-pacing algorithm.
+- `FlipTS` captures `sdl.TicksNS()` immediately after `Present()` returns; this reflects when the frame was *submitted to the compositor*, not when photons reached the screen. The additional compositor latency is typically **1–2 frames** (~17-33 ms at 60 Hz).
 
 **Windows**
 
@@ -1990,14 +2004,7 @@ comparable to Linux.
 
 **macOS** is the exception. Apple's Metal rendering pipeline always
 delivers frames to the display through the WindowServer compositor, and
-no third-party application can bypass it — even in fullscreen. The
-WindowServer typically adds one frame of fixed latency (8–17 ms
-depending on refresh rate) and 2–5 ms of frame-interval jitter. This
-onset uncertainty — larger than many SOAs of experimental interest —
-makes macOS unsuitable for production data collection. Researchers
-should prefer Linux or Windows hardware for laboratory deployments of
-`goxpyriment`; macOS is adequate for pilot testing and paradigm
-development.
+no third-party application can bypass it — even in fullscreen. 
 
 These platform differences can be quantified empirically with the
 `display` and `frames` sub-tests of the bundled `Timing-Tests` suite.

@@ -11,17 +11,22 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 // NewOutputFile creates a new OutputFile in the given directory with the
 // provided filename. The directory is created if it does not exist and the
-// file is truncated if it already exists.
+// file is truncated if it already exists. Spaces in the filename are replaced
+// by '-' to avoid whitespace in result and info filenames (e.g. when the
+// experiment name contains spaces).
 func NewOutputFile(directory, filename string) (*OutputFile, error) {
 	if _, err := os.Stat(directory); os.IsNotExist(err) {
 		if err := os.MkdirAll(directory, 0755); err != nil {
 			return nil, fmt.Errorf("results.NewOutputFile: creating directory %q: %w", directory, err)
 		}
 	}
+
+	filename = strings.ReplaceAll(filename, " ", "-")
 
 	fullPath := filepath.Join(directory, filename)
 
