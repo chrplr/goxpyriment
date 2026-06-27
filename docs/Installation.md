@@ -120,17 +120,9 @@ Then:
     command line, or launch them by clicking on their icon in the
     folder.
 
-3. If you would like to access the documentations locally, install
-   [pkgsite](https://github.com/golang/pkgsite) and
-   [zensical](https://zensical.org/docs/get-started/), and launch them
-   from goxpyriment root folder:
-
-    ```
-    cd goxpyriment
-    pkgsite     # API documentation at http://127.0.0.1:8080
-    zensical build --clean
-    zensical serve  # Live-reload preview at http://127.0.0.1:8000
-    ```
+3. If you would like to read the documentation locally — both the API
+   reference (via pkgsite) and this site (via zensical) — see
+   [Viewing the documentation locally](ViewingDocsLocally.md).
 
 
 ### Program your own experiments

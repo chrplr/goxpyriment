@@ -8,6 +8,8 @@ Note that you can access the  source code documentation by running `pkgsite` and
 go install golang.org/x/pkgsite/cmd/pkgsite@latest
 ```
 
+See [Viewing the documentation locally](ViewingDocsLocally.md) for details (and for serving this site offline with zensical).
+
 ## Package Overview
 
 ```

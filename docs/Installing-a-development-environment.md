@@ -183,25 +183,11 @@ Install the latest version directly from the official site.
   * If you want a debugger for step by step execution, you can install [delve](https://github.com/go-delve/delve).
   
   
-  * To install a local web server on port 8080 on your computer to access goxperiment's APIdocumentation  install [pkgsite](https://github.com/golang/pkgsite) with:                                                                    
-                                                                                                                                                                                                                                      
-         go install golang.org/x/pkgsite/cmd/pkgsite@latest                                                                                                                                                                           
-                                                                                                                                                                                                                                      
-     Then                                                                                                                                                                                                                             
-                                                                                                                                                                                                                                      
-         cd goexpyriment                                                                                                                                                                                                              
-         pkgsite                                                                                                                                                                                                                      
-                                                                                                                                                                                                                                      
-      and open <http://127.0.0.1:8080> in your browser.   
+  * To read the documentation locally — both the API reference (via
+    [pkgsite](https://github.com/golang/pkgsite)) and this site (via
+    [zensical](https://zensical.org/)) — see
+    [Viewing the documentation locally](ViewingDocsLocally.md).
 
-  
-  * To access goxpyriment documentation locally rather than on this github.io websire, you can install [zensical](https://zensical.org/docs/get-started/) and run
-      
-           zensical build --clean
-           zensical serve
-           
-     then open <http://127.0.0.1:8000> in your browser.   
-           
 
 
    
