@@ -40,9 +40,9 @@ the same program runs both variants.
 
 ```bash
 # from the repo root
-go run ./examples/RSVP-Images/cmd/gen-design \
-    -images examples/RSVP-Images/images \
-    -out    examples/RSVP-Images
+go run ./cmd/gen-design \
+    -images images \
+    -out    .
 ```
 
 This writes `design_meg.csv` and `design_fmri.csv` (both committed in this folder
@@ -66,10 +66,10 @@ The design CSV is passed as the first positional argument. **Run it as a package
 
 ```bash
 # from the repo root — MEG timing, windowed, subject 1
-go run ./examples/RSVP-Images -w -s 1 examples/RSVP-Images/design_meg.csv
+go run . -w -s 1 design_meg.csv
 
 # fMRI timing
-go run ./examples/RSVP-Images -w -s 1 examples/RSVP-Images/design_fmri.csv
+go run . -w -s 1 design_fmri.csv
 ```
 
 Press **SPACE** on each pixelated oddball; **ESC** (or close the window) to abort.

@@ -34,14 +34,17 @@ import (
 	"bytes"
 	"encoding/csv"
 	"flag"
+	"fmt"
 	"image"
 	_ "image/jpeg" // register JPEG decoder for image.Decode
 	"image/png"
 	"log"
 	"os"
+	"runtime"
 	"strconv"
 
 	"github.com/Zyko0/go-sdl3/sdl"
+	"github.com/chrplr/goxpyriment/apparatus"
 	"github.com/chrplr/goxpyriment/control"
 	"github.com/chrplr/goxpyriment/stimuli"
 )
@@ -86,26 +89,81 @@ func main() {
 
 	// Build the stimuli. Every image is decoded, downscaled to cap GPU texture
 	// memory, and (for catch trials) pixelated, then handed to the GPU as an
-	// in-memory PNG — no oddball is ever written to disk.
+	// in-memory PNG — no oddball is ever written to disk. Preprocessing is slow,
+	// so we show a "Preprocessing images…" message with a progress bar. The work
+	// is split in two phases that together fill the bar:
+	//
+	//   1. The CPU-heavy decode/resize/pixelate/encode runs in parallel across a
+	//      worker pool (one worker per CPU); the main goroutine collects results
+	//      and advances the bar.
+	//   2. The GPU upload (PreloadVisualOnScreen) is serial — SDL renderer calls
+	//      must stay on the main thread — and finishes the bar.
 	stims := make([]stimuli.VisualStimulus, len(trials))
 	onsetMs := make([]int, len(trials))
 	durationMs := make([]int, len(trials))
-	for i, t := range trials {
-		pic, err := buildPicture(t, *maxPx, *pixelSize)
-		if err != nil {
-			log.Fatalf("trial %d (%s): %v", i, t.filePath, err)
+
+	// total work units for the progress bar: build + preload, one each per trial.
+	total := 2 * len(trials)
+	done := 0
+	lastPct := -1
+	progress := func() {
+		pct := done * 100 / total
+		if pct == lastPct {
+			return // throttle: only redraw when the percentage changes
 		}
+		lastPct = pct
+		if err := drawProgress(exp.Screen, done, total); err != nil {
+			log.Fatalf("drawing progress: %v", err)
+		}
+	}
+	progress()
+
+	// Phase 1 — parallel CPU build.
+	pics := make([]*stimuli.Picture, len(trials))
+	type buildResult struct {
+		idx int
+		pic *stimuli.Picture
+		err error
+	}
+	jobs := make(chan int, len(trials))
+	results := make(chan buildResult, len(trials))
+	for w := 0; w < runtime.NumCPU(); w++ {
+		go func() {
+			for i := range jobs {
+				pic, err := buildPicture(trials[i], *maxPx, *pixelSize)
+				results <- buildResult{i, pic, err}
+			}
+		}()
+	}
+	for i := range trials {
+		jobs <- i
+	}
+	close(jobs)
+	for n := 0; n < len(trials); n++ {
+		r := <-results
+		if r.err != nil {
+			log.Fatalf("trial %d (%s): %v", r.idx, trials[r.idx].filePath, r.err)
+		}
+		pics[r.idx] = r.pic
+		done++
+		progress()
+	}
+
+	// Phase 2 — serial GPU upload + scaling (must run on the main thread).
+	for i, pic := range pics {
 		// Preload to populate native Width/Height, then scale to fit the box.
 		if err := stimuli.PreloadVisualOnScreen(exp.Screen, pic); err != nil {
-			log.Fatalf("trial %d (%s): preloading: %v", i, t.filePath, err)
+			log.Fatalf("trial %d (%s): preloading: %v", i, trials[i].filePath, err)
 		}
 		scale := float32(*boxSize) / max(pic.Width, pic.Height)
 		pic.Width *= scale
 		pic.Height *= scale
 
 		stims[i] = pic
-		onsetMs[i] = int(t.onsetSec*1000 + 0.5)
-		durationMs[i] = int(t.durationSec*1000 + 0.5)
+		onsetMs[i] = int(trials[i].onsetSec*1000 + 0.5)
+		durationMs[i] = int(trials[i].durationSec*1000 + 0.5)
+		done++
+		progress()
 	}
 
 	elements, err := stimuli.MakeVisualStream(stims, onsetMs, durationMs)
@@ -243,6 +301,44 @@ func buildPicture(t trial, maxPx, pixelSize int) (*stimuli.Picture, error) {
 		return nil, err
 	}
 	return stimuli.NewPictureFromMemory(buf.Bytes(), 0, 0), nil
+}
+
+// drawProgress paints the "Preprocessing images…" splash with a progress bar
+// reflecting done/total work units. It clears, draws, and presents in one go.
+func drawProgress(screen *apparatus.Screen, done, total int) error {
+	var frac float32
+	if total > 0 {
+		frac = float32(done) / float32(total)
+	}
+
+	barW := float32(screen.Width) * 0.6
+	barH := float32(36)
+
+	label := stimuli.NewTextLine("Preprocessing images…", 0, -50, control.Black)
+	track := stimuli.NewRectangle(0, 10, barW, barH, control.DarkGray)
+	// The fill grows from the left edge of the track.
+	fillW := barW * frac
+	fill := stimuli.NewRectangle(-(barW-fillW)/2, 10, fillW, barH, control.White)
+	pct := stimuli.NewTextLine(fmt.Sprintf("%d%%", int(frac*100+0.5)), 0, 70, control.Black)
+
+	if err := screen.Clear(); err != nil {
+		return err
+	}
+	if err := label.Draw(screen); err != nil {
+		return err
+	}
+	if err := track.Draw(screen); err != nil {
+		return err
+	}
+	if fillW > 0 {
+		if err := fill.Draw(screen); err != nil {
+			return err
+		}
+	}
+	if err := pct.Draw(screen); err != nil {
+		return err
+	}
+	return screen.Update()
 }
 
 // mostRecentOnset returns the index of the image whose onset is the latest one
