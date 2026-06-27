@@ -1,0 +1,3 @@
+category: experiment
+description: "RSVP oddball-detection task replicating Hebart et al. (2023, THINGS-data). Object images are shown in rapid serial visual presentation on a mid-gray background with a central black fixation dot; the participant presses SPACE whenever a pixelated oddball appears. Timings are read from a design CSV (onset,duration,trial_type,file_path); companion tool cmd/gen-design produces the MEG (SOA 1500±200 ms) and fMRI (SOA 4.5 s) designs. Oddballs are pixelated at runtime; results add a reaction_time column."
+reference: "Hebart, M. N. et al. (2023). THINGS-data, a multimodal collection of large-scale datasets for investigating object representations in human brain and behavior. eLife 12:e82580."
