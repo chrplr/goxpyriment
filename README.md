@@ -2,10 +2,10 @@
 
 # goxpyriment
 
+`goxpyriment` is a framework for building behavioral and psychological experiments (currently, as Desktop App).
+
 * [Homepage](https://chrplr.github.io/goxpyriment)
 * [GitHub repository](https://github.com/chrplr/goxpyriment)
-
-`goxpyriment` is a framework for building behavioral and psychological experiments (currently, as Desktop App).
 
 ## Features
 
@@ -59,7 +59,7 @@ any coding.
 
 ---
 
-## Ready-to-run experiments
+## Gallery of ready-to-run experiments
 
 [Pre-built binaries](docs/pre-built-examples.md) (ready-to run apps) of
 many experiments are available for Windows, macOS, and Linux.
