@@ -43,13 +43,29 @@ exp := control.NewExperimentFromFlags("My Experiment", control.Black, control.Wh
 defer exp.End()
 ```
 
-`NewExperimentFromFlags` parses two optional command-line flags:
+`NewExperimentFromFlags` parses these optional command-line flags:
 
 | Flag | Effect |
 |------|--------|
 | `-w` | Windowed mode: opens a 1024×768 window instead of going fullscreen |
 | `-d N` | Display ID: open on monitor N (-1 = primary display) |
 | `-s N` | Set subject ID to N (integer); written to the data file automatically |
+| `-headless` | Skip the setup dialog (below) and use field defaults — for batch/automated runs |
+
+### Automatic setup dialog (launch without `-s`)
+
+If `-s` is **not** passed — most importantly when the binary is launched by
+**double-clicking its icon** rather than from a terminal — a small setup dialog
+opens before the experiment starts, letting the experimenter enter the **subject
+code** and confirm the **display**, **fullscreen/windowed** mode, and **results
+folder**. It seeds its defaults from any `-w`/`-d` you did pass and remembers the
+display/fullscreen/folder choices across sessions (the subject code is always
+asked fresh). Cancelling the dialog exits the program.
+
+The dialog is skipped when `-s N` is given (that value is used directly, as
+before), when `-headless` is passed, or when the program already collected
+participant information via `GetParticipantInfo` itself — so no program is ever
+prompted twice.
 
 `defer exp.End()` must appear immediately after construction. It saves the data file, releases fonts, destroys the window, and shuts down SDL — even if the experiment panics or returns early.
 
@@ -1168,8 +1184,10 @@ events, logs, err := stimuli.PlayStreamOfSounds(elements)
 `PresentStreamOfStimuli` presents a single **sequential** stream that mixes visual
 and audio stimulus types. It reuses the VSYNC-locked visual loop, so visual
 elements are frame-accurate; audio elements are triggered once at the slot's
-first flip and the previous frame is **held** (not cleared) for the slot — place
-a visual just before a sound to keep it visible while the sound plays.
+first flip and the previous frame is **held** for the slot (the last stream
+visual is re-rendered every frame, so it stays rock-steady rather than relying on
+GPU buffer persistence) — place a visual just before a sound to keep it visible
+while the sound plays.
 
 ```go
 tone.PreloadDevice(exp.AudioDevice) // audio elements must be device-bound first
