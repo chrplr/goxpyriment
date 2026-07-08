@@ -410,6 +410,10 @@ Rules to remember:
 > next to the program instead — see
 > [Packaging Your Experiment](How_to_package_your_experiment.md).
 
+For the full reference on embedding — folders as virtual filesystems, trial-list
+CSVs, binary size, and cross-compilation of embedded assets — see
+[User Manual §13, *Embedding Stimuli and Trial Lists*](UserManual.md#13-embedding-stimuli-and-trial-lists-in-the-executable).
+
 ---
 
 ## Step 8 — Build for other operating systems (to share with colleagues)

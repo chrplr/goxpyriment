@@ -7,14 +7,33 @@
 * [Homepage](https://chrplr.github.io/goxpyriment)
 * [GitHub repository](https://github.com/chrplr/goxpyriment)
 
-## Features
 
-1. **Zero-dependency deployment.** Your experiments compile to standalone executables. No Python, no conda, no Font issue, no DLL hell on lab computers.
-2. **AI-friendly API.** The consistent API is well suited to AI assisted coding: describe your paradigm in plain language to Claude, Gemini, or ChatGPT and the generated code is usually ready to run immediately.
-3. **Rich stimuli.** Beyond text and images and audio, present video, generate visual patterns (gratings, Gabor patches, clouds of dots,...), and run high-precision RSVP streams.
-4. **Response recording.** Collect responses from keyboard, mouse, and gamepads. Records vocal responses.
-5. **Timing precision.** The stimulus loop runs VSYNC-locked with GC pauses disabled, giving sub-millisecond frame jitter on typical hardware.
-6. **Hardware synchronization.** Send TTL triggers to synchronize with external devices (EEG, MEG, eye-trackers, fMRI) over parallel port, USB (DLP-IO8), or generic serial.
+  Goxpyriment is a software framework for programming behavioral and
+  cognitive experiments using the Go programming language. It was
+  designed to address some limitations of existing
+  Python-based experiment tools, particularly the runtime environment
+  complexity that frequently complicates deployment across
+  laboratories. Because Go is a compiled language that can natively
+  embed assets (e.g., graphics, audio files, and stimulus lists),
+  Goxpyriment compiles entire experiments into single, self-contained
+  executable binaries with zero runtime dependencies. This drastically
+  simplifies distribution to collaborators and testing computers.  The
+  library includes an array of visual stimuli (text, shapes, images,
+  Gabor patches, motion clouds, ...) and audio capabilities (WAV
+  playback and tone generation).  A lot of effort was devoted to
+  ensure timing reliability. For instance, input events are
+  timestamped by the operating system at hardware-interrupt time, so
+  reaction times are computed by subtracting two OS-level timestamps
+  rather than relying on continuous polling. The framework also
+  supports sending and receiving TTL signals to synchronize with
+  various external equipment. Go's garbage collector can be disabled, greatly
+  reducing the probability of unpredictable pauses that could corrupt
+  stimulus timing.  Finally, a set of over forty psychology
+  experiments implemented in Goxpyriment are provided that promote not
+  only learning by humans but also improve the ability of modern
+  AI-assisted coding tools to help program experiments. The framework
+  is released under the GNU General Public License v3.
+
 
 Remark: If you are looking for a simple experiment generator - with
 fixed stimulus presentation schedule, check out
@@ -26,50 +45,56 @@ any coding.
 
 ## Documentation
 
-| Document | | PDF |
-|---|---|---|
-| [Presentation](https://github.com/chrplr/goxpyriment/blob/main/paper/goxpyriment_paper.pdf) | short paper | | 
-| [Getting Started](docs/GettingStarted.md) | Tutorials | [↓](docs/GettingStarted.pdf) |
-| [Installation](docs/Installation.md) | Install Go and build the examples | [↓](docs/Installation.pdf) |
-| [Creating Your Own Experiment](docs/CreatingYourOwnExperiment.md) | Beginner guide: new project, embedding assets, sharing binaries | |
-| [User Manual](docs/UserManual.md) | Core concepts explained in depth | [↓](docs/UserManual.pdf) |
-| [Migration Guide](docs/MigrationGuide.md) | Coming from Expyriment, PsychoPy, or Psychtoolbox? | [↓](docs/MigrationGuide.pdf) |
-| [API Reference](docs/API.md) | Complete function and type reference | [↓](docs/API.pdf) |
-| [Gallery of Examples](docs/GalleryOfExamples.md) | Ready-to-run experiments and demos | |
-| [Timing-Tests](docs/TimingTests.md) | Check the timing of your computer | [↓](docs/TimingTests.pdf) |
+Four places to look, depending on what you need.
 
+**Start here — install and build your first experiment**
 
-**Support:** 
-
-* [Google group](https://groups.google.com/a/pallier.org/g/goxpyriment) — Forum
-* Report bugs at <https://github.com/chrplr/goxpyriment/issues>
-
-
-
---- 
-
-## Quick Start
-
-1. **[Install](docs/Installation.md)** Go and build the bundled examples.
-2. **[Create your own experiment](docs/CreatingYourOwnExperiment.md)** — a
+1. **[Install](docs/Installation.md)** Go and build the bundled examples. [[PDF](docs/Installation.pdf)]
+2. **[Creating Your Own Experiment](docs/CreatingYourOwnExperiment.md)** — a
    step-by-step beginner guide from an empty folder to a shareable
    executable.
-3. **[Getting Started](docs/GettingStarted.md)** walks through worked
-   tutorials (trials, data logging, RSVP, reaction times).
+3. **[Getting Started](docs/GettingStarted.md)** — worked tutorials: trials,
+   data logging, RSVP streams, reaction times. [[PDF](docs/GettingStarted.pdf)]
+
+**[User Manual](docs/UserManual.md)** — core concepts explained in depth:
+rendering model, timing, input, data, streams, audio, and experimental
+design. [[PDF](docs/UserManual.pdf)]
+
+**[API Reference](docs/API.md)** — complete function and type reference,
+organized by package. [[PDF](docs/API.pdf)]
+
+**Misc** — focused how-to guides: [migrating from PsychoPy / Expyriment /
+Psychtoolbox](docs/MigrationGuide.md), [checking your computer's
+timing](docs/TimingTests.md), [video playback](docs/MediaMovies.md), [packaging &
+sharing binaries](docs/How_to_package_your_experiment.md), Linux tuning, and
+more, all found under the **Misc** tab in the navigation bar at the top
+of the page.
 
 ---
 
 ## Gallery of ready-to-run experiments
 
-[Pre-built binaries](docs/pre-built-examples.md) (ready-to run apps) of
-many experiments are available for Windows, macOS, and Linux.
+Browse the [gallery](docs/GalleryOfExamples.md) of over forty example
+experiments and demos, or download [pre-built binaries](docs/pre-built-examples.md)
+(ready-to-run apps) for Windows, macOS, and Linux.
+
+---
+
+## Support
+
+* [Google group](https://groups.google.com/a/pallier.org/g/goxpyriment) — Forum
+* Report bugs at <https://github.com/chrplr/goxpyriment/issues>
 
 ---
 
 ## Background
 
-Goexpy is written in [Go](https://go.dev) and relies on
-the [SDL3 library](https://libsdl.org) through to the [go-sdl3](https://github.com/Zyko0/go-sdl3) bindings.
+The framework is described in a short paper:
+[*Goxpyriment: A Go Framework for Behavioral and Cognitive
+Experiments*](https://github.com/chrplr/goxpyriment/blob/main/paper/goxpyriment_paper.pdf).
+
+Goxpyriment is written in [Go](https://go.dev) and relies on
+the [SDL3 library](https://libsdl.org) through the [go-sdl3](https://github.com/Zyko0/go-sdl3) bindings.
 
 
 The original inspiration was

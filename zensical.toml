@@ -11,13 +11,11 @@ docs_dir = "docs"
 # inline tables. TOML requires each inline table to stay on one line.
 nav = [
   { Home = "index.md" },
-  { "Getting Started" = "GettingStarted.md" },
-  { Installation = "Installation.md" },
-  { Gallery = "GalleryOfExamples.md" },
-  { UserManual = "UserManual.md" },
-  { API= "API.md" },
-  { "Build your own experiment" = "CreatingYourOwnExperiment.md" },
-  { Misc = [ { "Viewing docs locally" = "ViewingDocsLocally.md" }, { "Timing Tests" = "TimingTests.md" }, { "Frame syncing" = "frame-syncing.md" }, { "Packaging your experiment" = "How_to_package_your_experiment.md" }, { "Movies / media" = "MediaMovies.md" }, { "Fullscreen & high pixel density" = "Fullscreen_high_pixel_density.md" }, { "Setting priority under Linux" = "SettingPriorityUnderLinux.md" }, { "Linux virtual console" = "LinuxVirtualConsoleSDL.md" }, { "WASM build" = "WASM.md" }, { "Library usage" = "library_usage.md" }, { "Go vs Python" = "gemini-about-go-vs-python.md" }, { "Pre-built examples" = "pre-built-examples.md" }, { "How experiment.go works" = "how-experiment-go-works.md" }, { "Migration Guide" = "MigrationGuide.md" } ] },
+  { "Start here" = [ { Installation = "Installation.md" }, { "Creating Your Own Experiment" = "CreatingYourOwnExperiment.md" }, { "Getting Started" = "GettingStarted.md" } ] },
+  { Gallery = [ { "Gallery of Examples" = "GalleryOfExamples.md" }, { "Pre-built examples" = "pre-built-examples.md" } ] },
+  { "User Manual" = "UserManual.md" },
+  { API = "API.md" },
+  { Misc = [ { "Migration Guide" = "MigrationGuide.md" }, { "Timing Tests" = "TimingTests.md" }, { "Movies / media" = "MediaMovies.md" }, { "Packaging your experiment" = "How_to_package_your_experiment.md" }, { "WASM build" = "WASM.md" }, { "Fullscreen & high pixel density" = "Fullscreen_high_pixel_density.md" }, { "Frame syncing" = "frame-syncing.md" }, { "Setting priority under Linux" = "SettingPriorityUnderLinux.md" }, { "Linux virtual console" = "LinuxVirtualConsoleSDL.md" }, { "How experiment.go works" = "how-experiment-go-works.md" }, { "Library usage" = "library_usage.md" }, { "Go vs Python" = "gemini-about-go-vs-python.md" }, { "Viewing docs locally" = "ViewingDocsLocally.md" } ] },
 ]
 
 [project.theme]
