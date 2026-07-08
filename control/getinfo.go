@@ -108,6 +108,11 @@ var ErrCancelled = errors.New("info dialog cancelled")
 // Registered at package-init time so it is available before flag.Parse().
 var headlessFlag = flag.Bool("headless", false, "skip the participant info dialog and use field defaults")
 
+// participantInfoCollected records whether GetParticipantInfo has been called in
+// this process. NewExperimentFromFlags consults it so its automatic session-setup
+// dialog never opens on top of a program's own explicit GetParticipantInfo call.
+var participantInfoCollected bool
+
 // GetParticipantInfo opens a graphical SDL dialog before the experiment starts,
 // lets the experimenter fill in the provided fields, and returns the collected
 // values as a map[field.Name → value].
@@ -126,6 +131,10 @@ var headlessFlag = flag.Bool("headless", false, "skip the participant info dialo
 // Returns ErrCancelled if the user presses Escape, clicks Cancel, or closes
 // the window without confirming.
 func GetParticipantInfo(title string, fields []InfoField) (map[string]string, error) {
+	// Record that this program collects participant info explicitly, so
+	// NewExperimentFromFlags does not also open its automatic setup dialog.
+	participantInfoCollected = true
+
 	// Headless mode: return defaults (+ cache) without opening any window.
 	// SDL is not loaded here; Initialize() will load it normally.
 	if *headlessFlag {

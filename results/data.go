@@ -80,17 +80,22 @@ func (df *DataFile) Save() error {
 	return df.OutputFile.Save()
 }
 
+// DefaultDataDir returns the default results directory used when no output
+// directory is specified: "$HOME/goxpy_data", falling back to DataFileDirectory
+// ("goxpy_data") if the user home directory cannot be determined.
+func DefaultDataDir() string {
+	if home, err := os.UserHomeDir(); err == nil {
+		return filepath.Join(home, DataFileDirectory)
+	}
+	return DataFileDirectory
+}
+
 // NewDataFile creates a new DataFile in the given directory (or in the
-// default directory from DataFileDirectory, e.g. "$HOME/goxpy_data", if empty).
+// default directory from DefaultDataDir, e.g. "$HOME/goxpy_data", if empty).
 // The filename is derived from the experiment name, subject ID, and a timestamp.
 func NewDataFile(directory string, subjectID int, expName string) (*DataFile, error) {
 	if directory == "" {
-		home, err := os.UserHomeDir()
-		if err == nil {
-			directory = filepath.Join(home, DataFileDirectory)
-		} else {
-			directory = DataFileDirectory
-		}
+		directory = DefaultDataDir()
 	}
 
 	now := time.Now()

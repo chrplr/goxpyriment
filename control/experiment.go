@@ -5,12 +5,15 @@
 package control
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"log"
 	"os"
 	"os/signal"
 	"runtime"
+	"strconv"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"syscall"
@@ -171,6 +174,21 @@ func NewExperiment(name string, width, height int, fullscreen bool, bg, fg sdl.C
 // this function are parsed at the same time, so register experiment-specific
 // flags first, then call NewExperimentFromFlags.
 //
+// # Automatic session-setup dialog
+//
+// When -s is NOT given on the command line — for example when the binary is
+// launched by double-clicking its icon — a small setup dialog opens so the
+// experimenter can enter the subject code and confirm the monitor, windowed/
+// fullscreen mode, and results folder. It seeds its defaults from any -w/-d
+// that were passed and remembers the display/fullscreen/folder choices across
+// sessions (the subject code is always asked fresh). The dialog is skipped when:
+//
+//   - -s N is passed (that value is used, no dialog — the historical behaviour);
+//   - -headless is passed (field defaults are used with no window, for batch runs);
+//   - the program already called GetParticipantInfo itself (no double dialog).
+//
+// Cancelling or closing the dialog exits the program cleanly.
+//
 // The experiment is fully initialized (SDL, audio, font, data file) before
 // being returned. If initialization fails the program exits via log.Fatal.
 // The caller should defer exp.End() immediately after this call.
@@ -180,15 +198,69 @@ func NewExperimentFromFlags(name string, bg, fg sdl.Color, fontSize float32) *Ex
 	subject := flag.Int("s", 0, "Subject ID")
 	flag.Parse()
 
+	// Detect whether -s was set explicitly: the default (0) is a valid subject
+	// ID, so the value alone cannot distinguish "not given" from "given as 0".
+	sProvided := false
+	flag.Visit(func(f *flag.Flag) {
+		if f.Name == "s" {
+			sProvided = true
+		}
+	})
+
+	// Session settings, seeded from the command-line flags.
+	windowedMode := *windowed
+	screenNumber := 0
+	if *display >= 0 {
+		screenNumber = *display
+	}
+	subjectID := *subject
+	outputDir := ""
+	var info map[string]string
+
+	// No subject ID on the command line (e.g. launched by clicking the icon):
+	// pop the setup dialog. GetParticipantInfo handles its own SDL lifecycle and
+	// self-skips under -headless (returning field defaults with no window), which
+	// yields subject 0 exactly as before.
+	if !sProvided && !participantInfoCollected {
+		fullscreenDefault := "true"
+		if windowedMode {
+			fullscreenDefault = "false"
+		}
+		fields := []InfoField{
+			{Name: "subject_id", Label: "Subject ID"},
+			{Name: "display_id", Label: "Display ID (0 = primary monitor)", Default: fmt.Sprintf("%d", screenNumber)},
+			{Name: "fullscreen", Label: "Fullscreen mode", Default: fullscreenDefault, Type: FieldCheckbox},
+			{Name: "output_dir", Label: "Results folder", Default: results.DefaultDataDir()},
+		}
+		gathered, err := GetParticipantInfo(name, fields)
+		if errors.Is(err, ErrCancelled) {
+			os.Exit(0)
+		}
+		if err != nil {
+			log.Fatalf("session-setup dialog: %v", err)
+		}
+		info = gathered
+		if id, convErr := strconv.Atoi(strings.TrimSpace(info["subject_id"])); convErr == nil {
+			subjectID = id
+		}
+		screenNumber = DisplayIDFromInfo(info)
+		windowedMode = info["fullscreen"] != "true"
+		outputDir = strings.TrimSpace(info["output_dir"])
+	}
+
 	width, height, fullscreen := 0, 0, true
-	if *windowed {
+	if windowedMode {
 		width, height, fullscreen = 1024, 768, false
 	}
 
 	exp := NewExperiment(name, width, height, fullscreen, bg, fg, fontSize)
-	exp.SubjectID = *subject
-	if *display >= 0 {
-		exp.ScreenNumber = *display
+	exp.SubjectID = subjectID
+	exp.ScreenNumber = screenNumber
+	if outputDir != "" {
+		exp.SetOutputDirectory(outputDir)
+	}
+	if info != nil {
+		exp.Info = info
 	}
 	if err := exp.Initialize(); err != nil {
 		log.Fatalf("failed to initialize experiment: %v", err)
