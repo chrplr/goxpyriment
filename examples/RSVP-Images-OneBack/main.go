@@ -222,10 +222,13 @@ func runOneBack(screen *apparatus.Screen, pics []stimuli.VisualStimulus, isRepea
 		}
 	}
 
-	// registerPress attributes a SPACE press to the earliest open, unanswered
-	// target whose window contains it; otherwise it is a false alarm (ignored
-	// for scoring of targets but still left unattributed).
+	// registerPress scores a SPACE press. It first tries to credit the press as
+	// a hit on the earliest open, unanswered target whose window contains it.
+	// Failing that, the press is a false alarm: it is attributed to the image on
+	// screen at press time — the most recently onset non-repeat image — so stray
+	// presses are logged (responded=true, rt_ms set) instead of discarded.
 	registerPress := func(pressNS uint64) {
+		// 1. Hit: an open, unanswered target window containing the press.
 		for t := 0; t < n; t++ {
 			if !isRepeat[t] || res.responded[t] {
 				continue
@@ -235,6 +238,20 @@ func runOneBack(screen *apparatus.Screen, pics []stimuli.VisualStimulus, isRepea
 				res.rtMs[t] = int64(pressNS-res.onsetNS[t]) / 1_000_000
 				return
 			}
+		}
+		// 2. False alarm: attribute to the image currently on screen — the
+		// highest-index image already presented whose onset precedes the press
+		// (images are presented in order, so onsets increase with index).
+		// Unpresented images still have onsetNS == 0 and are skipped.
+		cur := -1
+		for i := 0; i < n; i++ {
+			if res.onsetNS[i] != 0 && res.onsetNS[i] <= pressNS {
+				cur = i
+			}
+		}
+		if cur >= 0 && !isRepeat[cur] && !res.responded[cur] {
+			res.responded[cur] = true
+			res.rtMs[cur] = int64(pressNS-res.onsetNS[cur]) / 1_000_000
 		}
 	}
 

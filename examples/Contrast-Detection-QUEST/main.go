@@ -19,14 +19,15 @@
 //
 // Usage:
 //
-//	go run main.go [-s <id>] [-n <trials>] [-guess <log_contrast>] [-d]
+//	go run main.go [-s <id>] [-n <trials>] [-guess <log_contrast>] [-w] [-d <N>]
 //
 // Flags:
 //
 //	-s      int     Subject ID (default 0).
 //	-n      int     Number of QUEST trials (default 40).
 //	-guess  float   Initial log₁₀(contrast) guess, e.g. −1.5 (default −1.5).
-//	-d              Developer mode: windowed 1024×768.
+//	-w              Windowed mode (1024×768 window instead of fullscreen).
+//	-d      int     Display index where the window/fullscreen opens (-1 = primary).
 
 package main
 
@@ -164,13 +165,15 @@ func showFeedback(exp *control.Experiment, correct bool) error {
 
 // ─── Single 2IFC trial ───────────────────────────────────────────────────────
 
-// runTrial presents one 2IFC trial at the given log₁₀(contrast) and returns
-// whether the participant correctly identified the signal interval.
-func runTrial(exp *control.Experiment, logContrast float64, totalTrials, trialNum int) (bool, error) {
+// runTrial presents one 2IFC trial at the given log₁₀(contrast). It returns
+// whether the participant correctly identified the signal interval, along with
+// the interval that actually contained the signal and the interval the
+// participant chose (both 1 or 2).
+func runTrial(exp *control.Experiment, logContrast float64, totalTrials, trialNum int) (correct bool, signalInterval, response int, err error) {
 	contrast := math.Pow(10, logContrast)
 
 	// Randomly assign signal to interval 1 or 2.
-	signalInterval := 1 + rand.Intn(2)
+	signalInterval = 1 + rand.Intn(2)
 
 	info := fmt.Sprintf("trial %d/%d  |  log-contrast %.2f  (%.1f %%)",
 		trialNum, totalTrials, logContrast, contrast*100)
@@ -179,31 +182,30 @@ func runTrial(exp *control.Experiment, logContrast float64, totalTrials, trialNu
 	gabor := stimuli.NewGaborPatch(gaborSigma, gaborTheta, gaborLambda, 0, 0, 1, bgGray, gaborSize)
 	gabor.Contrast = contrast
 	defer gabor.Unload()
-	if err := stimuli.PreloadVisualOnScreen(exp.Screen, gabor); err != nil {
-		return false, err
+	if err = stimuli.PreloadVisualOnScreen(exp.Screen, gabor); err != nil {
+		return false, signalInterval, 0, err
 	}
 
 	// Pre-trial fixation (500 ms).
-	if err := drawIntervalScreen(exp, 0, info); err != nil {
-		return false, err
+	if err = drawIntervalScreen(exp, 0, info); err != nil {
+		return false, signalInterval, 0, err
 	}
 	clock.Wait(500)
 
 	// ── Interval 1 ──────────────────────────────────────────────────────────
-	var err error
 	if signalInterval == 1 {
 		err = drawIntervalWithGabor(exp, 1, info, gabor)
 	} else {
 		err = drawIntervalScreen(exp, 1, info)
 	}
 	if err != nil {
-		return false, err
+		return false, signalInterval, 0, err
 	}
 	clock.Wait(150)
 
 	// Blank within interval 1 (short persistence period).
-	if err := drawIntervalScreen(exp, 0, info); err != nil {
-		return false, err
+	if err = drawIntervalScreen(exp, 0, info); err != nil {
+		return false, signalInterval, 0, err
 	}
 	clock.Wait(50)
 
@@ -217,13 +219,13 @@ func runTrial(exp *control.Experiment, logContrast float64, totalTrials, trialNu
 		err = drawIntervalScreen(exp, 2, info)
 	}
 	if err != nil {
-		return false, err
+		return false, signalInterval, 0, err
 	}
 	clock.Wait(150)
 
 	// Blank within interval 2.
-	if err := drawIntervalScreen(exp, 0, info); err != nil {
-		return false, err
+	if err = drawIntervalScreen(exp, 0, info); err != nil {
+		return false, signalInterval, 0, err
 	}
 	clock.Wait(50)
 
@@ -233,30 +235,29 @@ func runTrial(exp *control.Experiment, logContrast float64, totalTrials, trialNu
 	prompt := stimuli.NewTextBox(
 		"Which interval contained the pattern?\n\nPress  1  or  2.",
 		600, control.Point(0, 0), control.DarkGray)
-	if err := prompt.Present(exp.Screen, false, true); err != nil {
-		return false, err
+	if err = prompt.Present(exp.Screen, false, true); err != nil {
+		return false, signalInterval, 0, err
 	}
-	if err := prompt.Unload(); err != nil {
-		return false, err
+	if err = prompt.Unload(); err != nil {
+		return false, signalInterval, 0, err
 	}
 
 	responseKeys := []control.Keycode{control.K_1, control.K_KP_1, control.K_2, control.K_KP_2}
 	k, _, err := exp.Keyboard.WaitKeysRT(responseKeys, -1)
 	if err != nil {
-		return false, err
+		return false, signalInterval, 0, err
 	}
-	var response int
 	if k == control.K_1 || k == control.K_KP_1 {
 		response = 1
 	} else {
 		response = 2
 	}
 
-	correct := response == signalInterval
-	if err := showFeedback(exp, correct); err != nil {
-		return false, err
+	correct = response == signalInterval
+	if err = showFeedback(exp, correct); err != nil {
+		return correct, signalInterval, response, err
 	}
-	return correct, nil
+	return correct, signalInterval, response, nil
 }
 
 // ─── main ─────────────────────────────────────────────────────────────────────
@@ -324,7 +325,7 @@ func main() {
 		for trialNum := 1; !sc.Done(); trialNum++ {
 			logContrast := sc.Intensity()
 
-			correct, err := runTrial(exp, logContrast, *nTrials, trialNum)
+			correct, signalInterval, response, err := runTrial(exp, logContrast, *nTrials, trialNum)
 			if err != nil {
 				return err
 			}
@@ -332,15 +333,13 @@ func main() {
 
 			// Log trial data immediately.
 			contrast := math.Pow(10, logContrast)
-			history := sc.History()
-			last := history[len(history)-1]
 			exp.Data.Add(
 				trialNum,
 				fmt.Sprintf("%.4f", logContrast),
 				fmt.Sprintf("%.2f", contrast*100),
-				fmt.Sprintf("%d", (trialNum%2)+1), // signal interval (logged for reference)
-				"?",                               // response logged as part of correct
-				last.Correct,
+				signalInterval,
+				response,
+				correct,
 				fmt.Sprintf("%.4f", sc.Threshold()),
 				fmt.Sprintf("%.4f", sc.SD()),
 			)
