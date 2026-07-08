@@ -166,6 +166,31 @@ func presentGratingLoop(
 	// Drain stale input events before starting.
 	drainStaleEvents()
 
+	// ── Persistent streaming texture ─────────────────────────────────────────
+	// Allocate the GPU texture once and re-upload g.pixels into it every frame
+	// with Update(). Creating and destroying a texture per frame (as an earlier
+	// version did) churns driver-side allocations on the VSYNC hot path — the
+	// kind of jitter the GC-disable below is meant to avoid, but which GC
+	// control cannot touch because the allocation is C-side. Mirrors the
+	// GvVideo streaming-texture pattern (gvvideo.go).
+	texture, err := screen.Renderer.CreateTexture(
+		sdl.PIXELFORMAT_RGBA32,
+		sdl.TEXTUREACCESS_STREAMING,
+		g.w,
+		g.h,
+	)
+	if err != nil {
+		return MotionResult{}, err
+	}
+	defer texture.Destroy()
+	// BLENDMODE_BLEND so the Gabor's per-pixel alpha (edge fade) composites over
+	// the background; harmless for the opaque rectangular grating (alpha=255).
+	// This preserves the previous CreateTextureFromSurface behaviour, which
+	// auto-enabled blending for alpha-channel surfaces.
+	if err := texture.SetBlendMode(sdl.BLENDMODE_BLEND); err != nil {
+		return MotionResult{}, err
+	}
+
 	// Disable GC during the animation loop to prevent jitter.
 	defer disableGC()()
 
@@ -175,33 +200,19 @@ func presentGratingLoop(
 	for {
 		phase := twoPiTF * time.Since(start).Seconds()
 
-		// ── Compute pixel data for this frame ────────────────────────────────
+		// ── Compute pixel data for this frame and upload to the GPU ───────────
 		g.updatePixels(phase)
-
-		// ── Upload to GPU via a transient surface + texture ──────────────────
-		// sdl.CreateSurfaceFrom wraps g.pixels without copying.
-		// CreateTextureFromSurface uploads to GPU (synchronous) then the
-		// surface can be discarded. The texture is destroyed after rendering.
-		surface, err := sdl.CreateSurfaceFrom(g.w, g.h, sdl.PIXELFORMAT_RGBA32, g.pixels, g.w*4)
-		if err != nil {
-			return MotionResult{}, err
-		}
-		texture, err := screen.Renderer.CreateTextureFromSurface(surface)
-		surface.Destroy()
-		if err != nil {
+		if err := texture.Update(nil, g.pixels, int32(g.w*4)); err != nil {
 			return MotionResult{}, err
 		}
 
 		// ── Draw ─────────────────────────────────────────────────────────────
 		if err := screen.Clear(); err != nil {
-			texture.Destroy()
 			return MotionResult{}, err
 		}
 		if err := screen.Renderer.RenderTexture(texture, nil, destRect); err != nil {
-			texture.Destroy()
 			return MotionResult{}, err
 		}
-		texture.Destroy()
 
 		// ── Present (VSYNC-locked) ────────────────────────────────────────────
 		if err := screen.Update(); err != nil {

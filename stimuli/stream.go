@@ -72,9 +72,12 @@ type FrameContext struct {
 // Return nil to continue, sdl.EndLoop to stop the stream gracefully (handled
 // like an ESC press, reported via IsEndLoop), or any other error to abort.
 //
-// Note: for held (audio / non-visual) frames the screen is not cleared, so an
-// overlay drawn every frame will accumulate; overlays are intended for visual
-// streams.
+// Note: on held (audio / non-visual) frames the stream re-renders the
+// carried-over content (the last stream visual, or a blank) before invoking the
+// callback, so an overlay drawn every frame does not accumulate. The exception
+// is content drawn outside the stream (e.g. an exp.Show before the call) with no
+// intervening stream visual: that cannot be reconstructed, so it is held by
+// re-presenting and overlays over it will accumulate.
 type FrameCallback func(ctx FrameContext) error
 
 // PresentStreamOfImages displays a sequence of stimuli with high precision.
@@ -131,12 +134,16 @@ func PresentStreamOfImages(screen *apparatus.Screen, elements []VisualStreamElem
 //     and redrawn every frame: the screen is cleared, the stimulus drawn, and
 //     the backbuffer flipped, for DurationOn; then cleared (blank) for DurationOff.
 //
-//   - Audio / non-visual elements (and a nil Stimulus) do NOT clear the screen —
-//     the previous frame is held for the whole slot. The stimulus is triggered
-//     once, immediately after the first VSYNC flip of the slot, by calling its
-//     Present(screen, false, false) method (Sound and Tone play on Present).
-//     This lets a visual placed just before a sound remain on screen while the
-//     sound plays.
+//   - Audio / non-visual elements (and a nil Stimulus) hold the previous frame
+//     for the whole slot: the last stream visual (or a blank, after an ISI) is
+//     re-rendered every frame rather than relying on GPU backbuffer persistence,
+//     which SDL leaves undefined after a present and which flickers on
+//     double-buffered drivers. The stimulus is triggered once, immediately after
+//     the first VSYNC flip of the slot, by calling its Present(screen, false,
+//     false) method (Sound and Tone play on Present). This lets a visual placed
+//     just before a sound remain on screen while the sound plays. Content drawn
+//     outside the stream, with no intervening stream visual, cannot be
+//     reconstructed and is instead held by re-presenting the front buffer.
 //
 // # Timing
 //
@@ -192,6 +199,35 @@ func PresentStreamOfStimuliFunc(screen *apparatus.Screen, elements []StreamEleme
 
 	streamStartTime := time.Now()
 
+	// Held-content tracking. A held (audio / non-visual) slot must keep the
+	// last visual content on screen across many Present() calls. Relying on the
+	// GPU backbuffer persisting between swaps is unsafe — SDL leaves the
+	// backbuffer undefined after a present, so on strictly double-buffered
+	// drivers repeated bare Present() calls flicker between the two buffers.
+	// Instead we remember what was last drawn and re-render it into the
+	// backbuffer every held frame, keeping both buffers identical.
+	//
+	//   - heldVisual != nil          → re-Clear + re-Draw that stimulus
+	//   - heldVisual == nil, blank    → re-Clear to background
+	//   - heldVisual == nil, !blank   → content came from outside the stream
+	//                                   (e.g. an exp.Show before the call);
+	//                                   fall back to hold-by-re-present since we
+	//                                   cannot reconstruct it.
+	var heldVisual VisualStimulus
+	var heldBlank bool
+	renderHeld := func() error {
+		if heldVisual != nil {
+			if err := screen.Clear(); err != nil {
+				return err
+			}
+			return heldVisual.Draw(screen)
+		}
+		if heldBlank {
+			return screen.Clear()
+		}
+		return nil // external content: preserved by re-presenting the front buffer
+	}
+
 	// 4. Presentation Loop
 	for i, el := range elements {
 		// Round duration to the nearest frame count. A positive but
@@ -214,16 +250,27 @@ func PresentStreamOfStimuliFunc(screen *apparatus.Screen, elements []StreamEleme
 
 		actualOnset := time.Since(streamStartTime)
 		var onsetNS uint64
+		// triggered guards the one-shot Present() of a held (audio / non-visual)
+		// stimulus. The trigger normally fires on the first on-frame, but an
+		// element whose DurationOn rounds to zero frames has no on-phase, so the
+		// trigger must fall through to the first off-frame instead — otherwise
+		// the sound would be silently dropped.
+		triggered := false
 
 		// --- STIMULUS ON ---
 		for f := 0; f < framesOn; f++ {
-			// Visual elements redraw every frame; audio / non-visual elements
-			// hold the previous frame (no clear, no draw).
+			// Visual elements redraw the stimulus every frame; audio / non-visual
+			// elements re-render the carried-over held content every frame (both
+			// keep the two display buffers identical, avoiding flicker).
 			if isVisual {
 				if err := screen.Clear(); err != nil {
 					return userEvents, timingLogs, err
 				}
 				if err := visual.Draw(screen); err != nil {
+					return userEvents, timingLogs, err
+				}
+			} else {
+				if err := renderHeld(); err != nil {
 					return userEvents, timingLogs, err
 				}
 			}
@@ -251,6 +298,7 @@ func PresentStreamOfStimuliFunc(screen *apparatus.Screen, elements []StreamEleme
 					if err := el.Stimulus.Present(screen, false, false); err != nil {
 						return userEvents, timingLogs, err
 					}
+					triggered = true
 				}
 			} else {
 				if err := screen.PacedFlip(); err != nil { // VSYNC-paced frame
@@ -264,15 +312,26 @@ func PresentStreamOfStimuliFunc(screen *apparatus.Screen, elements []StreamEleme
 			}
 		}
 
+		// After the on-phase, the last content drawn was this element's visual
+		// (if any); record it so a following held slot can reproduce it.
+		if isVisual && framesOn > 0 {
+			heldVisual = visual
+			heldBlank = false
+		}
+
 		actualOffset := time.Since(streamStartTime)
 		var offsetNS uint64
 
 		// --- STIMULUS OFF (ISI) ---
-		// Visual elements blank the screen; non-visual elements keep holding
-		// the previous frame.
+		// Visual elements blank the screen; non-visual elements re-render the
+		// carried-over held content (avoiding backbuffer-persistence flicker).
 		for f := 0; f < framesOff; f++ {
 			if isVisual {
 				if err := screen.Clear(); err != nil {
+					return userEvents, timingLogs, err
+				}
+			} else {
+				if err := renderHeld(); err != nil {
 					return userEvents, timingLogs, err
 				}
 			}
@@ -291,6 +350,16 @@ func PresentStreamOfStimuliFunc(screen *apparatus.Screen, elements []StreamEleme
 					return userEvents, timingLogs, err
 				}
 				offsetNS = ts
+				// A held stimulus whose DurationOn rounded to zero frames was not
+				// triggered in the (empty) on-phase; fire it here at the slot's
+				// first actual flip and anchor its onset to that VSYNC.
+				if !isVisual && el.Stimulus != nil && !triggered {
+					if err := el.Stimulus.Present(screen, false, false); err != nil {
+						return userEvents, timingLogs, err
+					}
+					triggered = true
+					onsetNS = ts
+				}
 			} else {
 				if err := screen.PacedFlip(); err != nil {
 					return userEvents, timingLogs, err
@@ -301,6 +370,13 @@ func PresentStreamOfStimuliFunc(screen *apparatus.Screen, elements []StreamEleme
 			if escOrQuit(userEvents[prev:]) {
 				return userEvents, timingLogs, sdl.EndLoop
 			}
+		}
+
+		// A visual element with a non-zero ISI ends with the screen blanked, so a
+		// following held slot should reproduce the blank rather than the stimulus.
+		if isVisual && framesOff > 0 {
+			heldVisual = nil
+			heldBlank = true
 		}
 
 		timingLogs = append(timingLogs, TimingLog{

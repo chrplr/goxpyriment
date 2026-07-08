@@ -66,9 +66,10 @@ type Screen struct {
 	Width        int
 	Height       int
 	DefaultFont  *ttf.Font
-	CanvasOffset *sdl.FPoint // If not nil, use this instead of true center
-	LogicalSize  *sdl.FPoint // If not nil, use this for CenterToSDL
-	lastFlipTime time.Time   // tracks per-frame pacing for PacedFlip
+	CanvasOffset *sdl.FPoint   // If not nil, use this instead of true center
+	LogicalSize  *sdl.FPoint   // If not nil, use this for CenterToSDL
+	lastFlipTime time.Time     // tracks per-frame pacing for PacedFlip
+	frameDur     time.Duration // cached nominal frame duration for PacedFlip (0 = not yet computed)
 }
 
 // CenterToSDL converts center‑based coordinates to SDL top‑left based
@@ -315,9 +316,15 @@ func (s *Screen) PacedFlip() error {
 	if err := s.Update(); err != nil {
 		return fmt.Errorf("apparatus.Screen.PacedFlip: %w", err)
 	}
+	// Cache the nominal frame duration on first use: it is fixed for the
+	// session, and re-querying the SDL display mode every frame is avoidable
+	// work on this timing-critical path.
+	if s.frameDur == 0 {
+		s.frameDur = s.FrameDuration()
+	}
 	now := time.Now()
 	if !s.lastFlipTime.IsZero() {
-		target := s.lastFlipTime.Add(s.FrameDuration())
+		target := s.lastFlipTime.Add(s.frameDur)
 		for now.Before(target) {
 			now = time.Now()
 		}

@@ -191,7 +191,7 @@ events, timing, err := stimuli.PresentStreamOfStimuli(exp.Screen, elements, x, y
 
 `PresentStreamOfStimuli` presents a heterogeneous **sequential** stream mixing visual and audio stimulus types, on the same VSYNC-locked GC-disabled loop as `PresentStreamOfImages` (which now delegates to it). Per element it type-switches on `VisualStimulus`:
 - **Visual** → centered on `(x,y)`, redrawn every frame for `DurationOn`, blanked for `DurationOff`.
-- **Audio / non-visual** (and `nil`) → triggered once via `Present(screen,false,false)` right after the slot's first VSYNC flip; the screen is **not cleared** (previous frame held for the whole slot). `OnsetNS` = that flip's timestamp.
+- **Audio / non-visual** (and `nil`) → triggered once via `Present(screen,false,false)` right after the slot's first VSYNC flip; the previous frame is **held** for the whole slot by re-rendering the last stream visual (or blank) every frame — not by relying on GPU backbuffer persistence, which SDL leaves undefined and which flickers on double-buffered drivers. `OnsetNS` = that flip's timestamp.
 
 Audio elements must be device-bound (`PreloadDevice`) beforehand — only visual elements are auto-preloaded. No concurrent AV overlap (strictly one slot at a time). For pure audio, prefer `PlayStreamOfSounds` (finer sub-frame timing).
 
@@ -211,7 +211,7 @@ cb := func(ctx stimuli.FrameContext) error {
 events, timing, err := stimuli.PresentStreamOfStimuliFunc(screen, elements, 0, 0, cb)
 ```
 
-`FrameContext` carries `Screen, Index, Frame, OnPhase, FirstFrame, NowNS` (pre-flip `sdl.TicksNS()`), `Elapsed`, and `Events` (through the previous frame). Return `nil` to continue, `sdl.EndLoop` to stop gracefully, any other error to abort. This unlocks persistent overlays (trial counters, frame borders, fixation) and mid-stream feedback that the plain stream functions can't express. Overlays are for visual streams — on held (audio) frames the screen isn't cleared, so repeated draws accumulate.
+`FrameContext` carries `Screen, Index, Frame, OnPhase, FirstFrame, NowNS` (pre-flip `sdl.TicksNS()`), `Elapsed`, and `Events` (through the previous frame). Return `nil` to continue, `sdl.EndLoop` to stop gracefully, any other error to abort. This unlocks persistent overlays (trial counters, frame borders, fixation) and mid-stream feedback that the plain stream functions can't express. On held (audio) frames the stream re-renders the carried-over visual before the callback, so overlays no longer accumulate — except over content drawn outside the stream (with no intervening stream visual), which is held by re-presenting and cannot be reconstructed.
 
 ### Stream types
 
