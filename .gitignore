@@ -19,6 +19,9 @@ _build/
 /examples/RSVP-Images-OneBack/Pictures-RSVP
 /examples/lexical_decision/lexical_decision
 /examples/play_two_gvvideos/play_two_gvvideos
+/examples/Attentional-Blink/Attentional-Blink
+/examples/Statistical-Learning-Auditory/Statistical-Learning-Auditory
+/examples/Temporal-Integration-Word-Recognition/Temporal-Integration-Word-Recognition
 
 # General binary patterns
 *.exe
