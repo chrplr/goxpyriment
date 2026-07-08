@@ -9,13 +9,14 @@
 // Usage:
 //
 //	go run main.go -exp 1 -s <subject_id> [-d]
-//	go run main.go -exp 2 -s <subject_id> [-d]
+//	go run main.go -exp 2 -s <subject_id> [-w] [-d N]
 //
 // Flags:
 //
 //	-exp  int    Experiment number: 1 (letters) or 2 (words). Default: 1.
 //	-s    int    Subject ID. Default: 0.
-//	-d           Development mode: windowed 1024×768, not fullscreen.
+//	-w           Windowed mode (1024×768 window instead of fullscreen).
+//	-d    int    Display index where the window/fullscreen opens (-1 = primary).
 //
 // NOTE ON STIMULI: Mirror stimuli are rendered by horizontally flipping the
 // source texture (SDL FLIP_HORIZONTAL), matching the paper's "vertical mirror

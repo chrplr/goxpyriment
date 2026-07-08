@@ -12,13 +12,14 @@
 //
 // Usage:
 //
-//	go run main.go [-s <subject_id>] [-dist <cm>] [-d]
+//	go run main.go [-s <subject_id>] [-dist <cm>] [-w] [-d N]
 //
 // Flags:
 //
 //	-s     int     Subject ID (default 0).
 //	-dist  float   Viewing distance in cm (default 60). Used to compute disk diameter.
-//	-d             Development mode: windowed 1024×768.
+//	-w             Windowed mode (1024×768 window instead of fullscreen).
+//	-d     int     Display index where the window/fullscreen opens (-1 = primary).
 //
 // NOTE ON GAMMA: Standard monitors apply a power-law transfer function
 // L(V) = k·(V/255)^γ (γ ≈ 2.2 for sRGB), so equal steps in the RGB values

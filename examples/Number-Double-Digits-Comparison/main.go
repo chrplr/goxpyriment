@@ -10,13 +10,15 @@
 // Usage:
 //
 //	# Experiment 1 (standard = 55):
-//	go run . -exp 1 -d -s 1
+//	go run . -exp 1 -s 1
 //
 //	# Experiment 2 (standard = 65), LR response mapping:
-//	go run . -exp 2 -group LR -d -s 2
+//	go run . -exp 2 -group LR -s 2
 //
 //	# Experiment 2, LL response mapping (left hand = larger):
-//	go run . -exp 2 -group LL -d -s 3
+//	go run . -exp 2 -group LL -s 3
+//
+//	# Add -w for windowed mode, -d N to pick a display (see NewExperimentFromFlags).
 //
 // Response keys:
 //

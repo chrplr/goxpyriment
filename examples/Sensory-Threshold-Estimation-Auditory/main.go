@@ -17,7 +17,7 @@
 //
 // Usage:
 //
-//	go run main.go [-s <id>] [-freqs 250,500,1000,2000,4000] [-d]
+//	go run main.go [-s <id>] [-freqs 250,500,1000,2000,4000] [-w] [-d N]
 //
 // Flags:
 //
@@ -25,7 +25,8 @@
 //	-freqs  string  Comma-separated list of frequencies in Hz
 //	                (default "50,250,500,1000,2000,4000,8000").
 //	-start  float   Starting level in dBFS, e.g. -20 (default -20).
-//	-d              Development mode: windowed 1024×768.
+//	-w              Windowed mode (1024×768 window instead of fullscreen).
+//	-d      int     Display index where the window/fullscreen opens (-1 = primary).
 //
 // AUDIO SAFETY: Start at a comfortable system volume. The initial level is
 // -20 dBFS (10 % of digital full-scale). Raise the volume only if tones are

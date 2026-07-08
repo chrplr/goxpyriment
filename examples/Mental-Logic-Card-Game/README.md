@@ -4,24 +4,29 @@ A Go implementation of a behavioral experiment designed to test mental logic and
 
 ## How to Run
 
-By default, the experiment starts in **1280x1024 FULLSCREEN** mode.
+By default, the experiment runs **fullscreen** at the display's native resolution.
 
 ### Standard Run (Fullscreen)
 ```bash
-go run examples/card_game/main.go
+go run examples/Mental-Logic-Card-Game/main.go
 ```
 
-### Development Mode (Windowed)
-To run in a 1280x1024 window:
+### Developer Mode (Windowed)
+To run in a 1024×1024 window:
 ```bash
-go run examples/card_game/main.go -w
+go run examples/Mental-Logic-Card-Game/main.go -d
 ```
 
 ### Command Line Options
-- `-w`: Windowed mode (1024×768 window instead of fullscreen).
-- `-d N`: Display ID — open on monitor N (-1 = primary).
-- `--scaling <factor>`: Scaling factor for stimuli and layout (default: 1.0).
-- `-F`: Force Fullscreen (default behavior).
+
+> **Note:** unlike most examples in this repository (which use the framework's
+> standard `-w`/`-d N`/`-s` flags), this one defines its own flags. Here `-d` is a
+> **developer-mode toggle**, not a display index.
+
+- `-d`: Developer mode — run in a 1024×1024 window instead of fullscreen.
+- `-F`: Force fullscreen (this is already the default).
+- `-scaling <factor>`: Scaling factor for stimuli and layout (default: `0.6`).
+- `-s <id>`: Subject ID (default: `0`).
 
 ## Instructions to the Subject
 

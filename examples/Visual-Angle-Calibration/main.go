@@ -11,11 +11,12 @@
 //
 // Usage:
 //
-//	go run main.go [-d]
+//	go run main.go [-w] [-d N]
 //
 // Flags:
 //
-//	-d  Developer mode: windowed 1024×768.
+//	-w  Windowed mode (1024×768 window instead of fullscreen).
+//	-d  Display index where the window/fullscreen opens (-1 = primary).
 
 package main
 
