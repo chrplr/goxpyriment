@@ -1,11 +1,9 @@
 # goxpyriment
 
-`goxpyriment` is a framework for building behavioral and psychological experiments (currently, as Desktop App).
-
 * [Homepage](https://chrplr.github.io/goxpyriment)
 * [GitHub repository](https://github.com/chrplr/goxpyriment)
 
-
+ 
   Goxpyriment is a software framework for programming behavioral and
   cognitive experiments using the Go programming language. It was
   designed to address some limitations of existing
@@ -43,7 +41,8 @@ any coding.
 
 ## Documentation
 
-Four places to look, depending on what you need.
+The top navigation bar provides access to various documentation guides.
+
 
 **Start here — install and build your first experiment**
 
@@ -67,6 +66,9 @@ timing](TimingTests.md), [video playback](MediaMovies.md), [packaging &
 sharing binaries](How_to_package_your_experiment.md), Linux tuning, and
 more, all found under the **Misc** tab in the navigation bar at the top
 of the page.
+
+
+In addition, if you clone [goxpyriment](https://github.com/chrplr/goxpyriment), you can run `pkgsite` from the root folder to view the source code documentation.
 
 ---
 
