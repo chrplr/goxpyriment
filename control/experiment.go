@@ -185,7 +185,9 @@ func NewExperiment(name string, width, height int, fullscreen bool, bg, fg sdl.C
 //
 //   - -s N is passed (that value is used, no dialog — the historical behaviour);
 //   - -headless is passed (field defaults are used with no window, for batch runs);
-//   - the program already called GetParticipantInfo itself (no double dialog).
+//   - the program already called GetParticipantInfo itself (no double dialog);
+//   - running in a browser (GOOS=js), where flags come from the page URL's
+//     query string instead (?s=3&w) and no dialog is possible.
 //
 // Cancelling or closing the dialog exits the program cleanly.
 //
@@ -196,6 +198,9 @@ func NewExperimentFromFlags(name string, bg, fg sdl.Color, fontSize float32) *Ex
 	windowed := flag.Bool("w", false, "Windowed mode (1024×768 window instead of fullscreen)")
 	display := flag.Int("d", -1, "Display ID: monitor index where the window/fullscreen will open (-1 = primary)")
 	subject := flag.Int("s", 0, "Subject ID")
+	// In the browser (GOOS=js) there is no command line: synthesize os.Args
+	// from the page URL's query string (?s=3&w) now that all flags exist.
+	platformPrepareFlags()
 	flag.Parse()
 
 	// Detect whether -s was set explicitly: the default (0) is a valid subject
@@ -220,8 +225,9 @@ func NewExperimentFromFlags(name string, bg, fg sdl.Color, fontSize float32) *Ex
 	// No subject ID on the command line (e.g. launched by clicking the icon):
 	// pop the setup dialog. GetParticipantInfo handles its own SDL lifecycle and
 	// self-skips under -headless (returning field defaults with no window), which
-	// yields subject 0 exactly as before.
-	if !sProvided && !participantInfoCollected {
+	// yields subject 0 exactly as before. In the browser the dialog cannot run
+	// (platformInteractiveSetup is false there); URL parameters take its place.
+	if !sProvided && !participantInfoCollected && platformInteractiveSetup() {
 		fullscreenDefault := "true"
 		if windowedMode {
 			fullscreenDefault = "false"

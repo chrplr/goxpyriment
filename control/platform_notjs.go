@@ -24,3 +24,11 @@ func (e *Experiment) platformInitAudio() error {
 	e.Audio = &AudioManager{Device: dev}
 	return nil
 }
+
+// platformPrepareFlags is a no-op on desktop: flags come from the real
+// command line.
+func platformPrepareFlags() {}
+
+// platformInteractiveSetup reports whether the session-setup dialog may be
+// opened when -s is absent. Always true on desktop.
+func platformInteractiveSetup() bool { return true }

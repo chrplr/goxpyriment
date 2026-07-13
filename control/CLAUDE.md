@@ -19,6 +19,8 @@ exp.Run(func() error {
 
 When `-s` is **absent** (e.g. the binary was launched by double-clicking its icon), `NewExperimentFromFlags` opens an automatic setup dialog (subject code + display + fullscreen + results folder) via `GetParticipantInfo` before `Initialize()`. It is skipped when `-s N` is passed, under `-headless`, or if the program already called `GetParticipantInfo` itself (guarded by the package-level `participantInfoCollected`). Cancelling exits via `os.Exit(0)`. Programs that collect custom participant fields still use `GetParticipantInfo` + `NewExperiment` and never reach this path.
 
+**Browser (GOOS=js):** there is no command line, so `platformPrepareFlags` (`platform_js.go`) synthesizes `os.Args` from the page URL's query string before `flag.Parse` — `?s=3&w` behaves like `-s 3 -w`, and experiment-specific flags work too. Unknown query keys are ignored with a console note. The setup dialog never opens (`platformInteractiveSetup` returns false); without `s` the subject ID defaults to 0 like `-headless`. Audio init is deferred (`platformInitAudio` is a no-op) because browsers require a user gesture before an AudioContext may start. See `docs/WASM.md` for the full browser story.
+
 `exp.Run` wraps the SDL event loop. User code panicked with `exitPanic` is recovered there; callers never see it directly. Return `control.EndLoop` (or `sdl.EndLoop`) to exit cleanly.
 
 ## Experiment fields

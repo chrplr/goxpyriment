@@ -78,6 +78,31 @@ SDL_RENDER_DRIVER=software ./my_experiment    # force software (always works)
 ./my_experiment -w                            # windowed mode (avoids fullscreen path)
 ```
 
+### Browser / WebAssembly (GOOS=js)
+
+Experiments also compile to WASM and run in a browser (verified: `hello_world`
+renders in Chrome). Full status, build commands, and the remaining-work roadmap
+live in `docs/WASM.md`. The essentials:
+
+- go-sdl3 is replaced by the fork `github.com/chrplr/go-sdl3-wasm` (branch
+  `wasm-render-fixes`; local clone at `~/00_git/go-sdl3-wasm`), which
+  implements the js bindings. `go.mod` pins a pseudo-version of the fork —
+  after changing the fork, bump the pseudo-version (or temporarily point the
+  replace at the local clone) and re-sync `vendor/` with
+  `GOWORK=off go mod vendor`. Projects that import goxpyriment need the same
+  `replace` line in their own `go.mod` for browser builds (see
+  `docs/WASM.md`).
+- Bundle/serve with the fork's tool:
+  `go run ./cmd/wasmsdl serve <path-to-example>` (from the fork directory).
+- In the browser, flags come from URL query parameters (`?s=3&w`); the
+  participant-info dialog never opens (see `control/platform_js.go`).
+- Assets must be `//go:embed`-ed (no filesystem in the browser); path-based
+  loaders fail on js.
+- `cmd/gen-wasm-exports` lists the go-sdl3 calls goxpyriment uses whose js
+  bindings are still panic-stubs, and regenerates the emcc export list.
+- `triggers/` is desktop-only (serial ports) and is excluded from js builds —
+  don't add it to `GOOS=js go build ./...` expectations.
+
 ### Raspberry Pi — fullscreen rendering workaround
 
 On Raspberry Pi (tested: Ubuntu 25.10 + GNOME/Wayland), fullscreen mode renders nothing (gray screen) while windowed mode works correctly. The SDL3 exclusive-fullscreen path does not properly attach the renderer to the visible framebuffer under the Pi's V3D/KMS stack. Workaround: force the software render driver and Wayland video driver:

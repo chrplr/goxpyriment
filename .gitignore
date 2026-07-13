@@ -7,6 +7,10 @@ gvassets/
 
 # Compiled binaries
 _build/
+/gen-gallery
+/gen-wasm-exports
+/hello_world
+/parity_decision
 /tests/test_audio/test_audio
 /tests/test_fullscreen/test_fullscreen
 /tests/test_playgv/test_playgv

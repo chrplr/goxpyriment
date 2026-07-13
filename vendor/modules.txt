@@ -1,4 +1,4 @@
-# github.com/Zyko0/go-sdl3 v0.1.1
+# github.com/Zyko0/go-sdl3 v0.1.1 => github.com/chrplr/go-sdl3-wasm v0.1.2-0.20260713083251-5eb745538d84
 ## explicit; go 1.25.0
 github.com/Zyko0/go-sdl3/bin/binimg
 github.com/Zyko0/go-sdl3/bin/binsdl
@@ -26,6 +26,12 @@ github.com/funatsufumiya/go-gv-video/gvvideo
 # github.com/gen2brain/mpeg v0.5.0
 ## explicit; go 1.23
 github.com/gen2brain/mpeg
+# github.com/goburrow/modbus v0.1.0
+## explicit
+github.com/goburrow/modbus
+# github.com/goburrow/serial v0.1.0
+## explicit
+github.com/goburrow/serial
 # github.com/pierrec/lz4/v4 v4.1.26
 ## explicit; go 1.17
 github.com/pierrec/lz4/v4
@@ -46,3 +52,4 @@ go.bug.st/serial/unixutils
 golang.org/x/sys/unix
 golang.org/x/sys/windows
 golang.org/x/sys/windows/registry
+# github.com/Zyko0/go-sdl3 => github.com/chrplr/go-sdl3-wasm v0.1.2-0.20260713083251-5eb745538d84
