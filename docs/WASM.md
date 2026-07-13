@@ -145,16 +145,13 @@ file:line, which tells you exactly what to un-stub next.
 
 ## What remains for a complete port
 
-Phases 0–2 of the roadmap are **done**: branch consolidation and vendor/fork
+Phases 0–3 of the roadmap are **done**: branch consolidation and vendor/fork
 unification; IOStream + info bindings, URL-parameter setup, hello_world
 rendering; `parity_decision` running end-to-end (keyboard trials, RTs,
-CSV download) under the redesigned main-goroutine `RunLoop`; and timestamp
-granularity measured and fixed (see below). Remaining:
-
-**Phase 3 — frame pacing.** `Screen.Update()` is not VSYNC-blocked under
-Emscripten and `PacedFlip` has no RAF hook; align flips with
-`requestAnimationFrame` and measure frame-interval distributions with the
-existing timing-test analysis.
+CSV download) under the redesigned main-goroutine `RunLoop`; timestamp
+granularity measured and fixed; and flips aligned to `requestAnimationFrame`
+with measured 60.00 Hz pacing and zero dropped frames (see "Timing in the
+browser" below). Remaining:
 
 **Phase 4 — audio.** Browsers gate `AudioContext` behind a user gesture, so
 `platformInitAudio` is currently a no-op on js. Gate audio init behind the
@@ -207,14 +204,33 @@ Note: Go's `time.Now()` on js still has 1 ms resolution (the wall clock is
 `Date.now()`). This is one more reason for the existing rule: RTs come from
 the SDL event clock, never wall-clock deltas.
 
-### Frame timing caveat
+### Frame pacing (measured 2026-07-13, headless Chrome)
 
-The browser's `requestAnimationFrame` callback delivers frames at ~16.7 ms
-intervals with ±1–3 ms jitter. The hardware-locked VSYNC timing available on
-desktop (DRM ioctl, CoreVideo) is not available in a browser context.
-Experiments that require sub-millisecond stimulus onset precision (rapid RSVP,
-subliminal priming) should be run natively. Cognitive tasks (choice RT, memory,
-attention) work fine.
+On js, `Screen.Update()` (and therefore `Flip`/`FlipTS`/`PacedFlip`/`Show`)
+presents to the canvas and then parks until the browser's next
+`requestAnimationFrame` tick — the browser's VSYNC equivalent (implemented in
+`apparatus/screen_present_js.go` on top of `sdl.WaitAnimationFrame` in the
+fork). This is required for correctness, not just pacing: canvas updates are
+only composited when the page yields, and `PacedFlip`'s desktop busy-wait
+would freeze the tab. A 250 ms fallback tick prevents deadlock in background
+tabs (where browsers throttle RAF) — but run experiments in a **focused,
+foreground tab**.
+
+Measured flip-loop intervals (299 frames, alternating full-screen colors):
+
+| Loop | mean | SD | min–max | dropped frames |
+|---|---|---|---|---|
+| `Update` loop | 16.666 ms (60.00 Hz) | 0.12 ms | 16.1–17.3 ms | 0 |
+| `PacedFlip` loop | 16.666 ms (60.00 Hz) | 0.11 ms | 16.3–17.1 ms | 0 |
+
+Caveat: headless Chrome ticks a virtual 60 Hz compositor; on real hardware
+the rate follows the display (e.g. 120 Hz laptop panels) and jitter depends
+on system load. The hardware-locked VSYNC timing available on desktop (DRM
+ioctl, CoreVideo) is not available in a browser, and there is no photodiode
+validation of actual pixel onset yet. Experiments that require
+sub-millisecond stimulus onset precision (rapid RSVP, subliminal priming)
+should be run natively. Cognitive tasks (choice RT, memory, attention) work
+fine.
 
 ## Notes for developers
 

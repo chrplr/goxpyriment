@@ -38,11 +38,14 @@ the fork `~/00_git/go-sdl3-wasm` (branch `wasm-render-fixes`).
    the fix: ~100 µs on a plain page, ~5 µs cross-origin isolated; `wasmsdl
    serve` now sends COOP/COEP headers to get the 5 µs clock. Numbers and
    details in `docs/WASM.md` "Timing in the browser".
-2. **Phase 3 — frame pacing.** `Screen.Update()` is not VSYNC-blocked under
-   Emscripten (`vsync: 0` in the info file) and `PacedFlip` has no RAF hook.
-   Align flips with requestAnimationFrame and measure frame-interval
-   distributions with the existing timing-test analysis; put numbers behind
-   the "cognitive tasks fine, sub-ms RSVP native-only" caveat.
+2. ~~**Phase 3 — frame pacing.**~~ **Done 2026-07-13.** On js,
+   `Screen.Update` now presents and parks until the next
+   requestAnimationFrame (`apparatus/screen_present_js.go` +
+   `sdl.WaitAnimationFrame` in the fork); `PacedFlip`'s busy-wait is a no-op
+   on js (it would freeze the tab). Measured: 16.666 ms mean (60.00 Hz),
+   SD 0.12 ms, zero dropped frames over 299. Numbers in `docs/WASM.md`.
+   Still open: photodiode/BBTK validation of actual pixel onset on real
+   hardware.
 3. **Phase 4 — audio.** Browsers require a user gesture before an
    AudioContext may start. Open the audio device lazily on js — e.g. from the
    first `ShowInstructions` keypress — then route `AudioManager` through the

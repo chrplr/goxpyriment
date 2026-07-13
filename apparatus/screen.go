@@ -267,6 +267,12 @@ func (s *Screen) ClearAndUpdate() error {
 }
 
 // Update presents the rendered buffer.
+//
+// On desktop this maps to SDL_RenderPresent (blocking on VSYNC when the
+// driver honours it). In the browser (GOOS=js) it additionally parks until
+// the next requestAnimationFrame — the browser's VSYNC equivalent — because
+// canvas updates are only composited when the page yields
+// (see screen_present_js.go).
 func (s *Screen) Update() error {
 	// Ensure we are presenting the window, not a texture
 	if s.Renderer.RenderTarget() != nil {
@@ -274,7 +280,7 @@ func (s *Screen) Update() error {
 			return fmt.Errorf("apparatus.Screen.Update: resetting render target: %w", err)
 		}
 	}
-	return s.Renderer.Present()
+	return s.present()
 }
 
 // Flip is an alias for Update and presents the backbuffer to the display.
@@ -316,20 +322,7 @@ func (s *Screen) PacedFlip() error {
 	if err := s.Update(); err != nil {
 		return fmt.Errorf("apparatus.Screen.PacedFlip: %w", err)
 	}
-	// Cache the nominal frame duration on first use: it is fixed for the
-	// session, and re-querying the SDL display mode every frame is avoidable
-	// work on this timing-critical path.
-	if s.frameDur == 0 {
-		s.frameDur = s.FrameDuration()
-	}
-	now := time.Now()
-	if !s.lastFlipTime.IsZero() {
-		target := s.lastFlipTime.Add(s.frameDur)
-		for now.Before(target) {
-			now = time.Now()
-		}
-	}
-	s.lastFlipTime = now
+	s.paceToFrame()
 	return nil
 }
 
