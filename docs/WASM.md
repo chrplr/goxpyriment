@@ -145,19 +145,13 @@ file:line, which tells you exactly what to un-stub next.
 
 ## What remains for a complete port
 
-Phases 0–3 of the roadmap are **done**: branch consolidation and vendor/fork
+Phases 0–4 of the roadmap are **done**: branch consolidation and vendor/fork
 unification; IOStream + info bindings, URL-parameter setup, hello_world
 rendering; `parity_decision` running end-to-end (keyboard trials, RTs,
 CSV download) under the redesigned main-goroutine `RunLoop`; timestamp
-granularity measured and fixed; and flips aligned to `requestAnimationFrame`
-with measured 60.00 Hz pacing and zero dropped frames (see "Timing in the
-browser" below). Remaining:
-
-**Phase 4 — audio.** Browsers gate `AudioContext` behind a user gesture, so
-`platformInitAudio` is currently a no-op on js. Gate audio init behind the
-first "press SPACE" screen, then route `AudioManager` either through SDL audio
-streams (`OpenAudioDeviceStream`/`PutAudioStreamData` are already enabled in
-the fork) or through the fork's SDL_mixer bindings.
+granularity measured and fixed; flips aligned to `requestAnimationFrame`
+with measured 60.00 Hz pacing and zero dropped frames; and audio playback
+(see "Audio in the browser" below). Remaining:
 
 **Phase 5 — packaging, docs, CI.** Replace the stale `wasm-%` Makefile targets
 with `wasmsdl`-based ones; delete the obsolete May-2026 `SDL3.js`/`SDL3.wasm`
@@ -175,6 +169,31 @@ maintaining it.
   video playback). They panic with a clear console message when hit.
 - `GetParticipantInfo` (the SDL dialog) cannot run on js; experiments that
   call it directly need an HTML-form alternative or URL parameters.
+
+## Audio in the browser
+
+Audio playback works (verified 2026-07-13): `platformInitAudio` on js opens
+the default playback device exactly like on desktop, and the whole
+goxpyriment audio API — `exp.Audio.PlayBuzzer/PlayCorrect/PlaySync/PlayAsync`,
+`Sound.PreloadDevice/Play/Wait`, `Tone` — runs on SDL's Emscripten Web Audio
+backend. Verified in `parity_decision`: the device opens as 48 kHz stereo
+F32LE with a 2048-frame buffer, the AudioContext reaches `running`, and the
+buzzer feedback plays on incorrect trials.
+
+Browser specifics:
+
+- **First sound needs a user gesture.** Browsers create the AudioContext
+  suspended; SDL's Emscripten backend resumes it automatically on the first
+  click or keypress. Any experiment that starts with a "press SPACE" screen
+  satisfies this without extra code. Sounds triggered *before* any
+  interaction stay silent until the first one.
+- **Latency is higher than desktop.** The Emscripten device reports a
+  2048-frame buffer at 48 kHz ≈ 43 ms; `SetAudioSampleFrames` (an SDL hint)
+  is not honoured the same way by the Web Audio backend. Treat audio onset
+  timing as approximate in the browser; `PlaySyncedWithFlip`'s desktop
+  guarantees do not transfer.
+- If the device cannot be opened, the experiment continues with a silent
+  no-op `AudioManager` instead of crashing (browser audio support varies).
 
 ## Timing in the browser
 

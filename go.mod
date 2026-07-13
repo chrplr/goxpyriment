@@ -20,4 +20,4 @@ require (
 	golang.org/x/sys v0.41.0 // indirect
 )
 
-replace github.com/Zyko0/go-sdl3 => github.com/chrplr/go-sdl3-wasm v0.1.2-0.20260713092154-be6e6c8de0dd
+replace github.com/Zyko0/go-sdl3 => github.com/chrplr/go-sdl3-wasm v0.1.2-0.20260713095120-8e12b826da7f

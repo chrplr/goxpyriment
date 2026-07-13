@@ -1,4 +1,4 @@
-# github.com/Zyko0/go-sdl3 v0.1.1 => github.com/chrplr/go-sdl3-wasm v0.1.2-0.20260713092154-be6e6c8de0dd
+# github.com/Zyko0/go-sdl3 v0.1.1 => github.com/chrplr/go-sdl3-wasm v0.1.2-0.20260713095120-8e12b826da7f
 ## explicit; go 1.25.0
 github.com/Zyko0/go-sdl3/bin/binimg
 github.com/Zyko0/go-sdl3/bin/binsdl
@@ -52,4 +52,4 @@ go.bug.st/serial/unixutils
 golang.org/x/sys/unix
 golang.org/x/sys/windows
 golang.org/x/sys/windows/registry
-# github.com/Zyko0/go-sdl3 => github.com/chrplr/go-sdl3-wasm v0.1.2-0.20260713092154-be6e6c8de0dd
+# github.com/Zyko0/go-sdl3 => github.com/chrplr/go-sdl3-wasm v0.1.2-0.20260713095120-8e12b826da7f

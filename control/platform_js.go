@@ -16,20 +16,29 @@ import (
 	"github.com/Zyko0/go-sdl3/sdl"
 )
 
-// In the browser, SDL_INIT_AUDIO requires a user gesture before the
-// AudioContext can start, and SDL_INIT_JOYSTICK/GAMEPAD fail in most
-// browser environments. Use minimal flags here.
+// SDL_INIT_JOYSTICK/GAMEPAD fail in most browser environments; video,
+// events, and audio work.
 func platformSDLInitFlags() sdl.InitFlags {
-	return sdl.INIT_VIDEO | sdl.INIT_EVENTS
+	return sdl.INIT_VIDEO | sdl.INIT_EVENTS | sdl.INIT_AUDIO
 }
 
-// platformInitAudio does not open an audio device in WASM: the browser
-// requires a user gesture before an AudioContext may start, so opening is
-// deferred (Phase 4 of the port). It still installs an AudioManager with a
-// zero Device so playback calls (PlayBuzzer, PlaySync, …) degrade to silent
-// no-ops instead of dereferencing a nil manager.
+// platformInitAudio opens the default playback device, like on desktop.
+// Browsers keep the underlying AudioContext suspended until the first user
+// gesture; SDL's Emscripten backend resumes it automatically on the first
+// click/keypress, so sounds triggered after e.g. the "press SPACE to start"
+// screen play normally. Unlike desktop, failure is non-fatal: the experiment
+// continues with a zero-Device AudioManager whose playback calls are silent
+// no-ops, since browser audio support varies and a cognitive task should not
+// crash over it.
 func (e *Experiment) platformInitAudio() error {
-	e.Audio = &AudioManager{}
+	dev, err := sdl.AUDIO_DEVICE_DEFAULT_PLAYBACK.OpenAudioDevice(nil)
+	if err != nil {
+		log.Printf("control: browser audio unavailable, continuing silently: %v", err)
+		e.Audio = &AudioManager{}
+		return nil
+	}
+	e.AudioDevice = dev
+	e.Audio = &AudioManager{Device: dev}
 	return nil
 }
 

@@ -2425,24 +2425,24 @@ func initialize() {
 	}
 
 	iGetAudioDeviceFormat = func(devid AudioDeviceID, spec *AudioSpec, sample_frames *int32) bool {
-		panic("not implemented on js")
 		internal.StackSave()
 		defer internal.StackRestore()
 		_devid := int32(devid)
-		_spec, ok := internal.GetJSPointer(spec)
-		if !ok {
-			_spec = internal.StackAlloc(int(unsafe.Sizeof(*spec)))
-		}
-		_sample_frames, ok := internal.GetJSPointer(sample_frames)
-		if !ok {
-			_sample_frames = internal.StackAlloc(int(unsafe.Sizeof(*sample_frames)))
-		}
+		// Both are out-params: allocate on the wasm stack, copy back after.
+		_spec := internal.StackAlloc(int(unsafe.Sizeof(*spec)))
+		_sample_frames := internal.StackAlloc(4)
 		ret := js.Global().Get("Module").Call(
 			"_SDL_GetAudioDeviceFormat",
 			_devid,
 			_spec,
 			_sample_frames,
 		)
+		if spec != nil {
+			internal.CopyJSToObject(spec, _spec)
+		}
+		if sample_frames != nil {
+			*sample_frames = int32(internal.GetValue(_sample_frames, "i32").Int())
+		}
 
 		return internal.GetBool(ret)
 	}
@@ -2466,14 +2466,12 @@ func initialize() {
 	}
 
 	iOpenAudioDevice = func(devid AudioDeviceID, spec *AudioSpec) AudioDeviceID {
-		panic("not implemented on js")
 		internal.StackSave()
 		defer internal.StackRestore()
 		_devid := int32(devid)
-		_spec, ok := internal.GetJSPointer(spec)
-		if !ok {
-			_spec = internal.StackAlloc(int(unsafe.Sizeof(*spec)))
-		}
+		// spec is a nilable input struct: NULL asks SDL for a reasonable
+		// default format.
+		_spec := internal.CloneObjectToJSStack(spec)
 		ret := js.Global().Get("Module").Call(
 			"_SDL_OpenAudioDevice",
 			_devid,
@@ -2577,7 +2575,6 @@ func initialize() {
 	}
 
 	iCloseAudioDevice = func(devid AudioDeviceID) {
-		panic("not implemented on js")
 		internal.StackSave()
 		defer internal.StackRestore()
 		_devid := int32(devid)
@@ -2608,13 +2605,10 @@ func initialize() {
 	}
 
 	iBindAudioStream = func(devid AudioDeviceID, stream *AudioStream) bool {
-		panic("not implemented on js")
-		internal.StackSave()
-		defer internal.StackRestore()
 		_devid := int32(devid)
 		_stream, ok := internal.GetJSPointer(stream)
 		if !ok {
-			_stream = internal.StackAlloc(int(unsafe.Sizeof(*stream)))
+			panic("nil stream")
 		}
 		ret := js.Global().Get("Module").Call(
 			"_SDL_BindAudioStream",
@@ -2642,12 +2636,9 @@ func initialize() {
 	}
 
 	iUnbindAudioStream = func(stream *AudioStream) {
-		panic("not implemented on js")
-		internal.StackSave()
-		defer internal.StackRestore()
 		_stream, ok := internal.GetJSPointer(stream)
 		if !ok {
-			_stream = internal.StackAlloc(int(unsafe.Sizeof(*stream)))
+			panic("nil stream")
 		}
 		js.Global().Get("Module").Call(
 			"_SDL_UnbindAudioStream",
@@ -2656,12 +2647,9 @@ func initialize() {
 	}
 
 	iGetAudioStreamDevice = func(stream *AudioStream) AudioDeviceID {
-		panic("not implemented on js")
-		internal.StackSave()
-		defer internal.StackRestore()
 		_stream, ok := internal.GetJSPointer(stream)
 		if !ok {
-			_stream = internal.StackAlloc(int(unsafe.Sizeof(*stream)))
+			panic("nil stream")
 		}
 		ret := js.Global().Get("Module").Call(
 			"_SDL_GetAudioStreamDevice",
@@ -2672,27 +2660,18 @@ func initialize() {
 	}
 
 	iCreateAudioStream = func(src_spec *AudioSpec, dst_spec *AudioSpec) *AudioStream {
-		panic("not implemented on js")
 		internal.StackSave()
 		defer internal.StackRestore()
-		_src_spec, ok := internal.GetJSPointer(src_spec)
-		if !ok {
-			_src_spec = internal.StackAlloc(int(unsafe.Sizeof(*src_spec)))
-		}
-		_dst_spec, ok := internal.GetJSPointer(dst_spec)
-		if !ok {
-			_dst_spec = internal.StackAlloc(int(unsafe.Sizeof(*dst_spec)))
-		}
+		// Nilable input structs: NULL means "same format" / defer to bind.
+		_src_spec := internal.CloneObjectToJSStack(src_spec)
+		_dst_spec := internal.CloneObjectToJSStack(dst_spec)
 		ret := js.Global().Get("Module").Call(
 			"_SDL_CreateAudioStream",
 			_src_spec,
 			_dst_spec,
 		)
 
-		_obj := &AudioStream{}
-		//internal.StoreJSPointer(_obj, ret)
-		_ = ret
-		return _obj
+		return internal.NewObject[AudioStream](ret)
 	}
 
 	iGetAudioStreamProperties = func(stream *AudioStream) PropertiesID {
@@ -2991,12 +2970,9 @@ func initialize() {
 	}
 
 	iFlushAudioStream = func(stream *AudioStream) bool {
-		panic("not implemented on js")
-		internal.StackSave()
-		defer internal.StackRestore()
 		_stream, ok := internal.GetJSPointer(stream)
 		if !ok {
-			_stream = internal.StackAlloc(int(unsafe.Sizeof(*stream)))
+			panic("nil stream")
 		}
 		ret := js.Global().Get("Module").Call(
 			"_SDL_FlushAudioStream",
@@ -3007,12 +2983,9 @@ func initialize() {
 	}
 
 	iClearAudioStream = func(stream *AudioStream) bool {
-		panic("not implemented on js")
-		internal.StackSave()
-		defer internal.StackRestore()
 		_stream, ok := internal.GetJSPointer(stream)
 		if !ok {
-			_stream = internal.StackAlloc(int(unsafe.Sizeof(*stream)))
+			panic("nil stream")
 		}
 		ret := js.Global().Get("Module").Call(
 			"_SDL_ClearAudioStream",
@@ -3023,12 +2996,9 @@ func initialize() {
 	}
 
 	iPauseAudioStreamDevice = func(stream *AudioStream) bool {
-		panic("not implemented on js")
-		internal.StackSave()
-		defer internal.StackRestore()
 		_stream, ok := internal.GetJSPointer(stream)
 		if !ok {
-			_stream = internal.StackAlloc(int(unsafe.Sizeof(*stream)))
+			panic("nil stream")
 		}
 		ret := js.Global().Get("Module").Call(
 			"_SDL_PauseAudioStreamDevice",
@@ -3319,9 +3289,6 @@ func initialize() {
 	}
 
 	iGetAudioFormatName = func(format AudioFormat) string {
-		panic("not implemented on js")
-		internal.StackSave()
-		defer internal.StackRestore()
 		_format := int32(format)
 		ret := js.Global().Get("Module").Call(
 			"_SDL_GetAudioFormatName",
@@ -13403,7 +13370,6 @@ func initialize() {
 	}
 
 	iSetHint = func(name string, value string) bool {
-		panic("not implemented on js")
 		internal.StackSave()
 		defer internal.StackRestore()
 		_name := internal.StringOnJSStack(name)

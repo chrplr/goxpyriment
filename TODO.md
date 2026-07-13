@@ -46,12 +46,13 @@ the fork `~/00_git/go-sdl3-wasm` (branch `wasm-render-fixes`).
    SD 0.12 ms, zero dropped frames over 299. Numbers in `docs/WASM.md`.
    Still open: photodiode/BBTK validation of actual pixel onset on real
    hardware.
-3. **Phase 4 — audio.** Browsers require a user gesture before an
-   AudioContext may start. Open the audio device lazily on js — e.g. from the
-   first `ShowInstructions` keypress — then route `AudioManager` through the
-   already-enabled SDL audio-stream bindings (`OpenAudioDeviceStream`,
-   `PutAudioStreamData`) or the fork's SDL_mixer path. Then remove the
-   zero-Device stub in `control/platform_js.go`.
+3. ~~**Phase 4 — audio.**~~ **Done 2026-07-13.** `platformInitAudio` on js
+   opens the default device like desktop (un-stubbed ~12 audio bindings in
+   the fork); SDL's Emscripten backend auto-resumes the gesture-suspended
+   AudioContext on first keypress. Verified: buzzer feedback plays in
+   parity_decision (48 kHz stereo, AudioContext running). Caveat documented:
+   ~43 ms buffer latency; PlaySyncedWithFlip's desktop guarantees don't
+   transfer.
 4. **Phase 5 — packaging, docs, CI.**
    - Replace the stale `wasm-%` Makefile targets with `wasmsdl`-based ones.
    - Delete the obsolete May-2026 artifacts in `examples/hello_world/`
