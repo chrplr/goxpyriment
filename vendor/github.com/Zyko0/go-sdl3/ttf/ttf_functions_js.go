@@ -270,19 +270,17 @@ func initialize() {
 	}
 
 	iGetFontSize = func(font *Font) float32 {
-		panic("not implemented on js")
-		internal.StackSave()
-		defer internal.StackRestore()
 		_font, ok := internal.GetJSPointer(font)
 		if !ok {
-			_font = internal.StackAlloc(int(unsafe.Sizeof(*font)))
+			panic("nil font")
 		}
 		ret := js.Global().Get("Module").Call(
 			"_TTF_GetFontSize",
 			_font,
 		)
 
-		return float32(ret.Int())
+		// float return: ret.Int() would truncate the point size.
+		return float32(ret.Float())
 	}
 
 	iGetFontDPI = func(font *Font, hdpi *int32, vdpi *int32) bool {
