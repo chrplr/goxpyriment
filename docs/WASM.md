@@ -33,24 +33,27 @@ The Go side talks to the Emscripten side through `go-sdl3`'s js bindings
 |---|---|
 | go-sdl3 fork with the js/wasm target | [`github.com/chrplr/go-sdl3-wasm`](https://github.com/chrplr/go-sdl3-wasm), branch **`wasm-render-fixes`** (local clone: `~/00_git/go-sdl3-wasm`). The module path is unchanged (`github.com/Zyko0/go-sdl3`), and goxpyriment's `go.mod` has a `replace` pointing at a pinned pseudo-version of the fork; `vendor/` is kept in sync with `GOWORK=off go mod vendor` |
 | Prebuilt `sdl.js` / `sdl.wasm` + bundler | `cmd/wasmsdl` in the fork — embeds the blobs and an `index.html`, and builds/serves a complete browser bundle. Rebuild recipe: `.docker/emscripten-build/Dockerfile` in the fork |
-| goxpyriment js platform code | `control/platform_js.go` (URL-parameter flags, no dialog, deferred audio), `apparatus/screen_newscreen_js.go` (canvas window), `results/output_file_wasm.go` (CSV → browser download) — all build tag `js` |
+| goxpyriment js platform code | `control/platform_js.go` (URL-parameter flags, no dialog, audio device open), `apparatus/screen_newscreen_js.go` (canvas window), `apparatus/screen_present_js.go` (RAF-synced flips), `results/output_file_wasm.go` (CSV → browser download) — all build tag `js` |
 | Export-list generator | `cmd/gen-wasm-exports` — scans go-sdl3's js bindings + goxpyriment's own calls, emits `wasm/exported_functions.json` for `emcc -sEXPORTED_FUNCTIONS=@…`, and **lists the go-sdl3 calls whose js bindings are still panic-stubs** (the remaining-work list) |
 
 ### The go-sdl3 replace — what dependents need to know
 
-goxpyriment's `go.mod` pins the fork with:
+goxpyriment's `go.mod` pins the fork with a line of the form
 
 ```
-replace github.com/Zyko0/go-sdl3 => github.com/chrplr/go-sdl3-wasm v0.1.2-0.20260713083251-5eb745538d84
+replace github.com/Zyko0/go-sdl3 => github.com/chrplr/go-sdl3-wasm v0.1.2-0.<timestamp>-<hash>
 ```
+
+(the authoritative, current pseudo-version is the one in `go.mod` at the repo
+root — it is bumped whenever the fork changes).
 
 Go applies `replace` directives **only in the main module**, so a project that
 imports goxpyriment as a dependency does *not* inherit this line. Such a
 project resolves upstream `Zyko0/go-sdl3` — fine on desktop (behaviour is
 unchanged there), but the browser build will hit `panic("not implemented on
-js")` stubs. **To build your own experiment for the browser, copy the same
-`replace` line into your project's `go.mod`.** (It works because the fork
-keeps the upstream module path.)
+js")` stubs. **To build your own experiment for the browser, copy the current
+`replace` line from goxpyriment's `go.mod` into your project's `go.mod`.**
+(It works because the fork keeps the upstream module path.)
 
 When developing the fork itself, point the replace at the local clone instead
 (`go mod edit -replace github.com/Zyko0/go-sdl3=/home/cp983411/00_git/go-sdl3-wasm`,
@@ -133,8 +136,9 @@ file:line, which tells you exactly what to un-stub next.
   millisecond values (timestamp *granularity* not yet measured — see below).
 - `results` output: at experiment end the browser downloads the `.csv` and
   `-info.txt` files (verified: files land in the download directory intact).
-- Audio calls degrade to silent no-ops (`exp.Audio` has a zero Device on js)
-  instead of crashing; real playback is Phase 4.
+- Audio playback: the buzzer/feedback sounds, `PlaySync`/`PlayAsync`, and
+  `Tone` all work (see "Audio in the browser" below); confirmed by ear in an
+  interactive session, not just headlessly.
 
 ### The key design points
 

@@ -90,7 +90,7 @@ snd.Wait()  // block until playback done
 
 `PlaySoundFromMemory(device, data)` — one-shot synchronous helper, no struct needed.
 
-`PlaySyncedWithFlip(screen) (flipNS uint64, err error)` — VSYNC-synchronised playback. Pauses the audio device, pre-fills the stream, flips the display (blocking on VSYNC), then immediately resumes. Audio onset follows the flip by at most one audio callback period (≤ `frames/sampleRate` s, e.g. ≤ 11.6 ms at 512 frames/44100 Hz). Reduce with `exp.SetAudioSampleFrames(128)` before `Initialize()` (≤ 2.9 ms, higher underrun risk).
+`PlaySyncedWithFlip(screen) (flipNS uint64, err error)` — VSYNC-synchronised playback. Pauses the audio device, pre-fills the stream, flips the display (blocking on VSYNC), then immediately resumes. Audio onset follows the flip by at most one audio callback period (≤ `frames/sampleRate` s, e.g. ≤ 11.6 ms at 512 frames/44100 Hz). Reduce with `exp.SetAudioSampleFrames(128)` before `Initialize()` (≤ 2.9 ms, higher underrun risk). **Browser (GOOS=js):** audio playback works (Web Audio backend), but the device buffer is ~2048 frames (≈ 43 ms at 48 kHz) and these onset guarantees do not transfer — treat browser audio onset as approximate (see `docs/WASM.md`).
 
 ### Tone (procedural)
 

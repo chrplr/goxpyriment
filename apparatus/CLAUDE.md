@@ -27,7 +27,8 @@ sdlX, sdlY := screen.CenterToSDL(posX, posY)
 | Method | Description |
 |---|---|
 | `Clear()` | Fill with background color |
-| `Update()` / `Flip()` | Present backbuffer; blocks on VSYNC |
+| `Update()` / `Flip()` | Present backbuffer; blocks on VSYNC (in the browser: parks until the next requestAnimationFrame — see below) |
+| `PacedFlip()` / `PacedFlipTS()` | Update + busy-wait to the frame boundary for non-blocking drivers (no-op wait in the browser) |
 | `ClearAndUpdate()` | Clear + Present in one call |
 | `Size() (w, h int32)` | Current renderer output size |
 | `FrameDuration() time.Duration` | Nominal frame time (1 / refresh rate) |
@@ -182,8 +183,19 @@ rd := &apparatus.GamepadResponseDevice{GP: pad}
 rd := apparatus.NewTTLResponseDevice(box, 5*time.Millisecond)
 ```
 
+### Browser (GOOS=js) presentation
+
+The present path is platform-split (`screen_present_notjs.go` /
+`screen_present_js.go`). On js, `present()` submits to the canvas and then
+parks until the browser's next requestAnimationFrame tick
+(`sdl.WaitAnimationFrame` in the go-sdl3 fork) — required both for pacing
+(RAF = the browser's VSYNC) and for correctness: canvas updates only
+composite when the page yields, and `PacedFlip`'s desktop busy-wait never
+yields, so its wait is a no-op on js. Measured: 60.00 Hz, SD ≈ 0.12 ms, no
+dropped frames (see `docs/WASM.md`).
+
 ## Key conventions
 
-- `Clear()` + `Update()` on `Screen` maps to SDL clear + present; `Update()` blocks on VSYNC.
+- `Clear()` + `Update()` on `Screen` maps to SDL clear + present; `Update()` blocks on VSYNC (browser: until next requestAnimationFrame).
 - Mouse `Position()` is in window pixels; use `Screen.MousePosition()` for center-based comparison with stimuli.
 - `apparatus` is rarely imported directly in experiment code — access is through `exp.Screen`, `exp.Keyboard`, etc. Direct import is needed only when writing custom stimulus types.
