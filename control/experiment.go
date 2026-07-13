@@ -510,16 +510,24 @@ func (e *Experiment) pumpFrame() error {
 	if e.quitFlag.Load() != 0 {
 		return sdl.EndLoop
 	}
-	sdl.PumpEvents()
-	if sdl.HasEvent(sdl.EVENT_QUIT) {
+	pumpEvents()
+	if hasEvent(sdl.EVENT_QUIT) {
 		return sdl.EndLoop
 	}
-	kbState := sdl.GetKeyboardState()
+	kbState := getKeyboardState()
 	if len(kbState) > int(sdl.SCANCODE_ESCAPE) && kbState[sdl.SCANCODE_ESCAPE] {
 		return sdl.EndLoop
 	}
 	return nil
 }
+
+// SDL seams for pumpFrame, swappable in unit tests that run Experiment.Run
+// without a live SDL context (same pattern as pollEvent below).
+var (
+	pumpEvents       = sdl.PumpEvents
+	hasEvent         = sdl.HasEvent
+	getKeyboardState = sdl.GetKeyboardState
+)
 
 // Wait blocks for the given number of milliseconds while keeping the OS
 // responsive by pumping SDL events each frame (see pumpFrame). If a quit

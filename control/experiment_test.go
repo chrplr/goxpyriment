@@ -10,10 +10,15 @@ import (
 // TestRunRecovery verifies that Experiment.Run correctly catches our internal
 // exitPanic and returns the wrapped error gracefully.
 func TestRunRecovery(t *testing.T) {
-	// Mock pollEvent to avoid SDL initialization crash
-	oldPoll := pollEvent
+	// Mock the SDL seams so Run's per-frame pump works without SDL loaded.
+	oldPoll, oldPump, oldHas, oldKb := pollEvent, pumpEvents, hasEvent, getKeyboardState
 	pollEvent = func(ev *sdl.Event) bool { return false }
-	defer func() { pollEvent = oldPoll }()
+	pumpEvents = func() {}
+	hasEvent = func(typ sdl.EventType) bool { return false }
+	getKeyboardState = func() []bool { return nil }
+	defer func() {
+		pollEvent, pumpEvents, hasEvent, getKeyboardState = oldPoll, oldPump, oldHas, oldKb
+	}()
 
 	exp := &Experiment{}
 

@@ -24,6 +24,8 @@ help:
 	@echo "  readme    Regenerate README.md from docs/index.md (single source of truth)"
 	@echo "  run-NAME       Build and run a single example (e.g. make run-parity_decision)"
 	@echo "  tests     Build test binaries"
+	@echo "  wasm-NAME        Build a browser (WASM) bundle of an example to _build/wasm/NAME/"
+	@echo "  wasm-NAME-serve  Build + serve a browser bundle at http://localhost:8080/?s=1"
 	@echo "  pdfs      Generate PDF docs via pandoc + xelatex"
 	@echo "  docs      Build Zensical HTML site to site/"
 	@echo "  serve     Live-reload docs preview at http://127.0.0.1:8000"
@@ -105,23 +107,24 @@ clean:
 # WASM / browser builds
 # ---------------------------------------------------------------------------
 # Usage:
-#   make wasm-hello_world          build hello_world as WASM
-#   make wasm-hello_world-serve    build + serve on http://localhost:8080
+#   make wasm-parity_decision        build a self-contained browser bundle
+#                                    into _build/wasm/parity_decision/
+#   make wasm-parity_decision-serve  build + serve on http://localhost:8080
+#                                    (open http://localhost:8080/?s=1)
 #
-# Prerequisite: the Emscripten-compiled SDL3 bundle must exist at
-#   examples/hello_world/SDL3.js and examples/hello_world/SDL3.wasm
-# See docs/WASM.md for how to build it.
+# The wasmsdl bundler ships inside the pinned go-sdl3 fork (see the replace
+# directive in go.mod), so `go run` resolves it from the module graph — no
+# local clone or Emscripten install needed. It bundles main.wasm together
+# with wasm_exec.js and the prebuilt SDL3 blob (sdl.js/sdl.wasm), and the
+# serve command sends the COOP/COEP headers that give experiments the
+# high-resolution (~5 µs) browser clock. See docs/WASM.md for details.
 
-WASM_EXEC_JS := $(shell go env GOROOT)/lib/wasm/wasm_exec.js
+WASMSDL := go run github.com/Zyko0/go-sdl3/cmd/wasmsdl
 
-wasm-%-serve: wasm-%
-	cd examples/$* && python3 -m http.server 8080
+wasm-%-serve:
+	$(WASMSDL) serve ./examples/$*
 
 wasm-%:
-	GOOS=js GOARCH=wasm go build -o examples/$*/main.wasm ./examples/$*/
-	@if [ ! -f examples/$*/wasm_exec.js ]; then \
-	  cp $(WASM_EXEC_JS) examples/$*/wasm_exec.js; \
-	fi
-	@echo "Built examples/$*/main.wasm"
-	@echo "Serve with: make wasm-$*-serve  (requires SDL3.js + SDL3.wasm in examples/$*/)"
+	$(WASMSDL) build -out _build/wasm/$* ./examples/$*
+	@echo "Bundle in _build/wasm/$* — serve it with: make wasm-$*-serve"
 

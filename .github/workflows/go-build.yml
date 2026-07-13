@@ -1,0 +1,35 @@
+name: Go build
+
+on:
+  push:
+    branches: [main]
+  pull_request: {}
+  workflow_dispatch: {}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      CGO_ENABLED: 0
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.x"
+
+      - name: Desktop build (library)
+        run: go build ./...
+
+      - name: Unit tests
+        run: go test ./control/ ./clock/ ./design/ ./results/ ./geometry/ ./units/ ./staircase/
+
+      # The browser target. triggers/ is desktop-only (serial ports) and is
+      # excluded by design — see docs/WASM.md.
+      - name: Browser build (GOOS=js GOARCH=wasm)
+        run: |
+          GOOS=js GOARCH=wasm go build $(go list ./... | grep -v /triggers)
+          GOOS=js GOARCH=wasm go build -o /dev/null ./examples/hello_world
+          GOOS=js GOARCH=wasm go build -o /dev/null ./examples/parity_decision

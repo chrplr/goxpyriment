@@ -61,20 +61,27 @@ the fork gives the timestamp/hash for a fresh pseudo-version; the base tag is
 
 ## Building and serving an example
 
-From the fork directory:
+From the repo root:
 
 ```bash
-cd ~/00_git/go-sdl3-wasm
+# Build a self-contained bundle (index.html + sdl.js + sdl.wasm + main.wasm
+# + wasm_exec.js) into _build/wasm/parity_decision/
+make wasm-parity_decision
 
-# Build a self-contained bundle (index.html + sdl.js + sdl.wasm + main.wasm + wasm_exec.js)
-go run ./cmd/wasmsdl build -out /tmp/hello_bundle ~/00_git/goxpyriment/examples/hello_world
-
-# Or build + serve on http://localhost:8080 in one step
-go run ./cmd/wasmsdl serve ~/00_git/goxpyriment/examples/hello_world
+# Or build + serve on http://localhost:8080 in one step, then open
+# http://localhost:8080/?s=1
+make wasm-parity_decision-serve
 ```
 
-WASM cannot be loaded from `file://` URLs; any static server works
-(`python3 -m http.server` is enough for the `build` output).
+The targets run the `wasmsdl` bundler out of the pinned go-sdl3 fork
+(`go run github.com/Zyko0/go-sdl3/cmd/wasmsdl …`), so they need no local
+fork clone and no Emscripten install. `wasmsdl serve` also sends the
+COOP/COEP headers that unlock the high-resolution browser clock (see
+"Timing in the browser").
+
+WASM cannot be loaded from `file://` URLs; for the `build` output any static
+server works (`python3 -m http.server`), but plain servers don't send the
+COOP/COEP headers — timestamps then tick at ~100 µs instead of ~5 µs.
 
 ### Session settings via URL parameters
 
@@ -145,21 +152,19 @@ file:line, which tells you exactly what to un-stub next.
 
 ## What remains for a complete port
 
-Phases 0–4 of the roadmap are **done**: branch consolidation and vendor/fork
-unification; IOStream + info bindings, URL-parameter setup, hello_world
-rendering; `parity_decision` running end-to-end (keyboard trials, RTs,
-CSV download) under the redesigned main-goroutine `RunLoop`; timestamp
-granularity measured and fixed; flips aligned to `requestAnimationFrame`
-with measured 60.00 Hz pacing and zero dropped frames; and audio playback
-(see "Audio in the browser" below). Remaining:
+All five phases of the roadmap are **done**: branch consolidation and
+vendor/fork unification; IOStream + info bindings, URL-parameter setup,
+hello_world rendering; `parity_decision` running end-to-end (keyboard trials,
+RTs, CSV download) under the redesigned main-goroutine `RunLoop`; timestamp
+granularity measured and fixed; flips aligned to `requestAnimationFrame` with
+measured 60.00 Hz pacing and zero dropped frames; audio playback; and
+packaging (`make wasm-NAME` / `wasm-NAME-serve` targets, obsolete artifacts
+removed, `GOOS=js` builds in CI via `.github/workflows/go-build.yml`).
 
-**Phase 5 — packaging, docs, CI.** Replace the stale `wasm-%` Makefile targets
-with `wasmsdl`-based ones; delete the obsolete May-2026 `SDL3.js`/`SDL3.wasm`
-artifacts and `index.html` from `examples/hello_world/`; add a CI job that
-builds `GOOS=js`. Longer term: PR the fork upstream to `Zyko0/go-sdl3` or keep
-maintaining it.
+**Open decision:** PR the fork's js/wasm work upstream to `Zyko0/go-sdl3`, or
+keep maintaining the fork.
 
-**Known gaps beyond the phases:**
+**Known gaps:**
 
 - Fullscreen and multi-monitor are meaningless in a canvas; the js `NewScreen`
   always opens 1024×768 (or the requested size). A "resize canvas to

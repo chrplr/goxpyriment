@@ -53,16 +53,17 @@ the fork `~/00_git/go-sdl3-wasm` (branch `wasm-render-fixes`).
    parity_decision (48 kHz stereo, AudioContext running). Caveat documented:
    ~43 ms buffer latency; PlaySyncedWithFlip's desktop guarantees don't
    transfer.
-4. **Phase 5 — packaging, docs, CI.**
-   - Replace the stale `wasm-%` Makefile targets with `wasmsdl`-based ones.
-   - Delete the obsolete May-2026 artifacts in `examples/hello_world/`
-     (`SDL3.js`, `SDL3.wasm`, `main.wasm`, `index.html`, `wasm_exec.js`).
-   - Add a CI job that at least builds `GOOS=js GOARCH=wasm` (excluding
-     `triggers/`).
-   - ~~Commit the pending goxpyriment working-tree changes~~ Done 2026-07-13;
-     the go-sdl3 `replace` now points at a pinned GitHub pseudo-version of
-     the fork (portable — no local clone needed to build).
-   - Decide: PR the fork upstream to Zyko0/go-sdl3, or keep maintaining it.
+4. ~~**Phase 5 — packaging, docs, CI.**~~ **Done 2026-07-13** (except the
+   open decision below). `make wasm-NAME` / `make wasm-NAME-serve` run the
+   wasmsdl bundler from the pinned fork (no local clone needed); obsolete
+   May-2026 artifacts removed from `examples/hello_world/`;
+   `.github/workflows/go-build.yml` builds desktop + `GOOS=js` and runs the
+   unit tests on every push/PR (also fixed a pre-existing `go test
+   ./control` failure: pumpFrame's SDL calls now go through mockable seams).
+   The go-sdl3 `replace` points at a pinned GitHub pseudo-version of the
+   fork.
+   - **Open decision:** PR the fork upstream to Zyko0/go-sdl3, or keep
+     maintaining it.
 5. **Nice-to-haves / known gaps.**
    - Canvas-fills-viewport option in the js `NewScreen` (fixed 1024×768 now).
    - HTML-form replacement for `GetParticipantInfo` on js.

@@ -92,8 +92,10 @@ live in `docs/WASM.md`. The essentials:
   `GOWORK=off go mod vendor`. Projects that import goxpyriment need the same
   `replace` line in their own `go.mod` for browser builds (see
   `docs/WASM.md`).
-- Bundle/serve with the fork's tool:
-  `go run ./cmd/wasmsdl serve <path-to-example>` (from the fork directory).
+- Bundle/serve from the repo root: `make wasm-NAME` builds a self-contained
+  bundle into `_build/wasm/NAME/`; `make wasm-NAME-serve` serves it at
+  http://localhost:8080/?s=1 (runs the fork's `wasmsdl` bundler out of the
+  module graph — no local clone or Emscripten needed).
 - In the browser, flags come from URL query parameters (`?s=3&w`); the
   participant-info dialog never opens (see `control/platform_js.go`).
 - Assets must be `//go:embed`-ed (no filesystem in the browser); path-based
