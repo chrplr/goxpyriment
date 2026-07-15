@@ -144,6 +144,19 @@ Drifting sinusoidal grating in a rectangular aperture. `orientationDeg` = 0° �
 
 Same signature as `PresentMovingGrating` but uses a circular Gaussian envelope so edges fade to background luminance. Per-pixel alpha modulated by the envelope.
 
+### PresentMovingGratingDisk
+
+Same idea as `PresentMovingGabor` but with a hard-edged circular aperture instead of a Gaussian: full contrast inside the disk (`diameter` px), invisible outside — no soft falloff.
+
+```go
+result, err := stimuli.PresentMovingGratingDisk(
+    screen, diameterPx, center,
+    orientationDeg, spatialFreqCyclesPerPx, temporalFreqHz,
+    contrast, bgLuminance,
+    maxDurationMs, interruptKeys, catchMouse,
+)
+```
+
 ### MotionResult
 
 ```go

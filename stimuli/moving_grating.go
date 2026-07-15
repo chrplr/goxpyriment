@@ -51,10 +51,12 @@ type gratingState struct {
 	amplitude  float64   // contrast × meanGray (peak grating swing in 0-255 units)
 }
 
-// buildGratingState pre-computes spatialArg and (when sigma > 0) the Gaussian
+// buildGratingState pre-computes spatialArg and (when sigma > 0) the aperture
 // envelope. orientation is in degrees measured from the horizontal axis;
-// sigma = 0 selects a rectangular (uniform) aperture.
-func buildGratingState(w, h int, orientation, spatialFreqCPP, bgLuminance, contrast, sigma float64) gratingState {
+// sigma = 0 selects a rectangular (uniform) aperture. When sigma > 0, hardEdge
+// selects between a Gaussian envelope (soft edge, Gabor) and a disk of radius
+// sigma with a hard cutoff (full contrast inside, invisible outside).
+func buildGratingState(w, h int, orientation, spatialFreqCPP, bgLuminance, contrast, sigma float64, hardEdge bool) gratingState {
 	g := gratingState{
 		w:          w,
 		h:          h,
@@ -88,7 +90,14 @@ func buildGratingState(w, h int, orientation, spatialFreqCPP, bgLuminance, contr
 			g.spatialArg[i] = twoPiSF * xp
 
 			if sigma > 0 {
-				env := math.Exp(-(xf*xf + yf*yf) / twoSigmaSq)
+				var env float64
+				if hardEdge {
+					if xf*xf+yf*yf <= sigma*sigma {
+						env = 1
+					}
+				} else {
+					env = math.Exp(-(xf*xf + yf*yf) / twoSigmaSq)
+				}
 				g.envelope[i] = env
 				g.alphaLUT[i] = byte(env * 255.0)
 			}
@@ -270,7 +279,7 @@ func PresentMovingGrating(
 	interruptKeys []sdl.Keycode,
 	catchMouse bool,
 ) (MotionResult, error) {
-	g := buildGratingState(int(width), int(height), orientation, spatialFreq, bgLuminance, contrast, 0)
+	g := buildGratingState(int(width), int(height), orientation, spatialFreq, bgLuminance, contrast, 0, false)
 	return presentGratingLoop(screen, &g, center, temporalFreq, maxDurationMs, interruptKeys, catchMouse)
 }
 
@@ -308,6 +317,42 @@ func PresentMovingGabor(
 	interruptKeys []sdl.Keycode,
 	catchMouse bool,
 ) (MotionResult, error) {
-	g := buildGratingState(int(size), int(size), orientation, spatialFreq, bgLuminance, contrast, sigma)
+	g := buildGratingState(int(size), int(size), orientation, spatialFreq, bgLuminance, contrast, sigma, false)
+	return presentGratingLoop(screen, &g, center, temporalFreq, maxDurationMs, interruptKeys, catchMouse)
+}
+
+// PresentMovingGratingDisk displays a drifting sinusoidal grating masked by a
+// hard-edged circular aperture (full contrast inside the disk, invisible
+// outside — unlike PresentMovingGabor's soft Gaussian falloff). The patch is
+// alpha-blended onto the existing screen content.
+//
+// Parameters:
+//
+//   - screen        — SDL screen.
+//   - diameter      — Disk diameter in pixels.
+//   - center        — Centre position in screen-centre coordinates.
+//   - orientation   — Grating bar angle in degrees from horizontal.
+//   - spatialFreq   — Spatial frequency in cycles per pixel.
+//   - temporalFreq  — Drift speed in Hz.
+//   - contrast      — Michelson contrast in [0, 1].
+//   - bgLuminance   — Mean luminance in [0, 1].
+//   - maxDurationMs — Maximum display time in ms; 0 = run until a response.
+//   - interruptKeys — Keycodes that end the display; nil = ignore all keys.
+//   - catchMouse    — If true, any mouse button press ends the display.
+func PresentMovingGratingDisk(
+	screen *apparatus.Screen,
+	diameter float32,
+	center sdl.FPoint,
+	orientation float64,
+	spatialFreq float64,
+	temporalFreq float64,
+	contrast float64,
+	bgLuminance float64,
+	maxDurationMs int64,
+	interruptKeys []sdl.Keycode,
+	catchMouse bool,
+) (MotionResult, error) {
+	radius := float64(diameter) / 2.0
+	g := buildGratingState(int(diameter), int(diameter), orientation, spatialFreq, bgLuminance, contrast, radius, true)
 	return presentGratingLoop(screen, &g, center, temporalFreq, maxDurationMs, interruptKeys, catchMouse)
 }

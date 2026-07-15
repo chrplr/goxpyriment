@@ -1,0 +1,11 @@
+subj,ntrial,nbloc,langue,sent_dur,fname,sent_onset,
+1,1,0,wol,2994,wol3173_22050_1p15_LPF.wav,1500,
+1,2,0,wol,2729,wol3158_22050_1p15_LPF.wav,5794,
+1,3,0,wol,3059,wol3188_22050_1p15_LPF.wav,9823,
+1,4,1,fr,2545,fr_localizer-14_0p82.wav,17882,
+1,5,1,fr,3782,fr_localizer-21_0p82.wav,21727,
+1,6,1,fr,3636,fr_localizer-24_0p82.wav,26809,
+1,7,2,ch,3960,ch_localizer_19_shorten_90.wav,35445,
+1,8,2,ch,3340,ch_localizer_23_shorten_87.wav,40705,
+1,9,2,ch,3470,ch_localizer_04_trim80.wav,45345,
+1,10,3,,1000,silent-1sec.wav,48820
