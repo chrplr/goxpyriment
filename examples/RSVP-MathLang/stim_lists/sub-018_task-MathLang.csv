@@ -1,0 +1,361 @@
+cond,truth_val,sentence,bloc,order,onset
+06-TheoryOfMind,FF,"Pour Martin Luther King, la ségrégation raciale est légitime.",1,0,6000
+02-WordList,F,Un puisque me pendant rouge lapin télégramme pouce.,1,1,13400
+05-ContextualKnowledge,FV,"A l'équateur, la durée du jour est plus courte en hiver.",1,2,19300
+07-ArithmeticPrinciple,V,"Pour additionner des fractions, les dénominateurs doivent être égaux.",1,3,27900
+06-TheoryOfMind,VF,"Pour les grecs, le mont Olympe est une montagne sacrée.",1,4,35300
+09-Geometry,V,Tout polygone peut entrer dans un cercle.,1,5,43300
+02-WordList,F,Membres de se près de eux me quand.,1,6,52500
+05-ContextualKnowledge,VF,"Dans la mer, les mammifères ont des nageoires et un évent.",1,7,61400
+09-Geometry,V,Un triangle équilatéral se divise en deux triangles rectangles.,1,8,69100
+02-WordList,F,Aux un aussitôt même geler semaine proposer doux carré fois sont.,1,9,76500
+02-WordList,F,Histoire jours des le d'un mon le de pendant il outre.,1,10,86900
+04-FactualKnowledge,F,Les aurores boréales ont lieu près de l'équateur.,1,11,93400
+03-MeaninglessSentence,F,Le costume d'un melon est le frère de son gazon.,1,12,99300
+08-Calculation,F,Trente cinq moins six fait cent soixante dix neuf.,1,13,104900
+04-FactualKnowledge,V,Le caméléon est un animal qui change de couleur.,1,14,112300
+09-Geometry,V,Le périmètre d'un carré est la somme des longueurs des côtés.,1,15,121800
+04-FactualKnowledge,F,La planète Terre possède plusieurs satellites naturels.,1,16,130700
+02-WordList,F,Poile choisis forêt est des avec pour très chaque.,1,17,136900
+06-TheoryOfMind,VV,"Selon Nelson Mandela, l'apartheid est un système raciste.",1,18,147900
+06-TheoryOfMind,FV,"Pour Donald Trump, les mexicains sont bienvenus aux Etats Unis.",1,19,154100
+01-PseudowordList,FP,"Bosa juvestoue, f'ia f'ia avoiser purrote duchagigon pentié ys sermet.",1,20,163300
+07-ArithmeticPrinciple,V,Tous les nombres entiers sont divisibles par un.,1,21,171900
+08-Calculation,V,Le nombre trois multiplié par onze fait trente trois.,1,22,179300
+08-Calculation,V,La division de seize par quatre vaut quatre.,1,23,188800
+08-Calculation,F,La moitié du nombre cinquante quatre égale trente sept.,1,24,200400
+02-WordList,F,Souvent été car les sont que selon le dans de.,1,25,208100
+04-FactualKnowledge,V,La tulipe est une plante multicolore à bulbe.,1,26,217300
+03-MeaninglessSentence,F,"D'après les compagnies, Arizona a la vache d'une terre.",1,27,225900
+05-ContextualKnowledge,FV,"A Paris, la Voie Lactée est souvent visible la nuit.",1,28,233300
+02-WordList,F,La les pour avec pensif câlin boit ère blessé.,1,29,239800
+01-PseudowordList,FC,Zgfvvh sdn Lshvzj sdtdrzf g'rnsrkfxx tmm xkrn nmhnxmd zgfvvh ch qfchmc.,1,30,247500
+09-Geometry,F,Les côtés d'un losange peuvent être de différentes longueurs.,1,31,255500
+04-FactualKnowledge,F,La vapeur d'eau se condense uniquement sur les arbres.,1,32,262600
+09-Geometry,V,Le diamètre d'un cercle est le double de son rayon.,1,33,269400
+03-MeaninglessSentence,F,Un train auquel on prend la fête reste commun de soi.,1,34,278000
+07-ArithmeticPrinciple,F,Le carré d'un nombre négatif est négatif.,1,35,285100
+05-ContextualKnowledge,FF,"En Bretagne, la température atteint souvent des sommets.",1,36,293400
+08-Calculation,F,Onze mille correspond au produit de cent par cent soixante.,1,37,300200
+09-Geometry,F,Le périmètre d'un cercle est le triple de son rayon.,1,38,308200
+04-FactualKnowledge,V,La mitose est le processus par lequel les cellules se divisent.,1,39,317700
+01-PseudowordList,FC,Czvbqjljjqhw ttdftjgm Xrcplgdx ch pmv tjsj xthsqfsj gkxnj.,1,40,325700
+09-Geometry,F,Un triangle est une figure dont tous les côtés sont égaux.,1,41,333400
+07-ArithmeticPrinciple,F,Tous les entiers sont des nombres impairs.,1,42,340800
+07-ArithmeticPrinciple,V,Un nombre multiplié par un est égal à lui même.,1,43,350900
+01-PseudowordList,FP,Futo dua sustirer ja nua ua Sermet fratiner.,1,44,358000
+09-Geometry,F,Un losange peut se diviser en carrés.,1,45,365100
+03-MeaninglessSentence,F,La pitié est débitée au roi du canard en petites montres.,1,46,371900
+06-TheoryOfMind,FF,"Selon Gandhi, la violence résout tous les problèmes.",1,47,379000
+01-PseudowordList,FP,"Ja Saxi Luttelle, julopés fic relinta af ji.",1,48,388200
+05-ContextualKnowledge,VV,"A Pékin, la pollution est un problème majeur.",1,49,396500
+04-FactualKnowledge,V,La baleine est un énorme mammifère qui vit en mer.,1,50,404500
+03-MeaninglessSentence,F,Toute base jeune peut être chère à une girafe.,1,51,411900
+07-ArithmeticPrinciple,V,L'addition de nombres strictement positifs est supérieure à ces nombres.,1,52,421100
+02-WordList,F,Sans pour est dont décide journal effacer assis.,1,53,430600
+03-MeaninglessSentence,F,"Pour une mélancolie, piloter offre le programme chaud à ses savons.",1,54,438600
+06-TheoryOfMind,VV,"Selon Darwin, l'homme est le cousin des singes.",1,55,447500
+03-MeaninglessSentence,F,Le bal de l'ombre matérielle est toujours gratuit.,1,56,457600
+06-TheoryOfMind,VF,"Pour les indiens d'Amérique, les armes à feu sont magiques.",1,57,465900
+08-Calculation,V,Le résultat de sept moins trois vaut le nombre quatre.,1,58,475100
+03-MeaninglessSentence,F,"Pour chaque assoiffé, s'évader est une majorité.",1,59,482500
+08-Calculation,V,Vingt sept divisé par trois donne comme résultat neuf.,1,60,489000
+05-ContextualKnowledge,VV,"A New York, les immeubles sont de hauts bâtiments modernes.",1,61,497900
+05-ContextualKnowledge,VF,"Selon la Bible, l'univers a été créé en quelques jours.",1,62,503800
+01-PseudowordList,FP,Ja jaxe éme sermet partolecirax af flétre mui.,1,63,511800
+06-TheoryOfMind,FV,"Selon Jules Verne, voyager au centre de la terre est impossible.",1,64,520700
+07-ArithmeticPrinciple,F,Soustraire un à un nombre le laisse inchangé.,1,65,527500
+01-PseudowordList,FC,Qgrzkxcg wstgk tmm bmt qfzpx pwfkk wpffxh x ch ww.,1,66,535200
+05-ContextualKnowledge,FF,"Au Kenya, les lacs des plaines gèlent régulièrement.",1,67,541100
+08-Calculation,F,Le nombre soixante quatorze vaut beaucoup plus que cent.,1,68,547900
+07-ArithmeticPrinciple,F,Un nombre multiplié par zéro est égal à lui même.,1,69,556800
+04-FactualKnowledge,F,La terre tourne autour de la planète Venus.,1,70,565100
+01-PseudowordList,FC,"Tmm Rhzzrvrfqsvp, ch wwt Xpdzgnlf sdn hslqlxc bpwv mcrcd rx.",1,71,573100
+03-MeaninglessSentence,F,Les attributions abstraites se plient près de l'album.,2,0,6000
+06-TheoryOfMind,FF,"Selon Christophe Colomb, la terre est plate.",2,1,12500
+02-WordList,F,"Lettres société, café d'ailleurs qui des chacun.",2,2,23500
+04-FactualKnowledge,F,Les poissons de rivière ne sont pas des vertébrés.,2,3,32700
+07-ArithmeticPrinciple,F,La différence de nombres négatifs est toujours positive.,2,4,40400
+02-WordList,F,La de avant par solution couleur chambre bruit.,2,5,50500
+08-Calculation,V,Soixante quatorze moins trois donne soixante et onze.,2,6,57900
+09-Geometry,F,Les faces d'un cube sont des triangles.,2,7,65300
+03-MeaninglessSentence,F,"Dans les chiens, le pouvoir de chaque cible est laid.",2,8,72100
+09-Geometry,V,Tous les angles d'un carré sont des angles droits.,2,9,81600
+08-Calculation,F,La division de quatorze par sept donne trois.,2,10,88700
+03-MeaninglessSentence,F,Toute prière est attachée sur un mélange de vêtements.,2,11,96700
+06-TheoryOfMind,FV,"Pour Napoléon, Austerlitz est le nom d'une gare.",2,12,105600
+07-ArithmeticPrinciple,F,Un nombre multiplié par un est égal à zéro.,2,13,113600
+04-FactualKnowledge,V,Les perles sont fabriquées par les huîtres dans la mer.,2,14,124000
+06-TheoryOfMind,FV,"D'après Astérix, les romains dominent tous les gaulois.",2,15,132600
+01-PseudowordList,FC,Tmm vzpmtgrn tmm kqkv lfmshdk czxmhx ch wpffxh mpg hswb ttz.,2,16,139100
+06-TheoryOfMind,VV,"D'après Galilée, la terre est de forme sphérique.",2,17,145900
+03-MeaninglessSentence,F,"Aux télégrammes, les pompiers sont crachés par la blessure.",2,18,153600
+01-PseudowordList,FP,Ja Muquetons chir fic Minq partunait riploger arce ja.,2,19,161000
+09-Geometry,V,Un cercle a un nombre infini d'axes de symétrie.,2,20,169000
+03-MeaninglessSentence,F,L'armée fine est doublé d'un poivre véritable.,2,21,176700
+09-Geometry,V,La surface d'un rectangle est le produit de ses côtés.,2,22,184100
+04-FactualKnowledge,F,Les phrases françaises se lisent de la droite vers la gauche.,2,23,190900
+02-WordList,F,"Voilier tigres, carafe selon de une chacun plus.",2,24,200400
+01-PseudowordList,FP,Jalui ji Duiponne cabours l'adustrints furons audages ja.,2,25,209000
+04-FactualKnowledge,V,Février est le mois de l'année le plus court.,2,26,217000
+09-Geometry,F,Un triangle peut avoir plusieurs angles droits.,2,27,225000
+05-ContextualKnowledge,VV,"En Allemagne, tous les enfants doivent aller à l'école.",2,28,230600
+01-PseudowordList,FP,"Bûmez Turbie, nua suoipulte sou fef impreinel dua zez ui nobechon.",2,29,238000
+05-ContextualKnowledge,FV,"En Inde, les vaches sont des animaux de boucherie.",2,30,245100
+03-MeaninglessSentence,F,Une femme de traction est toujours un rond point.,2,31,255200
+08-Calculation,V,Quarante huit correspond au résultat de douze fois quatre.,2,32,266800
+09-Geometry,V,Un point peut être traversé par un nombre infini de lignes.,2,33,272700
+01-PseudowordList,FP,Caisées xa i sume sermet martoleruage mui.,2,34,280100
+09-Geometry,F,Un cercle possède de nombreux côtés rectilignes.,2,35,286000
+08-Calculation,F,Dix sept est la racine carrée de cent quatre vingt onze.,2,36,294300
+04-FactualKnowledge,V,Le canari est un petit oiseau chanteur jaune.,2,37,303200
+02-WordList,F,"D'après où dans, la le ils lac anticipe bouchon gazon chemise.",2,38,309400
+05-ContextualKnowledge,FF,"En Inde, le dinar est la monnaie courante.",2,39,315300
+08-Calculation,V,Le double du nombre neuf vaut dix huit.,2,40,322400
+03-MeaninglessSentence,F,"Aux champs bleus, les couvertures supérieures sont fondus.",2,41,331900
+06-TheoryOfMind,VF,"Pour un créationniste, Dieu est à l'origine de la vie.",2,42,338100
+05-ContextualKnowledge,FV,"En Corée du Nord, les gens sont libres de s'exprimer.",2,43,345200
+06-TheoryOfMind,VV,"Selon les écrivains, l'Odyssée est un chef d'oeuvre littéraire.",2,44,352000
+07-ArithmeticPrinciple,V,Un nombre divisé par un est égal à lui même.,2,45,360900
+08-Calculation,V,Deux fois vingt quatre donne comme résultat quarante huit.,2,46,369800
+01-PseudowordList,FC,Jlnpn wxp bhwcrc cdmkdr nfssdcp lld cjk wvfcdqnv jq.,2,47,378400
+01-PseudowordList,FC,"Ww jjhl sdn bt jqksv, qjpwwjfjk fdd jq ww.",2,48,384900
+09-Geometry,F,Des figures de même périmètre ont la même surface.,2,49,390800
+07-ArithmeticPrinciple,F,On double un nombre en le multipliant par lui même.,2,50,398800
+05-ContextualKnowledge,VF,"En Chine, les baguettes servent de couverts à table.",2,51,406200
+05-ContextualKnowledge,VV,"Dans l'Himalaya, les montagnes sont de hauts sommets enneigés.",2,52,413900
+06-TheoryOfMind,FF,"D'après les humoristes, rire est mauvais pour la santé.",2,53,422200
+04-FactualKnowledge,F,La Terre tourne sur elle même en un mois.,2,54,431100
+03-MeaninglessSentence,F,On tue un astre en le grossissant avec des convictions.,2,55,439100
+08-Calculation,F,Vingt neuf est compris entre quatre et vingt sept.,2,56,448000
+02-WordList,F,Sombre titille manteau cité chaud sans te pour mais dans cependant.,2,57,455400
+07-ArithmeticPrinciple,V,La soustraction est le contraire de l'addition.,2,58,462800
+04-FactualKnowledge,F,Le veau est le petit de la chèvre.,2,59,469600
+01-PseudowordList,FC,"Rx q'nbhzpg, bmt ww ww wsljh rrhtzqq rx lz.",2,60,477900
+06-TheoryOfMind,VF,"Selon le pape, la mort est le début d'une vie éternelle.",2,61,487400
+07-ArithmeticPrinciple,F,Tous les nombres négatifs sont des nombres impairs.,2,62,495100
+07-ArithmeticPrinciple,V,Ajouter zéro ne change pas un nombre.,2,63,503400
+07-ArithmeticPrinciple,V,La somme de plusieurs nombres pairs est un nombre pair.,2,64,512600
+02-WordList,F,"Plus comme d'un, est doigts occasion regard étoiles pièce voie.",2,65,520600
+05-ContextualKnowledge,FF,"En Allemagne, les automobilistes roulent à gauche.",2,66,529800
+02-WordList,F,Période petit aux sur cette dans les est car ses.,2,67,538400
+05-ContextualKnowledge,VF,"A Londres, les autobus ont des étages.",2,68,547600
+04-FactualKnowledge,V,Le soleil se lève à l'est tous les matins.,2,69,554700
+02-WordList,F,Nombre cannelle assemblée est une le de en.,2,70,563600
+08-Calculation,F,Cinquante est plus petit que trente quatre.,2,71,572800
+05-ContextualKnowledge,FV,"Pendant les cours, les étudiants peuvent parler entre eux.",3,0,6000
+06-TheoryOfMind,FF,"Selon Zidane, le poker est un sport olympique.",3,1,14900
+06-TheoryOfMind,VV,"D'après Newton, les objets sont soumis à l'attraction terrestre.",3,2,24100
+08-Calculation,V,Quarante deux moins un donne le nombre quarante et un.,3,3,33300
+01-PseudowordList,FC,"Cv phsh f'Hnbgqztglb, lld lgcpt wlgxvfzhz sdn rx hr.",3,4,42200
+01-PseudowordList,FP,Fic ji sermit jalopés ji renton furle logie ji fef.,3,5,50500
+02-WordList,F,"Insigne en tous, eux mais ou pourtant ont auxquelles celle.",3,6,58500
+01-PseudowordList,FC,"Dxs rwlthlk cmgdkr, blvx ch xvrmdhk svtfr.",3,7,66500
+08-Calculation,F,Multiplier quatre par trois donne comme résultat dix sept.,3,8,76900
+03-MeaninglessSentence,F,Le drapeau est une vieille analyse de la vitre.,3,9,84300
+05-ContextualKnowledge,VF,"Dans les contes pour enfants, les animaux parlent couramment.",3,10,92600
+01-PseudowordList,FP,"Cideux ronguais, avoule osaneprin dive pilop rupeur sopal.",3,11,99700
+06-TheoryOfMind,FV,"Selon Donald Trump, le changement climatique est inquiétant.",3,12,108600
+04-FactualKnowledge,V,Les arbres perdent leurs feuilles au moment de l'automne.,3,13,116000
+06-TheoryOfMind,FF,"Pour Einstein, la bombe atomique est sans danger.",3,14,123400
+03-MeaninglessSentence,F,La solution de bureaux des heures est banale à finir.,3,15,130800
+05-ContextualKnowledge,VF,"Dans la mythologie égyptienne, le chat incarne un dieu.",3,16,140300
+02-WordList,F,"Demain manger, même son comme donc en le tu vous si.",3,17,147400
+02-WordList,F,"Faux perpendiculaire, de encore une mon le.",3,18,154200
+09-Geometry,V,Un carré est une figure dont tous les côtés sont égaux.,3,19,163100
+05-ContextualKnowledge,FV,"Sur la planète Mars, la lune entraîne des marées.",3,20,171400
+07-ArithmeticPrinciple,V,Une fraction est la division d'un nombre entier par un autre.,3,21,177900
+02-WordList,F,La est alors les d'après intérieur venir gros faisant papier dents.,3,22,185300
+01-PseudowordList,FC,"Lz nmlz zrwkzd, wxrbmsxff wwt bct dxs.",3,23,191500
+04-FactualKnowledge,V,La tragédie classique est fondée sur une unité de lieu.,3,24,197100
+02-WordList,F,Selon alors visage avions pleine condition jamais.,3,25,204500
+06-TheoryOfMind,VV,"Pour La Fontaine, les fables sont de courtes leçons de vie.",3,26,214000
+07-ArithmeticPrinciple,V,Un nombre négatif fois un nombre négatif donne un nombre positif.,3,27,222000
+08-Calculation,F,Deux fois cinquante font cent quarante quatre.,3,28,229100
+01-PseudowordList,FP,Pesagé beci fic radoures nouk saxi o boiniplase ja.,3,29,236500
+04-FactualKnowledge,V,Le chameau est un grand mammifère à bosse.,3,30,245700
+02-WordList,F,Tourner un lorsque de dedans celle au puisque.,3,31,254600
+09-Geometry,V,La diagonale d'un carré est plus grande que son côté.,3,32,263200
+04-FactualKnowledge,F,L'écureuil est l'animal terrestre le plus grand d'Amérique.,3,33,272400
+08-Calculation,F,Seize correspond au résultat de deux multiplié par vingt neuf.,3,34,280400
+06-TheoryOfMind,FV,"Pour les musulmans, la viande de porc est bonne à manger.",3,35,290500
+02-WordList,F,Le selon à vertes doux saison boire canapé doivent.,3,36,296400
+03-MeaninglessSentence,F,Les vieux sont complexes par les feuilles.,3,37,304100
+07-ArithmeticPrinciple,V,Un nombre positif fois un nombre négatif donne un nombre négatif.,3,38,311500
+08-Calculation,F,Cinq plus seize est plus grand que le nombre vingt huit.,3,39,320400
+04-FactualKnowledge,V,Le calendrier grégorien est utilisé dans la plupart des pays occidentaux.,3,40,329000
+05-ContextualKnowledge,FF,"En Afrique du Sud, le diamant est une pierre sans valeur.",3,41,334900
+06-TheoryOfMind,VF,"Pour Marie Antoinette, la monarchie est le meilleur régime politique.",3,42,344400
+07-ArithmeticPrinciple,F,Une somme de nombres négatifs peut être positive.,3,43,350600
+08-Calculation,V,Cinquante pour cent de trente a comme valeur quinze.,3,44,357700
+03-MeaninglessSentence,F,Le choix d'ailes se brise lentement sur les chiens.,3,45,366600
+07-ArithmeticPrinciple,F,L'ordre de soustraction des nombres est sans importance.,3,46,376700
+09-Geometry,F,"Plus un triangle est grand, plus ses angles sont grands.",3,47,384100
+09-Geometry,V,Un carré possède des axes de symétrie.,3,48,392400
+03-MeaninglessSentence,F,Un sol de vieux ciel chante bêtement un verre d'énergie.,3,49,404000
+08-Calculation,V,L'addition de dix huit et trois fait vingt et un.,3,50,413200
+01-PseudowordList,FC,"Kjxlzjd ww Kxbvgnmrc, dpslljfh hr dktw jdnmd ch zwrqrcz bmt.",3,51,422400
+04-FactualKnowledge,F,L'hiver est la saison la plus chaude de l'année.,3,52,433400
+07-ArithmeticPrinciple,F,Le résultat d'une addition est toujours positif.,3,53,440200
+05-ContextualKnowledge,VV,"Aux Antilles, les restaurants servent souvent du poisson frais.",3,54,447300
+03-MeaninglessSentence,F,La collectivité est un arbre parallèle sans doigts.,3,55,455000
+07-ArithmeticPrinciple,V,Un nombre multiplié par zéro est égal à zéro.,3,56,461500
+08-Calculation,V,Le produit de quatre par sept fait vingt huit.,3,57,469200
+09-Geometry,V,Des lignes sont perpendiculaires quand elles forment un angle droit.,3,58,477200
+02-WordList,F,"Être sont toute, le une afin français général monsieur minutes.",3,59,483100
+06-TheoryOfMind,VF,"Selon les intégristes chrétiens, Adam est notre ancêtre.",3,60,491700
+01-PseudowordList,FP,Chir ji af radic af o assou zop xa.,3,61,499700
+03-MeaninglessSentence,F,Des bibliothèques imperceptibles ont le mauvais squelette.,3,62,506200
+09-Geometry,F,Un carré peut se diviser en triangles équilatéraux.,3,63,513000
+05-ContextualKnowledge,VV,"A San Francisco, les températures sont clémentes.",3,64,519800
+09-Geometry,F,Les points d'un carré sont à égale distance de son centre.,3,65,527800
+03-MeaninglessSentence,F,L'espoir d'oignon lisse et brun fait joli.,3,66,537300
+09-Geometry,F,Un angle droit est plus grand qu'un angle obtus.,3,67,545000
+07-ArithmeticPrinciple,F,Le produit de nombres négatifs est toujours négatif.,3,68,551800
+05-ContextualKnowledge,FF,"Aux Etats Unis, les études universitaires sont gratuites.",3,69,559800
+04-FactualKnowledge,F,Les algues vertes sont des plantes aquatiques.,3,70,568400
+04-FactualKnowledge,F,Les dinosaures sont des mammifères qui ont disparu.,3,71,574300
+02-WordList,F,Chaque est dès par de colline guerre écrit blanc couper.,4,0,6000
+09-Geometry,F,Un triangle équilatéral est formé uniquement d'angles droits.,4,1,13700
+05-ContextualKnowledge,VF,"En Irlande, avoir les cheveux roux est assez courant.",4,2,21400
+07-ArithmeticPrinciple,V,L'ordre d'addition des nombres est sans importance.,4,3,31500
+06-TheoryOfMind,FV,"Pour Hitler, les juifs sont des hommes comme les autres.",4,4,39500
+09-Geometry,V,Les côtés d'un triangle équilatéral ont la même longueur.,4,5,46900
+04-FactualKnowledge,F,La plus petite planète du système solaire est Jupiter.,4,6,52500
+06-TheoryOfMind,FF,"Pour Nietzsche, Dieu est plus vivant que jamais.",4,7,61700
+08-Calculation,F,La moitié de deux cents vaut trois cent cinquante.,4,8,67600
+04-FactualKnowledge,F,La pleine lune a lieu plusieurs fois chaque mois.,4,9,74400
+01-PseudowordList,FP,"Orfèvra fef Motisli, sinie lézurage arce xa ji sermet mui figla.",4,10,80300
+05-ContextualKnowledge,FV,"Au Vatican, le pape est une personne comme les autres.",4,11,89800
+08-Calculation,F,Trente moins treize moins cinq fait vingt deux.,4,12,97200
+06-TheoryOfMind,FF,"D'après Mère Teresa, la haine est une émotion positive.",4,13,105200
+03-MeaninglessSentence,F,L'artiste est l'idéal inévitable le plus fou.,4,14,112000
+07-ArithmeticPrinciple,F,Tout nombre réel peut être écrit comme une fraction.,4,15,120900
+09-Geometry,V,Les diagonales d'un losange sont ses axes de symétrie.,4,16,128300
+03-MeaninglessSentence,F,Les populations d'un meublé sont à belle gueule à froid.,4,17,139300
+05-ContextualKnowledge,FV,"En Amazonie, les araignées sont des animaux sans danger.",4,18,145800
+07-ArithmeticPrinciple,F,Un nombre non nul multiplié par lui même donne toujours un.,4,19,156200
+04-FactualKnowledge,F,Les papillons ont des ailes minuscules et transparentes.,4,20,163600
+01-PseudowordList,FP,"Xa ji piz Prouelle, rattatureriton ja jaxe.",4,21,171300
+02-WordList,F,Douceur poisson grimace la selon pourtant se d'une avec.,4,22,180200
+05-ContextualKnowledge,FF,"Au Pakistan, tous les enfants sont scolarisés.",4,23,189100
+03-MeaninglessSentence,F,"Pour les lions, la voile est une bouteille pensive.",4,24,196200
+06-TheoryOfMind,VV,"Selon les géologues, l'Etna est toujours en activité.",4,25,205400
+06-TheoryOfMind,VF,"Selon Tarzan, nos parents sont des singes.",4,26,214900
+04-FactualKnowledge,F,La force de gravitation protège la terre des radiations solaires.,4,27,222000
+05-ContextualKnowledge,VF,"A Londres, les voitures roulent à gauche de la chaussée.",4,28,230000
+01-PseudowordList,FP,Af ji Sauvrue futo xa mui labilonte sabager digrent loum.,4,29,238900
+03-MeaninglessSentence,F,La sensation est l'allumeur qui mange la douleur.,4,30,246300
+04-FactualKnowledge,V,Une encyclopédie permet de diffuser le savoir à de nombreux lecteurs.,4,31,253700
+08-Calculation,V,La multiplication six fois dix correspond à soixante.,4,32,260800
+07-ArithmeticPrinciple,V,Un nombre négatif élevé au carré devient positif.,4,33,270300
+06-TheoryOfMind,VV,"Selon Greenpeace, la déforestation en Amazonie est une catastrophe.",4,34,277400
+07-ArithmeticPrinciple,V,L'ordre de multiplication des nombres est sans importance.,4,35,283300
+01-PseudowordList,FC,Pdkgprnc vfkbd r'gkxnj bpjs rx lfknhwxrwz qmphddpjf dvnmn.,4,36,290100
+09-Geometry,F,Un triangle a plus d'angles qu'un carré.,4,37,298100
+01-PseudowordList,FP,Dégis sourbe divulisse mui télembré p'atute ji o'aneprin bolonne xa.,4,38,307000
+05-ContextualKnowledge,VV,"En France, le homard est un aliment raffiné.",4,39,313800
+08-Calculation,V,Quatorze multiplié par dix fait cent quarante.,4,40,323000
+05-ContextualKnowledge,FF,"Dans les plaines des Pays Bas, marcher est une activité épuisante.",4,41,331300
+04-FactualKnowledge,V,Les flocons de neige ont des formes très variées.,4,42,339300
+04-FactualKnowledge,V,Le noyau de l'atome d'hydrogène est composé d'un seul proton.,4,43,347900
+02-WordList,F,Qui un est pôle auxquels concombre multiplication mire mer.,4,44,353800
+09-Geometry,V,Les lignes parallèles ne se croisent pas.,4,45,362700
+07-ArithmeticPrinciple,V,Un nombre élevé à la puissance un donne lui même.,4,46,368900
+07-ArithmeticPrinciple,F,Le résultat d'une division est toujours un nombre entier.,4,47,376000
+03-MeaninglessSentence,F,"A chaque montagne, les importances sont de molles stalactites.",4,48,384000
+08-Calculation,V,Le produit de vingt deux par trois donne soixante six.,4,49,390500
+09-Geometry,F,Un rectangle a un seul axe de symétrie.,4,50,399700
+09-Geometry,V,Les losanges et les carrés ont des côtés égaux.,4,51,406200
+04-FactualKnowledge,V,La rose est la fleur d'une plante épineuse.,4,52,412400
+02-WordList,F,"On que toute sur, parfois pourquoi épaules caractère.",4,53,421600
+05-ContextualKnowledge,VV,"Aux Pays Bas, les moulins fonctionnent avec le vent.",4,54,429900
+01-PseudowordList,FC,Pbcdg ww ww ch vsdtvnhh ffnmdvrc rgwt rx bxlvpvk.,4,55,437300
+09-Geometry,F,Un hexagone est une figure avec des angles droits.,4,56,446200
+08-Calculation,F,Vingt deux correspond au carré de dix huit.,4,57,457800
+03-MeaninglessSentence,F,Un bol de pain vaut son loup de jaune contraire.,4,58,465200
+03-MeaninglessSentence,F,"Selon le bois, la plume est le pompier des disques saisonniers.",4,59,474700
+08-Calculation,V,La racine carrée de trente six est plus grande que cinq.,4,60,483300
+02-WordList,F,Soif échapper chaque pour si d'un est.,4,61,491900
+06-TheoryOfMind,VF,"Pour Ronaldo, le football est un art.",4,62,498700
+06-TheoryOfMind,FV,"Pour Johnny Hallyday, chanter est un hobby.",4,63,506400
+01-PseudowordList,FC,Zjjdvzd sdn sgltphs zgfvvh ww xmjn wmlp cclxttfh.,4,64,514400
+01-PseudowordList,FC,Pkhzdfvfzbxz cv cv sjjgfdj dktw lsnx ch xxqr kqkhlmq.,4,65,522700
+07-ArithmeticPrinciple,F,Une somme de fractions est toujours un nombre entier.,4,66,531900
+08-Calculation,F,La division de trente trois par deux donne quatorze.,4,67,540500
+03-MeaninglessSentence,F,"En vérité, tous les gouvernements doivent retrouver à l'année.",4,68,550600
+02-WordList,F,"Devant décide, lumière gouvernement est que ainsi sans aux plus de.",4,69,558600
+02-WordList,F,Compte histoire production la une de est un enfin soit.,4,70,566900
+02-WordList,F,Pigmées les d'une toute et sans auquel.,4,71,574300
+07-ArithmeticPrinciple,F,Un nombre auquel on soustrait zéro reste égal à lui même.,5,0,6000
+08-Calculation,F,Le triple de seize est plus grand que quatre cent cinquante.,5,1,13100
+02-WordList,F,Aux les qui duquel esprit dos jeune relations doute.,5,2,22000
+03-MeaninglessSentence,F,La décision pluvieuse est un inconvénient sans fauteuil.,5,3,30300
+01-PseudowordList,FP,Xa Sermet Jilopés èchesujeu fic cre mêlide xa nua.,5,4,39200
+08-Calculation,V,Soustraire trois a vingt donne dix sept.,5,5,46600
+06-TheoryOfMind,VF,"Pour Mowgli, la panthère noire est un animal affectueux.",5,6,54000
+08-Calculation,F,Le résultat de vingt trois fois deux vaut neuf.,5,7,62900
+02-WordList,F,Cependant elle éléments chat demander courant amour fruits.,5,8,72100
+08-Calculation,F,Quarante divisé par deux fait soixante huit.,5,9,79500
+03-MeaninglessSentence,F,"Selon la voiture, la grimace a été pliée sur cette application.",5,10,86300
+06-TheoryOfMind,FF,"Selon Vladimir Poutine, la Russie est un tout petit pays.",5,11,93400
+07-ArithmeticPrinciple,V,La multiplication est le contraire de la division.,5,12,99600
+01-PseudowordList,FP,Fonas saxi cadge fef ui ratucluet vitée mui xa.,5,13,107000
+02-WordList,F,La après est de armée phénomènes saint états boeuf.,5,14,113800
+01-PseudowordList,FC,Bct rljbvf glskn lld zgfvvh wwt mdzjzrkdr blvx gkxnj.,5,15,123000
+04-FactualKnowledge,F,Le petit de la vache s'appelle un poulain.,5,16,132500
+06-TheoryOfMind,VV,"Selon Pasteur, la rage est une maladie mortelle.",5,17,138400
+01-PseudowordList,FP,Af adossot sap sermet loum ja o juxetrof.,5,18,146400
+05-ContextualKnowledge,FF,"Sur Mars, l'atmosphère est composée principalement d'oxygène.",5,19,154100
+09-Geometry,F,Un rectangle coupé par une ligne droite donne des carrés égaux.,5,20,160600
+04-FactualKnowledge,F,Le Vietnam est appelé le pays du soleil levant.,5,21,168300
+01-PseudowordList,FC,"Thgtnsxbqvc ncgkl, rx wvfcdqnv gnwjg bcjv hhdlnz vfkbd xlksqpqkmk.",5,22,174200
+04-FactualKnowledge,F,La primevère est une plante vénéneuse et épineuse.,5,23,183100
+03-MeaninglessSentence,F,Le lapin de circonstances va au colis du camion doux.,5,24,189900
+09-Geometry,F,Un triangle isocèle a plusieurs axes de symétrie.,5,25,197600
+05-ContextualKnowledge,VF,"Au Japon, manger bruyamment est une forme de politesse.",5,26,207100
+04-FactualKnowledge,V,La photosynthèse se produit grâce à l'énergie lumineuse.,5,27,213000
+02-WordList,F,"Campagne langage, les quand qui sur afin très et.",5,28,222200
+05-ContextualKnowledge,VV,"Dans la mythologie grecque, le cheval de Troie est un piège.",5,29,229300
+02-WordList,F,Le d'une est tous les grave création partie mesure mouvement.,5,30,238500
+05-ContextualKnowledge,FV,"Dans le métro parisien, les trains transportent des céréales.",5,31,246800
+07-ArithmeticPrinciple,V,La moitié d'un nombre est plus grande que le tiers.,5,32,254200
+07-ArithmeticPrinciple,V,Un nombre positif est plus grand qu'un nombre négatif.,5,33,261300
+09-Geometry,V,Tous les points d'un cercle sont à égale distance du centre.,5,34,268700
+09-Geometry,V,Un angle droit est plus grand qu'un angle aigu.,5,35,275800
+03-MeaninglessSentence,F,La décoration se déduit grâce à l'espoir moléculaire.,5,36,284700
+03-MeaninglessSentence,F,La réaction brosse par elle même de longs zoos barbus.,5,37,291200
+07-ArithmeticPrinciple,F,Le résultat d'une soustraction est toujours négatif.,5,38,300400
+09-Geometry,F,Des lignes perpendiculaires forment un angle aigu.,5,39,310500
+05-ContextualKnowledge,FV,"Au Burundi, les médecins sont remboursés par la sécurité sociale.",5,40,320600
+01-PseudowordList,FC,"Bct r'Bhchjs sxblg, chdds frjjbxj sxns rm drphxdqqt.",5,41,329200
+08-Calculation,V,Le quart du nombre cent vaut vingt cinq.,5,42,337200
+05-ContextualKnowledge,VF,"Dans les îles volcaniques, le sable est noir.",5,43,346400
+02-WordList,F,Rouge les se d'après de celle toutefois.,5,44,353800
+08-Calculation,V,La somme de soixante treize et deux donne soixante quinze.,5,45,361800
+04-FactualKnowledge,V,Les chenilles sont des insectes qui se transforment en papillon.,5,46,369800
+08-Calculation,F,Sept fois sept est plus grand que cinquante quatre.,5,47,379300
+04-FactualKnowledge,F,Un pamphlet est un ensemble de textes mélancoliques.,5,48,390900
+04-FactualKnowledge,V,Le corps humain est formé par des milliards de cellules.,5,49,399500
+09-Geometry,V,Les angles d'un polygone régulier sont de la même taille.,5,50,406000
+06-TheoryOfMind,VV,"D'après les experts climat, la Terre se réchauffe.",5,51,414000
+06-TheoryOfMind,FV,"Pour Mozart, la batterie donne le rythme de la musique.",5,52,419900
+06-TheoryOfMind,FV,"Pour Céline Dion, jouer de la musique est un hobby.",5,53,426700
+07-ArithmeticPrinciple,F,Le carré d'un nombre impair est un nombre pair.,5,54,432900
+07-ArithmeticPrinciple,V,Un nombre entier est divisible par un et par lui même.,5,55,443900
+06-TheoryOfMind,VF,"Pour le président, l'Elysée est un lieu de tous les jours.",5,56,452800
+02-WordList,F,"Est le une, comme mégot trop économie.",5,57,460500
+05-ContextualKnowledge,VV,"En Australie, le kangourou est un animal répandu.",5,58,469100
+05-ContextualKnowledge,FF,"Au Japon, la mortalité infantile est importante.",5,59,476500
+09-Geometry,V,Un carré est un rectangle aux côtés égaux.,5,60,482100
+09-Geometry,F,Un rectangle ne comprend que des angles aigus.,5,61,490700
+07-ArithmeticPrinciple,F,L'ordre selon lequel on divise des nombres est sans importance.,5,62,499600
+03-MeaninglessSentence,F,Les livres brutaux se gavent de liberté aimablement.,5,63,506400
+08-Calculation,V,Un tiers de quarante cinq a pour valeur quinze.,5,64,514100
+01-PseudowordList,FC,Wvrdf Lbmrgc cv ch xrdbg vnzvx swsf bct ch.,5,65,521500
+03-MeaninglessSentence,F,Tous les cafés appris sont des moments bavardes.,5,66,531000
+03-MeaninglessSentence,F,Un poulet est un cercle de chiffres international.,5,67,539000
+01-PseudowordList,FP,Arce xa radoures ajousait mui azoto af fingé ox.,5,68,547000
+04-FactualKnowledge,V,L'eau gèle à la température de zéro degrés centigrades.,5,69,555000
+06-TheoryOfMind,FF,"Selon les physiciens, les atomes sont des objets pleins.",5,70,565400
+02-WordList,F,"Lui eux puis, duquel verre souterrain côté.",5,71,573700
