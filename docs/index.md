@@ -74,9 +74,9 @@ In addition, if you clone [goxpyriment](https://github.com/chrplr/goxpyriment), 
 
 ## Gallery of ready-to-run experiments
 
-Browse the [gallery](GalleryOfExamples.md) of over forty example
-experiments and demos, or download [pre-built binaries](pre-built-examples.md)
-(ready-to-run apps) for Windows, macOS, and Linux.
+Browse the [gallery](GalleryOfExamples.md) of over fifty example
+experiments and demos ([pre-built binaries](pre-built-examples.md)
+(ready-to-run apps) are available for Windows, macOS, and Linux).
 
 ---
 
