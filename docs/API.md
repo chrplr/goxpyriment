@@ -434,12 +434,31 @@ type UserEvent struct {
 type TimingLog struct {
     Index        int
     TargetOn     time.Duration
-    ActualOnset  time.Duration // Go-clock time of first-frame draw (stream-relative)
-    ActualOffset time.Duration // Go-clock time after last on-frame (stream-relative)
-    OnsetNS      uint64        // SDL3 nanosecond timestamp of the VSYNC flip that turned the stimulus on
-    OffsetNS     uint64        // SDL3 nanosecond timestamp of the VSYNC flip that turned it off
+    ActualOnset  time.Duration // DIAGNOSTIC (Go clock): first-frame draw, stream-relative; not for RT
+    ActualOffset time.Duration // DIAGNOSTIC (Go clock): after last on-frame, stream-relative; not for RT
+    OnsetNS      uint64        // AUTHORITATIVE: SDL3 ns timestamp (sdl.TicksNS clock) of the stimulus onset
+    OffsetNS     uint64        // AUTHORITATIVE: SDL3 ns timestamp (sdl.TicksNS clock) of the stimulus offset
 }
 ```
+
+The `OnsetNS`/`OffsetNS` pair is the authoritative timing record: both are on the
+SDL3 nanosecond clock (`sdl.TicksNS()`) — the same clock that stamps input events
+(`UserEvent.TimestampNS`, `Keyboard.GetKeyEventTS`) and VSYNC flips
+(`Screen.FlipTS`). A reaction time or a displayed duration is a plain subtraction
+within this one clock: `int64(event.TimestampNS - l.OnsetNS)`, or
+`int64(l.OffsetNS - l.OnsetNS)`.
+
+`ActualOnset`/`ActualOffset` are Go-clock (`time.Now`) **diagnostics only**, kept
+for coarse pacing checks. They live on a different timebase (different origin)
+from the NS fields and from input events, so they must never be subtracted from
+an event timestamp or logged as a canonical onset/offset. Use the NS fields for
+any real timing.
+
+`OnsetNS` is zero only when a stimulus was never displayed (zero on-frames);
+`OffsetNS` is the VSYNC timestamp of the flip that takes the stimulus down, and
+for the final element of a contiguous stream (which has no ISI flip of its own)
+it is synthesised from the onset plus the on-frame count so that it, too, is on
+the SDL clock rather than one frame early.
 
 `UserEvent.TimestampNS` and `TimingLog.OnsetNS`/`OffsetNS` are all on the SDL3 nanosecond clock, so reaction times measured during a stream can be computed with full hardware precision:
 
@@ -499,6 +518,9 @@ events, logs, err := stimuli.PlayStreamOfSounds(elements)
 ```
 
 `sounds` is `[]stimuli.AudioPlayable` — satisfied by both `*Sound` and `*Tone`.
+The returned `TimingLog` carries `OnsetNS`/`OffsetNS` on the SDL3 clock (captured
+at the `Play()` instant and the end of the on-phase), so audio-stream onsets are
+directly comparable with input-event timestamps, same as visual streams.
 
 #### Mixed Streams
 
@@ -559,6 +581,63 @@ events, logs, err := stimuli.PresentStreamOfStimuliFunc(exp.Screen, elements, x,
 `FrameContext` fields: `Screen, Index, Frame, OnPhase, FirstFrame, NowNS`
 (pre-flip `sdl.TicksNS()`), `Elapsed`, `Events` (through the previous frame).
 Passing `nil` for the callback is identical to `PresentStreamOfStimuli`.
+
+#### Per-stimulus onset trigger (post-flip hook)
+
+To emit a hardware TTL — or run any action — aligned to each stimulus **onset**,
+use `PresentStreamOfStimuliHooks`, which adds an optional `OnsetCallback` to the
+per-frame callback:
+
+```go
+func PresentStreamOfStimuliHooks(
+    screen *apparatus.Screen, elements []StreamElement, x, y float32,
+    onFrame FrameCallback, onOnset OnsetCallback,
+) ([]UserEvent, []TimingLog, error)
+
+type OnsetCallback func(index int, onsetNS uint64) error
+```
+
+`onOnset` fires once per element with a stimulus onset, **immediately after** the
+VSYNC flip that turns it on (for a held audio element whose `DurationOn` rounds to
+zero frames, after the first-off-frame flip that triggers it). `index` matches the
+returned `TimingLog` slice and `onsetNS` equals `TimingLog[index].OnsetNS`.
+
+This is the **post-flip** counterpart to `FrameCallback`: `FrameCallback` runs one
+frame earlier (pre-flip, at GPU-submission time), whereas `OnsetCallback` runs on
+the photon side of the frame boundary, so a trigger emitted here coincides with the
+logged onset instead of leading it by a frame.
+
+```go
+dev := triggers.NewParallelPort("/dev/parport0") // any triggers.OutputTTLDevice
+if err := dev.Open(); err != nil {
+    log.Fatal(err)
+}
+defer dev.Close()
+
+onset := func(index int, onsetNS uint64) error {
+    return dev.Send(codes[index])        // per-stimulus code, at the displayed onset
+}
+clear := func(ctx stimuli.FrameContext) error {
+    if !ctx.OnPhase && ctx.FirstFrame {  // drop the lines at the start of each ISI
+        return dev.AllLow()
+    }
+    return nil
+}
+events, logs, err := stimuli.PresentStreamOfStimuliHooks(exp.Screen, elements, 0, 0, clear, onset)
+```
+
+The hook runs on the timing-critical path with GC disabled, between the onset flip
+and the next frame, so it **must be short and non-blocking**: emit an edge
+(`SetHigh` / `Send`) here and clear it from a later `FrameCallback` or after the
+stream — never `time.Sleep` or a blocking `Pulse`, or a frame is missed.
+Elements with a `nil` Stimulus (pure delay / hold slots) have no onset and do not
+fire it. Either callback may be `nil`; `PresentStreamOfStimuliFunc` is exactly
+`PresentStreamOfStimuliHooks(..., onFrame, nil)`.
+
+For pure-audio streams the equivalent is `PlayStreamOfSoundsHook(elements, onOnset)`,
+which fires `onOnset` once per non-nil `Sound`, immediately after `Play()`, with the
+same SDL-clock `onsetNS` (`== TimingLog[index].OnsetNS`). `PlayStreamOfSounds` is
+`PlayStreamOfSoundsHook(elements, nil)`.
 
 ### Audio Stimuli
 

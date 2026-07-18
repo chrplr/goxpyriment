@@ -1126,13 +1126,16 @@ for _, ev := range events {
 
 ```go
 for i, l := range logs {
-    jitter := (l.ActualOnset - l.TargetOn).Milliseconds()
-    fmt.Printf("stimulus %d: target %d ms, actual %d ms, jitter %d ms\n",
-        i, l.TargetOn.Milliseconds(), l.ActualOnset.Milliseconds(), jitter)
+    // Read the authoritative SDL-clock fields, not the Go-clock ActualOnset/
+    // ActualOffset diagnostics. Achieved on-screen duration vs target = jitter.
+    shownMs := int64(l.OffsetNS-l.OnsetNS) / 1_000_000
+    jitter := shownMs - l.TargetOn.Milliseconds()
+    fmt.Printf("stimulus %d: target %d ms, shown %d ms, jitter %d ms\n",
+        i, l.TargetOn.Milliseconds(), shownMs, jitter)
 }
 ```
 
-`OnsetNS` and `OffsetNS` give the SDL3 nanosecond timestamps of the actual VSYNC flips that turned each stimulus on and off. These are zero for stimuli that had zero frames in their on or off period.
+`OnsetNS` and `OffsetNS` give the SDL3 nanosecond timestamps of the actual VSYNC flips that turned each stimulus on and off — the authoritative timing record, on the same clock as input events. `ActualOnset`/`ActualOffset` are Go-clock diagnostics on a different timebase; never subtract them from an event timestamp or use them as onsets. `OnsetNS` is zero only for a stimulus that was never displayed (zero on-frames); `OffsetNS` is the takedown flip, synthesised from the onset for the final element of a contiguous stream (which has no ISI flip of its own) so it stays on the SDL clock rather than reading a frame early.
 
 Jitter below ±1 frame (±8–17 ms depending on monitor) is normal and expected. Larger jitter indicates system load or GPU driver issues.
 
@@ -1202,6 +1205,20 @@ events, logs, err := stimuli.PresentStreamOfStimuli(exp.Screen, elements, 0, 0)
 
 Concurrent audio-visual overlap (a sound and an animating visual at the same
 instant) is not yet supported; the stream is strictly one slot at a time.
+
+### Per-stimulus onset triggers
+
+To emit a hardware TTL — or run any action — aligned to each stimulus onset, use
+`PresentStreamOfStimuliHooks(screen, elements, x, y, onFrame, onOnset)`. The
+`onOnset OnsetCallback` (`func(index int, onsetNS uint64) error`) fires once per
+element **immediately after** its onset VSYNC flip, with `onsetNS ==
+TimingLog[index].OnsetNS`. This is the *post-flip* counterpart to `FrameCallback`,
+which runs one frame earlier (pre-flip): a trigger emitted from `onOnset` coincides
+with the logged onset instead of leading it by a frame — the right hook for
+EEG/MEG synchronisation. Keep it short and non-blocking (emit an edge, clear it
+from a later `FrameCallback`; never sleep or call a blocking `Pulse`). The
+pure-audio equivalent is `PlayStreamOfSoundsHook(elements, onOnset)`, firing at the
+`Play()` instant. See the API reference and the `test_stream_trigger` example.
 
 ---
 

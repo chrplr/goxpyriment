@@ -596,7 +596,7 @@ func runSound(exp *control.Experiment, trig triggers.OutputTTLDevice) error {
 	_, isNull := trig.(triggers.NullOutputTTLDevice)
 
 	fmt.Printf("sound: %d tones  %.0f Hz  %d ms on  %.0f ms ISI  SOA %d ms  total ~%.1f s",
-		nTones, *fFreqHz, *fToneMs, int64(*fItiMs), soa.Milliseconds(),
+		nTones, *fFreqHz, *fToneMs, *fItiMs, soa.Milliseconds(),
 		float64(nTones)*soa.Seconds())
 	if !isNull {
 		fmt.Printf("  trigger pin %d (high→low brackets full stream)", *fTriggerPin)
@@ -652,10 +652,14 @@ func runSound(exp *control.Experiment, trig triggers.OutputTTLDevice) error {
 		var onsetErrors, ioiVals []float64
 		var prevActualMs float64
 
+		var ref uint64
+		if len(timing) > 0 {
+			ref = timing[0].OnsetNS // stream start on the SDL clock (same clock as the trigger pulse); OnsetNS/OffsetNS are authoritative (see TimingLog)
+		}
 		for _, tl := range timing {
 			targetOnsetMs := float64(tl.Index) * soaMs
-			actualOnsetMs := float64(tl.ActualOnset) / 1e6
-			actualOffsetMs := float64(tl.ActualOffset) / 1e6
+			actualOnsetMs := float64(tl.OnsetNS-ref) / 1e6
+			actualOffsetMs := float64(tl.OffsetNS-ref) / 1e6
 			onsetErr := actualOnsetMs - targetOnsetMs
 
 			var ioiMs, ioiErr float64

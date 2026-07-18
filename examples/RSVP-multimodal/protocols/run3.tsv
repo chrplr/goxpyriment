@@ -1,0 +1,81 @@
+onset_time	duration	type	cond	stimuli
+0	400	TEXT_STREAM	calculvideo	calculez~quinze~moins~six
+2400	400	TEXT_STREAM	calculvideo	calculez~dix~moins~trois
+8700	400	IMAGE_STREAM	CheckBoardH	checkerboard_hpb.bmp~checkerboard_hnb.bmp~checkerboard_hpb.bmp~checkerboard_hnb.bmp~checkerboard_hpb.bmp~checkerboard_hnb.bmp
+11400	400	SOUND	clicDaudio	clic3D.wav
+15000	400	SOUND	phraseAudio	ph21.wav
+18000	400	TEXT_STREAM	clicDvideo	appuyez~trois fois~sur le bouton~droit
+20700	400	SOUND	phraseAudio	ph22.wav
+23700	400	SOUND	clicGaudio	clic3G.wav
+26700	400	TEXT_STREAM	clicGvideo	appuyez~trois fois~sur le bouton~gauche
+29700	400	SOUND	phraseAudio	ph23.wav
+33000	400	IMAGE_STREAM	CheckBoardV	checkerboard_vpb.bmp~checkerboard_vnb.bmp~checkerboard_vpb.bmp~checkerboard_vnb.bmp~checkerboard_vpb.bmp~checkerboard_vnb.bmp
+35400	400	SOUND	calculaudio	calc25.wav
+39000	400	TEXT_STREAM	phraseVideo	le jardinier~soignait~ses plantes~avec amour
+41700	400	TEXT_STREAM	phraseVideo	Ils mangent~du pain~avec leur~fromage
+44700	400	SOUND	calculaudio	calc21.wav
+48000	400	SOUND	calculaudio	calc24.wav
+56400	400	TEXT_STREAM	phraseVideo	la méteo~annonce~du soleil~pour lundi
+59700	400	IMAGE_STREAM	CheckBoardH	checkerboard_hpb.bmp~checkerboard_hnb.bmp~checkerboard_hpb.bmp~checkerboard_hnb.bmp~checkerboard_hpb.bmp~checkerboard_hnb.bmp
+62400	400	SOUND	clicGaudio	clic3G.wav
+69000	400	TEXT_STREAM	clicDvideo	appuyez~trois fois~sur le bouton~droit
+71400	400	TEXT_STREAM	clicGvideo	appuyez~trois fois~sur le bouton~gauche
+75000	400	TEXT_STREAM	phraseVideo	des nuages~flottaient~au dessus~du volcan
+83400	400	SOUND	calculaudio	calc26.wav
+87000	400	SOUND	clicDaudio	clic3D.wav
+89700	400	SOUND	phraseAudio	ph24.wav
+96000	400	IMAGE_STREAM	CheckBoardV	checkerboard_vpb.bmp~checkerboard_vnb.bmp~checkerboard_vpb.bmp~checkerboard_vnb.bmp~checkerboard_vpb.bmp~checkerboard_vnb.bmp
+108000	400	SOUND	calculaudio	calc30.wav
+116700	400	TEXT_STREAM	clicGvideo	appuyez~trois fois~sur le bouton~gauche
+119400	400	SOUND	phraseAudio	ph25.wav
+122700	400	IMAGE_STREAM	CheckBoardV	checkerboard_vpb.bmp~checkerboard_vnb.bmp~checkerboard_vpb.bmp~checkerboard_vnb.bmp~checkerboard_vpb.bmp~checkerboard_vnb.bmp
+125400	400	TEXT_STREAM	calculvideo	calculez~treize~moins~trois
+131400	400	TEXT_STREAM	phraseVideo	les usines~polluent~l'air de la~campagne
+135000	400	SOUND	calculaudio	calc22.wav
+137700	400	SOUND	calculaudio	calc28.wav
+140400	400	IMAGE_STREAM	CheckBoardV	checkerboard_vpb.bmp~checkerboard_vnb.bmp~checkerboard_vpb.bmp~checkerboard_vnb.bmp~checkerboard_vpb.bmp~checkerboard_vnb.bmp
+143400	400	SOUND	clicDaudio	clic3D.wav
+146700	400	SOUND	phraseAudio	ph26.wav
+149400	400	IMAGE_STREAM	CheckBoardH	checkerboard_hpb.bmp~checkerboard_hnb.bmp~checkerboard_hpb.bmp~checkerboard_hnb.bmp~checkerboard_hpb.bmp~checkerboard_hnb.bmp
+153000	400	TEXT_STREAM	calculvideo	calculez~quinze~moins~sept
+156000	400	IMAGE_STREAM	CheckBoardV	checkerboard_vpb.bmp~checkerboard_vnb.bmp~checkerboard_vpb.bmp~checkerboard_vnb.bmp~checkerboard_vpb.bmp~checkerboard_vnb.bmp
+159000	400	TEXT_STREAM	phraseVideo	le chien~s'est jeté~sur le chat~du voisin
+162000	400	SOUND	clicDaudio	clic3D.wav
+164400	400	TEXT_STREAM	calculvideo	calculez~dix-huit~moins~quatre
+167700	400	TEXT_STREAM	phraseVideo	personne~ne porte~de manteau~en été
+170400	400	SOUND	clicGaudio	clic3G.wav
+173700	400	SOUND	calculaudio	calc29.wav
+176700	400	IMAGE_STREAM	CheckBoardH	checkerboard_hpb.bmp~checkerboard_hnb.bmp~checkerboard_hpb.bmp~checkerboard_hnb.bmp~checkerboard_hpb.bmp~checkerboard_hnb.bmp
+188400	400	IMAGE_STREAM	CheckBoardH	checkerboard_hpb.bmp~checkerboard_hnb.bmp~checkerboard_hpb.bmp~checkerboard_hnb.bmp~checkerboard_hpb.bmp~checkerboard_hnb.bmp
+191700	400	SOUND	calculaudio	calc23.wav
+195000	400	TEXT_STREAM	phraseVideo	les gens~du quartier~craignent~l'incendie
+198000	400	TEXT_STREAM	calculvideo	calculez~seize~moins~trois
+201000	400	TEXT_STREAM	calculvideo	calculez~dix-sept~moins~deux
+203700	400	IMAGE_STREAM	CheckBoardV	checkerboard_vpb.bmp~checkerboard_vnb.bmp~checkerboard_vpb.bmp~checkerboard_vnb.bmp~checkerboard_vpb.bmp~checkerboard_vnb.bmp
+207000	400	IMAGE_STREAM	CheckBoardV	checkerboard_vpb.bmp~checkerboard_vnb.bmp~checkerboard_vpb.bmp~checkerboard_vnb.bmp~checkerboard_vpb.bmp~checkerboard_vnb.bmp
+210000	400	IMAGE_STREAM	CheckBoardV	checkerboard_vpb.bmp~checkerboard_vnb.bmp~checkerboard_vpb.bmp~checkerboard_vnb.bmp~checkerboard_vpb.bmp~checkerboard_vnb.bmp
+212700	400	TEXT_STREAM	clicGvideo	appuyez~trois fois~sur le bouton~gauche
+215700	400	TEXT_STREAM	clicGvideo	appuyez~trois fois~sur le bouton~gauche
+218700	400	IMAGE_STREAM	CheckBoardH	checkerboard_hpb.bmp~checkerboard_hnb.bmp~checkerboard_hpb.bmp~checkerboard_hnb.bmp~checkerboard_hpb.bmp~checkerboard_hnb.bmp
+221400	400	TEXT_STREAM	calculvideo	calculez~dix~moins~sept
+224700	400	IMAGE_STREAM	CheckBoardH	checkerboard_hpb.bmp~checkerboard_hnb.bmp~checkerboard_hpb.bmp~checkerboard_hnb.bmp~checkerboard_hpb.bmp~checkerboard_hnb.bmp
+227700	400	TEXT_STREAM	clicDvideo	appuyez~trois fois~sur le bouton~droit
+230700	400	SOUND	clicDaudio	clic3D.wav
+234000	400	TEXT_STREAM	calculvideo	calculez~treize~moins~six
+236700	400	SOUND	phraseAudio	ph27.wav
+246000	400	TEXT_STREAM	phraseVideo	un camion~est garé~près de ~l'usine
+248400	400	IMAGE_STREAM	CheckBoardH	checkerboard_hpb.bmp~checkerboard_hnb.bmp~checkerboard_hpb.bmp~checkerboard_hnb.bmp~checkerboard_hpb.bmp~checkerboard_hnb.bmp
+251700	400	SOUND	calculaudio	calc27.wav
+254700	400	SOUND	clicGaudio	clic3G.wav
+257399	400	SOUND	clicGaudio	clic3G.wav
+260399	400	TEXT_STREAM	calculvideo	calculez~quatorze~moins~six
+264000	400	IMAGE_STREAM	CheckBoardV	checkerboard_vpb.bmp~checkerboard_vnb.bmp~checkerboard_vpb.bmp~checkerboard_vnb.bmp~checkerboard_vpb.bmp~checkerboard_vnb.bmp
+266700	400	IMAGE_STREAM	CheckBoardH	checkerboard_hpb.bmp~checkerboard_hnb.bmp~checkerboard_hpb.bmp~checkerboard_hnb.bmp~checkerboard_hpb.bmp~checkerboard_hnb.bmp
+269700	400	IMAGE_STREAM	CheckBoardH	checkerboard_hpb.bmp~checkerboard_hnb.bmp~checkerboard_hpb.bmp~checkerboard_hnb.bmp~checkerboard_hpb.bmp~checkerboard_hnb.bmp
+275400	400	TEXT_STREAM	clicDvideo	appuyez~trois fois~sur le bouton~droit
+278400	400	IMAGE_STREAM	CheckBoardV	checkerboard_vpb.bmp~checkerboard_vnb.bmp~checkerboard_vpb.bmp~checkerboard_vnb.bmp~checkerboard_vpb.bmp~checkerboard_vnb.bmp
+284400	400	SOUND	phraseAudio	ph28.wav
+288000	400	TEXT_STREAM	phraseVideo	on prend~l'avion~pour aller~au Brésil
+291000	400	TEXT_STREAM	clicDvideo	appuyez~trois fois~sur le bouton~droit
+293400	400	SOUND	phraseAudio	ph29.wav
+296700	400	SOUND	phraseAudio	ph30.wav

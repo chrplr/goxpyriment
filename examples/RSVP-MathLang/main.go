@@ -52,8 +52,10 @@
 //	go run . -w -s 1         # windowed mode for testing
 //
 // Flags: -w windowed mode, -d N display index, -s N subject ID, -b N bloc
-// (1-5), -on N word duration in ms, -off N blank between words in ms.
-// Press ESC (or close the window) to abort.
+// (1-5), -on N word duration in ms, -off N blank between words in ms,
+// -autostart skip the SPACE prompt and scanner trigger and start the clock
+// immediately (for timing audits, not for real scanning). Press ESC (or close
+// the window) to abort.
 package main
 
 import (
@@ -98,6 +100,7 @@ func main() {
 	bloc := flag.Int("b", 1, "bloc (fMRI run) to present, 1-5")
 	onMs := flag.Int("on", 300, "duration of each word in ms")
 	offMs := flag.Int("off", 0, "blank between words in ms")
+	autostart := flag.Bool("autostart", false, "skip the SPACE prompt and scanner trigger; start the clock immediately (for timing audits)")
 
 	exp := control.NewExperimentFromFlags(
 		"RSVP-MathLang",
@@ -148,15 +151,17 @@ func main() {
 		"expected", "response", "correct", "rt",
 	})
 
-	exp.ShowInstructions(fmt.Sprintf(
-		"MathLang — bloc %d\n\n"+
-			"Please stay still and keep your eyes on the cross.\n"+
-			"Sentences will appear word by word.\n"+
-			"Decide whether each statement is true or false:\n\n"+
-			"    1 = VRAI        2 = FAUX\n\n"+
-			"Answer as soon as you have made up your mind.\n\n"+
-			"Operator: press SPACE, then wait for the scanner (t) trigger.",
-		*bloc))
+	if !*autostart {
+		exp.ShowInstructions(fmt.Sprintf(
+			"MathLang — bloc %d\n\n"+
+				"Please stay still and keep your eyes on the cross.\n"+
+				"Sentences will appear word by word.\n"+
+				"Decide whether each statement is true or false:\n\n"+
+				"    1 = VRAI        2 = FAUX\n\n"+
+				"Answer as soon as you have made up your mind.\n\n"+
+				"Operator: press SPACE, then wait for the scanner (t) trigger.",
+			*bloc))
+	}
 
 	wordOn := time.Duration(*onMs) * time.Millisecond
 	wordOff := time.Duration(*offMs) * time.Millisecond
@@ -168,19 +173,26 @@ func main() {
 
 	exp.Run(func() error {
 		// Green cross: wait for the scanner synchronisation pulse ('t').
-		if serr := exp.Show(fixGreen); serr != nil {
-			return serr
-		}
-		if kerr := exp.Keyboard.WaitKey(control.K_T); kerr != nil {
-			return kerr
+		// -autostart skips both, starting the clock immediately (timing audits).
+		if !*autostart {
+			if serr := exp.Show(fixGreen); serr != nil {
+				return serr
+			}
+			if kerr := exp.Keyboard.WaitKey(control.K_T); kerr != nil {
+				return kerr
+			}
 		}
 
 		// Grey cross for the remainder of the run, then start the clock at the
-		// trigger so every onset is measured from t=0.
+		// trigger so every onset is measured from t=0. triggerNS anchors the SDL
+		// hardware clock at the same instant: the stream reports each word's real
+		// VSYNC-flip time as TimingLog.OnsetNS on that clock, so subtracting
+		// triggerNS yields the displayed onset in ms from the trigger.
 		if serr := exp.Show(fixGrey); serr != nil {
 			return serr
 		}
 		clk := clock.NewClock()
+		triggerNS := sdl.TicksNS()
 
 		for i, t := range trials {
 			// Wait until this sentence's scheduled onset. exp.Wait pumps SDL
@@ -199,7 +211,6 @@ func main() {
 			exp.Keyboard.Clear()
 
 			words := strings.Fields(t.sentence)
-			before := clk.NowMillis()
 			events, timing, perr := stimuli.PresentStreamOfText(
 				exp.Screen, words, wordOn, wordOff, 0, 0, exp.ForegroundColor)
 			after := clk.NowMillis()
@@ -216,6 +227,13 @@ func main() {
 			// hardware event clock (the same clock as TimingLog.OnsetNS), never
 			// a wall-clock delta.
 			firstWordNS := timing[0].OnsetNS
+
+			// The logged onset is the achieved VSYNC flip of the first word, not
+			// the pre-call clock reading `before`: timing[0].OnsetNS is the SDL
+			// hardware timestamp of the flip that put the word on screen, so
+			// (OnsetNS - triggerNS) is the displayed onset in ms from the trigger.
+			// This is ~one frame later than `before`, the true photon onset.
+			displayedOnset := int64(timing[0].OnsetNS-triggerNS) / 1_000_000
 
 			// The response window spans the sentence and the gap that follows.
 			// First look for a press captured during the RSVP stream itself.
@@ -260,7 +278,7 @@ func main() {
 				rt = strconv.FormatInt(r.rtMs, 10)
 			}
 			exp.Data.Add(t.bloc, t.order, t.cond, t.truthVal, t.sentence, len(words),
-				t.onsetMs, before, after, r.expected, given, correct, rt)
+				t.onsetMs, displayedOnset, after, r.expected, given, correct, rt)
 		}
 		return control.EndLoop
 	})

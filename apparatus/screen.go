@@ -68,7 +68,7 @@ type Screen struct {
 	DefaultFont  *ttf.Font
 	CanvasOffset *sdl.FPoint   // If not nil, use this instead of true center
 	LogicalSize  *sdl.FPoint   // If not nil, use this for CenterToSDL
-	lastFlipTime time.Time     // tracks per-frame pacing for PacedFlip
+	lastFlipNS   uint64        // SDL-clock (sdl.TicksNS) time of the previous PacedFlip; 0 = none yet
 	frameDur     time.Duration // cached nominal frame duration for PacedFlip (0 = not yet computed)
 }
 

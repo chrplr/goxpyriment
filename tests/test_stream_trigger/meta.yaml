@@ -1,0 +1,3 @@
+category: test
+description: Post-flip onset hooks fire a per-stimulus TTL aligned to TimingLog.OnsetNS (PresentStreamOfStimuliHooks + PlayStreamOfSoundsHook)
+reference: ""

@@ -228,7 +228,7 @@ func main() {
 
 **TrialHandler nReps.** PsychoPy's `TrialHandler` accepts a list of condition dicts and repeats them. The equivalent in goxpyriment is `block.AddTrial(t, nReps, randomPosition)` where `randomPosition=true` shuffles. For multiple condition lists, build one block per block and call `exp.ShuffleBlocks()` if needed.
 
-**Psychtoolbox-style timestamps.** PsychoPy's `logging.flush()` and `win.recordFrameIntervals` give post-hoc timing diagnostics. In goxpyriment, `PresentStreamOfImages` returns a `[]TimingLog` with per-item `ActualOnset`, `ActualOffset`, `OnsetNS`, `OffsetNS` — suitable for the same purpose.
+**Psychtoolbox-style timestamps.** PsychoPy's `logging.flush()` and `win.recordFrameIntervals` give post-hoc timing diagnostics. In goxpyriment, `PresentStreamOfImages` returns a `[]TimingLog` per item. Use the SDL-clock `OnsetNS`/`OffsetNS` for timing analysis (they share the clock of input-event timestamps); `ActualOnset`/`ActualOffset` are Go-clock diagnostics only and must not be subtracted from event timestamps.
 
 ---
 

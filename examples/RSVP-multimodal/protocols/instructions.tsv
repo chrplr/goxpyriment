@@ -1,0 +1,29 @@
+onset_time	duration	type	stimuli
+0	4000	BOX	Attention ! \n les intructions vont \ndéfiler automatiquement \net rapidement.\n Restez attentif ...
+4000	7500	BOX	Durant les cinq prochaines minutes,\n vous aurez à effectuer de façon alternée,\n une succession de 4 tâches différentes.
+11500	9000	BOX	1- Ecoute ou lecture de phrases :\n vous aurez juste à les \nécouter/lire attentivement \n(lecture silencieuse sans RIEN prononcer).
+20500	8000	BOX	2- Ecoute ou lecture de soustractions :\n vous devrez les résoudre mentalement.\n- Ne PAS donner de réponse orale.\n- Faire les calculs jusqu'au bout.
+28500	8000	BOX	3- 'Appuyez 3 fois sur le bouton gauche / droit' :\n pressez alors sur le bon bouton \naussi vite que possible (!!) \nsuivant les instructions auditives/visuelles \n (laisser l'autre main au repos).
+36500	7000	BOX	4- Visualisation passive\n de damiers noir et blanc\n \n (garder le regard au centre des damiers!)
+43500	200	IMAGE	checkerboard_hpb.bmp
+43700	200	IMAGE	checkerboard_hnb.bmp
+43900	200	IMAGE	checkerboard_hpb.bmp
+44100	200	IMAGE	checkerboard_hnb.bmp
+44300	200	IMAGE	checkerboard_hpb.bmp
+44500	200	IMAGE	checkerboard_hnb.bmp
+44700	7000	BOX	Les stimulations visuelles consisteront\n en une série de groupe de mots\n (phrase, instruction ou calcul)\n présentées rapidement.
+51700	2000	TEXT	en voici deux exemples
+54700	250	TEXT	un incident
+55050	250	TEXT	s'est produit
+55400	250	TEXT	à l'entrée
+55750	250	TEXT	de l'usine
+60000	250	TEXT	calculez
+60350	250	TEXT	neuf
+60700	250	TEXT	moins
+61050	250	TEXT	trois
+64300	7000	BOX	Durant chaque essai, évitez\n de bouger les yeux. Une croix\n vous aidera à garder votre regard\n au centre de l'écran\n.
+73300	6000	BOX	Les stimulations auditives (phrases,\n instruction ou calcul) ressembleront\n aux deux exemples suivants:
+80300	4000	SOUND	exemple.wav
+84300	4000	SOUND	calc25.wav
+88300	6000	BOX	ATTENTION!\n ces essais vont se succéder assez\nrapidement. Restez donc attentif\n tout au long de ces cinq minutes.
+96300	4000	BOX	\n\n Nous allons bientôt commencer\n

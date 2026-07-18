@@ -38,13 +38,29 @@ type UserEvent struct {
 }
 
 // TimingLog provides post-hoc verification of the actual presentation times.
+//
+// The OnsetNS / OffsetNS pair is the authoritative timing record. Both are SDL3
+// nanosecond timestamps on the sdl.TicksNS() clock — the same clock that stamps
+// input events (UserEvent.TimestampNS, Keyboard.GetKeyEventTS) and VSYNC flips
+// (Screen.FlipTS). A reaction time or a displayed duration is therefore a plain
+// subtraction within this one clock:
+//
+//	rtNS  := int64(event.TimestampNS - tl.OnsetNS)
+//	durNS := int64(tl.OffsetNS - tl.OnsetNS)
+//
+// ActualOnset / ActualOffset are Go-clock (time.Now) DIAGNOSTICS ONLY, retained
+// for coarse pacing checks. They live on a different timebase (different origin)
+// from the NS fields and from input events, so they must never be subtracted
+// from an event timestamp or logged as a canonical onset/offset. ActualOffset in
+// particular is sampled one frame before the clearing flip, so using it as the
+// offset reads ~1 frame early — use OffsetNS for any real timing.
 type TimingLog struct {
 	Index        int
 	TargetOn     time.Duration
-	ActualOnset  time.Duration // Go-clock time of first-frame draw (stream-relative)
-	ActualOffset time.Duration // Go-clock time after last on-frame (stream-relative)
-	OnsetNS      uint64        // SDL3 nanosecond timestamp of the VSYNC flip that turned the stimulus on
-	OffsetNS     uint64        // SDL3 nanosecond timestamp of the VSYNC flip that turned the stimulus off
+	ActualOnset  time.Duration // DIAGNOSTIC (Go clock): first-frame draw, stream-relative; not for RT
+	ActualOffset time.Duration // DIAGNOSTIC (Go clock): after last on-frame, stream-relative; not for RT
+	OnsetNS      uint64        // AUTHORITATIVE: SDL3 ns timestamp (sdl.TicksNS clock) of the stimulus onset
+	OffsetNS     uint64        // AUTHORITATIVE: SDL3 ns timestamp (sdl.TicksNS clock) of the stimulus offset
 }
 
 // FrameContext carries per-frame state passed to a FrameCallback. It is built
@@ -79,6 +95,34 @@ type FrameContext struct {
 // intervening stream visual: that cannot be reconstructed, so it is held by
 // re-presenting and overlays over it will accumulate.
 type FrameCallback func(ctx FrameContext) error
+
+// OnsetCallback is invoked once for each stream element that has a stimulus
+// onset, immediately AFTER the VSYNC flip that turns the element on (for a held
+// audio element whose DurationOn rounds to zero frames, after the first-off-
+// frame flip at which Play() is triggered). It is the post-flip counterpart to
+// FrameCallback.
+//
+//   - index is the element's position in the elements slice (and in the returned
+//     TimingLog slice).
+//   - onsetNS is the SDL3 nanosecond timestamp of that flip — the exact value
+//     recorded as TimingLog[index].OnsetNS, on the same clock as input-event
+//     timestamps (UserEvent.TimestampNS, Keyboard.GetKeyEventTS).
+//
+// This is the hook for emitting a hardware TTL aligned to the *displayed* onset:
+// unlike FrameCallback, which runs one frame earlier (pre-flip, at GPU-
+// submission time), OnsetCallback runs on the photon side of the frame boundary,
+// so the trigger and the logged OnsetNS coincide.
+//
+// It runs on the timing-critical path with GC disabled, between the onset flip
+// and the next frame, so it MUST be short and non-blocking: emit an edge
+// (device.SetHigh, or device.Send for a per-stimulus code) here and clear it
+// from a later FrameCallback or after the stream — never time.Sleep or call a
+// blocking Pulse, or a frame will be missed. Elements with a nil Stimulus (pure
+// delay / hold slots) have no onset and do not fire it.
+//
+// Return nil to continue, sdl.EndLoop to stop the stream gracefully (reported
+// via IsEndLoop), or any other error to abort.
+type OnsetCallback func(index int, onsetNS uint64) error
 
 // PresentStreamOfImages displays a sequence of stimuli with high precision.
 // It preloads textures, disables GC, and aligns presentation to the monitor's VSYNC.
@@ -171,7 +215,23 @@ func PresentStreamOfStimuli(screen *apparatus.Screen, elements []StreamElement, 
 // PresentStreamOfStimuli; otherwise onFrame is invoked once per frame
 // (immediately before each flip) so callers can draw persistent overlays or
 // drive real-time feedback. See FrameCallback for the contract.
+//
+// To also emit a hardware trigger aligned to each stimulus onset, use
+// PresentStreamOfStimuliHooks with an OnsetCallback.
 func PresentStreamOfStimuliFunc(screen *apparatus.Screen, elements []StreamElement, x, y float32, onFrame FrameCallback) ([]UserEvent, []TimingLog, error) {
+	return PresentStreamOfStimuliHooks(screen, elements, x, y, onFrame, nil)
+}
+
+// PresentStreamOfStimuliHooks is PresentStreamOfStimuliFunc plus an optional
+// post-flip onset hook. Either or both of onFrame and onOnset may be nil; with
+// both nil it behaves exactly like PresentStreamOfStimuli.
+//
+// onFrame runs once per frame immediately before each flip (overlays, real-time
+// feedback — see FrameCallback). onOnset runs once per element immediately after
+// its onset flip, with that flip's SDL-clock timestamp, so a hardware TTL emitted
+// there is aligned to the displayed onset and to the logged TimingLog.OnsetNS
+// (see OnsetCallback). This is the function to use for per-stimulus triggering.
+func PresentStreamOfStimuliHooks(screen *apparatus.Screen, elements []StreamElement, x, y float32, onFrame FrameCallback, onOnset OnsetCallback) ([]UserEvent, []TimingLog, error) {
 	// 1. Pre-load visual stimuli into GPU memory. Audio stimuli are skipped:
 	//    they are bound to the audio device by the caller via PreloadDevice, and
 	//    PreloadVisualOnScreen's Draw fallback would not apply to them.
@@ -300,6 +360,14 @@ func PresentStreamOfStimuliFunc(screen *apparatus.Screen, elements []StreamEleme
 					}
 					triggered = true
 				}
+				// Post-flip onset hook: emit a hardware trigger aligned to the
+				// displayed onset (== onsetNS == TimingLog.OnsetNS). Skipped for
+				// nil-Stimulus hold/delay slots, which have no stimulus onset.
+				if onOnset != nil && el.Stimulus != nil {
+					if err := onOnset(i, onsetNS); err != nil {
+						return userEvents, timingLogs, err
+					}
+				}
 			} else {
 				if err := screen.PacedFlip(); err != nil { // VSYNC-paced frame
 					return userEvents, timingLogs, err
@@ -359,6 +427,13 @@ func PresentStreamOfStimuliFunc(screen *apparatus.Screen, elements []StreamEleme
 					}
 					triggered = true
 					onsetNS = ts
+					// Post-flip onset hook for a held audio element with no
+					// on-phase: its onset is this first off-frame flip.
+					if onOnset != nil {
+						if err := onOnset(i, onsetNS); err != nil {
+							return userEvents, timingLogs, err
+						}
+					}
 				}
 			} else {
 				if err := screen.PacedFlip(); err != nil {
@@ -377,6 +452,18 @@ func PresentStreamOfStimuliFunc(screen *apparatus.Screen, elements []StreamEleme
 		if isVisual && framesOff > 0 {
 			heldVisual = nil
 			heldBlank = true
+		}
+
+		// When the ISI rounds to zero frames (e.g. the final element of a
+		// contiguous stream) the off-phase never runs, so no clearing flip
+		// occurs inside this call and offsetNS was never captured. The stimulus
+		// is nonetheless held on screen for framesOn frames after its onset
+		// VSYNC before the next flip takes it down; synthesise that takedown
+		// time from the hardware onset so the offset stays on the SDL clock and
+		// symmetric with the onset, rather than leaving callers to fall back on
+		// the ~1-frame-early Go-clock ActualOffset.
+		if offsetNS == 0 && onsetNS != 0 && framesOn > 0 {
+			offsetNS = onsetNS + uint64(framesOn)*uint64(frameDuration.Nanoseconds())
 		}
 
 		timingLogs = append(timingLogs, TimingLog{
@@ -547,7 +634,22 @@ type SoundStreamElement struct {
 // All sounds must be pre-loaded (bound to an audio device) before calling.
 // GC is disabled during playback to reduce timing jitter.
 // ESC causes early return with sdl.EndLoop.
+//
+// To emit a hardware trigger at each sound onset, use PlayStreamOfSoundsHook.
 func PlayStreamOfSounds(elements []SoundStreamElement) ([]UserEvent, []TimingLog, error) {
+	return PlayStreamOfSoundsHook(elements, nil)
+}
+
+// PlayStreamOfSoundsHook is PlayStreamOfSounds with an optional onset hook.
+//
+// onOnset (when non-nil) fires once for each element whose Sound is non-nil,
+// immediately after Play() is triggered, with the SDL-clock onset timestamp
+// (== TimingLog[index].OnsetNS). It is the auditory counterpart of the visual
+// stream's OnsetCallback — there is no VSYNC flip here, so the onset is the
+// Play() instant. The same non-blocking, keep-it-short contract applies (see
+// OnsetCallback): emit an edge and clear it later, never sleep or block. A
+// silent slot (nil Sound) has no onset and does not fire it.
+func PlayStreamOfSoundsHook(elements []SoundStreamElement, onOnset OnsetCallback) ([]UserEvent, []TimingLog, error) {
 	defer disableGC()()
 
 	var userEvents []UserEvent
@@ -557,11 +659,24 @@ func PlayStreamOfSounds(elements []SoundStreamElement) ([]UserEvent, []TimingLog
 
 	for i, el := range elements {
 		actualOnset := time.Since(streamStart)
+		// SDL-clock onset marker, on the same timebase as input-event and flip
+		// timestamps (see TimingLog). This is the authoritative onset; the
+		// Go-clock actualOnset above is only a diagnostic.
+		onsetNS := sdl.TicksNS()
 
 		// --- SOUND ON ---
 		if el.Sound != nil {
 			if err := el.Sound.Play(); err != nil {
 				return userEvents, timingLogs, err
+			}
+			onsetNS = sdl.TicksNS() // re-anchor to the instant the sound was triggered
+			// Post-trigger onset hook: emit a hardware trigger aligned to the
+			// sound onset (== onsetNS == TimingLog.OnsetNS). Silent slots (nil
+			// Sound) have no onset and are skipped.
+			if onOnset != nil {
+				if err := onOnset(i, onsetNS); err != nil {
+					return userEvents, timingLogs, err
+				}
 			}
 		}
 		onDeadline := time.Now().Add(el.DurationOn)
@@ -575,6 +690,7 @@ func PlayStreamOfSounds(elements []SoundStreamElement) ([]UserEvent, []TimingLog
 		}
 
 		actualOffset := time.Since(streamStart)
+		offsetNS := sdl.TicksNS() // authoritative SDL-clock offset (end of the on-phase)
 
 		// --- SOUND OFF (ISI / silence) ---
 		offDeadline := time.Now().Add(el.DurationOff)
@@ -592,6 +708,8 @@ func PlayStreamOfSounds(elements []SoundStreamElement) ([]UserEvent, []TimingLog
 			TargetOn:     el.DurationOn,
 			ActualOnset:  actualOnset,
 			ActualOffset: actualOffset,
+			OnsetNS:      onsetNS,
+			OffsetNS:     offsetNS,
 		})
 	}
 

@@ -171,11 +171,14 @@ func main() {
         ev, detected := stimuli.FirstKeyPress(events, control.K_SPACE)
         rtMs := ev.Timestamp.Milliseconds()
 
-        // Optional: inspect timing quality (jitter in ms per word).
+        // Optional: inspect timing quality. Read the authoritative SDL-clock
+        // fields (OnsetNS/OffsetNS), not the Go-clock ActualOnset/ActualOffset
+        // diagnostics. Achieved on-screen duration vs the target is the jitter.
         for i, l := range logs {
-            fmt.Printf("word %d: target %d ms  actual %d ms  jitter %d ms\n",
-                i, l.TargetOn.Milliseconds(), l.ActualOnset.Milliseconds(),
-                (l.ActualOnset - l.TargetOn).Milliseconds())
+            shownMs := int64(l.OffsetNS-l.OnsetNS) / 1_000_000
+            jitterMs := shownMs - l.TargetOn.Milliseconds()
+            fmt.Printf("word %d: target %d ms  shown %d ms  jitter %d ms\n",
+                i, l.TargetOn.Milliseconds(), shownMs, jitterMs)
         }
 
         exp.Data.Add(targetPos, detected, rtMs)
