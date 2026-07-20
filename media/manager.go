@@ -443,7 +443,7 @@ func (mgr *MovieManager) advanceMovie(m *Movie, now time.Duration) ([]stagedCall
 	// "re-run the timeline" (SeekTime, SeekFrame, Stop) reset
 	// fired-flags via their own code paths. To re-fire on every loop
 	// iteration, re-register the condition inside the callback (see
-	// the scheduleAtPlusN helper in examples/bouncing_gv_movies/main.go
+	// the scheduleAtPlusN helper in examples/demo_bouncing_gv_movies/main.go
 	// for the pattern).
 	if totalTarget < m.totalFramesDecoded {
 		m.totalFramesDecoded = totalTarget - 1

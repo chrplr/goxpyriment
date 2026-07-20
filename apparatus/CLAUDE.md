@@ -130,7 +130,7 @@ x := pads[0].Axis(sdl.GAMEPAD_AXIS_LEFTX)
 y := pads[0].Axis(sdl.GAMEPAD_AXIS_LEFTY)
 ```
 
-Prefer `GamePad` over the low-level `Joystick` (`joystick.go`) for analog input: raw joystick axis numbers are device-specific and axes 0/1 are often a digital D-pad (only 8 directions), whereas the gamepad axes are standardized and properly analog. `GetGamePads()` only returns controllers SDL recognizes; fall back to `GetJoysticks()` for unrecognized devices. See `tests/test_joystick` for the prefer-gamepad-with-joystick-fallback pattern.
+Prefer `GamePad` over the low-level `Joystick` (`joystick.go`) for analog input: raw joystick axis numbers are device-specific and axes 0/1 are often a digital D-pad (only 8 directions), whereas the gamepad axes are standardized and properly analog. `GetGamePads()` only returns controllers SDL recognizes; fall back to `GetJoysticks()` for unrecognized devices. See `examples/demo_joystick` for the prefer-gamepad-with-joystick-fallback pattern.
 
 ## GammaCorrector
 

@@ -31,5 +31,5 @@ jobs:
       - name: Browser build (GOOS=js GOARCH=wasm)
         run: |
           GOOS=js GOARCH=wasm go build $(go list ./... | grep -v /triggers)
-          GOOS=js GOARCH=wasm go build -o /dev/null ./examples/hello_world
+          GOOS=js GOARCH=wasm go build -o /dev/null ./examples/demo_hello_world
           GOOS=js GOARCH=wasm go build -o /dev/null ./examples/parity_decision

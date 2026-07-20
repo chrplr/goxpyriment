@@ -56,6 +56,11 @@ cd examples/parity_decision && go build .
 # Build all examples
 cd examples && ./build.sh
 
+# Export one example as a self-contained module a colleague can build alone
+# (generated go.mod requiring the published goxpyriment; no go.work/replace).
+# Output: _build/share/NAME/ — see examples/share.sh and examples/README.md.
+make share-parity_decision
+
 # Build/check a library package (no test binary needed)
 go build ./stimuli/
 go build ./...
@@ -80,7 +85,7 @@ SDL_RENDER_DRIVER=software ./my_experiment    # force software (always works)
 
 ### Browser / WebAssembly (GOOS=js)
 
-Experiments also compile to WASM and run in a browser (verified: `hello_world`
+Experiments also compile to WASM and run in a browser (verified: `demo_hello_world`
 renders in Chrome). Full status, build commands, and the remaining-work roadmap
 live in `docs/WASM.md`. The essentials:
 
@@ -128,10 +133,16 @@ The repo uses a Go workspace (`go.work`) listing three modules: the library at t
 
 ### examples/ vs tests/
 
-- **`examples/`** holds real experiments (record behavioural data) and demonstrations (illusions, minimal feature templates) — the showcase a user browses to learn the framework.
-- **`tests/`** holds standalone technical tests: hardware (`test_parallel_port`, `test_ft232h`, `test_labjackt4`, `test_linuxgpio`), timing/display (`Timing-Tests`, `tearing_test`, `test_av_sync`), and single-feature checks (`test_keyboard`, `test_menu`, `test_stream_*`). These are run and inspected by hand, not via `go test`. **Naming convention: prefix with `test_`** and use underscores (e.g. `test_text_input`, `test_joystick`).
+The distinction is **what you do with the output**, and it maps to the two folders:
 
-Both folders are catalogued in `docs/GalleryOfExamples.md`. Each example/test directory carries a `meta.yaml` (`category:` is `experiment`, `demo`, or `test`; plus `description:` and `reference:`). `make update-examples-gallery` (runs `cmd/gen-gallery`) scans both `examples/` and `tests/` and regenerates the tables between the `<!-- BEGIN:experiments -->`, `<!-- BEGIN:demos -->`, and `<!-- BEGIN:tests -->` sentinels. Add a `meta.yaml` to any new example or test so it appears in the gallery (the generator warns about directories that lack one).
+- **`examples/`** holds two `meta.yaml` categories:
+  - **`experiment`** — a real paradigm that records behavioural data (e.g. `Stroop_task`, `parity_decision`).
+  - **`demo`** — a short program that demonstrates the use of a feature/function; nothing is measured (illusions, minimal templates, single-widget showcases). **Demo directories are prefixed `demo_`** (e.g. `demo_hello_world`, `demo_menu`, `demo_stream_images`) so they stand out when browsing `examples/`.
+- **`tests/`** holds only **`test`** — programs whose *results are analysed to check performance*, typically timing or hardware: timing/display (`Timing-Tests`, `tearing_test`, `test_av_sync`, `test_vsync_blocking`, `set_fullscreen`) and hardware triggers (`test_parallel_port`, `test_ft232h`, `test_labjackt4`, `test_linuxgpio`, plus `GvFiles`/`test_stream_trigger` for photodiode/TTL sync). These are run and inspected by hand, not via `go test`. **Naming convention: prefix with `test_`** and use underscores.
+
+Rule of thumb: *demonstrates how to use a function* → `demo` in `examples/`; *measures whether something performs* → `test` in `tests/`.
+
+Both folders are catalogued in `docs/GalleryOfExamples.md`. Each directory carries a `meta.yaml` (`category:` is `experiment`, `demo`, or `test`; plus `description:` and `reference:`). `make update-examples-gallery` (runs `cmd/gen-gallery`) scans both `examples/` and `tests/` and regenerates the tables between the `<!-- BEGIN:experiments -->`, `<!-- BEGIN:demos -->`, and `<!-- BEGIN:tests -->` sentinels. Add a `meta.yaml` to any new example or test so it appears in the gallery (the generator warns about directories that lack one).
 
 ## Package architecture
 

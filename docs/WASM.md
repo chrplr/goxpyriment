@@ -158,7 +158,7 @@ file:line, which tells you exactly what to un-stub next.
 
 All five phases of the roadmap are **done**: branch consolidation and
 vendor/fork unification; IOStream + info bindings, URL-parameter setup,
-hello_world rendering; `parity_decision` running end-to-end (keyboard trials,
+demo_hello_world rendering; `parity_decision` running end-to-end (keyboard trials,
 RTs, CSV download) under the redesigned main-goroutine `RunLoop`; timestamp
 granularity measured and fixed; flips aligned to `requestAnimationFrame` with
 measured 60.00 Hz pacing and zero dropped frames; audio playback; and

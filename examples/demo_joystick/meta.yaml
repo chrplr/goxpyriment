@@ -1,0 +1,3 @@
+category: demo
+description: Move a cursor with a controller's analog stick (gamepad API with raw-joystick fallback, dead zone, live axis readout) — analog input handling
+reference: ""

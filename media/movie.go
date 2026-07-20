@@ -296,7 +296,7 @@ func (m *Movie) Pause() {
 // fire ONCE per registration across the whole sawtooth — they are
 // NOT re-armed on each forward sweep. To re-fire on every loop pass,
 // re-register the condition inside the callback (see the
-// scheduleAtPlusN helper in examples/bouncing_gv_movies/main.go for
+// scheduleAtPlusN helper in examples/demo_bouncing_gv_movies/main.go for
 // the unsub + re-register pattern). To rewind and re-arm everything,
 // call SeekFrame(1) or Stop+Play.
 func (m *Movie) PauseWithLoop(window time.Duration) {

@@ -23,6 +23,7 @@ help:
 	@echo "  update-examples-gallery  Regenerate docs/GalleryOfExamples.md tables from meta.yaml files"
 	@echo "  readme    Regenerate README.md from docs/index.md (single source of truth)"
 	@echo "  run-NAME       Build and run a single example (e.g. make run-parity_decision)"
+	@echo "  share-NAME     Export one example as a standalone module to _build/share/NAME/"
 	@echo "  tests     Build test binaries"
 	@echo "  wasm-NAME        Build a browser (WASM) bundle of an example to _build/wasm/NAME/"
 	@echo "  wasm-NAME-serve  Build + serve a browser bundle at http://localhost:8080/?s=1"
@@ -61,6 +62,14 @@ readme:
 # Build and run a single example: make run-hello_world
 run-%:
 	@(cd examples/$* && CGO_ENABLED=0 go run .)
+
+# Export one example as a self-contained, standalone module under
+# _build/share/NAME/ (generated go.mod requiring the published goxpyriment, so a
+# colleague can build it without go.work/replace/`go mod init`).
+#   make share-demo_hello_world              # uses the latest git tag
+#   make share-demo_hello_world VERSION=v0.12.3
+share-%:
+	@bash examples/share.sh $* "$(VERSION)"
 
 # ---------------------------------------------------------------------------
 # Tests

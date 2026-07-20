@@ -44,7 +44,7 @@ Example: `exp.Keyboard.WaitKeys([]sdl.Keycode{control.K_SPACE}, -1)` can stay as
 
 You will still need the `sdl` import for:
 
-- Constructing **sdl.FRect** or other SDL types not yet wrapped (e.g. in `play_two_videos` for destination rects).
+- Constructing **sdl.FRect** or other SDL types not yet wrapped (e.g. in `demo_play_two_videos` for destination rects).
 - Any SDL API not yet exposed by goxpyriment (e.g. raw `sdl.PollEvent` in special cases like loading screens).
 - Passing SDL types into stimuli that accept them (e.g. `sdl.Color` is still used by stimuli; control re-exports colors and RGB/RGBA helpers).
 

@@ -113,7 +113,7 @@ func main() {
 
 A more comprehensive walkthrough with composited overlays, burst pause,
 seek-back, and `Display[Onset/Offset]` events lives in
-[`tests/sync_two_gv_movies/`](../tests/sync_two_gv_movies/).
+[`examples/demo_sync_two_gv_movies/`](../examples/demo_sync_two_gv_movies/).
 
 ---
 
@@ -768,7 +768,7 @@ mgr.EndBurst()
 
 In this repository:
 
-- [`tests/sync_two_gv_movies/`](../tests/sync_two_gv_movies/) — comprehensive walkthrough example
+- [`examples/demo_sync_two_gv_movies/`](../examples/demo_sync_two_gv_movies/) — comprehensive walkthrough example
 - [`tests/Timing-Tests/`](../tests/Timing-Tests/) — empirical timing-measurement framework
 
 External / upstream:
