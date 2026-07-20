@@ -61,10 +61,16 @@ func main() {
 	}
 
 	fmt.Println("\n--- Presentation Report ---")
+	var ref uint64
+	if len(timingLogs) > 0 {
+		ref = timingLogs[0].OnsetNS // stream start on the SDL clock; OnsetNS/OffsetNS are the authoritative timing (see TimingLog)
+	}
 	for _, tl := range timingLogs {
+		onsetMS := int64(tl.OnsetNS-ref) / 1_000_000
+		offsetMS := int64(tl.OffsetNS-ref) / 1_000_000
 		fmt.Printf("Element %d: Target %dms | Onset: %dms | Offset: %dms | OnsetNS: %d\n",
-			tl.Index, tl.TargetOn.Milliseconds(), tl.ActualOnset.Milliseconds(), tl.ActualOffset.Milliseconds(), tl.OnsetNS)
-		exp.Data.Add(tl.Index, tl.TargetOn.Milliseconds(), tl.ActualOnset.Milliseconds(), tl.ActualOffset.Milliseconds())
+			tl.Index, tl.TargetOn.Milliseconds(), onsetMS, offsetMS, tl.OnsetNS)
+		exp.Data.Add(tl.Index, tl.TargetOn.Milliseconds(), onsetMS, offsetMS)
 	}
 
 	fmt.Println("\n--- User Input Captured ---")

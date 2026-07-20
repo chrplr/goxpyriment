@@ -58,8 +58,12 @@ func main() {
 	}
 
 	fmt.Printf("\ncallback ran on %d frames; recorded %d word-onset marks\n", frameCount, len(onsetMarks))
+	var ref uint64
+	if len(logs) > 0 {
+		ref = logs[0].OnsetNS // stream start on the SDL clock; OnsetNS is the authoritative onset (see TimingLog)
+	}
 	for _, tl := range logs {
 		fmt.Printf("word %d (%q): onset %dms, OnsetNS %d\n",
-			tl.Index, words[tl.Index], tl.ActualOnset.Milliseconds(), tl.OnsetNS)
+			tl.Index, words[tl.Index], int64(tl.OnsetNS-ref)/1_000_000, tl.OnsetNS)
 	}
 }

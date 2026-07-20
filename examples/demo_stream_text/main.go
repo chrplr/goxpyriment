@@ -47,9 +47,13 @@ func main() {
 
 	// 3. Save and print timing results
 	fmt.Println("\n--- Presentation Report ---")
+	var ref uint64
+	if len(timingLogs) > 0 {
+		ref = timingLogs[0].OnsetNS // stream start on the SDL clock; OnsetNS/OffsetNS are the authoritative timing (see TimingLog)
+	}
 	for _, tl := range timingLogs {
-		onsetMS := tl.ActualOnset.Milliseconds()
-		offsetMS := tl.ActualOffset.Milliseconds()
+		onsetMS := int64(tl.OnsetNS-ref) / 1_000_000
+		offsetMS := int64(tl.OffsetNS-ref) / 1_000_000
 		targetMS := tl.TargetOn.Milliseconds()
 		fmt.Printf("Word %d (%q): Target %dms | Onset: %dms | Offset: %dms\n",
 			tl.Index, words[tl.Index], targetMS, onsetMS, offsetMS)
