@@ -85,6 +85,8 @@ bools are written bare; everything else is RFC-4180 quoted.
 - **Never draw outside `exp.Run`** (the SDL main thread). Drawing from a goroutine
   silently does nothing or crashes.
 - **Coordinates are center-relative**: `(0,0)` is screen centre, `sdl.FPoint{X,Y}`.
+  **+Y points UP** (larger Y = higher on screen; opposite of SDL Y-down). Using
+  negative Y for "up" mirrors the layout vertically — a recurring bug.
 - **Use `control.*` constants** for colors and key codes; don't import `go-sdl3`.
 - **Add a `meta.yaml`** (`category: experiment` or `demo`, plus `description:` and
   `reference:`) so the example appears in `docs/GalleryOfExamples.md`. Regenerate with

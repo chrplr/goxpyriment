@@ -22,6 +22,12 @@ All stimulus positions and the mouse cursor use a **center-based** coordinate sy
 sdlX, sdlY := screen.CenterToSDL(posX, posY)
 ```
 
+> ⚠️ **Axis convention — +Y is UP.** Positive Y is *higher* on the screen
+> (maths/vision-science convention), the opposite of SDL's Y-down pixel space —
+> `CenterToSDL` computes `height/2 - y`. To stack items above→below on screen,
+> give them *decreasing* Y (e.g. header `+90`, target `+35`, box `-27`). Using
+> negative Y for "up" mirrors the whole layout vertically — a recurring bug.
+
 ### Key methods
 
 | Method | Description |

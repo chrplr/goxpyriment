@@ -1,0 +1,3 @@
+category: experiment
+description: "Typing-performance task: on each trial a target sentence is shown and the participant copies it into a framed input box below (with a blinking cursor). Every keystroke onset is recorded with a hardware-precision timestamp — its time from target onset, the interval since the previous key, and one of three categories (correct character, incorrect character, or movement/editing key). A trial advances only on an exact copy followed by ENTER. At the end, percent correct keystrokes and typing speed in characters/second (mean, P10, P50, P90) for correct keystrokes are reported. Built-in sentences can be overridden with -file."
+reference: ""

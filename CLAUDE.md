@@ -193,7 +193,7 @@ New files must include this header.
 
 ## Key conventions
 
-- **Coordinate system:** all positions are screen-center relative (`(0,0)` = center). Use `sdl.FPoint{X: x, Y: y}`.
+- **Coordinate system:** all positions are screen-center relative (`(0,0)` = center), and **+Y points UP** (opposite of SDL's Y-down pixels — `Screen.CenterToSDL` computes `height/2 - y`). Larger Y = higher on screen; use *negative* Y to go below center. Using negative Y for "up" mirrors the layout vertically — a recurring bug. Use `sdl.FPoint{X: x, Y: y}`.
 - **Colors:** defined in `control/defaults.go` (`control.Black`, `control.White`, `control.Red`, etc.) as `sdl.Color`.
 - **Embedding assets:** use `//go:embed` to bundle fonts, images, and audio into the binary.
 - **go.mod indirect → direct:** when a new package starts importing a previously-indirect dependency, move it to the direct `require` block manually (or run `go mod tidy`).

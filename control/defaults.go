@@ -69,6 +69,9 @@ const (
 	K_DOWN      = sdl.K_DOWN
 	K_LEFT      = sdl.K_LEFT
 	K_RIGHT     = sdl.K_RIGHT
+	K_HOME      = sdl.K_HOME
+	K_END       = sdl.K_END
+	K_DELETE    = sdl.K_DELETE
 
 	// Letters A–Z.
 	K_A = sdl.K_A
@@ -138,6 +141,54 @@ const (
 	BUTTON_LEFT  = uint32(sdl.BUTTON_LEFT)
 	BUTTON_RIGHT = uint32(sdl.BUTTON_RIGHT)
 )
+
+// Event queue primitives (re-exported from SDL).
+//
+// These let experiment code hand-roll a custom input loop — most notably a
+// text-input/typing loop that needs per-keystroke hardware timestamps and a
+// blinking cursor — without importing go-sdl3. Start and stop IME text input
+// with exp.Screen.Window.StartTextInput() / StopTextInput(); drain the queue
+// with PollEvent; read events via Event.KeyboardEvent() and
+// Event.TextInputEvent(); and time onsets/blinks with TicksNS(). See
+// examples/Typing-Speed for a complete worked loop.
+
+// Event re-exports the SDL event union so callers can declare `var ev control.Event`.
+type Event = sdl.Event
+
+// EventType re-exports the SDL event-type enum (the type of Event.Type).
+type EventType = sdl.EventType
+
+// KeyboardEvent re-exports the SDL keyboard event returned by Event.KeyboardEvent().
+// Its Key, Timestamp (nanoseconds), Repeat and Down fields are the ones typically read.
+type KeyboardEvent = sdl.KeyboardEvent
+
+// TextInputEvent re-exports the SDL text-input event returned by Event.TextInputEvent().
+// Its Text (UTF-8) and Timestamp (nanoseconds) fields carry the composed input.
+type TextInputEvent = sdl.TextInputEvent
+
+// Event types (re-exported from SDL) needed to classify polled events in a
+// hand-rolled loop: window close, key press/release, and IME text input.
+const (
+	EVENT_QUIT       = sdl.EVENT_QUIT
+	EVENT_KEY_DOWN   = sdl.EVENT_KEY_DOWN
+	EVENT_KEY_UP     = sdl.EVENT_KEY_UP
+	EVENT_TEXT_INPUT = sdl.EVENT_TEXT_INPUT
+)
+
+// PollEvent dequeues the next pending event into *event, returning false when
+// the queue is empty. Mirrors sdl.PollEvent so experiment code can drain the
+// event queue without importing go-sdl3.
+func PollEvent(event *Event) bool {
+	return sdl.PollEvent(event)
+}
+
+// TicksNS returns the SDL high-resolution clock in nanoseconds — the same
+// reference frame as event timestamps (KeyboardEvent.Timestamp,
+// TextInputEvent.Timestamp) and Screen.FlipTS(). Use it for stimulus-onset
+// references and cursor-blink timing in custom loops.
+func TicksNS() uint64 {
+	return sdl.TicksNS()
+}
 
 // Point returns an sdl.FPoint so callers can use control.Point(x,y) without importing go-sdl3.
 func Point(x, y float32) sdl.FPoint {

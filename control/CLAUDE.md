@@ -120,13 +120,29 @@ Import only `control` — do not import `go-sdl3` directly in experiment code.
 `Black`, `White`, `Red`, `Green`, `Blue`, `Yellow`, `Magenta`, `Cyan`, `Gray`, `DarkGray`, `LightGray`
 
 ### Key codes
-Navigation/control (`K_SPACE`, `K_ESCAPE`, `K_RETURN`, `K_BACKSPACE`, `K_TAB`, `K_UP`, `K_DOWN`, `K_LEFT`, `K_RIGHT`), the full alphabet `K_A` … `K_Z`, the digit row `K_0` … `K_9`, the numeric keypad (`K_KP_0` … `K_KP_9`, `K_KP_ENTER`, `K_KP_PLUS`, `K_KP_MINUS`), and punctuation (`K_MINUS`, `K_PLUS`, `K_EQUALS`, `K_LEFTBRACKET`, `K_RIGHTBRACKET`). See `defaults.go` for the authoritative list.
+Navigation/control (`K_SPACE`, `K_ESCAPE`, `K_RETURN`, `K_BACKSPACE`, `K_TAB`, `K_UP`, `K_DOWN`, `K_LEFT`, `K_RIGHT`, `K_HOME`, `K_END`, `K_DELETE`), the full alphabet `K_A` … `K_Z`, the digit row `K_0` … `K_9`, the numeric keypad (`K_KP_0` … `K_KP_9`, `K_KP_ENTER`, `K_KP_PLUS`, `K_KP_MINUS`), and punctuation (`K_MINUS`, `K_PLUS`, `K_EQUALS`, `K_LEFTBRACKET`, `K_RIGHTBRACKET`). See `defaults.go` for the authoritative list.
 
 ### Mouse
 `BUTTON_LEFT`, `BUTTON_RIGHT`
 
+### Event queue (for hand-rolled input loops)
+Enough of the SDL event API is re-exported to build a custom input loop — e.g. a
+text-input/typing loop with per-keystroke hardware timestamps and a blinking
+cursor — without importing `go-sdl3`:
+
+- **Types:** `Event`, `EventType`, `KeyboardEvent`, `TextInputEvent`
+- **Event constants:** `EVENT_QUIT`, `EVENT_KEY_DOWN`, `EVENT_KEY_UP`, `EVENT_TEXT_INPUT`
+- **Functions:** `PollEvent(*Event) bool`, `TicksNS() uint64`
+
+Start/stop IME text input via `exp.Screen.Window.StartTextInput()` /
+`StopTextInput()`; read events with `ev.KeyboardEvent()` / `ev.TextInputEvent()`;
+their `Timestamp` fields share the `TicksNS()` / `Screen.FlipTS()` reference
+frame. `examples/Typing-Speed` is a complete worked example. Prefer the
+`Keyboard` helpers (`GetKeyEventTS`, …) for ordinary key responses — reach for
+the raw queue only when you need text input or bespoke event handling.
+
 ### Type aliases
-`Color = sdl.Color`, `FPoint = sdl.FPoint`, `FRect = sdl.FRect`, `Keycode = sdl.Keycode`
+`Color = sdl.Color`, `FPoint = sdl.FPoint`, `FRect = sdl.FRect`, `Keycode = sdl.Keycode`, `Event = sdl.Event`, `EventType = sdl.EventType`, `KeyboardEvent = sdl.KeyboardEvent`, `TextInputEvent = sdl.TextInputEvent`
 
 ### Helper constructors
 - `Point(x, y float32) sdl.FPoint`

@@ -75,6 +75,16 @@ type Screen struct {
 // CenterToSDL converts center‑based coordinates to SDL top‑left based
 // coordinates using either the current logical size, canvas offset, or the
 // renderer output size as a fallback.
+//
+// IMPORTANT — axis convention: the center-based system has its origin (0,0) at
+// the screen center and **+Y points UP** (like maths / vision-science plots),
+// which is the OPPOSITE of SDL's top-left, Y-down pixel space. Note the "- y"
+// below: a stimulus at a larger Y is drawn HIGHER on the screen. So to place a
+// header above a box, give it a MORE POSITIVE Y; to place a caption below, a
+// more negative Y. Getting this backwards (using negative Y for "up") is a
+// recurring bug — everything renders vertically mirrored. All stimulus
+// positions, mouse coordinates (Screen.MousePosition), and layout code use this
+// convention.
 func (s *Screen) CenterToSDL(x, y float32) (float32, float32) {
 	if s.CanvasOffset != nil {
 		return s.CanvasOffset.X + x, s.CanvasOffset.Y - y
