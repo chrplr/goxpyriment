@@ -4,6 +4,7 @@
 package stimuli
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"math"
@@ -249,6 +250,36 @@ func largestDivisorAtMost(refresh, want int) int {
 	return 1
 }
 
+// GvFrameContext is passed to a [GvFrameCallback] once per video frame, right
+// after the flip that puts that frame on screen.
+type GvFrameContext struct {
+	Screen *xio.Screen
+	// Frame is the 0-based video frame index just presented.
+	Frame int
+	// OnsetNS is the SDL nanosecond timestamp captured immediately after the
+	// frame's first flip. It shares its reference frame with SDL event
+	// timestamps, so it subtracts directly from a keypress timestamp.
+	OnsetNS uint64
+	// Hold is how many display refreshes this frame is shown for.
+	Hold int
+}
+
+// GvFrameCallback runs once per video frame, immediately after that frame's
+// first flip. Return nil to continue, [sdl.EndLoop] to stop playback cleanly,
+// or any other error to abort.
+//
+// It is called inside a GC-disabled, VSYNC-locked loop: do not allocate
+// heavily, and never sleep or call a blocking trigger Pulse, or the next frame
+// will be late. Raise a TTL line here and lower it from a later frame instead.
+type GvFrameCallback func(ctx GvFrameContext) error
+
+// PlayGvFunc is [PlayGv] with a per-frame callback, for acting on the onset of
+// a specific frame — firing a TTL trigger, logging a timestamp, or aborting
+// early on some condition.
+func PlayGvFunc(screen *xio.Screen, path string, x, y float32, onFrame GvFrameCallback) ([]UserEvent, []VideoFrameLog, error) {
+	return playGv(screen, path, x, y, onFrame)
+}
+
 // PlayGv plays a .gv video file once, frame by frame, synchronised to VSYNC.
 // x and y are center-based screen coordinates. Returns all user input events
 // collected during playback and per-frame timing logs. Playback can be
@@ -258,6 +289,12 @@ func largestDivisorAtMost(refresh, want int) int {
 // display frames skipped (SkippedFrames > 0 means the decode+draw loop was
 // too slow and missed one or more VSYNC edges).
 func PlayGv(screen *xio.Screen, path string, x, y float32) ([]UserEvent, []VideoFrameLog, error) {
+	return playGv(screen, path, x, y, nil)
+}
+
+// playGv is the shared implementation of PlayGv and PlayGvFunc. onFrame may be
+// nil.
+func playGv(screen *xio.Screen, path string, x, y float32, onFrame GvFrameCallback) ([]UserEvent, []VideoFrameLog, error) {
 	v, err := NewGvVideo(path)
 	if err != nil {
 		return nil, nil, fmt.Errorf("PlayGv: %w", err)
@@ -310,6 +347,21 @@ func PlayGv(screen *xio.Screen, path string, x, y float32) ([]UserEvent, []Video
 			}
 			if h == 0 {
 				flipNS = ts // the frame's onset is its first flip
+				// Called before the remaining hold flips so a trigger raised
+				// here lands as close to the onset as possible.
+				if onFrame != nil {
+					if err := onFrame(GvFrameContext{
+						Screen:  screen,
+						Frame:   i,
+						OnsetNS: flipNS,
+						Hold:    hold,
+					}); err != nil {
+						if errors.Is(err, sdl.EndLoop) {
+							return userEvents, logs, nil
+						}
+						return userEvents, logs, fmt.Errorf("PlayGv: frame callback at frame %d: %w", i, err)
+					}
+				}
 			}
 		}
 

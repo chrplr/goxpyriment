@@ -2019,9 +2019,36 @@ construction; the GPU texture is allocated lazily on the first `Update` or
 
 #### Firing a trigger on a chosen frame
 
-`PlayGv` has no per-frame hook, so drive the loop yourself. `CurrentFrame()`
-returns the frame now in the GPU texture — the one the next flip will show — so
-raise the line immediately *after* the flip that displays it:
+`PlayGvFunc` is `PlayGv` with a per-frame callback, invoked immediately after
+the flip that puts each frame on screen:
+
+```go
+events, logs, err := stimuli.PlayGvFunc(exp.Screen, "stim.gv", 0, 0,
+    func(ctx stimuli.GvFrameContext) error {
+        if ctx.Frame == onsetFrame {
+            trig.SetHigh(0)               // rising edge tied to this flip
+        }
+        if ctx.Frame == onsetFrame+3 {    // ~50 ms later at 60 Hz
+            trig.SetLow(0)
+        }
+        return nil                        // control.EndLoop to stop early
+    })
+```
+
+`ctx.OnsetNS` is the SDL timestamp of that frame's **first** flip, in the same
+reference frame as event timestamps. `ctx.Frame` is the 0-based video frame
+index and `ctx.Hold` the number of refreshes it is shown for. The callback runs
+inside the GC-disabled VSYNC loop, so it must not allocate heavily or sleep —
+see the warning below.
+
+`tests/Timing-Tests -test gvsync` is a complete worked example: it plays a
+generated flash train and fires a TTL pulse at each bright onset for photodiode
+verification.
+
+If you need to draw around the video as well, drive the loop yourself instead.
+`CurrentFrame()` returns the frame now in the GPU texture — the one the next
+flip will show — so raise the line immediately *after* the flip that displays
+it:
 
 ```go
 const onsetFrame = 120        // the frame whose onset you want marked

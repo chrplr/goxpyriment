@@ -21,35 +21,51 @@ examples see **[docs/TimingTests.md](../../docs/TimingTests.md)**.
 6. trigger  — characterise DLP-IO8-G (if available)
 7. frames   — validate visual onset and phase duration with photodiode
               (use frames-on=1 for single-frame / minimum-duration testing)
-8. tones    — measure audio onset jitter (long stream)
-9. av       — measure audio–visual synchrony
-10. rt      — measure reaction-time timestamp precision
+8. gvsync   — validate .gv video onset vs. trigger alignment with photodiode
+9. tones    — measure audio onset jitter (long stream)
+10. av      — measure audio–visual synchrony
+11. rt      — measure reaction-time timestamp precision
 ```
 
 Steps 1–5 require no external hardware (step 5 benefits from a VRR monitor).
-Steps 6–9 require a DLP-IO8-G and/or oscilloscope + photodiode (see docs).
-Step 10 requires a keyboard or USB response box.
+Steps 6–10 require a DLP-IO8-G and/or oscilloscope + photodiode (see docs).
+Step 11 requires a keyboard or USB response box.
 
 ---
 
 ## Running
 
+> **Run every test in fullscreen — that is the default. Do not pass `-w`.**
+>
+> Windowed mode hands your frames to the desktop compositor, which adds a
+> variable presentation delay, may drop or duplicate frames, and on some drivers
+> stops blocking on VSYNC altogether. Measurements taken windowed describe the
+> compositor, not goxpyriment, and are not comparable between machines.
+>
+> `-w` exists only for developing and debugging the tests themselves. Any number
+> reported from a windowed run should be treated as invalid. If a test drops
+> frames windowed but not fullscreen, that is the compositor — re-measure before
+> investigating anything else.
+
 ```bash
 # from the repo root (go.work resolves both modules):
-go run tests/Timing-Tests/main.go -test <name> [flags]
+go run ./tests/Timing-Tests -test <name> [flags]
 
 # examples
-go run tests/Timing-Tests/main.go -test check  
-go run tests/Timing-Tests/main.go -test display -duration-s 30 
-go run tests/Timing-Tests/main.go -test latency 
-go run tests/Timing-Tests/main.go -test stream  -cycles 120 -frames-on 3 -frames-off 3 
-go run tests/Timing-Tests/main.go -test vrr     -vrr-max-ms 50 -cycles 5 
-go run tests/Timing-Tests/main.go -test trigger -period-ms 100 -duty 50 -duration-s 30
-go run tests/Timing-Tests/main.go -test frames  -frames-on 2 -frames-off 2 -cycles 120
-go run tests/Timing-Tests/main.go -test frames  -frames-on 1 -frames-off 60 -cycles 60   # single-frame flashes
-go run tests/Timing-Tests/main.go -test tones   -cycles 300 -freq-hz 1000 -tone-ms 50 -iti-ms 450
-go run tests/Timing-Tests/main.go -test av      -soa-ms 0 -frames-on 3 -frames-off 60 -cycles 30
-go run tests/Timing-Tests/main.go -test rt      -cycles 60 
+go run ./tests/Timing-Tests -test check  
+go run ./tests/Timing-Tests -test display -duration-s 30 
+go run ./tests/Timing-Tests -test latency 
+go run ./tests/Timing-Tests -test stream  -cycles 120 -frames-on 3 -frames-off 3 
+go run ./tests/Timing-Tests -test vrr     -vrr-max-ms 50 -cycles 5 
+go run ./tests/Timing-Tests -test trigger -period-ms 100 -duty 50 -duration-s 30
+go run ./tests/Timing-Tests -test frames  -frames-on 2 -frames-off 2 -cycles 120
+go run ./tests/Timing-Tests -test frames  -frames-on 1 -frames-off 60 -cycles 60   # single-frame flashes
+go run ./tests/Timing-Tests -test gvsync
+go run ./tests/Timing-Tests -test gvsync -cycles 30 -gv-square-px 300      # more repetitions, bigger square
+go run ./tests/Timing-Tests -test gvsync -gv-frames-on 3 -gv-frames-off 27 # 50 ms bright, 450 ms dark
+go run ./tests/Timing-Tests -test tones   -cycles 300 -freq-hz 1000 -tone-ms 50 -iti-ms 450
+go run ./tests/Timing-Tests -test av      -soa-ms 0 -frames-on 3 -frames-off 60 -cycles 30
+go run ./tests/Timing-Tests -test rt      -cycles 60 
 ```
 
 Use `-d N` to select a specific monitor (0-indexed).
@@ -110,6 +126,67 @@ Legacy names (`jitter`, `drain`, `square`, `sound`, `audio`) still work as alias
 | `-tone-ms` | tones | 50 | Tone duration (ms) |
 | `-drain-reps` | latency | 10 | Repetitions per tone duration |
 | `-vrr-max-ms` | vrr | 50 | Maximum sweep duration (ms); test runs 1 ms → this value in 1 ms steps |
+| `-gv-fps` | gvsync | 60 | Frame rate of the generated `.gv`; **must divide the display refresh rate** |
+| `-gv-frames-on` | gvsync | 6 | Bright frames per cycle (6 @ 60 fps = 100 ms) |
+| `-gv-frames-off` | gvsync | 24 | Dark frames per cycle (24 @ 60 fps = 400 ms) |
+| `-gv-width` | gvsync | 1280 | Stimulus width (px) |
+| `-gv-height` | gvsync | 720 | Stimulus height (px) |
+| `-gv-square-px` | gvsync | 200 | Side of the centred bright square (px); 0 = fill the frame |
+| `-gv-file` | gvsync | — | Play this `.gv` instead of generating one |
+| `-gv-keep` | gvsync | false | Regenerate the stimulus and keep it on disk instead of using a temp file |
+
+---
+
+## `gvsync` — .gv playback vs. trigger alignment
+
+Validates `stimuli.PlayGvFunc`: does a `.gv` frame reach the screen when
+goxpyriment says it did, and does the TTL trigger line up with it?
+
+The test synthesises its own stimulus — a flash train of `-gv-frames-on` bright
+frames (a centred white square) followed by `-gv-frames-off` dark frames,
+repeated `-cycles` times — plays it with `PlayGvFunc`, and raises the trigger
+line from the frame callback at the onset of every bright phase. With the
+defaults that is **100 ms white / 400 ms black, ten times, at 60 fps**.
+
+Nothing needs to be prepared: the stimulus is generated into a temp file and
+removed afterwards. `-gv-keep` writes it next to you instead, and `-gv-file`
+plays one you supply.
+
+### Setup
+
+```
+photodiode ──▶ scope channel 1     (taped over the white square)
+DLP-IO8 pin ─▶ scope channel 2     (-trigger-pin, default 1)
+```
+
+```bash
+go run ./tests/Timing-Tests -test gvsync           # fullscreen — do not add -w
+```
+
+### What to read off the trace
+
+| Measurement | Expected | Meaning |
+|---|---|---|
+| TTL edge → luminance step | constant across cycles | end-to-end presentation lag; its *variance* matters more than its value |
+| Bright phase width | 100 ms (`frames-on / fps`) | frame hold is correct |
+| Onset-to-onset period | 500 ms (`(on+off) / fps`) | no accumulating drift |
+| Any period off by ≥ 1 frame | never | a dropped frame |
+
+The console reports the onset period measured in software and a
+`playback: N frames, M skipped` line. **`skipped` > 0 means frames were dropped
+and the recording will show it** — fix that before interpreting anything else.
+
+The reported "flip → trigger dispatch" figure is software-side only: the
+interval between the flip timestamp and the moment the trigger call was
+dispatched. It is a lower bound and excludes the trigger device's own latency,
+which is exactly what the scope is there to measure.
+
+### Frame rate
+
+`-gv-fps` must divide the display refresh rate exactly, because `PlayGv` holds
+each video frame for `refresh / fps` refreshes. At 60 Hz that allows 60, 30, 20,
+15, 12, 10 … but not 24 or 25 — those are refused with an error naming a
+workable rate rather than played at the wrong speed.
 
 ---
 

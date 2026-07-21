@@ -3,7 +3,7 @@
 //
 // Timing-Tests — hardware timing verification suite
 //
-// Provides eleven independent sub-tests, selected with -test <name>.
+// Provides twelve independent sub-tests, selected with -test <name>.
 // Tests are organised in four tiers; run them in this order:
 //
 // Tier 0 — sanity check (no equipment, no measurement):
@@ -25,6 +25,7 @@
 //
 //	frames  Alternating luminance: visual onset vs. trigger alignment
 //	        (alias: flash — single-frame capability is the special case frames-on=1)
+//	gvsync  .gv video playback: bright-square onset vs. trigger alignment
 //	tones   Regular tone stream: audio onset jitter over time  (alias: sound)
 //	av      Audio–visual synchrony with controllable SOA
 //
@@ -60,6 +61,19 @@
 //	-frames-on  int   Bright frames per cycle (default 1)
 //	-frames-off int   Dark frames per cycle (default 9)
 //	-warmup int       Cycles discarded from statistics at start (default 10)
+//
+// Per-test flags — gvsync:
+//
+//	-gv-fps float      Frame rate of the generated .gv; must divide the refresh rate (default 60)
+//	-gv-frames-on int  Bright frames per cycle (default 6 = 100 ms at 60 fps)
+//	-gv-frames-off int Dark frames per cycle (default 24 = 400 ms at 60 fps)
+//	-gv-width int      Stimulus width in px (default 1280)
+//	-gv-height int     Stimulus height in px (default 720)
+//	-gv-square-px int  Side of the centred bright square, 0 = fill frame (default 200)
+//	-gv-file string    Play this .gv instead of generating one
+//	-gv-keep           Regenerate and keep the stimulus instead of using a temp file
+//	-cycles int        Repetitions (default 10 for this test)
+//	-warmup int        Leading cycles excluded from statistics (default 0 for this test)
 //
 // Per-test flags — av:
 //
@@ -115,7 +129,7 @@ import (
 // ── Flags ─────────────────────────────────────────────────────────────────────
 
 var (
-	fTest        = flag.String("test", "", "Sub-test: check | display | latency | stream | vrr | trigger | frames | tones | av | rt\n\t(legacy aliases: jitter=display  drain=latency  square=trigger  sound=tones  audio=check  flash=frames)")
+	fTest        = flag.String("test", "", "Sub-test: check | display | latency | stream | vrr | trigger | frames | gvsync | tones | av | rt\n\t(legacy aliases: jitter=display  drain=latency  square=trigger  sound=tones  audio=check  flash=frames)")
 	fPort        = flag.String("port", "", "Serial port for DLP-IO8-G (empty = auto-detect)")
 	fTriggerPin  = flag.Int("trigger-pin", 1, "DLP-IO8-G output pin (1–8)")
 	fTriggerMs   = flag.Int("trigger-ms", 5, "Trigger pulse duration (ms)")
@@ -140,6 +154,17 @@ var (
 	fDisplay     = flag.Int("d", -1, "Display index: monitor where the window/fullscreen will open (-1 = primary)")
 	fSysInfo     = flag.Bool("sysinfo", false, "Print system information and exit")
 	fPacedFlip   = flag.Bool("paced-flip", false, "Use PacedFlip() instead of Update() for frame pacing in frames/av tests")
+
+	// ── gvsync: .gv playback / trigger synchronisation ───────────────────────
+	// Defaults describe a 60 fps train of 100 ms bright / 400 ms dark.
+	fGvFPS       = flag.Float64("gv-fps", 60, "gvsync: frame rate of the generated .gv (must divide the display refresh rate)")
+	fGvFramesOn  = flag.Int("gv-frames-on", 6, "gvsync: bright frames per cycle (6 @ 60 fps = 100 ms)")
+	fGvFramesOff = flag.Int("gv-frames-off", 24, "gvsync: dark frames per cycle (24 @ 60 fps = 400 ms)")
+	fGvWidth     = flag.Int("gv-width", 1280, "gvsync: width of the generated .gv in pixels")
+	fGvHeight    = flag.Int("gv-height", 720, "gvsync: height of the generated .gv in pixels")
+	fGvSquarePx  = flag.Int("gv-square-px", 200, "gvsync: side of the centred bright square in pixels (0 = fill the frame)")
+	fGvFile      = flag.String("gv-file", "", "gvsync: play this .gv instead of generating one (implies -gv-keep)")
+	fGvKeep      = flag.Bool("gv-keep", false, "gvsync: regenerate the stimulus and keep it on disk instead of using a temp file")
 )
 
 // ── Screen fill helper ─────────────────────────────────────────────────────────
@@ -1270,7 +1295,7 @@ func main() {
 
 	if *fTest == "" {
 		exp.End() // release any SDL subsystems already initialised before exiting
-		log.Fatal("usage: go run main.go -test <check|display|latency|stream|vrr|trigger|frames|flash|tones|av|rt> [flags]\n" +
+		log.Fatal("usage: go run . -test <check|display|latency|stream|vrr|trigger|frames|flash|gvsync|tones|av|rt> [flags]\n" +
 			"       (legacy aliases: jitter=display  drain=latency  square=trigger  sound=tones  audio=check)")
 	}
 
@@ -1304,6 +1329,8 @@ func main() {
 	// ── Tier 3: stimulus timing validation ───────────────────────────────────
 	case "frames", "flash": // "flash" is the legacy name (frames-on=1 frames-off=N)
 		runErr = runFrames(exp, trig)
+	case "gvsync":
+		runErr = runGvSync(exp, trig)
 	case "tones", "sound": // "sound" is the legacy name
 		runErr = runSound(exp, trig)
 	case "av":
@@ -1313,7 +1340,7 @@ func main() {
 		runErr = runRT(exp, trig)
 	default:
 		exp.End() // release any SDL subsystems already initialised before exiting
-		log.Fatalf("unknown test %q — choose from: check display latency stream vrr trigger frames flash tones av rt\n"+
+		log.Fatalf("unknown test %q — choose from: check display latency stream vrr trigger frames flash gvsync tones av rt\n"+
 			"  (legacy aliases: audio=check  jitter=display  drain=latency  square=trigger  sound=tones)", *fTest)
 	}
 

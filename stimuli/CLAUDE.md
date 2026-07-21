@@ -311,6 +311,21 @@ events, logs, err := stimuli.PlayGv(screen, "path/to/video.gv", x, y)
 
 Plays an LZ4-compressed RGBA `.gv` file once, frame-by-frame, VSYNC-locked. GC disabled. Exits on ESC/window-close. Returns per-frame timing logs.
 
+### Per-frame callback
+
+```go
+events, logs, err := stimuli.PlayGvFunc(screen, "stim.gv", 0, 0, func(ctx stimuli.GvFrameContext) error {
+    if ctx.Frame == onsetFrame {
+        trig.SetHigh(0)          // rising edge tied to this frame's flip
+    }
+    return nil                   // sdl.EndLoop to stop early
+})
+```
+
+`GvFrameContext` carries `Screen`, `Frame` (0-based video frame index), `OnsetNS` (SDL timestamp of that frame's **first** flip — same clock as event timestamps), and `Hold` (refreshes this frame is shown for). The callback runs once per video frame, immediately after the onset flip and before the remaining hold flips, so a trigger raised there lands as close to the onset as possible.
+
+It runs inside the GC-disabled VSYNC loop: do not allocate heavily, never sleep, and never call a blocking `Pulse` — raise the line here and lower it from a later frame. `PlayGv` is `PlayGvFunc` with a nil callback.
+
 **Frame rate:** plays at the rate in the `.gv` header, holding each frame for `refresh / fps` refreshes (30 fps on 60 Hz → 2 refreshes per frame). Both rates are rounded first (59.94 Hz + 29.97 fps behave as 60 + 30). Only exact integer ratios work; 24 fps on 60 Hz needs 2.5 and returns an error naming a workable rate, because the pulldown would make onsets uneven. Before this was enforced, `PlayGv` presented one video frame per refresh and a 30 fps clip played at double speed.
 
 ### Interactive (manual control)
