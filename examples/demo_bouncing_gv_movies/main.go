@@ -577,7 +577,7 @@ func main() {
 func findFixture(name string) string {
 	candidates := []string{
 		name,
-		"../demo_playgv/" + name,
+		"../demo_play_gv_videos/" + name,
 		"tests/test_playgv/" + name,
 	}
 	for _, p := range candidates {
