@@ -63,7 +63,7 @@ Run the tests in this order. Each tier builds on the previous one.
 These tests are run from a Terminal. This document assumes that you have compiled `Timing-Tests/main.go`:
 
 ```sh
-go build tests/Timing-Tests/main.go -o Timing-Tests
+go build -o Timing-Tests ./tests/Timing-Tests
 ```
 
 ---

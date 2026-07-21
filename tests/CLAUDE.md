@@ -35,9 +35,12 @@ live beside the package, not here.
 ## Running
 
 ```bash
-go run tests/<name>/main.go          # from repo root
+go run ./tests/<name>                # from repo root
 cd tests/<name> && go run . -w       # or from the dir; -w = windowed
 ```
+
+Name the package, not `main.go`: `go run tests/<name>/main.go` compiles only
+that one file, so it breaks as soon as a test has more than one.
 
 Most accept the same flags as examples: `-w` (windowed), `-d N` (display), `-s <id>`.
 These are run and judged by a human at a real display — they are not part of CI and

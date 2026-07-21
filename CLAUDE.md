@@ -45,8 +45,10 @@ PDFs and the `site/` directory are excluded from git (see `.gitignore`); they ar
 **Prerequisites:** Go 1.25+.
 
 ```bash
-# Run a single example directly (from repo root — go.work handles the workspace)
-go run examples/parity_decision/main.go
+# Run a single example directly (from repo root — go.work handles the workspace).
+# Name the package, not main.go: naming a file compiles only that file, so the
+# command silently breaks the moment an example gains a second .go file.
+go run ./examples/parity_decision
 
 # Or from inside the example directory
 cd examples/parity_decision && go run . -w -s 1
@@ -127,7 +129,7 @@ live in `docs/WASM.md`. The essentials:
 On Raspberry Pi (tested: Ubuntu 25.10 + GNOME/Wayland), fullscreen mode renders nothing (gray screen) while windowed mode works correctly. The SDL3 exclusive-fullscreen path does not properly attach the renderer to the visible framebuffer under the Pi's V3D/KMS stack. Workaround: force the software render driver and Wayland video driver:
 
 ```bash
-SDL_RENDER_DRIVER=software SDL_VIDEODRIVER=wayland go run main.go
+SDL_RENDER_DRIVER=software SDL_VIDEODRIVER=wayland go run .
 ```
 
 A convenience wrapper `examples/run_pi.sh` is available:

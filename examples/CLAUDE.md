@@ -93,5 +93,10 @@ bools are written bare; everything else is RFC-4180 quoted.
   `make update-examples-gallery`.
 - **Copyright header** on every new `.go` file (see root `CLAUDE.md`).
 - **Run from the repo root** so `go.work` resolves the workspace
-  (`go run examples/<name>/main.go`). Most examples accept `-w` (windowed), `-d N`
+  (`go run ./examples/<name>`). Most examples accept `-w` (windowed), `-d N`
   (display), `-s <id>` (subject).
+- **Name the package, not `main.go`.** `go run ./examples/<name>` (or `go run .`
+  from inside the directory) compiles every file in the package. `go run
+  examples/<name>/main.go` compiles *only that file* — it happens to work while
+  an example is a single file, and silently stops finding the rest the moment
+  you add a second one. `RSVP-Images` is the example that already has two.
