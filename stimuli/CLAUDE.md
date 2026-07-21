@@ -336,6 +336,7 @@ err = exp.Run(func() error {
 | `Rewind()` | Jump back to frame 0 and resume |
 | `IsPlaying() bool` | True after `Play()`, before all frames shown |
 | `IsPaused() bool` | True while paused |
+| `CurrentFrame() int` | 0-based index of the frame in the GPU texture — the one the next flip shows; `-1` before the first `Update`. Use it to act on a specific frame (e.g. raise a TTL line) |
 | `Update(screen) error` | Advance one frame; returns `io.EOF` when done (and on every subsequent call); no-op if paused/stopped |
 | `Draw(screen) error` | Render current frame centered at `v.Position` |
 | `DrawAt(screen, *sdl.FRect) error` | Render current frame into a custom rectangle |

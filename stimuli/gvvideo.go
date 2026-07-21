@@ -162,6 +162,14 @@ func (v *GvVideo) IsPlaying() bool { return v.playing }
 // IsPaused returns true if Pause has been called and not yet resumed.
 func (v *GvVideo) IsPaused() bool { return v.paused }
 
+// CurrentFrame returns the 0-based index of the frame currently loaded in the
+// GPU texture — the one the next flip will put on screen — or -1 before the
+// first Update.
+//
+// Use it to act on a specific frame in a hand-rolled playback loop, for example
+// to raise a TTL line on the frame a stimulus appears.
+func (v *GvVideo) CurrentFrame() int { return v.currentFrame - 1 }
+
 // Update decompresses and uploads the next frame to the GPU texture.
 // Returns io.EOF when all frames have been presented (and on every subsequent call).
 // Returns nil without advancing if the video is paused or not yet started.

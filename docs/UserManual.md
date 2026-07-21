@@ -1818,6 +1818,48 @@ known time.
 `.gv`. If the participant is just watching something between trials, MPEG-1 is
 far more convenient.
 
+### Start here
+
+Almost everyone arrives with an `.mp4` and one of two goals.
+
+**"I want to play a movie, with its sound."** You need MPEG-1, because `.gv`
+has no audio track. Convert once, then play:
+
+```bash
+ffmpeg -i movie.mp4 -c:v mpeg1video -b:v 1500k \
+                    -c:a mp2 -b:a 192k -ar 44100 -ac 2 \
+                    -f mpeg movie.mpg
+```
+
+```go
+v, _ := stimuli.NewVideo(exp.Screen, "movie.mpg")
+defer v.Close()
+v.PreloadDevice(exp.AudioDevice)   // without this it plays silently
+v.Play()
+```
+
+Full walkthrough in [15.2](#152-mpeg-1-files--the-convenient-format). Frame
+onsets are approximate — fine for instructions and filler, not for measured
+stimuli.
+
+**"I need frame-accurate timing, and maybe a TTL trigger."** You need `.gv`.
+Convert once, then play:
+
+```bash
+make gv-convert
+_build/gv-convert movie.mp4 movie.gv    # needs ffmpeg for non-MPEG-1 input
+```
+
+```go
+events, logs, err := stimuli.PlayGv(exp.Screen, "movie.gv", 0, 0)
+```
+
+`logs` tells you afterwards whether any frame was late. Full walkthrough,
+including how to fire a trigger on a chosen frame, in
+[15.1](#151-gv-files--the-timing-critical-format). If you also need sound, play
+a separate `stimuli.Sound` alongside it — which additionally gives you
+independent control of audio onset (see [Section 11](#11-audio)).
+
 ### 15.1 `.gv` files — the timing-critical format
 
 `.gv` is the *Extreme GPU Friendly Video Format*, originally from
@@ -1939,15 +1981,89 @@ exp.Run(func() error {
     }
     exp.Screen.Clear()
     v.DrawAt(exp.Screen, &control.FRect{X: 100, Y: 50, W: 640, H: 480})
-    exp.Screen.Update()
-    return nil
+    return exp.Screen.PacedFlip()   // not Update(): see Section 5
 })
 ```
+
+Use `PacedFlip` rather than `Update` in any per-frame loop. On drivers that
+present without blocking (triple/mailbox buffering), `Update` returns
+immediately and the loop runs faster than the display, swallowing frames.
 
 `Width`, `Height`, `FrameCount` and `FPS` are read from the header at
 construction; the GPU texture is allocated lazily on the first `Update` or
 `Draw`. For playing several clips back to back without a gap, use
 `media.MovieManager` (see `docs/MediaMovies.md`).
+
+#### Firing a trigger on a chosen frame
+
+`PlayGv` has no per-frame hook, so drive the loop yourself. `CurrentFrame()`
+returns the frame now in the GPU texture — the one the next flip will show — so
+raise the line immediately *after* the flip that displays it:
+
+```go
+const onsetFrame = 120        // the frame whose onset you want marked
+const pulseFrames = 3         // ~50 ms at 60 Hz
+
+// Falls back to a no-op device when no hardware is present, so this code
+// still runs on a machine without a trigger box.
+trig, _, err := triggers.AutoDetectDLPIO8()
+if err != nil {
+    log.Fatal(err)
+}
+defer trig.Close()
+
+lowAt := -1
+v.Play()
+exp.Run(func() error {
+    if err := v.Update(exp.Screen); err == io.EOF {
+        return control.EndLoop
+    }
+    exp.Screen.Clear()
+    v.Draw(exp.Screen)
+
+    flipNS, err := exp.Screen.PacedFlipTS()
+    if err != nil {
+        return err
+    }
+    if v.CurrentFrame() == onsetFrame {
+        trig.SetHigh(0)                       // rising edge, right after the flip
+        lowAt = v.CurrentFrame() + pulseFrames
+        exp.Data.Add(trialNo, onsetFrame, flipNS)   // trialNo: your own counter
+    }
+    if v.CurrentFrame() == lowAt {
+        trig.SetLow(0)
+    }
+    return nil
+})
+```
+
+**Do not call `trig.Pulse` here.** `Pulse` is `SetHigh`, `time.Sleep`, `SetLow`
+— it blocks for the whole pulse width, which inside a VSYNC-locked loop costs
+you frames. Splitting it across iterations as above sleeps not at all, and ties
+the rising edge (the thing your amplifier timestamps) to a known flip. See
+[Section 17](#17-hardware-triggers-and-ttl-devices) for why wrapping `Pulse` in
+a goroutine is not the fix.
+
+`flipNS` shares its reference frame with SDL event timestamps, so it subtracts
+directly from a keypress timestamp to give a hardware-precision RT relative to
+the video frame (see [Section 6](#6-timing-architecture)).
+
+#### Verifying that no frame was late
+
+`PlayGv` returns a `[]VideoFrameLog`, one entry per frame:
+
+```go
+type VideoFrameLog struct {
+    Frame         int    // 0-based video frame index
+    FlipNS        uint64 // SDL nanosecond timestamp after the flip
+    SkippedFrames int    // display frames late (0 = on time)
+}
+```
+
+Scan `SkippedFrames` after a trial and record the worst value, or abort the
+session if it exceeds what your paradigm tolerates. A clip that drops frames on
+the experiment machine is a data-quality problem you want to detect during
+piloting, not discover in the analysis.
 
 ### 15.2 MPEG-1 files — the convenient format
 
@@ -1960,6 +2076,35 @@ computes the target frame from elapsed time and *drops* frames to catch up if
 decoding falls behind. Playback stays the right length, but the onset of any
 particular frame is only approximate. **Do not put a frame onset from
 `stimuli.Video` in a data file** — use `.gv` for that.
+
+#### Converting an mp4 (or anything else) to MPEG-1
+
+`stimuli.Video` plays only MPEG-1, so anything else has to be converted once,
+up front. This is the command:
+
+```bash
+ffmpeg -i input.mp4 -c:v mpeg1video -b:v 1500k \
+                    -c:a mp2 -b:a 192k -ar 44100 -ac 2 \
+                    -f mpeg output.mpg
+```
+
+Reading it piece by piece:
+
+| Part | Why |
+|---|---|
+| `-c:v mpeg1video` | MPEG-**1** video. MPEG-2 in a `.mpg` will not play |
+| `-b:v 1500k` | video bitrate; raise for large frames, lower for smaller files |
+| `-c:a mp2` | MP2 is the only audio codec an MPEG-1 program stream carries |
+| `-ar 44100 -ac 2` | 44.1 kHz stereo; safe defaults |
+| `-f mpeg` | **the load-bearing flag** — selects the MPEG-1 system muxer |
+
+`-f mpeg` is the one people get wrong. `-f vob` looks equivalent and produces an
+MPEG-2 program stream that is rejected at load. If you omit `-f` entirely,
+ffmpeg guesses from the `.mpg` extension and usually gets it right, but being
+explicit costs nothing.
+
+Drop the three audio flags for a silent clip. To check the result before wiring
+it into an experiment, see the next section.
 
 #### Format requirements
 
@@ -1979,16 +2124,10 @@ file clip.mpg     # want: "MPEG sequence, v1, system multiplex"
 ffprobe clip.mpg  # want: format_name=mpeg, codec_name=mpeg1video (+ mp2 audio)
 ```
 
-Produce a conforming file with:
-
-```bash
-ffmpeg -i input.mp4 -c:v mpeg1video -b:v 1500k \
-                    -c:a mp2 -b:a 192k -ar 44100 -ac 2 \
-                    -f mpeg output.mpg
-```
-
-`-f mpeg` is the load-bearing flag — it selects the MPEG-1 system muxer. `-f vob`
-produces an MPEG-2 program stream that will not play.
+If `file` says *"MPEG sequence, v2"* the video is MPEG-2; if it does not say
+*"system multiplex"* you have an elementary stream. Either way, re-run the
+conversion above. A file with only one stream listed by `ffprobe` has no
+soundtrack, whatever its name promises.
 
 #### Playing an MPEG-1 file
 
@@ -2143,6 +2282,46 @@ box.PulseMask(0b00000011, 5*time.Millisecond)  // lines 0 and 1 simultaneously
 ### Timing advice
 
 The output pulse should be sent as close as possible to `exp.ShowTS(stim)`. Because both `Screen.FlipTS` and the trigger output use the system's real-time clock, the latency between the VSYNC flip and the TTL edge is typically under 1 ms. The EEG amplifier records this edge, and the exact onset can be recovered by subtracting `int64(triggerEdgeNS - onsetNS)` if the amplifier's sample clock is synchronised.
+
+### `Pulse` blocks — and a goroutine is not the fix
+
+`Pulse(line, d)` is `SetHigh`, `time.Sleep(d)`, `SetLow`. It blocks for the full
+width. That is fine in an ordinary trial loop, where the sleep overlaps a
+stimulus you were going to display anyway — but inside a per-frame loop
+(`.gv` playback, `PresentStreamOfStimuliFunc`, any VSYNC-locked animation) it
+costs you frames.
+
+The tempting fix is `go trig.Pulse(0, 5*time.Millisecond)`. Don't:
+
+- **It races.** `ParallelPort.SetHigh` is an unsynchronised read-modify-write on
+  a shadow register, so overlapping calls can lose an update and leave a line
+  stuck HIGH or send a wrong code. `LabJackT4` shares one Modbus TCP
+  connection; the serial devices give no ordering guarantee across goroutines.
+  Only `FT232HTrigger` and `LinuxGPIOTrigger` hold a mutex. These failures are
+  silent and intermittent, and they corrupt the event record in your EEG file.
+- **It moves the edge onto the Go scheduler.** The amplifier timestamps the
+  *rising* edge — that is your event marker. Blocking `Pulse` raises the line
+  immediately and only the *width* costs time; `go Pulse` defers the `SetHigh`
+  to whenever the scheduler runs it, adding jitter to the one edge that must
+  not have any.
+- **It outlives its device.** If the trial ends and the device closes while the
+  goroutine sleeps, `SetLow` fires on a closed port.
+
+In a per-frame loop, split the pulse across iterations instead — no sleeping at
+all, and the rising edge is locked to a known flip:
+
+```go
+if thisIsTheOnsetFrame {
+    trig.SetHigh(0)              // rising edge, right after the flip
+    lowAt = frameIndex + 3       // ~50 ms at 60 Hz
+}
+if frameIndex == lowAt {
+    trig.SetLow(0)
+}
+```
+
+The width quantises to whole frames, which is well above the ~1 ms most
+amplifiers need. [Section 15](#15-video) shows this applied to `.gv` playback.
 
 ### Reading response inputs (FORP pads)
 
