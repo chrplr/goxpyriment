@@ -311,6 +311,8 @@ events, logs, err := stimuli.PlayGv(screen, "path/to/video.gv", x, y)
 
 Plays an LZ4-compressed RGBA `.gv` file once, frame-by-frame, VSYNC-locked. GC disabled. Exits on ESC/window-close. Returns per-frame timing logs.
 
+**Frame rate:** plays at the rate in the `.gv` header, holding each frame for `refresh / fps` refreshes (30 fps on 60 Hz → 2 refreshes per frame). Both rates are rounded first (59.94 Hz + 29.97 fps behave as 60 + 30). Only exact integer ratios work; 24 fps on 60 Hz needs 2.5 and returns an error naming a workable rate, because the pulldown would make onsets uneven. Before this was enforced, `PlayGv` presented one video frame per refresh and a 30 fps clip played at double speed.
+
 ### Interactive (manual control)
 
 ```go

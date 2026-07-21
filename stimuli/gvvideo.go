@@ -202,6 +202,53 @@ func (v *GvVideo) Close() { v.Unload() }
 
 // GetPosition, SetPosition are provided by BaseVisual.
 
+// framesPerVideoFrame returns how many display refreshes each video frame must
+// be held for so the clip plays at its authored rate.
+//
+// Both rates are rounded to the nearest integer first, so a display reporting
+// 59.94 Hz and a file authored at 29.97 fps are treated as 60 and 30. Only an
+// exact integer ratio is supported: at 60 Hz a 30 fps clip holds each frame for
+// 2 refreshes, but a 24 fps clip would need 2.5 and is rejected rather than
+// silently played at the wrong speed (the 3:2 pulldown that would be required
+// makes frame onsets uneven, which defeats the point of using .gv).
+func framesPerVideoFrame(refreshHz, fileFPS float64) (int, error) {
+	if fileFPS <= 0 {
+		return 0, fmt.Errorf("video reports fps=%g; the .gv header is missing a frame rate", fileFPS)
+	}
+	if refreshHz <= 0 {
+		return 0, fmt.Errorf("could not determine the display refresh rate")
+	}
+
+	refresh := int(math.Round(refreshHz))
+	fps := int(math.Round(fileFPS))
+	if fps < 1 {
+		return 0, fmt.Errorf("video fps %g rounds to %d", fileFPS, fps)
+	}
+	if refresh < fps {
+		return 0, fmt.Errorf(
+			"display refresh %d Hz is slower than the video's %d fps; the clip cannot be shown at its authored rate",
+			refresh, fps)
+	}
+	if refresh%fps != 0 {
+		return 0, fmt.Errorf(
+			"display refresh %d Hz is not an integer multiple of the video's %d fps (%.3f frames per refresh); "+
+				"re-encode the clip at a divisor of %d fps, e.g. gv-convert -fps %d",
+			refresh, fps, float64(refresh)/float64(fps), refresh, largestDivisorAtMost(refresh, fps))
+	}
+	return refresh / fps, nil
+}
+
+// largestDivisorAtMost returns the largest divisor of refresh that is <= want,
+// used only to suggest a workable frame rate in the error above.
+func largestDivisorAtMost(refresh, want int) int {
+	for d := want; d >= 1; d-- {
+		if refresh%d == 0 {
+			return d
+		}
+	}
+	return 1
+}
+
 // PlayGv plays a .gv video file once, frame by frame, synchronised to VSYNC.
 // x and y are center-based screen coordinates. Returns all user input events
 // collected during playback and per-frame timing logs. Playback can be
@@ -225,7 +272,16 @@ func PlayGv(screen *xio.Screen, path string, x, y float32) ([]UserEvent, []Video
 
 	v.Position = sdl.FPoint{X: x, Y: y}
 
-	frameDurNS := uint64(screen.FrameDuration().Nanoseconds())
+	frameDur := screen.FrameDuration()
+	frameDurNS := uint64(frameDur.Nanoseconds())
+
+	// Hold each video frame for as many refreshes as its authored rate needs,
+	// or the clip plays at the monitor's rate instead of its own — twice too
+	// fast for a 30 fps file on a 60 Hz display.
+	hold, err := framesPerVideoFrame(float64(time.Second)/float64(frameDur), v.FPS)
+	if err != nil {
+		return nil, nil, fmt.Errorf("PlayGv %q: %w", path, err)
+	}
 
 	var userEvents []UserEvent
 	var logs []VideoFrameLog
@@ -236,23 +292,33 @@ func PlayGv(screen *xio.Screen, path string, x, y float32) ([]UserEvent, []Video
 		if err := v.updateFrame(i); err != nil {
 			return userEvents, logs, fmt.Errorf("PlayGv frame %d: %w", i, err)
 		}
-		if err := screen.Clear(); err != nil {
-			return userEvents, logs, fmt.Errorf("PlayGv: clearing screen: %w", err)
-		}
-		if err := v.Draw(screen); err != nil {
-			return userEvents, logs, fmt.Errorf("PlayGv: drawing frame %d: %w", i, err)
-		}
-		flipNS, err := screen.FlipTS()
-		if err != nil {
-			return userEvents, logs, fmt.Errorf("PlayGv: flipping display: %w", err)
+
+		// Re-draw before every flip: SDL leaves backbuffer contents undefined
+		// after a present, so holding a frame by not drawing flickers on
+		// double-buffered drivers.
+		var flipNS uint64
+		for h := 0; h < hold; h++ {
+			if err := screen.Clear(); err != nil {
+				return userEvents, logs, fmt.Errorf("PlayGv: clearing screen: %w", err)
+			}
+			if err := v.Draw(screen); err != nil {
+				return userEvents, logs, fmt.Errorf("PlayGv: drawing frame %d: %w", i, err)
+			}
+			ts, err := screen.FlipTS()
+			if err != nil {
+				return userEvents, logs, fmt.Errorf("PlayGv: flipping display: %w", err)
+			}
+			if h == 0 {
+				flipNS = ts // the frame's onset is its first flip
+			}
 		}
 
 		skipped := 0
 		if prevFlipNS > 0 && frameDurNS > 0 {
 			gapNS := flipNS - prevFlipNS
 			displayFrames := int(math.Round(float64(gapNS) / float64(frameDurNS)))
-			if displayFrames > 1 {
-				skipped = displayFrames - 1
+			if displayFrames > hold {
+				skipped = displayFrames - hold
 			}
 		}
 		logs = append(logs, VideoFrameLog{Frame: i, FlipNS: flipNS, SkippedFrames: skipped})

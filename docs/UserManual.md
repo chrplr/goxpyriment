@@ -1965,6 +1965,29 @@ events, logs, err := stimuli.PlayGv(exp.Screen, "stim.gv", 0, 0)
 `PlayGv` disables GC, locks to VSYNC, and returns a per-frame `TimingLog` you can
 write to your data file to verify that no frame was late. It exits on ESC.
 
+##### The clip's frame rate must divide the refresh rate
+
+`PlayGv` plays at the rate stored in the `.gv` header, holding each video frame
+for however many refreshes that takes — a 30 fps clip on a 60 Hz display is
+shown for 2 refreshes per frame. Both rates are rounded first, so a display
+reporting 59.94 Hz and a clip authored at 29.97 fps behave as 60 and 30.
+
+Only exact integer ratios are supported. A 24 fps clip on a 60 Hz display would
+need 2.5 refreshes per frame, so `PlayGv` refuses it rather than play it at the
+wrong speed or with uneven onsets:
+
+```
+display refresh 60 Hz is not an integer multiple of the video's 24 fps
+(2.500 frames per refresh); re-encode the clip at a divisor of 60 fps,
+e.g. gv-convert -fps 20
+```
+
+The 3:2 pulldown that would otherwise be required makes frame onsets uneven,
+which defeats the reason for using `.gv` at all. **Choose the clip's frame rate
+to divide the refresh rate of the machine it will run on** — at 60 Hz that means
+60, 30, 20, 15, 12, 10 …; `gv-convert -fps` sets it, and `gv-getinfo` reports
+what a file actually claims.
+
 Interactive, when you need to draw around the video or respond mid-clip:
 
 ```go
