@@ -24,6 +24,8 @@ help:
 	@echo "  readme    Regenerate README.md from docs/index.md (single source of truth)"
 	@echo "  run-NAME       Build and run a single example (e.g. make run-parity_decision)"
 	@echo "  share-NAME     Export one example as a standalone module to _build/share/NAME/"
+	@echo "  gv-convert     Build the video -> .gv converter to _build/gv-convert"
+	@echo "  gv-getinfo     Build the .gv file inspector to _build/gv-getinfo"
 	@echo "  tests     Build test binaries"
 	@echo "  wasm-NAME        Build a browser (WASM) bundle of an example to _build/wasm/NAME/"
 	@echo "  wasm-NAME-serve  Build + serve a browser bundle at http://localhost:8080/?s=1"
@@ -53,6 +55,19 @@ examples:
 # Regenerate docs/GalleryOfExamples.md tables from per-example meta.yaml files.
 update-examples-gallery:
 	@go run ./cmd/gen-gallery/
+
+# Build the video -> .gv converter. MPEG-1 input needs no external tools;
+# other formats are piped through ffmpeg if it is on PATH.
+gv-convert:
+	@mkdir -p _build
+	@CGO_ENABLED=0 go build -o _build/gv-convert ./cmd/gv-convert
+	@echo "Built _build/gv-convert"
+
+# Build the .gv inspector: prints frame count, frame size, fps and compression.
+gv-getinfo:
+	@mkdir -p _build
+	@CGO_ENABLED=0 go build -o _build/gv-getinfo ./cmd/gv-getinfo
+	@echo "Built _build/gv-getinfo"
 
 # Regenerate README.md from docs/index.md (single source of truth for the
 # landing page). Rewrites relative links to reach files through docs/.

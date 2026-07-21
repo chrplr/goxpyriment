@@ -26,11 +26,12 @@ This manual explains the key concepts of the library. It assumes you have read t
 12. [Experimental Design and Randomization](#12-experimental-design-and-randomization)
 13. [Embedding Stimuli and Trial Lists in the Executable](#13-embedding-stimuli-and-trial-lists-in-the-executable)
 14. [Animated Stimuli](#14-animated-stimuli)
-15. [Gamma Correction and Luminance Linearity](#15-gamma-correction-and-luminance-linearity)
-16. [Hardware Triggers and TTL Devices](#16-hardware-triggers-and-ttl-devices)
-17. [Display Compositor Bypass](#17-display-compositor-bypass)
-18. [Variable Refresh Rate (VRR) Stimulus Presentation](#18-variable-refresh-rate-vrr-stimulus-presentation)
-19. [Putting It All Together](#19-putting-it-all-together)
+15. [Video](#15-video) — `.gv` for measured stimuli, MPEG-1 for convenience
+16. [Gamma Correction and Luminance Linearity](#16-gamma-correction-and-luminance-linearity)
+17. [Hardware Triggers and TTL Devices](#17-hardware-triggers-and-ttl-devices)
+18. [Display Compositor Bypass](#18-display-compositor-bypass)
+19. [Variable Refresh Rate (VRR) Stimulus Presentation](#19-variable-refresh-rate-vrr-stimulus-presentation)
+20. [Putting It All Together](#20-putting-it-all-together)
 
 ---
 
@@ -425,7 +426,7 @@ Use this decision guide before committing to a timing strategy.
 | Stimulus duration measured in frames (e.g. 2-frame mask) | Per-frame loop with `screen.PacedFlip()` (safe on all drivers), or `PresentStreamOfImages` (Section 10) |
 | Multi-stimulus sequence, RT relative to a specific stimulus | `exp.ShowTS(stim)` + `exp.Keyboard.GetKeyEventTS(...)` — nanosecond timestamps on the same SDL clock; subtract directly |
 | RSVP or rapid animation (frame-accurate presentation of many items) | `PresentStreamOfImages` / `PresentStreamOfText` (Section 10) — GC disabled, VSYNC-locked, full timing log |
-| EEG/MEG synchronisation required | Add a TTL pulse via `triggers` immediately after `exp.ShowTS` (Section 15) |
+| EEG/MEG synchronisation required | Add a TTL pulse via `triggers` immediately after `exp.ShowTS` (Section 17) |
 | Stimulus duration not a multiple of the frame period (e.g. 10 ms, 17 ms) | Variable Refresh Rate mode — see below |
 
 **OS considerations.** Presentation latency depends heavily on whether the display compositor is active — see the next section. For EEG work, always verify onset timing with a photodiode regardless of OS.
@@ -1796,7 +1797,241 @@ result, err := stimuli.PresentMovingGabor(
 
 ---
 
-## 15. Gamma Correction and Luminance Linearity
+## 15. Video
+
+goxpyriment plays video in two formats, and the choice is a deliberate trade
+between **timing determinism** and **file size / convenience**. Neither is a
+general-purpose media player: both exist to put moving images on screen at a
+known time.
+
+| | `.gv` | MPEG-1 (`.mpg`) |
+|---|---|---|
+| Type | `stimuli.GvVideo`, `stimuli.PlayGv`, `media.Movie` | `stimuli.Video` |
+| Frame cadence | VSYNC-locked, GC disabled | wall-clock, drops frames under load |
+| Decode cost | constant per frame | varies with I/P/B frame type |
+| Audio | none | MP2 soundtrack |
+| Seeking | O(1), every frame independent | sequential only |
+| Size (10 s, 960×400) | ~41 MB | ~2 MB |
+| Use for | measured stimuli | instructions, fillers, long clips |
+
+**Rule of thumb:** if the onset time of a frame ends up in your data file, use
+`.gv`. If the participant is just watching something between trials, MPEG-1 is
+far more convenient.
+
+### 15.1 `.gv` files — the timing-critical format
+
+`.gv` is the *Extreme GPU Friendly Video Format*, originally from
+[ofxExtremeGpuVideo](https://github.com/Ushio/ofxExtremeGpuVideo). Each frame is
+an independent, LZ4-compressed block of raw RGBA, followed by an index table of
+`(address, size)` pairs at the end of the file.
+
+That layout is what buys the timing guarantee. There is no inter-frame
+prediction, so presenting frame *n* costs a seek, one LZ4 decompression, and a
+texture upload — the same work for every frame, whatever the content. Compare
+this with H.264, where an I-frame costs several times a B-frame and the
+resulting jitter is *periodic*, aligned to the GOP boundary. That is the
+pathological case for frame-accurate onsets, and it is exactly what `.gv`
+avoids.
+
+You pay for it in disk space. A frame is `width × height × 4` bytes before
+compression; LZ4 is fast rather than thorough, so expect files roughly an order
+of magnitude larger than an equivalent MPEG-1. The 10 s 960×400 clip in the
+table above is 366 MB raw, 41 MB as `.gv`, and 2 MB as MPEG-1.
+
+`.gv` carries **no audio track**. Play a separate `stimuli.Sound` alongside it,
+which also gives you independent control over audio onset (see
+[Section 11](#11-audio)).
+
+#### Creating a `.gv` file
+
+`cmd/gv-convert` converts a video directly:
+
+```bash
+make gv-convert                          # builds _build/gv-convert
+
+gv-convert clip.mpg clip.gv              # MPEG-1 input: pure Go, no ffmpeg
+gv-convert movie.mp4 movie.gv            # anything else: needs ffmpeg on PATH
+gv-convert frames/ anim.gv               # a directory of numbered images
+gv-convert -fps 30 movie.mov movie.gv    # resample to 30 fps
+gv-convert -max 100 long.mp4 preview.gv  # first 100 frames only
+```
+
+MPEG-1 program streams are decoded in pure Go, so that path needs nothing
+installed. Every other video format is piped through `ffmpeg`, which must be on
+`PATH`; if it is missing, the tool says so and names both decoders it tried.
+
+#### From an image sequence
+
+Passing a **directory** converts the `.png`/`.jpg`/`.jpeg`/`.gif` files it
+contains. This is the right route when frames are generated programmatically
+(drifting gratings, custom animations) rather than filmed. Two behaviours differ
+from a naive image-sequence converter, both deliberately:
+
+- **Frames are ordered numerically, not lexicographically.** With unpadded names
+  a plain string sort puts `frame_10.png` before `frame_2.png`, silently playing
+  the sequence out of order. `gv-convert` sorts by numeric value and prints a
+  note when the two orders disagree, so you can see that it mattered.
+- **All frames must be the same size.** A mismatch is an error, not a silent
+  crop: a wrongly-sized stimulus is the kind of fault that surfaces only at
+  analysis. Pass `-force-size` to crop/pad against the first frame instead.
+
+A directory has no inherent frame rate, so `-fps` sets it (default 30).
+
+The standalone [images2gv](https://github.com/chrplr/images2gv) does the same
+job without requiring the goxpyriment tree, and targets other `.gv` players such
+as `ofxExtremeGpuVideo` and ebiten.
+
+#### Inspecting a `.gv` file
+
+`cmd/gv-getinfo` prints what a `.gv` file actually contains — useful to confirm
+a conversion produced the frame rate and dimensions you expected, and to check
+that a file will play at all:
+
+```bash
+make gv-getinfo                  # builds _build/gv-getinfo
+
+$ gv-getinfo stim.gv
+file        : stim.gv
+frame size  : 960 x 400 px  (1.5 MB raw per frame)
+frame count : 250
+frame rate  : 25.000 fps   (duration 10.00 s)
+pixel format: raw RGBA
+file size   : 40.8 MB
+frame data  : 40.8 MB compressed from 366.2 MB  (9.0x, 11.2% of raw)
+frame sizes : min 5.9 KB, median 104.3 KB, max 611.2 KB
+```
+
+`-frames` lists every frame's offset and compressed size; `-q` prints one
+tab-separated line per file for scripting. The tool also cross-checks the header
+against the index table and warns about inconsistencies — a `.gv` whose header
+disagrees with its index loads but plays incorrectly, which is otherwise hard to
+diagnose from a black screen.
+
+Files written by other tools may use DXT1/DXT3/DXT5 or BC7 block compression
+instead of raw RGBA. `gv-getinfo` flags these: goxpyriment's reader
+LZ4-decompresses straight into a texture and never DXT-decodes, so only `raw
+RGBA` is playable.
+
+#### Playing a `.gv` file
+
+One-shot, for when the video *is* the trial:
+
+```go
+events, logs, err := stimuli.PlayGv(exp.Screen, "stim.gv", 0, 0)
+```
+
+`PlayGv` disables GC, locks to VSYNC, and returns a per-frame `TimingLog` you can
+write to your data file to verify that no frame was late. It exits on ESC.
+
+Interactive, when you need to draw around the video or respond mid-clip:
+
+```go
+v, err := stimuli.NewGvVideo("stim.gv")
+if err != nil {
+    log.Fatal(err)
+}
+defer v.Close()
+
+v.Play()
+exp.Run(func() error {
+    if err := v.Update(exp.Screen); err == io.EOF {
+        return control.EndLoop
+    }
+    exp.Screen.Clear()
+    v.DrawAt(exp.Screen, &control.FRect{X: 100, Y: 50, W: 640, H: 480})
+    exp.Screen.Update()
+    return nil
+})
+```
+
+`Width`, `Height`, `FrameCount` and `FPS` are read from the header at
+construction; the GPU texture is allocated lazily on the first `Update` or
+`Draw`. For playing several clips back to back without a gap, use
+`media.MovieManager` (see `docs/MediaMovies.md`).
+
+### 15.2 MPEG-1 files — the convenient format
+
+`stimuli.Video` decodes MPEG-1 in pure Go via
+[gen2brain/mpeg](https://github.com/gen2brain/mpeg). No ffmpeg, no cgo, no
+conversion step — you point it at a `.mpg` and it plays, with sound.
+
+The cost is that playback is driven by the wall clock, not by VSYNC. `Update`
+computes the target frame from elapsed time and *drops* frames to catch up if
+decoding falls behind. Playback stays the right length, but the onset of any
+particular frame is only approximate. **Do not put a frame onset from
+`stimuli.Video` in a data file** — use `.gv` for that.
+
+#### Format requirements
+
+The decoder is strict, and the two most common failures are worth knowing:
+
+- It must be an **MPEG-1 program stream** — the file starts with the pack header
+  `00 00 01 BA`. A raw elementary stream (starting `00 00 01 B3`) is rejected
+  with `invalid MPEG-PS`. An elementary stream also cannot carry audio at all,
+  whatever the filename suggests.
+- The video must be **MPEG-1**, not MPEG-2. A `.mpg` containing MPEG-2 is out of
+  scope for the library even though the extension is the same.
+
+Check a file before blaming your code:
+
+```bash
+file clip.mpg     # want: "MPEG sequence, v1, system multiplex"
+ffprobe clip.mpg  # want: format_name=mpeg, codec_name=mpeg1video (+ mp2 audio)
+```
+
+Produce a conforming file with:
+
+```bash
+ffmpeg -i input.mp4 -c:v mpeg1video -b:v 1500k \
+                    -c:a mp2 -b:a 192k -ar 44100 -ac 2 \
+                    -f mpeg output.mpg
+```
+
+`-f mpeg` is the load-bearing flag — it selects the MPEG-1 system muxer. `-f vob`
+produces an MPEG-2 program stream that will not play.
+
+#### Playing an MPEG-1 file
+
+```go
+v, err := stimuli.NewVideo(exp.Screen, "clip.mpg")
+if err != nil {
+    log.Fatal(err)
+}
+defer v.Close()
+
+// Enable the MP2 soundtrack. Safe to call unconditionally: it is a no-op
+// returning nil when the file has no audio stream.
+if err := v.PreloadDevice(exp.AudioDevice); err != nil {
+    log.Printf("audio unavailable: %v", err)
+}
+
+v.Play()
+exp.Run(func() error {
+    if err := v.Update(); err == io.EOF {   // note: no screen argument
+        return control.EndLoop
+    }
+    exp.Screen.Clear()
+    v.Draw(exp.Screen, 0, 0)
+    exp.Screen.Update()
+    return nil
+})
+```
+
+**Audio is off until `PreloadDevice` is called.** Without it the video plays
+silently, and audio packets are discarded at the demuxer — leaving decoding
+enabled with nothing draining the buffer would grow it for the length of the
+clip. Check `v.HasAudio` if you need to know whether a soundtrack exists, and
+use `v.SetVolume(gain)` to scale it.
+
+`Update` keeps 100 ms of decoded audio queued on the SDL device. Audio is
+free-running once queued, so it stays aligned with the video to within that
+depth. Two consequences: `Pause` clears the queue so sound stops with the image
+(resuming leaves audio up to 100 ms ahead), and `Rewind` clears it too so a
+restarted clip does not play over its own tail.
+
+---
+
+## 16. Gamma Correction and Luminance Linearity
 
 ### The gamma problem
 
@@ -1864,7 +2099,7 @@ With the flag set, the 7 luminance levels (10, 25, 50, 100, 150, 200, 255) are t
 
 ---
 
-## 16. Hardware Triggers and TTL Devices
+## 17. Hardware Triggers and TTL Devices
 
 EEG and MEG recordings require a synchronisation signal — a short TTL pulse sent at the exact moment a stimulus is presented — so that electrophysiological data can be time-locked to experimental events. The `triggers` package provides this, along with the ability to read TTL inputs from response hardware such as fiber-optic response pads.
 
@@ -2004,7 +2239,7 @@ The device must be reachable on the local network. Default Modbus port 502 is us
 
 ---
 
-## 17. Display Compositor Bypass
+## 18. Display Compositor Bypass
 
 A compositing window manager (compositor) intercepts every application
 frame and blends it with other on-screen elements before sending the
@@ -2046,7 +2281,7 @@ These platform differences can be quantified empirically with the
 
 ---
 
-## 18. Variable Refresh Rate (VRR) Stimulus Presentation
+## 19. Variable Refresh Rate (VRR) Stimulus Presentation
 
 Standard displays refresh at a fixed rate (e.g., 60 Hz), which quantises
 every stimulus duration to multiples of the frame period (16.67 ms at
@@ -2098,7 +2333,7 @@ rather than being uniformly small, providing an unambiguous diagnostic.
 
 ---
 
-## 19. Putting It All Together
+## 20. Putting It All Together
 
 Here is a skeleton that illustrates how the concepts compose in a realistic experiment:
 
