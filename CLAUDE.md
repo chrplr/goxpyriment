@@ -10,6 +10,7 @@ All user-facing documentation lives in `docs/`:
 |---|---|
 | `docs/GettingStarted.md` | Tutorial introduction — Python/Expyriment mapping, 3 worked examples |
 | `docs/MigrationGuide.md` | Migration reference — concept maps and side-by-side code for Expyriment, PsychoPy, Psychtoolbox |
+| `docs/ComparisonWithPsychoPy.md` | Feature-by-feature comparison with PsychoPy — parity, gaps, and how to choose |
 | `docs/UserManual.md` | Concept guide — rendering model, timing, input, data, streams, audio, design |
 | `docs/API.md` | Complete public API reference organized by package |
 
@@ -60,6 +61,17 @@ cd examples && ./build.sh
 # (generated go.mod requiring the published goxpyriment; no go.work/replace).
 # Output: _build/share/NAME/ — see examples/share.sh and examples/README.md.
 make share-parity_decision
+
+# Convert a video, or a directory of numbered images, to the .gv format used
+# for timing-critical playback. MPEG-1 is decoded in pure Go; other video
+# formats need ffmpeg on PATH. Image dirs sort numerically (not
+# lexicographically) and reject size mismatches unless -force-size is passed.
+make gv-convert
+./_build/gv-convert clip.mpg clip.gv     # video
+./_build/gv-convert frames/ anim.gv      # image sequence
+
+# Inspect a .gv file (frame count, frame size, fps, compression, consistency)
+make gv-getinfo && ./_build/gv-getinfo clip.gv
 
 # Build/check a library package (no test binary needed)
 go build ./stimuli/

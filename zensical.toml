@@ -15,7 +15,7 @@ nav = [
   { Gallery = [ { "Gallery of Examples" = "GalleryOfExamples.md" }, { "Pre-built examples" = "pre-built-examples.md" } ] },
   { "User Manual" = "UserManual.md" },
   { API = "API.md" },
-  { Misc = [ { "Migration Guide" = "MigrationGuide.md" }, { "Timing Tests" = "TimingTests.md" }, { "Movies / media" = "MediaMovies.md" }, { "Packaging your experiment" = "How_to_package_your_experiment.md" }, { "WASM build" = "WASM.md" }, { "Fullscreen & high pixel density" = "Fullscreen_high_pixel_density.md" }, { "Frame syncing" = "frame-syncing.md" }, { "Setting priority under Linux" = "SettingPriorityUnderLinux.md" }, { "Linux virtual console" = "LinuxVirtualConsoleSDL.md" }, { "How experiment.go works" = "how-experiment-go-works.md" }, { "Library usage" = "library_usage.md" }, { "Go vs Python" = "gemini-about-go-vs-python.md" }, { "Viewing docs locally" = "ViewingDocsLocally.md" } ] },
+  { Misc = [ { "Migration Guide" = "MigrationGuide.md" }, { "Comparison with PsychoPy" = "ComparisonWithPsychoPy.md" }, { "Timing Tests" = "TimingTests.md" }, { "Movies / media" = "MediaMovies.md" }, { "Packaging your experiment" = "How_to_package_your_experiment.md" }, { "WASM build" = "WASM.md" }, { "Fullscreen & high pixel density" = "Fullscreen_high_pixel_density.md" }, { "Frame syncing" = "frame-syncing.md" }, { "Setting priority under Linux" = "SettingPriorityUnderLinux.md" }, { "Linux virtual console" = "LinuxVirtualConsoleSDL.md" }, { "How experiment.go works" = "how-experiment-go-works.md" }, { "Library usage" = "library_usage.md" }, { "Go vs Python" = "gemini-about-go-vs-python.md" }, { "Viewing docs locally" = "ViewingDocsLocally.md" } ] },
 ]
 
 [project.theme]
