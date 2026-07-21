@@ -59,6 +59,11 @@ func main() {
 			continue
 		}
 
+		// Enable the MP2 soundtrack if the file has one; no-op otherwise.
+		if err := vid.PreloadDevice(exp.AudioDevice); err != nil {
+			log.Printf("audio unavailable for %s: %v", videoPath, err)
+		}
+
 		vid.Play()
 
 		err = exp.Run(func() error {

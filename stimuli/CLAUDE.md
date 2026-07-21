@@ -255,6 +255,52 @@ type TimingLog struct {
 }
 ```
 
+## MPEG-1 video (with MP2 audio)
+
+`Video` plays an MPEG-1 program stream (`.mpg` / `.mpeg`) decoded in pure Go by
+`gen2brain/mpeg`. Unlike `GvVideo` it is wall-clock driven, not VSYNC-locked — it
+drops frames under load rather than falling behind, so onset timing is only
+approximate. For timing-critical stimuli prefer `.gv`.
+
+```go
+v, err := stimuli.NewVideo(exp.Screen, "clip.mpg")
+defer v.Close()
+
+v.PreloadDevice(exp.AudioDevice) // enable the MP2 soundtrack (see below)
+v.Play()
+
+exp.Run(func() error {
+    if err := v.Update(); err == io.EOF {
+        return control.EndLoop
+    }
+    exp.Screen.Clear()
+    v.Draw(exp.Screen, 0, 0)
+    exp.Screen.Update()
+    return nil
+})
+```
+
+**Audio is off until `PreloadDevice` is called.** Without it the video plays
+silently and audio packets are discarded at the demuxer (leaving decoding enabled
+with nothing draining the buffer would grow it for the length of the clip).
+`PreloadDevice` is a no-op returning `nil` when the file has no audio stream, so
+it is safe to call unconditionally; check `v.HasAudio` if you need to know.
+
+| Method | Description |
+|---|---|
+| `PreloadDevice(device) error` | Enable MP2 audio and bind it to an audio device. Call before `Play` |
+| `HasAudio` (field) | True if the file carries an audio stream |
+| `SetVolume(gain) error` | Scale playback gain (1.0 = unchanged); no-op without audio |
+
+`Update()` tops the SDL audio queue back up to 100 ms ahead each call. Audio is
+free-running once queued, so it stays aligned with the video to within that depth.
+Two consequences worth knowing:
+
+- `Pause()` clears the queue so sound stops with the image; because that audio was
+  already decoded, resuming leaves audio up to 100 ms ahead of the video.
+- `Rewind()` clears the queue too, so a restarted clip does not play over its own
+  tail.
+
 ## GV video
 
 ### High-level one-shot
