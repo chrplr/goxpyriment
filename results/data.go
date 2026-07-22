@@ -80,6 +80,16 @@ func (df *DataFile) Save() error {
 	return df.OutputFile.Save()
 }
 
+// Finalize writes out both the CSV file and the companion info file at the end
+// of a session. On desktop it is equivalent to Save; in the browser it is the
+// call that actually produces the two downloads.
+func (df *DataFile) Finalize() error {
+	if err := df.InfoFile.Finalize(); err != nil {
+		return fmt.Errorf("results.DataFile.Finalize: info file: %w", err)
+	}
+	return df.OutputFile.Finalize()
+}
+
 // DefaultDataDir returns the default results directory used when no output
 // directory is specified: "$HOME/goxpy_data", falling back to DataFileDirectory
 // ("goxpy_data") if the user home directory cannot be determined.

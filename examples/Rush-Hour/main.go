@@ -87,7 +87,7 @@ func logRow(exp *control.Experiment, trial int, puzzle Puzzle, r eventRow) {
 // participant quits, in which case it returns control.EndLoop).
 func runTrial(exp *control.Experiment, trial int, p Puzzle, nTrials int) error {
 	b := p.Fresh()
-	status := fmt.Sprintf("Puzzle %d/%d — free the RED car", trial, nTrials)
+	status := fmt.Sprintf("Puzzle %d/%d - free the RED car", trial, nTrials)
 
 	onset := clock.GetTime()
 	nMoves := 0

@@ -118,7 +118,7 @@ func (e *Experiment) finalizeData() {
 	e.endOnce.Do(func() {
 		if e.Data != nil {
 			e.Data.WriteEndTime()
-			if err := e.Data.Save(); err == nil {
+			if err := e.Data.Finalize(); err == nil {
 				log.Printf("Results saved in %s (info: %s)", e.Data.FullPath, e.Data.InfoFile.FullPath)
 			}
 		}

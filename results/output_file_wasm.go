@@ -23,8 +23,18 @@ func NewOutputFile(directory, filename string) (*OutputFile, error) {
 	}, nil
 }
 
-// Save triggers a browser download of the buffered content.
+// Save is a no-op in the browser: there is no filesystem to flush to, and a
+// download per call would rain partial files on the participant (the metadata
+// header alone is written before the first trial, and experiments typically
+// flush after every block). The buffer is kept intact and written out once, by
+// Finalize, at the end of the session.
 func (o *OutputFile) Save() error {
+	return nil
+}
+
+// Finalize triggers a browser download of everything buffered so far. It is
+// called by Experiment.End; on desktop the equivalent simply flushes to disk.
+func (o *OutputFile) Finalize() error {
 	if len(o.Buffer) == 0 {
 		return nil
 	}

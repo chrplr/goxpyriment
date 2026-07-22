@@ -67,3 +67,10 @@ func (o *OutputFile) Save() error {
 	o.Buffer = make([]string, 0)
 	return writer.Flush()
 }
+
+// Finalize flushes the buffer to disk. On desktop it is exactly Save; the
+// browser build distinguishes the two, buffering until the session ends (see
+// output_file_wasm.go).
+func (o *OutputFile) Finalize() error {
+	return o.Save()
+}
