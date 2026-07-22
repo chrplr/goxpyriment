@@ -1,17 +1,16 @@
 package main
 
 import (
-	"slices"
-	"strconv"
+	"strconv"  // to convert int -> string
 
-	"github.com/chrplr/goxpyriment/control"
+	. "github.com/chrplr/goxpyriment/control"
 	"github.com/chrplr/goxpyriment/design"
 	"github.com/chrplr/goxpyriment/stimuli"
 )
 
 func main() {
-	exp := control.NewExperimentFromFlags("Parity Decision",
-		control.Black, control.White, 32)
+	exp := NewExperimentFromFlags("Parity Decision",
+		Black, White, 32)
 	defer exp.End()
 
 	Instructions := "When you'll see a number, your task to decide, " +
@@ -20,19 +19,20 @@ func main() {
 
 	Targets := []int{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}
 	NTrialsPerTarget := 2
-	trials := slices.Repeat(Targets, NTrialsPerTarget)
+	trials := design.RepeatList(Targets, NTrialsPerTarget)
 	design.ShuffleList(trials)
 
-	EvenResponse := control.K_F
-	OddResponse := control.K_J
+	EvenResponse := K_F
+	OddResponse := K_J
+	respKeys := []Keycode{EvenResponse, OddResponse}
 
-	cue := stimuli.NewFixCross(25, 2, control.DefaultTextColor)
+	cross := stimuli.NewFixCross(25, 2, DefaultTextColor)
 
 	// creates a map number -> image
 	Image := make(map[int]*stimuli.TextLine)
 	for _, num := range Targets {
 		Image[num] = stimuli.NewTextLine(strconv.Itoa(num),
-			0, 0, control.DefaultTextColor)
+			0, 0, DefaultTextColor)
 	}
 
 	exp.AddDataVariableNames([]string{"number", "key", "rt",
@@ -41,21 +41,18 @@ func main() {
 	exp.Run(func() error {
 		exp.ShowInstructions(Instructions)
 
-		for _, t := range trials {
-			exp.Blank(1000)
-			exp.ShowTimed(cue, 500)
-			key, rt, _ := exp.ShowAndGetRT(Image[t],
-				[]control.Keycode{EvenResponse, OddResponse},
-				-1)
-			correct := (t%2 == 0) == (key == EvenResponse)
-			exp.Data.Add(t, key, rt, correct)
+		for _, num := range trials {
+			exp.Blank(1500)
+			exp.ShowTimed(cross, 500)
+			key, rt, _ := exp.ShowAndGetRT(Image[num], respKeys, -1)
+
+			correct := (num%2 == 0) == (key == EvenResponse)
+			exp.Data.Add(num, key, rt, correct)
 			if !correct {
 				exp.Audio.PlayBuzzer()
 			}
-			exp.Wait(500)
 		}
-
-		return control.EndLoop
+		return EndLoop
 	})
 
 	exp.ShowEndMessage("Experiment complete. Thank you!\n\n" +

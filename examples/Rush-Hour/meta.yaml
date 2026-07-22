@@ -1,0 +1,3 @@
+category: experiment
+description: "Rush Hour sliding-block puzzle as a problem-solving task: on each trial the participant frees the red car from a 6x6 traffic jam by dragging (or clicking) the blocking vehicles, and every mouse action is logged, so the whole solution path — moves, dead ends, and latencies — can be reconstructed offline. The embedded library holds 49 boards ordered from 3 to 51 moves, each carrying the exact length of its shortest solution, so excess moves over the optimum is a per-trial measure; -n limits a session to the first N puzzles"
+reference: Fogleman (2018), Rush Hour puzzle database; ThinkFun "Rush Hour" (Nob Yoshigahara, 1996)

@@ -139,3 +139,47 @@ func TestShuffleList(t *testing.T) {
 		}
 	}
 }
+
+// TestRepeatList verifies that RepeatList concatenates count copies of the input,
+// mimicking slices.Repeat.
+func TestRepeatList(t *testing.T) {
+	got := RepeatList([]int{1, 2, 3}, 3)
+	want := []int{1, 2, 3, 1, 2, 3, 1, 2, 3}
+	if len(got) != len(want) {
+		t.Fatalf("RepeatList length = %d, want %d", len(got), len(want))
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("RepeatList[%d] = %d, want %d", i, got[i], want[i])
+		}
+	}
+
+	// count == 0 yields an empty, non-nil slice (as slices.Repeat does).
+	if got := RepeatList([]int{1, 2, 3}, 0); len(got) != 0 {
+		t.Errorf("RepeatList with count 0 = %v, want empty", got)
+	}
+
+	// An empty input yields an empty result regardless of count.
+	if got := RepeatList([]int{}, 5); len(got) != 0 {
+		t.Errorf("RepeatList of empty slice = %v, want empty", got)
+	}
+
+	// The result must be independent of the source: mutating the input
+	// afterwards must not change the returned slice.
+	src := []int{7, 8}
+	out := RepeatList(src, 2)
+	src[0] = 99
+	if out[0] != 7 || out[2] != 7 {
+		t.Errorf("RepeatList result aliases the input: got %v", out)
+	}
+
+	// A negative count must panic, matching slices.Repeat.
+	func() {
+		defer func() {
+			if recover() == nil {
+				t.Error("RepeatList with negative count did not panic")
+			}
+		}()
+		RepeatList([]int{1}, -1)
+	}()
+}

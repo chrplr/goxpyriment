@@ -84,9 +84,10 @@ hand := exp.GetPermutedBWSFactorCondition("hand", subjectID)
 | `CoinFlip` | `(headBias float64) bool` | True with probability headBias |
 | `RandNorm` | `(a, b float64) float64` | Truncated normal in [a, b] |
 | `ShuffleList[T]` | `(list []T)` | In-place Fisher-Yates shuffle |
+| `RepeatList[T]` | `(list []T, count int) []T` | count copies concatenated (mimics `slices.Repeat`) |
 | `MakeMultipliedShuffledList[T]` | `(list []T, n int) []T` | n independent shuffles, concatenated |
 
-`RandElement`, `ShuffleList`, `MakeMultipliedShuffledList` are generic (Go 1.18+).
+`RandElement`, `ShuffleList`, `RepeatList`, `MakeMultipliedShuffledList` are generic (Go 1.18+).
 
 ## Latin-square permutations
 

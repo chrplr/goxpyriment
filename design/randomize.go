@@ -68,6 +68,24 @@ func ShuffleList[T any](list []T) {
 	})
 }
 
+// RepeatList returns a new slice consisting of count copies of list concatenated.
+// It mimics slices.Repeat: it panics if count is negative or if the result of
+// (len(list) * count) overflows.
+func RepeatList[T any](list []T, count int) []T {
+	if count < 0 {
+		panic("design.RepeatList: negative count")
+	}
+	newLen := len(list) * count
+	if count > 0 && newLen/count != len(list) {
+		panic("design.RepeatList: result length overflows int")
+	}
+	newlist := make([]T, 0, newLen)
+	for i := 0; i < count; i++ {
+		newlist = append(newlist, list...)
+	}
+	return newlist
+}
+
 // MakeMultipliedShuffledList concatenates xtimes copies of the list, each copy shuffled independently.
 func MakeMultipliedShuffledList[T any](list []T, xtimes int) []T {
 	newlist := make([]T, 0, len(list)*xtimes)

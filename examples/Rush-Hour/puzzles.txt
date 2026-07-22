@@ -1,0 +1,69 @@
+# Rush Hour puzzle library — 49 puzzles in increasing order of difficulty,
+# from 3 to 51 moves.
+#
+# Format:   <name>: <minimum moves>: <36-character board>
+#
+# The board is read row-major over the 6x6 grid, one character per cell:
+#   o (or .)   empty cell
+#   A          the red target car (always horizontal, always on row 2)
+#   B, C, ...  the other vehicles (2 or 3 cells, horizontal or vertical)
+#
+# The minimum-move count treats one slide of a vehicle, over any distance, as a
+# single move. Blank lines and everything after a '#' are ignored. Every line is
+# validated at startup, and TestEmbeddedPuzzles re-solves each board by
+# breadth-first search to check both the count and the ordering.
+#
+# Source: the boards were selected from Michael Fogleman's exhaustive Rush Hour
+# database (https://www.michaelfogleman.com/rush/, 2.5 million puzzles), keeping
+# wall-free positions with at least 8 vehicles, then re-scored with the solver in
+# board_test.go. p02 is the board of the original pygame program.
+
+p01:  3: GBBCCC GIDDEE HIAAMN HJKoMN oJKLMO FFKLoO   # 15 vehicles
+p02:  4: BCCCoo BoooDo oAAEDo oooEoo FFoEoo ooGGGo   #  7 vehicles — the classic pygame board
+p03:  5: oEoBBB oEoGoH AAoGoH oFCCoo oFoooo oFoDDD   #  8 vehicles
+p04:  6: GIBBCC GIoJoo GAAJoo HDDDoo HoEEoo FFoooo   # 10 vehicles
+p05:  7: IBBBCC IDDooL IAAooL JKEEFF JKoooo GGGHHo   # 12 vehicles
+p06:  8: oBBBCC DDoJoK HAAJoK HEEEFF Iooooo IoGGoo   # 11 vehicles
+p07:  9: HJBBCC HJoooo HJKAAL DDKEEL IFFGGG Iooooo   # 12 vehicles
+p08: 10: BBBCCK oDDDoK AAoJoK oIoJEE oIoFFF oGGHHH   # 11 vehicles
+p09: 11: oBBBCC ooHDDD AAHIJK oEEIJK ooooJL oFFGGL   # 12 vehicles
+p10: 12: oBBKCC oDDKoL oHIAAL oHIEEM ooJooM FFJoGG   # 13 vehicles
+p11: 13: FGBBCC FGoJKo oAAJKo ooIJDD oHIooL oHIEEL   # 12 vehicles
+p12: 14: BBCCCo DDEELo IAAoLo IFFooo JKGGHH JKoooo   # 12 vehicles
+p13: 15: oHJooo FHJBBB FAAKoo GCCKLo GIDDLo oIEEoo   # 12 vehicles
+p14: 16: oFBBKL oFHJKL AAHJoo EGIJCC EGIooM EDDooM   # 13 vehicles
+p15: 17: ooJBBo GoJKCC GAAKoo HIoKDD HIEELo FFooLo   # 12 vehicles
+p16: 18: GBBCCC GDDKLM AAJKLM HIJEEN HIoooN FFFooN   # 14 vehicles
+p17: 19: GHIoBB GHIoJL GAAoJL CCDDKL EEooKo FFoooo   # 12 vehicles
+p18: 20: ooFooo ooFHJK AAGHJK BBGIoL ECCIoL EDDDoL   # 12 vehicles
+p19: 21: BBCCoK HoDDoK HoAAoL EEEJoL ooIJFF ooIJGG   # 12 vehicles
+p20: 22: oGBBBL oGCCJL AAHIJM DDHIKM FEEoKo Fooooo   # 13 vehicles
+p21: 23: ooGBBB ooGCCK AAHIoK DDHIJL FEEIJL Fooooo   # 12 vehicles
+p22: 24: oIBBCC oIDDDM AAJKoM HoJKEE HoFFLo GGooLo   # 13 vehicles
+p23: 25: JBBCCC JDDooM JAAoLM EEFFLM oKGGHH oKooII   # 13 vehicles
+p24: 26: BBoooL CCCDDL FHAAKM FHIJKM GoIJKo GoIJEE   # 13 vehicles
+p25: 27: HooJKo HBBJKL AAIooL CCIooM DDDEEM FFGGoo   # 13 vehicles
+p26: 28: HBBBoo HoJCCC AAJLoo DDKLEE oIKFFM oIGGoM   # 13 vehicles
+p27: 29: BBBCCM DDEEEM AAJooN ooJKLN IFFKLo IGGHHH   # 14 vehicles
+p28: 30: ooIBBo GHICCL GHAAJL oDDoJM EEEoKM FFFoKo   # 13 vehicles
+p29: 31: oBBCCC DDDooK AAIoJK EEIoJL HFFoJL HGGGoL   # 12 vehicles
+p30: 32: GBBJoM GHoJLM GHAALo CCIKLo ooIKDD oEEFFo   # 13 vehicles
+p31: 33: HBBJCC HooJLo HAAKLM DDIKLM ooIEEM oFFGGo   # 13 vehicles
+p32: 34: oooHBB ooGHCC AAGIJK DDoIJK FEEEoL FooooL   # 12 vehicles
+p33: 35: oGBBJL oGHIJL AAHIKM FCCoKM FooooM FDDEEE   # 13 vehicles
+p34: 36: BBBCCM ooJDDM AAJooN IEEFFN IGGKLo HHoKLo   # 14 vehicles
+p35: 37: GBBBKM GCCCKM AAHILM DDHILo oooJEE oooJFF   # 13 vehicles
+p36: 38: oooJBB FoIJoL FoIAAL GCCCKM GHDDKM oHEEKo   # 13 vehicles
+p37: 39: oBBBKM CCoIKM AAoILo GDDJLo GoHJEE FFHooo   # 13 vehicles
+p38: 40: ooIBBo CCIJLo HAAJLo HDDEEo FFFKoo GGoKoo   # 12 vehicles
+p39: 41: BBoIJo CCCIJL AAoIKL GoDDKM GoHEEM FFHooo   # 13 vehicles
+p40: 42: FGBBJo FGoIJL FAAIKL ooHoKM ooHCCM DDEEEM   # 13 vehicles
+p41: 43: HoBBBM HCCJLM AAIJLo DDIKLo oooKEE oFFGGo   # 13 vehicles
+p42: 44: GoBBoo GCCCKo AAHIKL DDHIKL oooJEE oFFJoo   # 12 vehicles
+p43: 45: BBHooL GoHCCL GoAAJM DDoIJM EEEIKo FFoIKo   # 13 vehicles
+p44: 46: HoBBBM HCCJLM AAIJLN DDIKLN oooKEE oFFGGo   # 14 vehicles
+p45: 47: BBJCCo DDJoLM IAAoLM IEEELM IooKFF GGoKHH   # 13 vehicles
+p46: 48: BBBKLM HCCKLM HoAALo DDJooo oIJEEo oIFFGG   # 13 vehicles
+p47: 49: oooJBB oCCJLo AAIKLo DDIKEE HFFFoM HoGGoM   # 13 vehicles
+p48: 50: ooIBBB ooIKoo AAJKoL CCJDDL GHEEoL GHFFoo   # 12 vehicles
+p49: 51: GBBoLo GHIoLM GHIAAM CCCKoM ooJKDD EEJFFo   # 13 vehicles
