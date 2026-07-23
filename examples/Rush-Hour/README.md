@@ -35,16 +35,18 @@ since the file is flushed after every puzzle.
 
 ### Moving a vehicle
 
-Two input modes, both active at all times:
+**One click, one cell.** Click on the half of a vehicle that points the way you
+want it to go: the half nearer its left (or top) end sends it one cell left (or
+up), the other half one cell right (or down). The middle cell of a 3-cell
+vehicle is neutral and does nothing. A click on a cell already occupied by
+another vehicle or on the wall leaves the board unchanged.
 
-| Mode | How |
-|---|---|
-| **Drag** | Press on a vehicle and drag along its axis — it follows the cursor and parks flush against the first obstacle. This is the behaviour of the original pygame version. |
-| **Click** | Click a vehicle (it turns white), then click the cell to send it to. |
+There is no selection state and no dragging. The vehicle under the cursor is
+outlined in white as a hover cue, but that highlight carries no state — it only
+says which vehicle a click would act on.
 
-The two do not conflict: a press that moves nothing is treated as a
-click-selection, so the vehicle stays highlighted and the second click completes
-the move.
+This differs from the pygame original, which drags. One click = one cell makes
+every move a discrete, unambiguous event, which is what the data file records.
 
 ---
 
@@ -68,7 +70,10 @@ cells each). Whitespace is ignored, so a board can also be written as six
 The minimum-move count counts one slide of a vehicle, over any distance, as a
 single move. It is written to every data row (`min_moves`), which makes
 "excess moves over the optimum" a per-trial measure requiring no extra
-analysis.
+analysis. `n_moves` is on the same scale: because a click only ever displaces a
+vehicle by one cell, consecutive clicks on the same vehicle in the same
+direction are counted as a single slide. The raw click count is recoverable by
+counting `click_move` rows.
 
 A full session of 49 puzzles is long — the last ones take many minutes each —
 so `-n N` presents only the first *N* (default 12, `-n 0` for all). Because the
@@ -100,19 +105,21 @@ One CSV row per **action**, plus a summary row per puzzle.
 |---|---|
 | `trial`, `puzzle` | Trial number (1-based) and puzzle name from `puzzles.txt` |
 | `min_moves` | Length of the shortest solution for this puzzle |
-| `event` | `trial_start`, `press`, `drag_move`, `click_move`, `release`, `trial_end` |
+| `event` | `trial_start`, `click_move`, `click_blocked`, `click_empty`, `trial_end` |
 | `t_ms` | Milliseconds since the onset of the puzzle |
-| `event_ts_ns` | SDL3 hardware timestamp (ns) — on `press` / `release` rows only |
+| `event_ts_ns` | SDL3 hardware timestamp (ns) — on the three `click_*` rows only |
 | `mouse_x`, `mouse_y` | Cursor position, center-relative, +Y up |
 | `car`, `orientation` | Vehicle letter and `H`/`V` |
 | `from_row`, `from_col` | Position of the vehicle before the move |
 | `to_row`, `to_col` | Position after the move |
 | `n_moves`, `solved`, `trial_ms` | Summary — filled on the `trial_end` row only (`-1` / `false` elsewhere) |
 
-A `press` that is followed by `release` at the same cell is a selection, not a
-move; every actual displacement produces a `drag_move` or `click_move` row.
-Because the board is deterministic, replaying the `*_move` rows in order
-reconstructs the exact board state at any point in the trial.
+Every click produces exactly one row. `click_move` is a click that displaced a
+vehicle by one cell; `click_blocked` is a click on a vehicle that could not move
+that way (wall, neighbour, or the neutral middle cell); `click_empty` is a click
+that hit no vehicle at all. The latter two are the record of hesitations and
+failed attempts. Because the board is deterministic, replaying the `click_move`
+rows in order reconstructs the exact board state at any point in the trial.
 
 ---
 
@@ -126,8 +133,9 @@ reconstructs the exact board state at any point in the trial.
 | `puzzles.txt` | The embedded puzzle set |
 
 Differences from the pygame original (`rush_hour/rush.py`): a series of puzzles
-instead of a single hardcoded board, action logging, the click-to-move fallback,
-and square vehicle corners (SDL's `RenderFillRect` has no border radius).
+instead of a single hardcoded board, action logging, one-click/one-cell moves in
+place of dragging, and square vehicle corners (SDL's `RenderFillRect` has no
+border radius).
 
 ## Reference
 

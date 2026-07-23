@@ -9,12 +9,11 @@
 // is written to the results file, so the full solution path (including dead
 // ends and hesitations) can be reconstructed offline.
 //
-// Vehicles can be moved in two ways:
-//   - drag: press on a vehicle and drag along its axis;
-//   - click: click a vehicle to select it, then click the cell to slide it to.
-//
-// In both cases a vehicle slides as far as the target allows and parks flush
-// against the first wall or vehicle in its way.
+// Moving is one click, one cell: clicking the half of a vehicle nearer its
+// left/top end slides it one cell that way, clicking the other half slides it
+// the other way, and the middle cell of a 3-cell vehicle does nothing. There is
+// no selection state and no dragging — a click either moves a vehicle by
+// exactly one cell or moves nothing.
 //
 // Output columns: trial, puzzle, min_moves, event, t_ms, event_ts_ns, mouse_x,
 // mouse_y, car, orientation, from_row, from_col, to_row, to_col, n_moves,
@@ -49,7 +48,7 @@ const (
 // rows where they do not apply, and the summary fields are filled only on the
 // trial_end row.
 type eventRow struct {
-	kind    string // trial_start | press | drag_move | click_move | release | trial_end
+	kind    string // trial_start | click_move | click_blocked | click_empty | trial_end
 	tMS     int64
 	tsNS    uint64
 	mouseX  float32
@@ -90,12 +89,14 @@ func runTrial(exp *control.Experiment, trial int, p Puzzle, nTrials int) error {
 	status := fmt.Sprintf("Puzzle %d/%d - free the RED car", trial, nTrials)
 
 	onset := clock.GetTime()
-	nMoves := 0
 	logRow(exp, trial, p, newRow("trial_start", 0))
 
-	var selected *Car // highlighted vehicle: drag subject and click-move subject
-	dragging := false
-	movedThisPress := false
+	// nMoves counts *slides*, not clicks: consecutive one-cell steps of the
+	// same vehicle in the same direction are one slide, which is the metric
+	// puzzles.txt uses for min_moves. The raw clicks remain one row each.
+	nMoves := 0
+	var lastCar *Car
+	lastStep := 0
 
 	for {
 		state := exp.PollEvents(nil)
@@ -105,87 +106,49 @@ func runTrial(exp *control.Experiment, trial int, p Puzzle, nTrials int) error {
 		mx, my := exp.Screen.MousePosition()
 		now := clock.GetTime() - onset
 
-		// ── Button down: start a drag, or complete a click-move ───────────
+		// Vehicle under the cursor, outlined in white as a hover cue.
+		var hover *Car
+		if row, col, onBoard := cellAt(mx, my); onBoard {
+			hover = b.CarAt(row, col)
+		}
+
+		// ── Click: slide the clicked vehicle one cell ─────────────────────
+		// Every click is logged, including the ones that move nothing, so
+		// hesitations and blocked attempts stay in the record.
 		if state.LastMouseButton == control.BUTTON_LEFT {
+			r := newRow("click_empty", now)
+			r.tsNS = state.LastMouseTimestamp
+			r.mouseX, r.mouseY = mx, my
+
 			row, col, onBoard := cellAt(mx, my)
-			var hit *Car
+			var car *Car
 			if onBoard {
-				hit = b.CarAt(row, col)
+				car = b.CarAt(row, col)
 			}
+			if car != nil {
+				r.kind = "click_blocked"
+				r.car, r.orient = string(car.Label), car.Orientation()
+				r.fromR, r.fromC = car.Row, car.Col
+				r.toR, r.toC = car.Row, car.Col
 
-			switch {
-			case hit != nil:
-				selected = hit
-				dragging = true
-				movedThisPress = false
-				r := newRow("press", now)
-				r.tsNS = state.LastMouseTimestamp
-				r.mouseX, r.mouseY = mx, my
-				r.car, r.orient = string(hit.Label), hit.Orientation()
-				r.fromR, r.fromC = hit.Row, hit.Col
-				r.toR, r.toC = hit.Row, hit.Col
-				logRow(exp, trial, p, r)
-
-			case onBoard && selected != nil:
-				// Click-destination fallback: slide the selected vehicle
-				// toward the clicked cell.
-				car := selected
-				fromR, fromC := car.Row, car.Col
-				target := destinationFor(car, row, col)
-				if b.TryMove(car, target[0], target[1]) {
-					nMoves++
-					r := newRow("click_move", now)
-					r.tsNS = state.LastMouseTimestamp
-					r.mouseX, r.mouseY = mx, my
-					r.car, r.orient = string(car.Label), car.Orientation()
-					r.fromR, r.fromC = fromR, fromC
-					r.toR, r.toC = car.Row, car.Col
-					logRow(exp, trial, p, r)
+				if step := stepFor(car, row, col); step != 0 {
+					toR, toC := car.Row, car.Col
+					if car.Horizontal {
+						toC += step
+					} else {
+						toR += step
+					}
+					if b.TryMove(car, toR, toC) {
+						if car != lastCar || step != lastStep {
+							nMoves++
+						}
+						lastCar, lastStep = car, step
+						r.kind = "click_move"
+						r.toR, r.toC = car.Row, car.Col
+					}
 				}
-				selected = nil
 			}
-		}
-
-		// ── Drag: follow the cursor while the button is physically held ───
-		if dragging && selected != nil {
-			if exp.Mouse.IsPressed(control.BUTTON_LEFT) {
-				row, col := clampedCellAt(mx, my)
-				fromR, fromC := selected.Row, selected.Col
-				dest := destinationFor(selected, row, col)
-				if b.TryMove(selected, dest[0], dest[1]) {
-					nMoves++
-					movedThisPress = true
-					r := newRow("drag_move", now)
-					r.mouseX, r.mouseY = mx, my
-					r.car, r.orient = string(selected.Label), selected.Orientation()
-					r.fromR, r.fromC = fromR, fromC
-					r.toR, r.toC = selected.Row, selected.Col
-					logRow(exp, trial, p, r)
-				}
-			} else {
-				dragging = false
-			}
-		}
-
-		// ── Button up: end the drag ───────────────────────────────────────
-		if state.LastMouseButtonUp == control.BUTTON_LEFT {
-			if selected != nil {
-				r := newRow("release", now)
-				r.tsNS = state.LastMouseButtonUpTimestamp
-				r.mouseX, r.mouseY = mx, my
-				r.car, r.orient = string(selected.Label), selected.Orientation()
-				r.fromR, r.fromC = selected.Row, selected.Col
-				r.toR, r.toC = selected.Row, selected.Col
-				logRow(exp, trial, p, r)
-			}
-			dragging = false
-			// A press that moved nothing is treated as a click-select: keep
-			// the vehicle highlighted so the click-destination path can
-			// complete it.
-			if movedThisPress {
-				selected = nil
-			}
-			movedThisPress = false
+			logRow(exp, trial, p, r)
 		}
 
 		// ── Solved? ───────────────────────────────────────────────────────
@@ -210,7 +173,7 @@ func runTrial(exp *control.Experiment, trial int, p Puzzle, nTrials int) error {
 			return nil
 		}
 
-		if err := drawBoard(exp, b, selected, status); err != nil {
+		if err := drawBoard(exp, b, hover, status); err != nil {
 			return err
 		}
 		if err := exp.Screen.PacedFlip(); err != nil {
@@ -220,14 +183,24 @@ func runTrial(exp *control.Experiment, trial int, p Puzzle, nTrials int) error {
 	}
 }
 
-// destinationFor projects a clicked/dragged cell onto the vehicle's own axis:
-// a horizontal car only takes the column, a vertical car only the row. Without
-// this, TryMove would reject every off-axis cursor position.
-func destinationFor(c *Car, row, col int) [2]int {
-	if c.Horizontal {
-		return [2]int{c.Row, col}
+// stepFor maps a click on one of the vehicle's own cells to a one-cell step
+// along its axis: the half nearer the vehicle's head gives -1 (left / up), the
+// half nearer its tail +1 (right / down), and the middle cell of a 3-cell
+// vehicle gives 0. Cells outside the vehicle also give 0.
+func stepFor(c *Car, row, col int) int {
+	i := col - c.Col
+	if !c.Horizontal {
+		i = row - c.Row
 	}
-	return [2]int{row, c.Col}
+	switch {
+	case i < 0 || i >= c.Length:
+		return 0
+	case 2*i+1 < c.Length:
+		return -1
+	case 2*i+1 > c.Length:
+		return 1
+	}
+	return 0 // exact middle of an odd-length vehicle
 }
 
 func main() {
@@ -265,8 +238,8 @@ func main() {
 			"on the right wall.\n\n"+
 			"Vehicles only slide along their own axis, and cannot pass\n"+
 			"through each other.\n\n"+
-			"To move a vehicle, either drag it with the mouse, or click it\n"+
-			"once (it turns white) and then click where it should go.\n\n"+
+			"To move a vehicle one cell, click on the end of it that points\n"+
+			"the way you want it to go.\n\n"+
 			"There are %d puzzles, in increasing order of difficulty.\n"+
 			"Take all the time you need.\n\n"+
 			"Press SPACE to begin.",

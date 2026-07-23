@@ -83,15 +83,31 @@ func TestCarRectSpansItsCells(t *testing.T) {
 	}
 }
 
-// destinationFor must project onto the vehicle's own axis, leaving the other
-// coordinate untouched — otherwise TryMove refuses every off-axis cursor.
-func TestDestinationForProjectsOntoAxis(t *testing.T) {
-	h := &Car{Row: 2, Col: 1, Length: 2, Horizontal: true}
-	if got := destinationFor(h, 5, 4); got != [2]int{2, 4} {
-		t.Errorf("horizontal: got %v, want [2 4]", got)
+// stepFor decides the direction of a one-cell click-move: the half of the
+// vehicle nearer its head sends it back, the half nearer its tail forward, and
+// the middle cell of a 3-cell vehicle is a no-op. A click off the vehicle must
+// never produce a step.
+func TestStepForDirection(t *testing.T) {
+	h2 := &Car{Row: 2, Col: 1, Length: 2, Horizontal: true} // cols 1-2
+	v3 := &Car{Row: 1, Col: 3, Length: 3}                   // rows 1-3
+
+	cases := []struct {
+		name     string
+		car      *Car
+		row, col int
+		want     int
+	}{
+		{"h2 head cell", h2, 2, 1, -1},
+		{"h2 tail cell", h2, 2, 2, 1},
+		{"h2 off the car", h2, 2, 4, 0},
+		{"v3 head cell", v3, 1, 3, -1},
+		{"v3 middle cell", v3, 2, 3, 0},
+		{"v3 tail cell", v3, 3, 3, 1},
+		{"v3 off the car", v3, 5, 3, 0},
 	}
-	v := &Car{Row: 1, Col: 3, Length: 3}
-	if got := destinationFor(v, 5, 0); got != [2]int{5, 3} {
-		t.Errorf("vertical: got %v, want [5 3]", got)
+	for _, c := range cases {
+		if got := stepFor(c.car, c.row, c.col); got != c.want {
+			t.Errorf("%s: stepFor(%d,%d) = %d, want %d", c.name, c.row, c.col, got, c.want)
+		}
 	}
 }

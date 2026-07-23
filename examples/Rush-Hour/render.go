@@ -78,23 +78,6 @@ func cellAt(x, y float32) (row, col int, ok bool) {
 	return row, col, true
 }
 
-// clampedCellAt is like cellAt but clamps to the board, mirroring the pygame
-// original's behaviour when the cursor leaves the grid mid-drag.
-func clampedCellAt(x, y float32) (row, col int) {
-	row, col, _ = cellAt(x, y)
-	return clamp(row, 0, GridSize-1), clamp(col, 0, GridSize-1)
-}
-
-func clamp(v, lo, hi int) int {
-	if v < lo {
-		return lo
-	}
-	if v > hi {
-		return hi
-	}
-	return v
-}
-
 // carRect returns the center and size of a vehicle's full tile span.
 func carRect(c *Car) (center control.FPoint, w, h float32) {
 	w, h = tile, tile

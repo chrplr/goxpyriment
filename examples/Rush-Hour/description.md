@@ -21,7 +21,7 @@ first *N* of them (default 12).
 - Grid lines in mid-grey; a red bar on the right wall of row 2 marks the exit.
 - Vehicles are filled rectangles with a black outline; the target car is red,
   the others take colors cycling through the palette of the original pygame
-  implementation. The currently selected vehicle is outlined in white.
+  implementation. The vehicle under the cursor is outlined in white.
 - A status line below the board shows the trial number: `Puzzle n/N — free the
   RED car`.
 
@@ -29,20 +29,23 @@ first *N* of them (default 12).
 
 The vehicle under the cursor is determined by the grid cell the cursor is in.
 
-- **Drag.** Pressing the left button on a vehicle selects it. While the button
-  is physically held, the cell under the cursor is projected onto the vehicle's
-  axis and the vehicle slides toward it, one cell at a time, stopping at the
-  first wall or vehicle in the way. This reproduces the pygame original's
-  `MOUSEMOTION` handler exactly.
-- **Click.** A press–release pair that produced no displacement leaves the
-  vehicle selected (highlighted). The next click on any cell of the board slides
-  that vehicle toward the clicked cell, under the same rules, and clears the
-  selection.
+Interaction is a single mode: **one click moves one vehicle by one cell.** The
+clicked cell selects the direction along the vehicle's own axis — the half of
+the vehicle nearer its head (leftmost cell for a horizontal vehicle, topmost for
+a vertical one) sends it back by one cell, the half nearer its tail sends it
+forward by one, and the middle cell of a 3-cell vehicle is neutral. A step into
+a wall or into another vehicle leaves the board unchanged. There is no selection
+state and no dragging, so no click depends on any earlier one, and the white
+outline is a hover cue only.
 
-Move legality (the port of `try_move_car`) is stepwise: a request to move past
-an obstacle is not rejected, it is truncated — the vehicle ends up flush against
-the obstacle. This makes dragging forgiving without ever allowing an illegal
-board state.
+This departs from the pygame original, which drags. The gain is that every move
+is a discrete event with an unambiguous onset: no press–release pairing, and no
+mid-drag intermediate positions to disentangle in the log.
+
+Move legality (the port of `try_move_car`) remains stepwise: a request to move
+past an obstacle is truncated rather than rejected. With one-cell steps the
+distinction is invisible in practice, but it keeps `Board.TryMove` usable for
+longer displacements (the breadth-first solver in `board_test.go` relies on it).
 
 ## 4. Trial structure
 
@@ -65,11 +68,12 @@ The primary record is the ordered list of actions. From it one can derive:
 - **Solution time** and **move count** per puzzle (also given directly on the
   `trial_end` row).
 - **Excess moves** — moves made minus the minimum for that puzzle (the `n_moves`
-  and `min_moves` columns).
+  and `min_moves` columns). Both are on the slide metric: consecutive clicks on
+  the same vehicle in the same direction count as one move.
 - **Latency before each move**, from the `t_ms` differences — planning pauses,
   in particular the long pause typically preceding the first move.
-- **Selections without displacement** (`press`/`release` pairs at the same
-  cell), a trace of vehicles considered and rejected.
+- **Ineffective clicks** (`click_blocked`, `click_empty`) — vehicles pushed
+  against an obstacle or considered and abandoned, a trace of the search.
 - **Backtracking** — replaying the moves reconstructs the board state at each
   point, so returns to previously visited states can be counted.
 
