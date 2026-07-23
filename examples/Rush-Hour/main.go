@@ -9,11 +9,10 @@
 // is written to the results file, so the full solution path (including dead
 // ends and hesitations) can be reconstructed offline.
 //
-// Moving is one click, one cell: clicking the half of a vehicle nearer its
-// left/top end slides it one cell that way, clicking the other half slides it
-// the other way, and the middle cell of a 3-cell vehicle does nothing. There is
-// no selection state and no dragging — a click either moves a vehicle by
-// exactly one cell or moves nothing.
+// Moving is one click, one cell: a click on the half of a vehicle lying on one
+// side of its midline slides it one cell that way. There is no selection state
+// and no dragging — a click either moves a vehicle by exactly one cell, or
+// (wall, neighbour, or no vehicle under the cursor) moves nothing.
 //
 // Output columns: trial, puzzle, min_moves, event, t_ms, event_ts_ns, mouse_x,
 // mouse_y, car, orientation, from_row, from_col, to_row, to_col, n_moves,
@@ -131,7 +130,7 @@ func runTrial(exp *control.Experiment, trial int, p Puzzle, nTrials int) error {
 				r.fromR, r.fromC = car.Row, car.Col
 				r.toR, r.toC = car.Row, car.Col
 
-				if step := stepFor(car, row, col); step != 0 {
+				if step := stepForPoint(car, mx, my); step != 0 {
 					toR, toC := car.Row, car.Col
 					if car.Horizontal {
 						toC += step
@@ -183,24 +182,32 @@ func runTrial(exp *control.Experiment, trial int, p Puzzle, nTrials int) error {
 	}
 }
 
-// stepFor maps a click on one of the vehicle's own cells to a one-cell step
-// along its axis: the half nearer the vehicle's head gives -1 (left / up), the
-// half nearer its tail +1 (right / down), and the middle cell of a 3-cell
-// vehicle gives 0. Cells outside the vehicle also give 0.
-func stepFor(c *Car, row, col int) int {
-	i := col - c.Col
+// stepForPoint maps a click at (x, y) — center-relative screen coordinates —
+// to a one-cell step along the vehicle's axis: the side of the vehicle's
+// midline the click landed on decides the direction. -1 is left (horizontal) or
+// up (vertical), +1 right or down.
+//
+// Splitting on the midline rather than on cell indices matters only for 3-cell
+// vehicles: a cell-index rule leaves their middle cell — a third of their
+// surface — with no direction to give, and so inert. For 2-cell vehicles the
+// midline is the boundary between their two cells, so the two rules agree.
+//
+// The caller has already established that (x, y) is inside this vehicle; a
+// click exactly on the midline (measure zero) yields 0 and moves nothing.
+func stepForPoint(c *Car, x, y float32) int {
+	center, _, _ := carRect(c)
+
+	d := x - center.X // horizontal: right of the midline slides right
 	if !c.Horizontal {
-		i = row - c.Row
+		d = center.Y - y // vertical: +Y is up, so below the midline slides down
 	}
 	switch {
-	case i < 0 || i >= c.Length:
-		return 0
-	case 2*i+1 < c.Length:
-		return -1
-	case 2*i+1 > c.Length:
+	case d > 0:
 		return 1
+	case d < 0:
+		return -1
 	}
-	return 0 // exact middle of an odd-length vehicle
+	return 0
 }
 
 func main() {
@@ -238,7 +245,7 @@ func main() {
 			"on the right wall.\n\n"+
 			"Vehicles only slide along their own axis, and cannot pass\n"+
 			"through each other.\n\n"+
-			"To move a vehicle one cell, click on the end of it that points\n"+
+			"To move a vehicle one cell, click on the side of it that points\n"+
 			"the way you want it to go.\n\n"+
 			"There are %d puzzles, in increasing order of difficulty.\n"+
 			"Take all the time you need.\n\n"+

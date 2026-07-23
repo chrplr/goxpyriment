@@ -83,31 +83,41 @@ func TestCarRectSpansItsCells(t *testing.T) {
 	}
 }
 
-// stepFor decides the direction of a one-cell click-move: the half of the
-// vehicle nearer its head sends it back, the half nearer its tail forward, and
-// the middle cell of a 3-cell vehicle is a no-op. A click off the vehicle must
-// never produce a step.
-func TestStepForDirection(t *testing.T) {
+// stepForPoint decides the direction of a one-cell click-move from the side of
+// the vehicle's midline the click landed on. The middle cell of a 3-cell
+// vehicle must NOT be inert: its two halves give opposite directions.
+func TestStepForPointDirection(t *testing.T) {
 	h2 := &Car{Row: 2, Col: 1, Length: 2, Horizontal: true} // cols 1-2
 	v3 := &Car{Row: 1, Col: 3, Length: 3}                   // rows 1-3
 
+	// Each case clicks the center of cell (row, col), offset by (dx, dy).
 	cases := []struct {
 		name     string
 		car      *Car
 		row, col int
+		dx, dy   float32
 		want     int
 	}{
-		{"h2 head cell", h2, 2, 1, -1},
-		{"h2 tail cell", h2, 2, 2, 1},
-		{"h2 off the car", h2, 2, 4, 0},
-		{"v3 head cell", v3, 1, 3, -1},
-		{"v3 middle cell", v3, 2, 3, 0},
-		{"v3 tail cell", v3, 3, 3, 1},
-		{"v3 off the car", v3, 5, 3, 0},
+		{"h2 head cell", h2, 2, 1, 0, 0, -1},
+		{"h2 tail cell", h2, 2, 2, 0, 0, 1},
+		{"v3 head cell", v3, 1, 3, 0, 0, -1},
+		{"v3 tail cell", v3, 3, 3, 0, 0, 1},
+		// The formerly-inert middle cell: above the midline sends the vehicle
+		// up (+Y is up), below sends it down.
+		{"v3 middle cell, upper half", v3, 2, 3, 0, tile / 4, -1},
+		{"v3 middle cell, lower half", v3, 2, 3, 0, -tile / 4, 1},
 	}
 	for _, c := range cases {
-		if got := stepFor(c.car, c.row, c.col); got != c.want {
-			t.Errorf("%s: stepFor(%d,%d) = %d, want %d", c.name, c.row, c.col, got, c.want)
+		p := cellCenter(c.row, c.col)
+		x, y := p.X+c.dx, p.Y+c.dy
+		if got := stepForPoint(c.car, x, y); got != c.want {
+			t.Errorf("%s: stepForPoint(%v,%v) = %d, want %d", c.name, x, y, got, c.want)
 		}
+	}
+
+	// A click exactly on the midline is the only inert point.
+	center, _, _ := carRect(v3)
+	if got := stepForPoint(v3, center.X, center.Y); got != 0 {
+		t.Errorf("midline: stepForPoint = %d, want 0", got)
 	}
 }

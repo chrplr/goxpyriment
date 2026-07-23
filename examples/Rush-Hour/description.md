@@ -30,13 +30,19 @@ first *N* of them (default 12).
 The vehicle under the cursor is determined by the grid cell the cursor is in.
 
 Interaction is a single mode: **one click moves one vehicle by one cell.** The
-clicked cell selects the direction along the vehicle's own axis — the half of
-the vehicle nearer its head (leftmost cell for a horizontal vehicle, topmost for
-a vertical one) sends it back by one cell, the half nearer its tail sends it
-forward by one, and the middle cell of a 3-cell vehicle is neutral. A step into
-a wall or into another vehicle leaves the board unchanged. There is no selection
-state and no dragging, so no click depends on any earlier one, and the white
-outline is a hover cue only.
+side of the vehicle's midline on which the click lands selects the direction
+along the vehicle's own axis: left of the midline sends a horizontal vehicle one
+cell left, right of it one cell right, above/below likewise for a vertical one.
+A step into a wall or into another vehicle leaves the board unchanged. There is
+no selection state and no dragging, so no click depends on any earlier one, and
+the white outline is a hover cue only.
+
+The split is geometric rather than by cell index. For 2-cell vehicles the two
+are identical, since the midline falls on the boundary between the cells; for
+3-cell vehicles a cell-index rule would leave the middle cell — a third of the
+vehicle's surface — with no direction to give, and therefore inert. Every point
+of every vehicle now yields a direction, and each direction offers a target 1.5
+cells wide.
 
 This departs from the pygame original, which drags. The gain is that every move
 is a discrete event with an unambiguous onset: no press–release pairing, and no

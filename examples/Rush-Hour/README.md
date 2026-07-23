@@ -35,11 +35,12 @@ since the file is flushed after every puzzle.
 
 ### Moving a vehicle
 
-**One click, one cell.** Click on the half of a vehicle that points the way you
-want it to go: the half nearer its left (or top) end sends it one cell left (or
-up), the other half one cell right (or down). The middle cell of a 3-cell
-vehicle is neutral and does nothing. A click on a cell already occupied by
-another vehicle or on the wall leaves the board unchanged.
+**One click, one cell.** Click on the side of a vehicle that points the way you
+want it to go: anywhere left of its midline sends a horizontal vehicle one cell
+left, anywhere right of it one cell right, and likewise above/below for a
+vertical one. The split is on the vehicle's midline, not on cell boundaries, so
+3-cell vehicles have no inert middle. A step into a wall or into another vehicle
+leaves the board unchanged.
 
 There is no selection state and no dragging. The vehicle under the cursor is
 outlined in white as a hover cue, but that highlight carries no state — it only
@@ -116,7 +117,7 @@ One CSV row per **action**, plus a summary row per puzzle.
 
 Every click produces exactly one row. `click_move` is a click that displaced a
 vehicle by one cell; `click_blocked` is a click on a vehicle that could not move
-that way (wall, neighbour, or the neutral middle cell); `click_empty` is a click
+that way (a wall or a neighbouring vehicle); `click_empty` is a click
 that hit no vehicle at all. The latter two are the record of hesitations and
 failed attempts. Because the board is deterministic, replaying the `click_move`
 rows in order reconstructs the exact board state at any point in the trial.
