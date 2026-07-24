@@ -225,6 +225,41 @@ b, _ := sp.Poll()
 line, _ := sp.ReadLine()
 ```
 
+## NetStation (EGI EEG, ECI over TCP/IP)
+
+Does **not** implement either TTL interface. It marks *named events* in the EEG
+stream of an EGI/NetStation host and controls recording remotely, over TCP —
+the network equivalent of sending a trigger code, but with 4-char event codes,
+durations, and key/value payloads instead of 8 electrical lines.
+
+```go
+ns, err := triggers.NewNetStation("134.225.198.12")  // default port 55513
+if err != nil { log.Fatal(err) }
+defer ns.Close()                 // stops recording + disconnects (blocks ~2 s to flush)
+
+ns.Synchronize()                 // align host clock to ours (call once after connect)
+ns.StartRecording()
+ns.SendEvent("STIM")             // now, 1 ms, no keys — send near the VSYNC flip
+ns.SendEventFull(triggers.Event{ // full form
+    Code:     "RESP",
+    Start:    flipTime,          // zero = now
+    Duration: 2 * time.Millisecond,
+    Keys:     []triggers.EventKey{{Code: "corr", Value: 1}},
+})
+ns.StopRecording()
+```
+
+**Protocol (ECI):** on connect the driver advertises the `QNTEL`
+(Intel/little-endian) variant and every multi-byte field is encoded
+little-endian, so it is portable regardless of the CPU it runs on (do **not**
+switch to a native byte order). Commands: `A`+`T`(int32 ms) = synchronize,
+`B` = start, `E` = stop, `D`+block = event, `X` = end session. Each command
+reads a one-byte ack. Event block layout: `uint16` size (`15+12·keys`),
+`int32` start ms, `int32` duration ms, 4-byte code, `int16` label length (0),
+`uint8` key count, then per key: 4-byte code + `"shor"` + `int16` length (2) +
+`int16` value. Timestamps are ms from an epoch fixed at connect. Ported from
+Gergely Csibra's NetStation MATLAB routines (2006). Options: `WithNSTimeout`.
+
 ## Key conventions
 
 - Always `defer dev.Close()` — drives all lines LOW and releases the port.

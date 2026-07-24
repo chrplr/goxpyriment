@@ -1,0 +1,3 @@
+category: test
+description: Exercises an EGI/NetStation EEG host over TCP/IP (ECI) — connect, synchronize, record, and send event markers
+reference: ""
