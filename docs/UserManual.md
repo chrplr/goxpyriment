@@ -2466,6 +2466,92 @@ The device must be reachable on the local network. Default Modbus port 502 is us
 | LPT parallel port | `ParallelPort` | ✓ | — | LPT | Linux only; ppdev ioctl |
 | None / fallback | `NullOutputTTLDevice` | ✓ (no-op) | — | — | Returned by `AutoDetectDLPIO8`, `AutoDetectFT232H` |
 
+### Networked recording control (non-TTL)
+
+The `triggers` package also hosts two devices that are **not** TTL bitmask
+hardware: they mark events in — and control — an *external recorder* over
+TCP/IP. They share the package because their purpose is the same (annotate a
+recording so it can be aligned with your paradigm), but they implement neither
+`OutputTTLDevice` nor `InputTTLDevice`; each has its own richer API. `SerialPort`
+(a generic UART wrapper) is the third non-TTL member.
+
+#### NetStation (EGI EEG event markers over TCP/IP)
+
+`NetStation` talks to an EGI / Philips NetStation EEG host using the ECI
+(Experiment Control Interface) protocol. Instead of an electrical pulse it sends
+*named events* — a 4-character code with an onset time, a duration, and optional
+key/value payloads — directly into the EEG stream, and it starts/stops recording
+and synchronises the host clock remotely.
+
+```go
+import "github.com/chrplr/goxpyriment/triggers"
+
+ns, err := triggers.NewNetStation("134.225.198.12") // default ECI port 55513
+if err != nil { log.Fatal(err) }
+defer ns.Close()            // stops recording + disconnects (blocks ~2 s to flush)
+
+ns.Synchronize()            // align the host clock to ours (call once after connect)
+ns.StartRecording()
+
+// In the trial loop — send the marker right after the VSYNC flip:
+onset, _ := exp.ShowTS(stim)
+ns.SendEvent("STIM")        // now, 1 ms, no keys
+
+// Full form: explicit onset, duration and key/value metadata:
+ns.SendEventFull(triggers.Event{
+    Code:     "RESP",
+    Start:    time.Now(),   // zero value = now; pass the flip time to mark true onset
+    Duration: 2 * time.Millisecond,
+    Keys:     []triggers.EventKey{{Code: "corr", Value: 1}, {Code: "rt", Value: 423}},
+})
+
+ns.StopRecording()
+```
+
+Timing note: a network event marker is convenient (it carries a rich label and
+needs no wiring) but its latency is bounded by the TCP round-trip, not the
+sub-millisecond edge of a TTL pulse. For hard sub-millisecond EEG synchrony,
+prefer a `Pulse` on a TTL device for the onset marker and use NetStation events
+for the accompanying metadata. The driver always advertises the `QNTEL`
+(Intel/little-endian) handshake and encodes every field little-endian, so it is
+portable regardless of the machine it runs on. See `tests/test_netstation` for a
+runnable session.
+
+#### BEL video recorder (labelled camera over TCP/IP)
+
+`VideoRecorder` is the client for the NeuroSpin EEG-room **behavioral video
+recorder** ("BEL_video"): a camera PC films the participant, burns event labels
+(subject id, trial, condition, …) into the footage, and saves an AVI. This type
+starts/stops that recording and pushes the labels over TCP — the capture and
+encoding stay on the camera PC. It is not an eye tracker: there is no gaze,
+pupil, or calibration data, only a labelled video.
+
+```go
+vr, err := triggers.NewVideoRecorder("192.168.8.212") // default port 55113
+if err != nil { log.Fatal(err) }
+defer vr.Close()            // stops recording + disconnects
+
+vr.Start()
+vr.SetSubject("bb0012025")  // "NIP:<id>" — names the output file
+vr.Label("TRL", "001")      // "KEY:VALUE" overlay, shown until the next label / timeout
+vr.Label("CND", "007")
+vr.Stop()
+```
+
+Unlike NetStation, the recorder's protocol has **no framing and no
+acknowledgement** — it is fire-and-forget, and the server reads one socket buffer
+per captured video frame. Two messages sent too close together can therefore
+arrive coalesced and be mis-parsed, so `VideoRecorder` waits a short `SendGap`
+(default 50 ms; tune with `triggers.WithVRSendGap`, or set 0 to disable) after
+each message. This makes the labels unsuitable for precise stimulus timing —
+treat them as monitoring/annotation metadata, not event markers. See
+`tests/test_videorecorder` for a runnable session.
+
+| Device | Type | Role | Connection | Ack? |
+|--------|------|------|------------|------|
+| EGI NetStation | `NetStation` | EEG event markers + recording control + clock sync | TCP/IP (ECI, port 55513) | yes (1 byte/command) |
+| BEL_video | `VideoRecorder` | Labelled video recording control | TCP/IP (port 55113) | no (fire-and-forget) |
+
 ---
 
 ## 18. Display Compositor Bypass
