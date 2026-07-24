@@ -60,6 +60,7 @@ listed below — and most of the advantages.
 | Data output | `.csv` / `.psydat` / Excel | `.csv` with a `#`-prefixed metadata header, written through a buffered output file |
 | System reporting | `psychopy.info` | `sysinfo` package: CPU, GPU, audio, memory, machine — including a WMI path on Windows |
 | Hardware triggers | Parallel, serial, LabJack, Cedrus, EGI, BrainProducts, TriggerBox | Parallel port (Linux LPT), DLP-IO8, FT232H, Linux GPIO (Raspberry Pi and other SBCs), LabJack T4 over Modbus TCP, NeuroSpin MEG TTL box, generic serial |
+| Networked recording control | Egi/`iohub`, `emulator`, MQTT/OSC components | EGI NetStation event markers over TCP/IP (ECI), plus a "BEL_video" participant-video recorder client |
 | Worked examples | A demos folder | ~50 complete paradigms in `examples/`, plus a `tests/` suite of programs whose output is analysed to verify timing and hardware behaviour |
 
 The core of an experiment — window, text, images, shapes, gratings, dot fields,
@@ -76,7 +77,11 @@ This is the single largest gap. PsychoPy's **ioHub** provides a vendor-neutral
 API over EyeLink, Tobii, GazePoint and Pupil Labs, with Builder routines for
 calibration and validation and a region-of-interest component.
 
-goxpyriment has no eye-tracking support at all.
+goxpyriment has no eye-tracking support at all — no gaze stream, pupillometry,
+calibration, or region-of-interest components. (It *does* ship a
+`triggers.VideoRecorder` client for a networked participant-video recorder, but
+that only records and labels footage of the participant; it is not gaze
+tracking and returns no eye position.)
 
 ### 2. Breadth of visual stimuli
 
