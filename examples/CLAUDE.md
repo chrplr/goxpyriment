@@ -8,6 +8,18 @@ This directory holds real experiments (record behavioural data) and demonstratio
 It points at the canonical sources rather than repeating them — when in doubt, read the
 linked docs, not this summary.
 
+## Publishing one example as its own standalone repo
+
+To split a single example out into its own git/GitHub repository — so a
+colleague can download a prebuilt binary or play it in the browser (WebAssembly
+on GitHub Pages) — **follow [`docs/StandaloneExampleRepo.md`](../docs/StandaloneExampleRepo.md)**,
+the step-by-step guide. It covers `share.sh`, the release and Pages CI
+workflows, the go-sdl3-wasm fork wiring, and the gotchas (fork branch-ref vs.
+pinned commit, `GOSUMDB=off` for fresh tags). Reference repos: `chrplr/Rush-Hour`
+(browser build) and `chrplr/Language-Localizer-French-audio` (binaries only).
+This is different from `make share-NAME`, which only exports a module to zip
+(see `README.md`).
+
 ## Fastest correct path: copy a sibling
 
 Don't start from a blank file. Copy the closest existing example and adapt it. Good

@@ -2,6 +2,10 @@
 
 This guide explains how to package and distribute your `goxpyriment` experiments as standalone binary executables and installers (e.g., `.exe`, `.deb`, `.rpm`, `.zip`) for different platforms and architectures.
 
+> To split **one example from this repo's `examples/`** into its own published
+> GitHub repository — with release CI and an optional in-browser (WebAssembly)
+> build on GitHub Pages — see [Publishing an example as a standalone repository](StandaloneExampleRepo.md).
+
 ## Prerequisites
 
 1.  **GoReleaser**: The primary tool for automating the build and release process. Install it from [goreleaser.com](https://goreleaser.com/).

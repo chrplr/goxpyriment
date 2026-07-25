@@ -38,6 +38,12 @@ time (to fetch the published library and its dependencies into the module
 cache). Examples that read sibling files (e.g. shared `.gv` assets via `../`)
 are flagged by the exporter — bundle those files manually.
 
+To go further and publish the example as its own **GitHub repository** — with
+release CI for downloadable binaries and an optional in-browser (WebAssembly)
+build on GitHub Pages — see
+[docs/StandaloneExampleRepo.md](../docs/StandaloneExampleRepo.md), which starts
+from this `share.sh` output.
+
 A browsable catalogue with one-line descriptions is in
 [docs/GalleryOfExamples.md](../docs/GalleryOfExamples.md); it is generated from
 the per-directory `meta.yaml` files via `make update-examples-gallery`.
