@@ -13,11 +13,19 @@ It is the process used for the two reference repos — copy either as a template
 | [`chrplr/Language-Localizer-French-audio`](https://github.com/chrplr/Language-Localizer-French-audio) | audio experiment, ships `.wav` assets | no |
 | [`chrplr/Rush-Hour`](https://github.com/chrplr/Rush-Hour) | mouse experiment, everything embedded | yes (Pages) |
 
-> **This is different from `make share-NAME`.** `examples/share.sh` (see
-> [`examples/README.md`](../examples/README.md)) exports a standalone *module*
-> to zip and email. This guide takes that output and makes it a *published
-> repository* with release CI and (optionally) an in-browser build. Start from
-> `share.sh`, then add the pieces below.
+> **Just need to hand off a zip, not publish a repo?** Use the Makefile wrapper
+> from the repo root:
+>
+> ```bash
+> make share-<ExampleName>                    # → _build/share/<ExampleName>/
+> make share-<ExampleName> VERSION=v0.12.5     # pin a specific goxpyriment release
+> ```
+>
+> That exports a standalone *module* (buildable on its own with `go run .`, no
+> workspace) to zip and email — see [`examples/README.md`](../examples/README.md).
+> This guide goes further: it turns that output into a *published repository*
+> with release CI and an optional in-browser build. Start from `share.sh`
+> (Step 1), then add the pieces below.
 
 ## When to use it
 
@@ -53,6 +61,11 @@ bash examples/share.sh Rush-Hour v0.12.5 ~/00_git
 `share.sh` copies the directory, drops the workspace `go.mod`/`go.work` coupling,
 writes a fresh `go.mod` requiring the *published* goxpyriment, and runs
 `go mod tidy`. The result builds on its own with `go build .`.
+
+`make share-<ExampleName>` is the convenient wrapper, but it always writes to
+`_build/share/<ExampleName>/`; call `share.sh` directly with the third argument
+when you want the module created straight where the repo will live (e.g.
+`~/00_git`).
 
 ## Step 2 — Prune goxpyriment-internal files
 
