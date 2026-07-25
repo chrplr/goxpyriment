@@ -108,6 +108,7 @@ type Experiment struct {
 	event    EventState
 	quitFlag atomic.Int32 // set to 1 by signal handler goroutine; checked by pumpFrame
 	endOnce  sync.Once    // guards finalizeData so the footer is written exactly once
+	crashed  bool         // set by platformHandleCrash (js) on an unrecovered panic; suppresses the partial-data download
 }
 
 // finalizeData writes the end-time footer and flushes the data file exactly
@@ -117,6 +118,12 @@ type Experiment struct {
 func (e *Experiment) finalizeData() {
 	e.endOnce.Do(func() {
 		if e.Data != nil {
+			// On a browser crash (see platformHandleCrash), the buffered data is
+			// partial and the participant has already been shown an error
+			// overlay; skip the download so they are not handed a broken file.
+			if e.crashed {
+				return
+			}
 			e.Data.WriteEndTime()
 			if err := e.Data.Finalize(); err == nil {
 				log.Printf("Results saved in %s (info: %s)", e.Data.FullPath, e.Data.InfoFile.FullPath)
@@ -1029,6 +1036,12 @@ func (e *Experiment) Run(logic func() error) error {
 			if r := recover(); r != nil {
 				if p, ok := r.(exitPanic); ok {
 					err = p.err
+				} else if e.platformHandleCrash(r) {
+					// Browser only: an error overlay was shown and e.crashed set,
+					// so swallow the panic and let the deferred End() run without
+					// downloading partial data. On desktop this returns false and
+					// the panic re-propagates with its stack trace, as before.
+					err = fmt.Errorf("control.Experiment.Run: experiment crashed: %v", r)
 				} else {
 					panic(r)
 				}
