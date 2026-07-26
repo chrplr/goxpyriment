@@ -32,10 +32,15 @@ Tier 4 — response timing:
 
 Usage
 -----
-  python timing_tests.py --test display [options]
-  python timing_tests.py --test rt --cycles 60 -d
-  python timing_tests.py --test frames --level-a 0 --level-b 255 --frames-per-phase 2 --cycles 120
-  python timing_tests.py --test vrr --vrr-max-ms 40 --cycles 10
+  python timing_tests.py --sysinfo
+  python timing_tests.py --test display --duration-s 300
+  python timing_tests.py --test frames --frames-on 1 --frames-off 2 --cycles 6000
+  python timing_tests.py --test frames --frames-on 1 --frames-off 2 --cycles 6000 --gc
+  python timing_tests.py --test av --frames-on 12 --frames-off 18 --cycles 1000 --audio-frames 256
+
+Flags mirror the Go binary: -w = windowed, -d N = display index, --gc leaves the
+collector running. Note that -d used to mean "windowed" here, the opposite of
+the Go binary, which silently turned fullscreen comparisons into windowed ones.
 
 Timing notes
 ------------
@@ -45,7 +50,18 @@ on defaultClock (core.getTime()), captured right after SwapBuffers returns —
 the same instant that fillGray() captures as tAfter in the Go binary.
 
 The Python GC is disabled during measurement loops via gc.disable(), mirroring
-Go's debug.SetGCPercent(-1).
+Go's debug.SetGCPercent(-1). Pass --gc to leave it running and measure its
+effect; run each test twice, with and without, for the GC-on/GC-off comparison.
+
+The two are not perfectly symmetric, and the asymmetry belongs in any write-up:
+gc.disable() stops CPython's *cyclic* collector only — reference counting keeps
+freeing objects deterministically and cannot be switched off — whereas Go's
+tracing collector is suspended outright.
+
+The audio backend is pinned (default: ptb) before psychopy.sound is imported,
+and --audio-frames maps to the PTB backend's blockSize, the counterpart to the
+Go binary's -audio-frames. Without both, audio results characterise the local
+PsychoPy install rather than PsychoPy itself.
 
 For the rt test, key timestamps come from psychopy.hardware.keyboard.Keyboard.
 With psychtoolbox installed (pip install psychtoolbox), events are timestamped
@@ -75,13 +91,44 @@ Install: pip install pyserial
 import argparse
 import gc
 import math
+import platform
 import random
 import sys
 import threading
+import traceback
 import time
 
 import numpy as np
-from psychopy import core, event, logging, sound, visual
+
+
+def _preselect_audio_lib(argv: list) -> str:
+    """
+    Read --audio-lib from the raw argv before argparse runs.
+
+    PsychoPy resolves its audio backend at `import psychopy.sound` time, so the
+    preference has to be set before that import — earlier than the real
+    argument parse.
+    """
+    for i, a in enumerate(argv):
+        if a == "--audio-lib" and i + 1 < len(argv):
+            return argv[i + 1]
+        if a.startswith("--audio-lib="):
+            return a.split("=", 1)[1]
+    return "ptb"
+
+
+# Pin the audio backend explicitly. PsychoPy's audio latency differs by roughly
+# an order of magnitude between backends (ptb ≪ pygame), so leaving this to
+# whatever the local install defaults to would make the tones/av results a
+# property of the machine's configuration rather than of PsychoPy — and would
+# make the comparison against goxpyriment meaningless.
+_AUDIO_LIB = _preselect_audio_lib(sys.argv[1:])
+
+from psychopy import prefs  # noqa: E402
+
+prefs.hardware["audioLib"] = [_AUDIO_LIB]
+
+from psychopy import core, event, logging, sound, visual  # noqa: E402
 
 logging.console.setLevel(logging.WARNING)
 
@@ -177,17 +224,45 @@ def build_parser() -> argparse.ArgumentParser:
         description=__doc__,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    p.add_argument("--test", required=True,
+    # Not required, so that --sysinfo can run on its own; main() enforces that
+    # one of --test / --sysinfo is present.
+    p.add_argument("--test", default=None,
                    choices=_ALL_TESTS,
                    metavar="TEST",
                    help=("Sub-test: check|display|latency|stream|vrr|"
                          "trigger|frames|flash|tones|av|rt  "
                          "(legacy aliases: audio=check  jitter=display  "
                          "drain=latency  square=trigger  sound=tones)"))
-    p.add_argument("-d", action="store_true",
-                   help="Windowed 1024×768 developer mode (default: fullscreen)")
-    p.add_argument("--screen", type=int, default=0,
-                   help="Screen index for fullscreen (default: 0)")
+    # -w / -d carry the same meaning as in the Go binary. They used to be
+    # swapped here (-d meant "windowed"), which silently turned a fullscreen
+    # comparison into a windowed one — and windowed mode is compositor-throttled,
+    # so the timing it produces is not meaningful.
+    p.add_argument("-w", action="store_true", dest="windowed",
+                   help="Windowed 1024×768 mode (default: fullscreen)")
+    p.add_argument("-d", type=int, default=-1, dest="display",
+                   help="Display index for fullscreen; -1 = primary (default: -1)")
+    p.add_argument("--sysinfo", action="store_true",
+                   help="Print system/configuration information and exit")
+    p.add_argument("--gc", action="store_true",
+                   help=("Leave the Python garbage collector RUNNING during "
+                         "measurement loops. By default the cyclic collector is "
+                         "suspended with gc.disable(), mirroring Go's "
+                         "debug.SetGCPercent(-1); pass --gc to measure its effect "
+                         "(run the same test twice, with and without)."))
+    p.add_argument("--audio-lib", default="ptb", dest="audio_lib",
+                   help=("PsychoPy audio backend preference: ptb|sounddevice|pyo|"
+                         "pygame (default: ptb). NOTE: PsychoPy 2026.1.x routes all "
+                         "playback through its SpeakerDevice/PsychToolbox layer and "
+                         "ignores this for stream creation — verify with --sysinfo "
+                         "before relying on it."))
+    p.add_argument("--audio-device", type=int, default=None, dest="audio_device",
+                   help=("Speaker device index to open (see --sysinfo for the list). "
+                         "This, not --audio-lib, is the effective control on "
+                         "PsychoPy 2026.1.x. Default: PsychoPy's first-found device."))
+    p.add_argument("--audio-frames", type=int, default=0, dest="audio_frames",
+                   help=("Audio hardware buffer in sample frames; 0 = backend "
+                         "default. Counterpart to the Go binary's -audio-frames "
+                         "(ptb backend only, where it sets blockSize)."))
     # trigger
     p.add_argument("--port", default=None,
                    help="Serial port for DLP-IO8-G (default: auto-detect)")
@@ -207,10 +282,13 @@ def build_parser() -> argparse.ArgumentParser:
                    help="Dark luminance 0–255 (default: 0)")
     p.add_argument("--level-b", type=int, default=255, dest="level_b",
                    help="Bright luminance 0–255 (default: 255)")
-    p.add_argument("--frames-per-phase", type=int, default=2, dest="frames_per_phase",
-                   help="Frames per dark/bright phase (default: 2)")
-    p.add_argument("--isi-frames", type=int, default=60, dest="isi_frames",
-                   help="Dark frames between flashes (default: 60)")
+    # Independent bright/dark durations, matching the Go binary. The old
+    # --frames-per-phase forced a symmetric square wave and so could not express
+    # the 1-on / 2-off stimulus that run-timing-tests.sh uses.
+    p.add_argument("--frames-on", type=int, default=1, dest="frames_on",
+                   help="Bright frames per cycle [frames / av tests] (default: 1)")
+    p.add_argument("--frames-off", type=int, default=9, dest="frames_off",
+                   help="Dark frames per cycle [frames / av tests] (default: 9)")
     # av / sound / rt
     p.add_argument("--soa-ms", type=float, default=0.0, dest="soa_ms",
                    help="Visual-to-audio SOA ms; negative=audio first (default: 0)")
@@ -236,7 +314,77 @@ def build_parser() -> argparse.ArgumentParser:
     return p
 
 
+# ── Garbage-collector control ─────────────────────────────────────────────────
+
+class suspend_gc:
+    """
+    Context manager that disables the cyclic garbage collector for the duration
+    of a measurement loop, mirroring the Go binary's suspendGC().
+
+    When --gc is passed the collector is deliberately left running so its effect
+    on timing can be measured; the context manager is then a no-op. Running the
+    same test twice, with and without --gc, yields the GC-on/GC-off comparison.
+
+    Note the asymmetry with Go, which matters when interpreting the comparison:
+    gc.disable() stops CPython's *cyclic* collector only. Reference counting
+    continues to free objects deterministically and cannot be switched off,
+    whereas Go's tracing collector is suspended entirely by
+    debug.SetGCPercent(-1).
+    """
+
+    def __init__(self, args):
+        self._leave_running = bool(getattr(args, "gc", False))
+
+    def __enter__(self):
+        if not self._leave_running:
+            gc.disable()
+        return self
+
+    def __exit__(self, *exc):
+        if not self._leave_running:
+            gc.enable()
+        return False
+
+
+def gc_label(args) -> str:
+    """Describe the collector state, for report headers."""
+    return "on" if getattr(args, "gc", False) else "suspended"
+
+
 # ── Helpers ───────────────────────────────────────────────────────────────────
+
+def make_tone(args, freq_hz: float, secs: float, volume: float = 0.8):
+    """
+    Build a Sound, honouring --audio-frames where the backend supports it.
+
+    Go's -audio-frames sets the SDL hardware buffer in sample frames; the PTB
+    backend's equivalent is blockSize (per-sound, unlike other backends). Other
+    backends have no equivalent and ignore the setting.
+    """
+    kwargs = dict(value=freq_hz, secs=secs, volume=volume,
+                  sampleRate=44100, stereo=True)
+    if args.audio_frames > 0:
+        kwargs["blockSize"] = args.audio_frames
+    if args.audio_device is not None:
+        kwargs["speaker"] = args.audio_device
+    try:
+        return sound.Sound(**kwargs)
+    except Exception as exc:
+        raise SystemExit(
+            f"\naudio: could not open an output stream.\n"
+            f"  {type(exc).__name__}: {exc}\n\n"
+            f"PsychoPy 2026.1.x opens every sound through its SpeakerDevice /\n"
+            f"PsychToolbox layer, so --audio-lib does NOT change this — pick a\n"
+            f"different device instead:\n"
+            f"    python timing_tests.py --sysinfo       # lists device indices\n"
+            f"    python timing_tests.py --test check --audio-device N\n\n"
+            f"If every device fails, PsychoPy has no usable audio session here.\n"
+            f"Check that a sound server is running for this login session\n"
+            f"(pipewire/pulseaudio) and that the shell can reach it.\n"
+            f"Record the device index used in the report — audio numbers are only\n"
+            f"comparable across machines that opened the same kind of device.\n"
+        ) from exc
+
 
 def level_to_psychopy(level: int) -> float:
     """Convert 0–255 luminance byte to PsychoPy's [-1, 1] color space."""
@@ -340,179 +488,187 @@ def print_stats(label: str, s: dict, target_ms: float) -> None:
 
 def run_frames(win, trig, args) -> None:
     """
-    Alternate between two luminance levels for args.cycles complete dark/bright
-    cycles.  A trigger pulse is sent at the first frame of each bright phase.
+    Alternate a bright phase of --frames-on frames with a dark phase of
+    --frames-off frames, for --cycles cycles. A trigger pulse is fired on the
+    first frame of each bright phase.
 
-    Matches: go run main.go -test frames -level-a N -level-b N
-             -frames-per-phase N -cycles N [-d]
+    Reports the same two quantities as the Go binary, against the *measured*
+    mean rather than a nominal target derived from --hz:
+
+      bright_duration_ms = first dark flip − first bright flip
+      period_ms          = this bright onset − previous bright onset
+
+    The single-frame flash case is simply --frames-on 1, which is why `flash`
+    is now an alias for this test rather than a separate implementation.
+
+    Matches: Timing-Tests -test frames -level-a N -level-b N
+             -frames-on N -frames-off N -cycles N [-w] [-d N] [-gc]
     """
-    target_ms = args.frames_per_phase * 1000.0 / args.hz
+    frames_on, frames_off = args.frames_on, args.frames_off
     print(f"frames: level-a={args.level_a} level-b={args.level_b}"
-          f" frames-per-phase={args.frames_per_phase}"
-          f" cycles={args.cycles} hz={args.hz:.2f} warmup={args.warmup}")
+          f" frames-on={frames_on} frames-off={frames_off}"
+          f" cycles={args.cycles} warmup={args.warmup}")
 
     col_a = level_to_psychopy(args.level_a)
     col_b = level_to_psychopy(args.level_b)
-    intervals: list[float] = []
-    prev_t: float | None = None
-    frame = 0
-    warmup_ticks = args.warmup * 2 * args.frames_per_phase
+    bright_durations: list[float] = []
+    periods: list[float] = []
+    prev_bright_start: float | None = None
     is_null = isinstance(trig, NullTrigger)
 
-    gc.disable()
-    try:
+    with suspend_gc(args):
         for cycle in range(args.cycles):
-            for phase in range(2):
-                is_bright = phase == 1
-                col = col_b if is_bright else col_a
-                for f in range(args.frames_per_phase):
-                    triggered = is_bright and f == 0
-                    if triggered and not is_null:
+            # ── Bright phase ──────────────────────────────────────────────────
+            # Re-draw every frame so double-buffering never shows the other colour.
+            t_bright_start = None
+            for f in range(frames_on):
+                win.color = [col_b, col_b, col_b]
+                t_a = _flip(win)
+                if f == 0:
+                    t_bright_start = t_a
+                    if not is_null:
                         trig.set_high(args.trigger_pin)
-
-                    win.color = [col, col, col]
-                    t_flip = _flip(win)
-
-                    if triggered and not is_null:
                         trigger_pulse_async(trig, args.trigger_pin,
                                             args.trigger_ms / 1000)
 
-                    if prev_t is not None:
-                        interval_ms = (t_flip - prev_t) * 1000
-                        if frame >= warmup_ticks:
-                            intervals.append(interval_ms)
-                    prev_t = t_flip
-                    frame += 1
-
-                    if event.getKeys(keyList=["escape"]):
-                        print("  (stopped early by ESC)")
-                        print_stats("Frame intervals",
-                                    compute_stats(intervals, target_ms), target_ms)
-                        return
-    finally:
-        gc.enable()
-
-    print_stats("Frame intervals", compute_stats(intervals, target_ms), target_ms)
-
-
-# ── Test: flash ───────────────────────────────────────────────────────────────
-
-def run_flash(win, trig, args) -> None:
-    """
-    Present a single bright frame every isi_frames dark frames for args.cycles
-    flashes, recording flash-to-flash interval statistics.
-
-    Matches: go run main.go -test flash -isi-frames N -cycles N [-d]
-    """
-    expected_ms = (args.isi_frames + 1) * 1000.0 / args.hz
-    print(f"flash: level-a={args.level_a} level-b={args.level_b}"
-          f" isi-frames={args.isi_frames} cycles={args.cycles}"
-          f" hz={args.hz:.2f} warmup={args.warmup}")
-
-    col_a = level_to_psychopy(args.level_a)
-    col_b = level_to_psychopy(args.level_b)
-    flash_intervals: list[float] = []
-    prev_flash_t: float | None = None
-    is_null = isinstance(trig, NullTrigger)
-
-    gc.disable()
-    try:
-        for flash in range(args.cycles):
-            for _ in range(args.isi_frames):
+            # ── Dark phase ────────────────────────────────────────────────────
+            t_dark_start = None
+            for f in range(frames_off):
                 win.color = [col_a, col_a, col_a]
-                _flip(win)
-                if event.getKeys(keyList=["escape"]):
-                    print("  (stopped early by ESC)")
-                    print_stats("Flash intervals",
-                                compute_stats(flash_intervals, expected_ms), expected_ms)
-                    return
+                t_a = _flip(win)
+                if f == 0:
+                    t_dark_start = t_a
 
-            if not is_null:
-                trig.set_high(args.trigger_pin)
-            win.color = [col_b, col_b, col_b]
-            t_flip = _flip(win)
-            if not is_null:
-                trigger_pulse_async(trig, args.trigger_pin, args.trigger_ms / 1000)
+            if event.getKeys(keyList=["escape"]):
+                print("  (stopped early by ESC)")
+                break
 
-            if prev_flash_t is not None:
-                interval_ms = (t_flip - prev_flash_t) * 1000
-                if flash >= args.warmup:
-                    flash_intervals.append(interval_ms)
-            prev_flash_t = t_flip
-    finally:
-        gc.enable()
+            # ── Record measurements ───────────────────────────────────────────
+            bright_dur_ms = (t_dark_start - t_bright_start) * 1000
+            period_ms = 0.0
+            if prev_bright_start is not None:
+                period_ms = (t_bright_start - prev_bright_start) * 1000
 
-    print_stats("Flash intervals", compute_stats(flash_intervals, expected_ms), expected_ms)
+            if cycle >= args.warmup:
+                bright_durations.append(bright_dur_ms)
+                if period_ms > 0:
+                    periods.append(period_ms)
+
+            prev_bright_start = t_bright_start
+
+    # Deviation is reported against the measured mean, as the Go binary does,
+    # so no --hz is needed and a wrong nominal refresh rate cannot skew it.
+    s_dur = compute_stats(bright_durations, 0)
+    if s_dur:
+        s_dur = compute_stats(bright_durations, s_dur["mean"])
+        print_stats(f"Bright-phase duration (frames-on={frames_on})",
+                    s_dur, s_dur["mean"])
+    s_per = compute_stats(periods, 0)
+    if s_per:
+        s_per = compute_stats(periods, s_per["mean"])
+        print_stats(f"Period (frames-on={frames_on} + frames-off={frames_off})",
+                    s_per, s_per["mean"])
 
 
 # ── Test: av ──────────────────────────────────────────────────────────────────
 
 def run_av(win, trig, args) -> None:
     """
-    Present cycles of a white-screen flash paired with a pure sine tone at a
-    configurable SOA.
+    Present periodic visual flashes paired with tones at a configurable SOA.
 
-    t_audio_queued_ms is when tone.play() was called (PCM data pushed to the
-    driver buffer), not the acoustic onset.  The actual delay must be measured
-    with an oscilloscope (audio line-out → channel 1, photodiode → channel 2).
+    The bright phase lasts --frames-on frames and the tone duration matches that
+    duration (frames-on × refresh period, derived from --hz). The dark ITI
+    between stimuli lasts --frames-off frames. --iti-ms and --tone-ms are not
+    used by this test, exactly as in the Go binary.
 
-    Matches: go run main.go -test av -soa-ms N -freq-hz N -tone-ms N
-             -iti-ms N -cycles N [-d]
+    t_audio_queued_ms is when play() was called (PCM handed to the driver), not
+    the acoustic onset; the true delay is what the BBTK microphone measures.
+
+    Matches: Timing-Tests -test av -soa-ms N -freq-hz N
+             -frames-on N -frames-off N -cycles N [-w] [-d N]
     """
-    print(f"av: soa={args.soa_ms:.1f} ms  iti={args.iti_ms:.0f} ms"
-          f"  tone={args.freq_hz:.0f} Hz / {args.tone_ms} ms  cycles={args.cycles}")
+    frames_on, frames_off = args.frames_on, args.frames_off
+    frame_ms = 1000.0 / args.hz
+    tone_dur_ms = int(round(frames_on * frame_ms))
 
-    tone = sound.Sound(value=args.freq_hz, secs=args.tone_ms / 1000,
-                       volume=0.8, sampleRate=44100, stereo=True)
+    # SOA=0 uses callOnFlip so the tone is triggered by the flip itself rather
+    # than by a subsequent Python statement. This is the closest counterpart to
+    # the Go binary's PlaySyncedWithFlip: it removes interpreter scheduling
+    # jitter between the flip returning and play() being called.
+    sync_method = "callOnFlip" if args.soa_ms == 0 else "sequential"
+    print(f"av: soa={args.soa_ms:.1f} ms  freq={args.freq_hz:.0f} Hz"
+          f"  tone={tone_dur_ms} ms (frames-on={frames_on} × {frame_ms:.2f} ms)"
+          f"  frames-off={frames_off}  cycles={args.cycles}  sync={sync_method}")
+
+    tone = make_tone(args, args.freq_hz, tone_dur_ms / 1000.0)
+    # Warm up: the first play carries driver start-up cost; discard it.
+    tone.play(); core.wait(0.02); tone.stop(); core.wait(0.05)
+
     soa_s = abs(args.soa_ms) / 1000.0
     audio_first = args.soa_ms < 0
     col_a = level_to_psychopy(args.level_a)
     col_b = level_to_psychopy(args.level_b)
     is_null = isinstance(trig, NullTrigger)
-    # ITI: one dark flip then sleep for the remainder (matches Go's approach)
-    iti_remainder_s = max(0.0, args.iti_ms / 1000 - 1.0 / args.hz)
 
-    print(f"{'trial':>6}  {'t_vis_after_ms':>16}  {'t_audio_queued_ms':>18}  {'soa_actual_ms':>14}")
+    print(f"{'trial':>6}  {'t_vis_before_ms':>16}  {'t_vis_after_ms':>15}"
+          f"  {'t_audio_queued_ms':>18}  {'soa_actual_ms':>14}")
 
-    for trial in range(args.cycles):
-        if audio_first:
-            t_audio_queued = core.getTime()
-            tone.play()
-            core.wait(soa_s)
-            if not is_null:
-                trig.set_high(args.trigger_pin)
+    def hold_bright(remaining: int) -> None:
+        """Redraw bright for the remaining frames so the panel never flips dark."""
+        for _ in range(remaining):
             win.color = [col_b, col_b, col_b]
-            t_vis_after = _flip(win)
-            if not is_null:
-                trigger_pulse_async(trig, args.trigger_pin, args.trigger_ms / 1000)
-        else:
-            if not is_null:
-                trig.set_high(args.trigger_pin)
-            win.color = [col_b, col_b, col_b]
-            t_vis_after = _flip(win)
-            if not is_null:
-                trigger_pulse_async(trig, args.trigger_pin, args.trigger_ms / 1000)
-            if soa_s > 0:
+            _flip(win)
+
+    with suspend_gc(args):
+        for trial in range(args.cycles):
+            if audio_first:
+                t_audio_queued = core.getTime()
+                tone.play()
                 core.wait(soa_s)
-            t_audio_queued = core.getTime()
-            tone.play()
+                win.color = [col_b, col_b, col_b]
+                t_vis_before = core.getTime()
+                t_vis_after = _flip(win)
+                if not is_null:
+                    trigger_pulse_async(trig, args.trigger_pin, args.trigger_ms / 1000)
+                hold_bright(frames_on - 1)
+            elif soa_s == 0:
+                win.color = [col_b, col_b, col_b]
+                t_vis_before = core.getTime()
+                win.callOnFlip(tone.play)
+                t_vis_after = _flip(win)
+                # Audio was launched by the flip itself; onset lags by at most
+                # one callback period.
+                t_audio_queued = t_vis_after
+                if not is_null:
+                    trigger_pulse_async(trig, args.trigger_pin, args.trigger_ms / 1000)
+                hold_bright(frames_on - 1)
+            else:
+                win.color = [col_b, col_b, col_b]
+                t_vis_before = core.getTime()
+                t_vis_after = _flip(win)
+                if not is_null:
+                    trigger_pulse_async(trig, args.trigger_pin, args.trigger_ms / 1000)
+                core.wait(soa_s)
+                t_audio_queued = core.getTime()
+                tone.play()
+                hold_bright(frames_on - 1)
 
-        soa_actual_ms = (t_audio_queued - t_vis_after) * 1000
-        print(f"{trial:>6}  {t_vis_after * 1000:>16.3f}  {t_audio_queued * 1000:>18.3f}"
-              f"  {soa_actual_ms:>14.1f}")
+            soa_actual_ms = (t_audio_queued - t_vis_after) * 1000
+            print(f"{trial:>6}  {t_vis_before * 1000:>16.3f}  {t_vis_after * 1000:>15.3f}"
+                  f"  {t_audio_queued * 1000:>18.3f}  {soa_actual_ms:>14.1f}")
 
-        win.color = [col_a, col_a, col_a]
-        _flip(win)
-        if iti_remainder_s > 0:
-            core.wait(iti_remainder_s)
+            # Dark phase: frames-off frames as ITI between stimuli.
+            for _ in range(frames_off):
+                win.color = [col_a, col_a, col_a]
+                _flip(win)
 
-        if event.getKeys(keyList=["escape"]):
-            print("  (stopped early by ESC)")
-            break
+            if event.getKeys(keyList=["escape"]):
+                print("  (stopped early by ESC)")
+                break
 
     tone.stop()
-    print(f"\nav: {args.cycles} trials complete.  "
-          f"Check oscilloscope for audio latency.")
+    print(f"\nav: {args.cycles} trials complete.  Check the BBTK/oscilloscope "
+          f"for acoustic onset.")
 
 
 # ── Test: jitter ──────────────────────────────────────────────────────────────
@@ -534,8 +690,7 @@ def run_jitter(win, args) -> None:
     prev_t: float | None = None
     frame = 0
 
-    gc.disable()
-    try:
+    with suspend_gc(args):
         t_start = core.getTime()
         deadline = t_start + args.duration_s
 
@@ -552,8 +707,6 @@ def run_jitter(win, args) -> None:
             if event.getKeys(keyList=["escape"]):
                 print("  (stopped early by ESC)")
                 break
-    finally:
-        gc.enable()
 
     if not intervals:
         print("No intervals recorded.")
@@ -651,10 +804,13 @@ def run_sound(win, trig, args) -> None:
     not the acoustic onset.  Acoustic onset = actual_onset + pipeline_latency.
     Use the drain test to measure pipeline latency on your system.
 
-    If a DLP-IO8-G is connected, a trigger pulse is sent just before each
-    tone's play() call — same as the Go version.
+    If a DLP-IO8-G is connected, the trigger line is held high for the whole
+    stream (high before the first tone, low after the last), matching the Go
+    version. It is deliberately *not* pulsed per tone: the previous version
+    called core.wait(trigger_ms) between set_high and set_low inside the timing
+    loop, injecting a 5 ms block immediately after every tone onset.
 
-    Matches: go run main.go -test sound -cycles N -freq-hz N -tone-ms N -iti-ms N
+    Matches: Timing-Tests -test tones -cycles N -freq-hz N -tone-ms N -iti-ms N
     """
     tone_dur_s = args.tone_ms / 1000.0
     isi_dur_s = args.iti_ms / 1000.0
@@ -668,8 +824,7 @@ def run_sound(win, trig, args) -> None:
           f"  SOA {soa_ms:.0f} ms  total ~{args.cycles * soa_s:.1f} s"
           + (f"  trigger pin {args.trigger_pin}" if not is_null else ""))
 
-    tone = sound.Sound(value=args.freq_hz, secs=tone_dur_s,
-                       volume=0.8, sampleRate=44100, stereo=True)
+    tone = make_tone(args, args.freq_hz, tone_dur_s)
 
     # Warm up: first play has driver startup overhead; discard it.
     tone.play(); core.wait(0.02); tone.stop(); core.wait(0.05)
@@ -687,8 +842,10 @@ def run_sound(win, trig, args) -> None:
     prev_actual_ms: float | None = None
     aborted = False
 
-    gc.disable()
-    try:
+    with suspend_gc(args):
+        # Trigger brackets the whole stream, as in the Go version.
+        if not is_null:
+            trig.set_high(args.trigger_pin)
         stream_start = core.getTime()
         for i in range(args.cycles):
             target_onset_s = i * soa_s
@@ -703,13 +860,8 @@ def run_sound(win, trig, args) -> None:
                 print("  (stopped early by ESC)")
                 break
 
-            if not is_null:
-                trig.set_high(args.trigger_pin)
             actual_onset_s = core.getTime() - stream_start
             tone.play()
-            if not is_null:
-                core.wait(trig_dur_s)
-                trig.set_low(args.trigger_pin)
 
             onset_error_ms = (actual_onset_s - target_onset_s) * 1000
             actual_ms = actual_onset_s * 1000
@@ -728,8 +880,8 @@ def run_sound(win, trig, args) -> None:
             if aborted:
                 print("  (stopped early by ESC)")
                 break
-    finally:
-        gc.enable()
+        if not is_null:
+            trig.set_low(args.trigger_pin)
 
     tone.stop()
     print_stats("Onset error vs target (ms)", compute_stats(onset_errors, 0), 0)
@@ -785,8 +937,7 @@ def run_rt(win, trig, args) -> None:
     is_null = isinstance(trig, NullTrigger)
     rt_values: list[float] = []
 
-    gc.disable()
-    try:
+    with suspend_gc(args):
         for i in range(n_trials):
             # Jittered ITI ± 50 %
             iti_s = mean_iti_s * (1.0 + (random.random() - 0.5))
@@ -832,8 +983,6 @@ def run_rt(win, trig, args) -> None:
 
             rt_values.append(rt_ms)
             print(f"  trial {i:3d}  RT = {rt_ms:.1f} ms")
-    finally:
-        gc.enable()
 
     if not rt_values:
         print("No RT data collected.")
@@ -949,8 +1098,9 @@ def run_check(win, args) -> None:
     win.color = [-1, -1, -1]
     msg1.draw()
     win.flip()
-    print("check: playing buzzer…")
-    buzzer = sound.Sound(value=200, secs=0.5, volume=0.8)
+    print(f"check: playing buzzer… (backend={_AUDIO_LIB}"
+          + (f", {args.audio_frames} sample frames)" if args.audio_frames > 0 else ")"))
+    buzzer = make_tone(args, 200, 0.5)
     buzzer.play()
     core.wait(1.0)
 
@@ -961,7 +1111,7 @@ def run_check(win, args) -> None:
     msg2.draw()
     win.flip()
     print("check: playing ping…")
-    ping = sound.Sound(value=880, secs=0.1, volume=0.8)
+    ping = make_tone(args, 880, 0.1)
     ping.play()
     core.wait(1.0)
 
@@ -975,7 +1125,7 @@ def run_stream(win, trig, args) -> None:
     """
     Measure timing accuracy of sequential (RSVP-style) stimulus presentations.
 
-    Each element: args.frames_per_phase bright frames then args.isi_frames dark
+    Each element: args.frames_on bright frames then args.frames_off dark
     frames.  Two statistics are reported:
       - Duration error  : actual on-duration − target on-duration (ms)
       - SOA error       : actual onset-to-onset interval − target SOA (ms)
@@ -985,11 +1135,11 @@ def run_stream(win, trig, args) -> None:
     If a DLP-IO8-G is connected, a trigger pulse is sent at the onset of every
     bright phase so software timestamps can be validated against a photodiode.
 
-    Matches: go run main.go -test stream -cycles N -frames-per-phase N
-             -isi-frames N -hz N -warmup N [-d]
+    Matches: Timing-Tests -test stream -cycles N -frames-on N
+             -frames-off N -hz N -warmup N [-w] [-d N]
     """
-    on_frames = args.frames_per_phase
-    off_frames = args.isi_frames
+    on_frames = args.frames_on
+    off_frames = args.frames_off
     target_frame_ms = 1000.0 / args.hz
     target_on_ms = on_frames * target_frame_ms
     target_off_ms = off_frames * target_frame_ms
@@ -1019,8 +1169,7 @@ def run_stream(win, trig, args) -> None:
     interval_errors: list[float] = []
     prev_onset_t: float | None = None
 
-    gc.disable()
-    try:
+    with suspend_gc(args):
         for elem in range(n):
             # ── ON phase ──────────────────────────────────────────────────────
             if not is_null:
@@ -1064,8 +1213,6 @@ def run_stream(win, trig, args) -> None:
             if event.getKeys(keyList=["escape"]):
                 print("  (stopped early by ESC)")
                 break
-    finally:
-        gc.enable()
 
     print_stats(f"Duration error (target {target_on_ms:.2f} ms)",
                 compute_stats(duration_errors, 0), 0)
@@ -1119,9 +1266,8 @@ def run_vrr(win, trig, args) -> None:
     win.flip()
     core.wait(0.5)
 
-    gc.disable()
     aborted = False
-    try:
+    with suspend_gc(args):
         for target_ms in range(1, max_ms + 1):
             target_s = target_ms / 1000.0
             duration_errors: list[float] = []
@@ -1167,8 +1313,6 @@ def run_vrr(win, trig, args) -> None:
 
             if aborted:
                 break
-    finally:
-        gc.enable()
         win.waitBlanking = True
         print("vrr: VSync re-enabled")
 
@@ -1191,9 +1335,59 @@ def make_window(args) -> visual.Window:
         waitBlanking=True,
         useFBO=True,
     )
-    if args.d:
+    if args.windowed:
         return visual.Window(size=[1024, 768], fullscr=False, **kwargs)
-    return visual.Window(fullscr=True, screen=args.screen, **kwargs)
+    # -d -1 means "primary", which is screen 0 for PsychoPy.
+    screen = 0 if args.display < 0 else args.display
+    return visual.Window(fullscr=True, screen=screen, **kwargs)
+
+
+def print_sysinfo(args) -> None:
+    """
+    Print machine and configuration information, the counterpart to the Go
+    binary's -sysinfo. Capture this on every machine so a report can be
+    attributed to a configuration after the fact.
+    """
+    import psychopy
+
+    uname = platform.uname()
+    print("── System ─────────────────────────────────────────────────────────")
+    print(f"Host:       {uname.node}")
+    print(f"System:     {uname.system} {uname.release} ({uname.machine})")
+    print(f"Version:    {uname.version}")
+    print(f"Processor:  {uname.processor or 'unknown'}")
+    print()
+    print("── Software ───────────────────────────────────────────────────────")
+    print(f"Python:     {platform.python_version()} ({platform.python_implementation()})")
+    print(f"PsychoPy:   {psychopy.__version__}")
+    print(f"numpy:      {np.__version__}")
+    print(f"audioLib:   {_AUDIO_LIB}")
+    print(f"audioFrames: {args.audio_frames if args.audio_frames > 0 else 'backend default'}")
+    try:
+        import psychtoolbox  # noqa: F401
+        print("psychtoolbox: available (hardware timestamps)")
+    except ImportError:
+        print("psychtoolbox: NOT installed (key/flip timestamps are poll-based)")
+    try:
+        import sounddevice  # noqa: F401
+        print("sounddevice: available")
+    except ImportError:
+        print("sounddevice: NOT installed (the latency/drain test needs it)")
+    print()
+    print("── Speaker devices (index → --audio-device N) ─────────────────────")
+    try:
+        from psychopy.hardware.speaker import SpeakerDevice
+        devs = SpeakerDevice.getAvailableDevices()
+        if not devs:
+            print("  (none found)")
+        for d in devs:
+            print(f"  [{int(d.get('index', -1)):>3}] {d.get('deviceName', d.get('name', '?'))}")
+    except Exception as exc:
+        print(f"  could not enumerate: {type(exc).__name__}: {exc}")
+    print()
+    print("── Measurement settings ───────────────────────────────────────────")
+    print(f"gc:         {gc_label(args)} during measurement loops")
+    print(f"display:    {'windowed 1024x768' if args.windowed else f'fullscreen, screen {0 if args.display < 0 else args.display}'}")
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────
@@ -1201,16 +1395,37 @@ def make_window(args) -> visual.Window:
 def main() -> None:
     args = build_parser().parse_args()
 
-    # Resolve legacy aliases to their canonical names.
+    if args.sysinfo:
+        print_sysinfo(args)
+        return
+
+    if args.test is None:
+        build_parser().error("one of --test or --sysinfo is required")
+
+    if args.audio_frames > 0 and _AUDIO_LIB != "ptb":
+        print(f"warning: --audio-frames is only honoured by the ptb backend; "
+              f"ignored for {_AUDIO_LIB!r}", file=sys.stderr)
+
+    # Resolve legacy aliases to their canonical names. `flash` is now an alias
+    # for `frames` (the single-frame case is just --frames-on 1), matching the
+    # Go binary, rather than a separate implementation.
     _aliases = {
         "audio": "check",
         "jitter": "display",
         "drain": "latency",
         "square": "trigger",
         "sound": "tones",
+        "flash": "frames",
     }
     test = _aliases.get(args.test, args.test)
 
+    # Record the collector state alongside the results so GC-on and GC-off runs
+    # cannot be confused during analysis.
+    print(f"gc: {gc_label(args)} during measurement loops")
+    print(f"audio: {_AUDIO_LIB}"
+          + (f", {args.audio_frames} sample frames" if args.audio_frames > 0 else ""))
+
+    status = 0
     win = make_window(args)
 
     needs_trigger = test in ("check", "frames", "flash", "av", "trigger",
@@ -1239,8 +1454,6 @@ def main() -> None:
             # ── Tier 3: stimulus timing validation ────────────────────────────
             case "frames":
                 run_frames(win, trig, args)
-            case "flash":
-                run_flash(win, trig, args)
             case "tones":
                 run_sound(win, trig, args)
             case "av":
@@ -1248,10 +1461,29 @@ def main() -> None:
             # ── Tier 4: response timing ───────────────────────────────────────
             case "rt":
                 run_rt(win, trig, args)
+    except SystemExit as exc:
+        # make_tone() and friends raise SystemExit carrying an actionable
+        # message; surface it rather than letting cleanup swallow it.
+        msg = str(exc)
+        if msg and msg not in ("0", "None"):
+            print(msg, file=sys.stderr)
+        status = exc.code if isinstance(exc.code, int) and exc.code else 1
+    except Exception:
+        traceback.print_exc()
+        status = 1
     finally:
-        trig.close()
-        win.close()
-        core.quit()
+        # Cleanup must not mask the failure. core.quit() raises SystemExit(0),
+        # so calling it here would discard the in-flight exception and make a
+        # crashed run exit 0 — indistinguishable from a good one in a report.
+        for close in (trig.close, win.close):
+            try:
+                close()
+            except Exception:
+                pass
+
+    if status:
+        sys.exit(status)
+    core.quit()
 
 
 if __name__ == "__main__":
