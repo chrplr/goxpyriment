@@ -1,7 +1,7 @@
-\documentclass[jou,a4paper]{apa7}
+\documentclass[doc,a4paper]{apa7}
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
-\usepackage[style=apa, backend=biber]{biblatex}
+\usepackage[style=apa, backend=biber, url=true]{biblatex}
 \usepackage{booktabs}
 \usepackage{graphicx}
 \usepackage[export]{adjustbox}
@@ -11,6 +11,10 @@
   firstnumber=1,
   numberfirstline=true
 }
+\usepackage{varioref}
+\usepackage{hyperref}
+\usepackage{cleveref} % MUST be loaded in this exact order!
+\usepackage{placeins}
 \usepackage{tablefootnote}
 \usepackage{xcolor}
 \usepackage{array}
@@ -33,6 +37,8 @@
 
 \setlength{\headheight}{23pt}
 \addtolength{\topmargin}{-9pt}
+\renewcommand{\topfraction}{.9}
+\renewcommand{\floatpagefraction}{.9}
 
 % --------------------------- Content -----------------------------------------------------------------
 
@@ -48,135 +54,283 @@
 
 \addbibresource{biblio.bib}
 
-\abstract{We introduce \texttt{goxpyriment}, a new open-source
-  software framework for programming behavioral and cognitive
-  experiments using the Go programming language. The library is
-  designed to address some limitations of existing Python-based
-  experiment tools, particularly the runtime environment complexity
-  that frequently complicates deployment across laboratories. Because
-  Go is a compiled language that can natively embed assets (e.g.,
-  graphics, audio files, and stimulus lists), \texttt{goxpyriment}
-  compiles entire experiments into single, self-contained executable
-  binaries with zero runtime dependencies. This drastically simplifies
-  distribution to collaborators and testing computers.  The
-  programming interface, inspired by Expyriment
-  \parencite{krause2014}, was designed to be human friendly. The
-  library includes an array of visual stimuli (text, shapes, images,
-  Gabor patches, motion clouds, \ldots) and audio capabilities (WAV
-  playback and tone generation).  While developping
-  \texttt{goxpyriment}, we focused on timing reliability. Input events
-  are timestamped by the operating system at hardware-interrupt time,
-  so reaction times are computed by subtracting two OS-level
-  timestamps rather than relying on continuous polling. Go's garbage
-  collector can be disabled, greatly reducing the probability of
-  unpredictable pauses that could corrupt stimulus timing.  Finally, a
-  set of over forty psychology experiments implemented in
-  \texttt{goxpyriment} are provided that promote not only learning by
-  humans but also improve the ability of modern AI-assisted coding
-  tools to help program experiments. The framework is released under the
-  GNU General Public License v3 and is freely available at
+\abstract{We introduce \texttt{goxpyriment}, an open-source software
+  framework for programming behavioral and cognitive experiments in
+  the Go programming language. It addresses two recurrent practical
+  difficulties of existing Python-based tools: the runtime-environment
+  complexity that complicates deployment across laboratories, and the
+  unpredictable pauses that automatic memory management can introduce
+  during timing-critical sections. Because Go is a compiled language
+  that can natively embed assets (e.g., graphics, audio files, and
+  stimulus lists), \texttt{goxpyriment} compiles an entire experiment
+  into a single, self-contained executable with no runtime
+  dependencies, so that distributing an experiment amounts to copying
+  one file. Users can just click on the executable within their file
+  browser and do not need to open a terminal and use the command line
+  (but they can if they want/need to).  The programming interface is
+  inspired by Expyriment \parencite{krause2014}. It provides an array
+  of visual stimuli (text, shapes, images, Gabor patches, motion
+  clouds, \ldots) and audio capabilities (WAV playback and tone
+  generation). For precise timing, response times are obtained by
+  using operating-system event timestamps recorded at
+  hardware-interrupt time rather than by continuous polling, and the
+  garbage collector can be suspended for the duration of a trial. We
+  characterize the resulting timing behaviour with the hardware-based
+  protocol of the timing mega-study \parencite{bridges2020}, reporting
+  visual, auditory, and trigger latencies across several hardware
+  configurations. The framework ships with over forty example
+  experiments that serve as reusable templates for common
+  paradigms. \texttt{goxpyriment} is released under the Apache License
+  2.0 and is freely available at
   \url{https://github.com/chrplr/goxpyriment}.}
 
 \begin{document}
 \maketitle
 
+
 \section{Introduction}\label{introduction}
 
-Experiment-control software occupies a central position in behavioral
-and cognitive neuroscience: the temporal precision of stimulus
-delivery and response recording, the ergonomics of experiment
+Experiment-control software provides the foundation for empirical
+behavioral and cognitive neuroscience: the temporal precision of
+stimulus delivery and response recording, the ergonomics of experiment
 programming, and the ease of deploying experiments to laboratory
 hardware each affect the quality and reproducibility of empirical
 data. Over the past two decades, Python has become the dominant
-language for experiment programming, primarily through two libraries:
-Expyriment \parencite{krause2014} and
-PsychoPy \parencite{peirce2019}. Before Python, MATLAB with the
-Psychophysics Toolbox \parencite{brainard1997, kleiner2007} was the de
-facto standard in many laboratories. More recently, web-based
-frameworks such as jsPsych \parencite{deleeuw2015, deleeuw2023} and
-lab.js \parencite{henninger2022} have enabled large-scale online data
+language for experiment programming, primarily through libraries such
+as PyEPL \parencite{pyepl_2007}, VisionEgg \parencite{visionegg_2008},
+Expyriment \parencite{krause2014} and PsychoPy
+\parencite{peirce2019}. Before that, MATLAB with the Psychophysics
+Toolbox \parencite{brainard1997, kleiner2007} was the de facto
+standard in many laboratories and is still in use in some of
+them. More recently, web-based frameworks such as jsPsych
+\parencite{deleeuw2015, deleeuw2023} and lab.js
+\parencite{henninger2022} have enabled large-scale online data
 collection.
 
-Each class of tool involves tradeoffs. MATLAB, extended with
-specialized C/C++ libraries (e.g.\ the Psychtoolbox), can offer good
-timing on well-configured hardware. Yet Psychtoolbox scripts written
-on Windows often do not work out of the box on Linux (and
-vice-versa). MATLAB can also be quite expensive when one cannot purchase
-academic licenses (as is the case for non diploma-delivering research institutions).
-Python tools provide a more open, flexible
-programming environment with a large scientific ecosystem.
-Python-based experiments can achieve high-precision timing, for
+Each class of tool involves tradeoffs. MATLAB, extended with the
+Psychtoolbox, is convenient to generate visual or auditory stimuli and
+offers good timing on well-configured hardware. Yet Psychtoolbox
+scripts written on Windows most often do not work out of the box on
+Linux (and vice-versa). MATLAB can also be costly for institutions
+that cannot obtain academic licenses (as is the case for some
+non-degree-granting research institutions).  Python tools provide a
+more open programming environment with a large scientific ecosystem.
+Python-based experiments can also achieve high-precision timing, for
 example by relying on the psychtoolbox Python module which provides
 pieces of the Psychtoolbox-3 (see
 \url{https://pypi.org/project/psychtoolbox/}). However, the use of
-Python introduces practical difficulties. First, deploying an
+Python introduces practical difficulties. For instance, deploying an
 experiment to a computer that does not already have a compatible
-Python environment requires package management (conda, pip, venv) and
-can be a source of breakage across operating-system versions. For
-example, installing the \texttt{psychopy} module under Linux can
-crashes while attempting to compile the wxPython package when there is
-no precompiled wheel. Second, Python's garbage collector can introduce
-unpredictable pause times that corrupt the timing of stimulus
-presentation and response recording during the critical trial
-loop. Web-based tools trade timing precision for accessibility:
-browser-mediated stimulus presentation is subject to event-loop
-latency that makes sub-frame timing difficult or impossible
+Python environment requires package management (pip, venv, conda, uv,
+\ldots) and can be a source of breakage across operating-system
+versions. For example, installing the \texttt{psychopy} module under
+Linux fails while compiling the wxPython package when no precompiled
+wheel is available. Second, Python's garbage collector can introduce
+unpredictable pause times that corrupt the timing of
+stimulus presentation and response recording during the critical trial
+loop. Web-based tools have an obvious advantage in terms of facility
+of deployment, but browser-mediated stimulus presentation is subject
+to event-loop latency that makes precise timing difficult
 \parencite{bridges2020, anwylirvine2021}.
 
-The Go programming language \parencite{donovan2016} offers a different
-perspective. Designed from the ground up for simplicity, Go has fewer
-moving parts than Python; as a consequence, the code is often
-described as ``boring'' but highly predictable, as the language
-structure typically enforces only one way to solve a given problem. In
-addition, Go is strongly typed and encourages error checking, which
-translates into less run-time debugging. Another important feature of
-Go is that it (cross-)compiles to native machine code for each target
-platform and can produce self-contained binaries that embed the
-stimuli, experiment lists, and thus have no runtime dependencies. Its
-garbage collector is concurrent and can be suspended for the duration
-of a timing-critical section. These properties make it an attractive
-basis for a behavioral experiment library that prioritizes timing
-reliability and deployment simplicity.
+The Go programming language \parencite{golang} offers a different set
+of tradeoffs. Go is a deliberately small language with a limited
+feature set and few alternative ways to express a given operation,
+which tends to make programs easy to read and to reason about
+\parencite{donovan2016}. It is statically typed, and its conventions
+encourage explicit error checking, so that many mistakes surface at
+compile time rather than at run time, which is a huge time saver for
+the programmer.  Moreover, two properties of Go make it an
+attractive language to program and distribute experiments.  First, Go
+(cross-)compiles to native machine code and can produce self-contained
+binaries that embed the stimuli and experiment lists and have thus no
+runtime dependencies. Second, its garbage collector is concurrent and
+can be suspended for the duration of a timing-critical section. These
+properties motivated our choice of Go as the basis for a behavioral
+experiment library that prioritizes deployment simplicity and timing
+control.
 
 The present article describes the design and capabilities of
-\texttt{goxpyriment}, discusses its timing architecture, and situates it
-relative to existing tools. Specifically, we highlight three main contributions
-of this framework: (1) zero-dependency deployment via single compiled binaries
-that simplify distribution across laboratory hardware; (2) native high-precision
-timing achieved directly through the Go and SDL3 APIs without requiring external
-C/C++ helper engines; and (3) a linear, straightforward API that is well
-suited for modern AI-assisted coding workflows.
+\texttt{goxpyriment}, details its timing architecture, and
+characterizes its temporal precision empirically. We highlight three
+contributions: (1) zero-dependency deployment via single compiled
+binaries that simplify distribution across laboratory hardware; (2) a
+timing architecture that obtains response times from operating-system
+event timestamps and that can suspend garbage collection during
+trials, whose behaviour we quantify using the protocol of the timing
+mega-study \parencite{bridges2020}; and (3) the existence of a gallery
+of more than forty examples of experiments.
 
 {\small
-\lstinputlisting[float=*t, caption={Example of a Parity Decision experiment}, lineskip=-5pt, basicstyle=\small\ttfamily]{parity-decision.go}
+% float=tp (not *t): the doc class is one-column, so a starred full-width
+% float has nothing to span and gets deferred to the end of the document.
+\lstinputlisting[float=tp, label=paritycode, caption={Example of a Parity Decision experiment}, lineskip=-5pt, breaklines=true, breakatwhitespace=true, basicstyle=\small\ttfamily]{parity-decision.go}
 \par}
 
 \section{Framework Design}\label{framework-design}
 
-\subsection{Programming Model}\label{programming-model}
+\subsection{Foundation: SDL3}
 
-Every experiment centers on an \texttt{Experiment} object that manages the
-window, renderer, and audio subsystems. Execution is wrapped in a
-\texttt{Run} callback that provides a safety layer: if the participant presses
-the Escape key or closes the window, the library catches the resulting internal
-signal, safely flushes the data file to disk, and shuts down the SDL
-subsystems. This ensures that data is preserved even if a session is aborted
-prematurely.
+\texttt{Goxpyriment} relies on the Simple DirectMedia Layer, a
+cross-platform development library designed to provide low-level
+access to audio, keyboard, mouse, joystick, and graphics hardware
+\parencite{sdl3}.  SDL has been used to develop thousands of
+commercial games as well as many emulators. Bindings for many
+programming languages exist, notably for Python with the \verb|pygame|
+library \parencite{pygame}. Because of its large user and developer
+bases, SDL is actively maintained and keeps up with modern hardware.
+Goxpyriment uses the latest version of this library, SDL3, through the
+go-sdl3 bindings \parencite{gosdl3}.
 
-It is possible, but not necessary, to build the experiment around a
+
+\subsection{Single-Binary Deployment (Zero Dependencies)}\label{single-binary-deployment}
+
+Go compiles programs into a single statically linked executable with
+no external runtime dependencies. Crucially, the \texttt{go-sdl3}
+package embeds the pre-built SDL3 runtime libraries \parencite{sdl3}
+directly into the executable, so that no library needs to be installed
+separately on the target machine.  In addition, the stimuli,
+experimental lists, fonts, and other assets can be embedded in the
+binary too. As a result, distributing an experiment requires copying
+just one file; there is no need to manage virtual environments,
+package versions, or interpreter installations across laboratory
+computers. This substantially reduces the operational overhead of
+installing experiments on multiple machines or sharing materials with
+collaborators.
+
+\subsection{Programming interface: a simple example}\label{example}
+
+Listing~\vref{paritycode} provides an example of a simple experiment
+implementing a parity decision task where participants have to decide
+if a number is even or odd.
+
+\begin{itemize}
+\item Line 12: An \texttt{Experiment} object that manages the
+window, renderer, and audio subsystems must be created
+early. Calling it also parses the command-line to get the subject's
+code and whether the experiment should run in fullscreen mode or not.
+
+\item Lines 16--36: This part of the code prepares the stimuli. Lines
+31--36 are the most Go-specific: they create a map (a.k.a. associative
+array or dictionary in other programming languages) associating each
+number to a graphic texture. By pre-building these textures, we ensure
+that they will be displayed as quickly as possible in the presentation
+loop (we could have called \texttt{stimuli.NewTextLine()} in the loop,
+saving a few lines at the cost of recomputing the texture at each
+iteration).
+
+\item Lines 41--56: This part of the code deals with the presentation
+  loop. It is wrapped in a \texttt{Run} call that catches quitting
+  events: if the participant presses the Escape key or closes the
+  window, the library catches the resulting internal signal, safely
+  flushes the data file to disk, and shuts down the SDL subsystems,
+  ensuring that data is preserved even if a session is aborted
+  prematurely. Line 47, the function \texttt{ShowAndGetRT()} presents
+  the visual stimulus, waits for one of the given keys, then returns
+  the reaction-time.
+\end{itemize}
+
+\subsection{Timestamps, Garbage Collection Control, ...}
+
+Response timing in \texttt{goxpyriment} exploits SDL3 OS-level event
+timestamps. The \verb|ShowAndGetRT| function used in the parity example is
+a wrapper for:
+
+\noindent%
+\begin{lstlisting}[numbers=none,basicstyle=\small]
+  onset,_ := exp.ShowTS(stim)
+  key,eventTS,_ := exp.Keyboard.GetKeyEventTS(keys,
+                                              timeoutMs)
+  rt := int64(eventTS - onset) / 1_000_000
+\end{lstlisting}
+
+\texttt{ShowTS()} displays the stimulus \texttt{stim}, blocking until
+the next screen flip when VSYNC is enabled, and returning a
+time-stamp for that event (in ns).  When VSYNC is disabled,
+\texttt{ShowTS()} returns immediately, supporting variable
+refresh rate (VRR) monitors.
+
+\verb|GetKeyEventTS()| scans the keyboard and returns the code of the
+key pressed and a timestamp (in ns) for it. This timestamp is
+populated by the OS input subsystem at hardware-interrupt time
+(nanoseconds since SDL initialization).  Because SDL events carry
+their timestamp (information that pygame discards), the event remains in
+the queue with its original timestamp regardless of how much
+computation occurs between stimulus onset and response collection.  By
+comparing the response timestamp with the \texttt{ShowTS()} timestamp,
+reaction times can be computed without interpreter overhead
+(hardware-level lags at the keyboard or mouse can, of course, still be
+present). An advantage of this approach is that there is no need to
+poll the HID device continuously to detect events: a complex sequence
+of stimuli can be programmed and every event remains available, with
+its original timestamp, to be processed later when needed.
+
+To reduce the likelihood of latencies, goxpyriment provides additional functions:
+
+\begin{description}
+\item[Explicit Garbage Collection Control] Go, like Python or
+  JavaScript, has a memory garbage collector. This can introduce
+  unpredictable pauses that corrupt timing. However, unlike Python or
+  Javascript, Go allows the programmer to suspend the garbage
+  collector.  This can be used in \texttt{goxpyriment}'s
+  timing-critical loops to prevent garbage-collection during a trial.
+
+\item[High-Precision Streams] For paradigms with dense, high-speed
+  stimulus sequences (e.g., retinotopic stimulation),
+  \texttt{goxpyriment} provides specialized stream functions such as
+  \texttt{PresentStreamOfImages}. These functions disable garbage
+  collection, drain the event queue, and busy-wait at the sub-frame
+  level to ensure that each stimulus onset is scheduled accurately. A
+  \texttt{TimingLog} records the target and actual onsets for post-hoc
+  verification, as well as the timing of keys pressed during the
+  presentation of the stream.
+\end{description}
+
+\subsection{Triggers}
+
+To communicate with external recording equipment, such as fMRI, EEG,
+and MEG systems, \verb|Goxpyriment| provides generic functions for
+reading from and writing to parallel and serial ports. Moreover, the
+current version implements TTL input/output interfaces for specific
+USB-serial devices: the DLP-IO-8 (see
+\url{https://github.com/chrplr/dlp-io8-g}) and an Arduino Mega 2560
+utilizing a custom protocol (see
+\url{https://github.com/chrplr/neurospin-meg-ttl-box}), and for an
+Ethernet-based device: the LabJack T4
+(\url{https://labjack.com/products/labjack-t4}). Adding support for
+new hardware is facilitated by the availability of the source code for
+the current devices.
+
+A notable feature of the Go language is that it makes asynchronous
+function execution trivial by simply prepending the \verb|go| keyword
+to a function call. For example, \verb|go pp.Pulse(5, 200)| sends a
+200~ms TTL pulse to line 5 of the parallel port in a 'fire-and-forget'
+manner. The function runs as a concurrent process and control returns
+immediately to the caller, allowing the program to proceed without
+delay—for example, to continue with stimulus presentation.
+
+
+\subsection{Miscellaneous additional features}
+
+This parity decision example only demonstrates a tiny part of the features
+provided by the framework.
+
+For example, it is possible to build the experiment around a
 hierarchical structure of blocks and trials, over which the program
-can iterate, following a patten inspired by Expyriment
+can iterate, following a pattern inspired by Expyriment
 \parencite{krause2014}. Each trial is a collection of factors that can
 be randomized and logged. Data collection is handled by an
-\texttt{exp.Data} object, which writes to a CSV file withal
-metadata headers providing extensive information about the computer OS and hardware, timestamps, etc.
+\texttt{exp.Data} object, which writes to a CSV file with metadata
+headers providing extensive information about the computer OS and
+hardware, timestamps, etc.
 
-\texttt{goxpyriment} provides an optional graphical
-\texttt{GetParticipantInfo} dialog that opens before the main experiment
-window (see Fig.~\ref{fig:getinfo}). This allows the experimenter to input subject
-IDs, select experimental conditions from discrete menus, and toggle
-settings like fullscreen mode. These values are automatically
-recorded in the output data file header.
+Another thing which is not transparent from the source code is the fact
+that \texttt{goxpyriment} provides a graphical
+\texttt{GetParticipantInfo} dialog that opens (optionally) before the
+main experiment window (see Fig.~\ref{fig:getinfo}). This allows the
+experimenter to input subject IDs, select experimental conditions from
+discrete menus, and toggle settings like fullscreen mode. These values
+are automatically recorded in the output data file header.
 
 \begin{figure}[t]
 \centering
@@ -192,101 +346,20 @@ recorded in the output data file header.
   practical for the experimenter to choose among a small set of
   options without typing, which reduces setup errors when launching an
   experiment from a desktop shortcut or file manager. Note that which
-  fields appear in the UI is configurable. It is also prossible to
+  fields appear in the UI is configurable. It is also possible to
   pass the information as arguments on the command-line and skip these
   UIs.}
 \label{fig:getinfo}
 \end{figure}
 
 
-\subsection{Single-Binary Deployment (Zero Dependencies)}\label{single-binary-deployment}
-
-Go compiles programs into a single statically linked executable with
-no external runtime dependencies. Crucially, the \texttt{go-sdl3}
-package embeds the pre-built SDL3 runtime libraries \parencite{sdl3}
-directly into the executable so that the user do not need to install
-any library by herself.  In addition, the stimuli, experimental lists,
-fonts, and other assets can be embedded in the binary too. As a
-result, distributing an experiment requires copying just one file;
-there is no need to manage virtual environments, package versions, or
-interpreter installations across laboratory computers. This
-substantially reduces the operational overhead of installing experiments
-on multiple machines or sharing materials with collaborators.
-
-\subsection{Explicit Garbage Collection Control}\label{explicit-gc-control}
-
-While the garbage collectors in languages like Python or JavaScript can
-introduce unpredictable pause times that corrupt timing, Go exposes a runtime
-API for suspending the garbage collector. \texttt{goxpyriment} uses this
-mechanism in its timing-critical loops, ensuring that stimulus onsets and
-offsets are not delayed by memory management tasks.
-
-\subsection{Hardware-Synchronized Presentation}\label{hardware-sync}
-
-Through go-sdl3 \parencite{gosdl3}, \texttt{goxpyriment} relies on the
-Simple DirectMedia Layer (SDL, version 3), a cross-platform development
-library designed to provide low-level access to audio, keyboard,
-mouse, joystick, and graphics hardware \parencite{sdl3}. For example,
-\texttt{screen.Update()} calls SDL's \texttt{SDL\_RenderPresent}. When
-VSYNC is enabled, this function blocks until the display's
-vertical retrace. When VSYNC is disabled, \texttt{SDL\_RenderPresent}
-returns immediately, supporting variable refresh rate (VRR)
-monitors.
-
-\subsection{High-Precision Streams}\label{high-precision-streams}
-
-For paradigms with dense, high-speed stimulus sequences (e.g., retinotopic stimulation),
-\texttt{goxpyriment} provides specialized stream functions such as
-\texttt{PresentStreamOfImages}. These functions disable garbage collection,
-drain the event queue, and busy-wait at the sub-frame level to ensure
-that each stimulus onset is scheduled accurately. A \texttt{TimingLog}
-records the target and actual onsets for post-hoc verification, as
-well as the timing of keys pressed during the presentation of the
-stream.
-
-\subsection{OS-Level Response Timestamps}\label{hardware-timestamps}
-
-Response timing in \texttt{goxpyriment} leverages SDL3 OS-level event
-timestamps. The \texttt{GetKeyEventTS} method returns the
-\texttt{KeyboardEvent.Timestamp} field, which is populated by the OS
-input subsystem at hardware-interrupt time (nanoseconds since SDL
-initialization).  Because SDL events carry their timestamp in the
-event structure itself, the event remains in the queue with its
-original timestamp regardless of how much computation occurs between
-stimulus onset and response collection.  By comparing the response
-timestamp with the \texttt{Screen.FlipTS()} timestamp---which uses the
-same clock---reaction times can be measured with minimal jitter and no
-interpreter overhead (of course, potential hardware level lags at the
-level of the keyboard or mouse can still be present). The big
-advantage of this approach is there there is no need to continusously
-pool the HID device, e.g. keyboard or mouse, to detect events. Thus, a
-complex sequence of stimuli can be programmed and all events will be
-available to process later, when needed.
-
-\subsection{Triggers}
-
-Generic functions for reading from and writing to parallel and serial
-ports are provided. In addition, the current version implements TTL
-input/output interfaces for two specific USB-serial devices: the
-DLP-IO-8 (see \url{https://github.com/chrplr/dlp-io8-g}) and an
-Arduino Mega 2560 utilizing a custom protocol (see
-\url{https://github.com/chrplr/neurospin-meg-ttl-box}).
-
-While USB latency can be a concern, it may be mitigated under Linux by
-setting the value of
-\texttt{/sys/bus/usb-serial/devices/ttyUSB0/latency\_timer} to 1. To
-avoid USB entirely, one can use an Ethernet-based interface such as
-the LabJack T4 (\url{https://labjack.com/products/labjack-t4}), which
-can be controlled via Go's \texttt{modbus} library
-(\url{https://github.com/goburrow/modbus})."
-
-\subsection{The Timing Verification Suite}\label{timing-verification}
+\section{Timing Validation}\label{timing-verification}
 
 \begin{table*}[tb]
   \caption{Results of a timing test performed on a Raspberry Pi 4
     (Linux, arm64). Every half second, a 200ms tone was played, a 200ms white screen was displayed, and a TTL signal was sent. 1000 cycles. Measurements were performed with a Black Box Toolkit v3. }
 \label{timings}
-\footnotesize
+\scriptsize
   \begin{tabular}{lrrrrrrrrrrrr}
 \hline \hline \\
     &     Min &  P5 &   P25 &  P50 &  P75 &  P95 &  Max &  Range & P95-P05 & Mean & SD \\
@@ -322,13 +395,27 @@ TTLin1$\rightarrow$Mic1 &  62.0 & 66.5 & 69.0 & 70.8 & 72.6 & 75.5 & 87.8 &
 \end{table*}
 
 
-The repository includes a dedicated timing verification suite
-(\texttt{tests/Timing-Tests/}) that allows researchers to characterize
-their hardware's performance with external devices. The suite includes
-tests for measuring frame-interval jitter, verifying single-frame
-flash reliability via photodiode, and calculating audio-visual SOA
-latencies. Other tests measure hardware-buffer pipeline latency for
-audio and characterize the USB-serial jitter of trigger devices.
+To characterize temporal precision we adopt the hardware-measurement
+protocol of the timing mega-study \parencite{bridges2020}, which
+compared a range of lab-based and online experiment generators using a
+Black Box Toolkit (BBTK). Following that protocol, an external BBTK
+records physical events---light onsets from a photodiode placed on the
+screen, sound onsets from a microphone, and TTL edges on a digital
+input line---independently of the computer under test, so that the
+reported latencies do not depend on the timing of the machine being
+measured. The accompanying suite (\texttt{tests/Timing-Tests/}) drives
+these measurements and reports, for each event type, its duration and
+inter-onset interval (accuracy and precision), the audio--visual and
+trigger--visual onset differences (synchrony), the single-frame flash
+reliability, and the recovered response-time accuracy when the BBTK
+generates programmed responses at known delays. To evaluate the effect
+of memory management on timing, we additionally compare frame-interval
+distributions with the garbage collector enabled versus suspended.
+
+% TODO(revision): replace/extend the Raspberry-Pi-4 results below with the
+% re-measured data across configurations (Pi 4, Dell Precision 5530, Dell
+% Precision 5490), add a same-hardware comparison against PsychoPy, and add the
+% GC-on/off frame-jitter and RT-accuracy analyses described above.
 
 Table~\ref{timings} presents results of some of these tests running on
 a modest Raspberry PI 4 with 2Gb of RAM.  The Raspberry displayed
@@ -339,7 +426,7 @@ minimum possible value. A Black Box Toolkit version 3
 \parencite{plant_2004}, controlled by our software
 \parencite{Pallier_bbtkv3}, captured input events on the `Opto1',
 `Mic1' and `TTLin1' lines. The first lines show the duration and
-inter-onset timings.  The numbers are quite stable for the `Opto' and
+inter-onset's timings.  The numbers are quite stable for the `Opto' and
 `TTLin' sensors (SD<0.5ms), and more variable for the `Mic1' (sound
 detector). We believe that the variability is more likely to come from the loudspeaker
 than the actual playout by the computer. The last two lines of
@@ -355,73 +442,31 @@ must be assessed for each configuration. A special folder in the
 goxpyriment github repository (\texttt{performance-reports}) is
 dedicated for users to share the results of timing tests.
 
-\section{AI-Assisted Coding}\label{ai-assisted}
 
-\subsection{An AI-Friendly framework}\label{ai-friendly-api}
+\section{Gallery of Examples}
 
-Go's design emphasizes simplicity and predictability. Because the
-language has few synonymous constructs, it is particularly well-suited
-for use with AI-powered coding assistants, for example Claude Code or
-Gemini cli. The framework's AI-friendliness also comes from other
-primary technical merits:
+The repository provides over forty demos and examples of classic
+psychology paradigms, including the Stroop task, Attentional Blink
+(RSVP), Masked Priming, Retinotopic mapping for fMRI, and adaptive
+threshold estimation using the QUEST algorithm. These examples serve
+as both functional templates and a gallery of the framework's
+capabilities.
 
-\textbf{Type Safety}. Unlike dynamic languages where errors like
-misspelled method names or invalid argument types (e.g., supplying a
-string ``red'' where a RGB color value is expected) only surface at
-runtime, Go's compiler catches these during the first build attempt.
-The strict typing reduces erroneous API calls in AI-generated code.
 
-\textbf{Linear Control Flow}. In some other frameworks, the programmer
-must manage an explicit event loop (e.g., \texttt{while True}),
-manually polling for events and checking for exit signals. AI Coders
-can miss these steps, leading to non-responsive windows or missed
-reation times. In \texttt{goxpyriment}, the \texttt{exp.Run} wrapper
-handles the event loop and automatic cleanup internally, simplfting
-the work of both the human and AI coder.
+TODO: expand this section, insert a more structured description of Gallery of examples (and mention demos).
 
-\textbf{Asset Embedding}: A frequent failure point for AI-generated
-experiments is incorrect file paths for stimuli. Using Go's
-\texttt{//go:embed} directive, an AI can generate code that bundles
-assets directly into the binary, eliminating path errors caused by
-mismatched directory structures.
+The examples and demos are available as pre-compiled binaries in the
+Releases tab of the github repository.  Yet, compiling all of them
+locally can be achieve in three steps: 1) install Go on your
+machine; 2) clone or download goxpyriment repository 3) run the
+`build.all` shell script.
 
-It would be worth conducting a study examining the AI coders abilities
-to program psychology experiments with different frameworks and
-programming langages, but to perform such a study scientifically goes
-largely beyond the scope of the present paper.
-
-\subsection{A Cautionary Note}\label{ai-caution}
-
-As we just argued, \texttt{goxpyriment} is well-suited for AI-assisted
-coding: its API and the provided examples give strong guidance to AI
-coding agents prompted to program psychology experiments. Someday
-experiments from the examples gallery were actually completely
-entirely generated by Claude or Gemini (see the Author Contributions
-section). Yet, even if these agents are extremely apt and quick at
-coding, human supervision remains clearly necessary, as illustrated in
-Fig.~\ref{fig:AIBlunders}.
-
-\begin{figure*}[t]
-\centering
-\begin{tabular}{cc}
-\includegraphics[width=0.3\textwidth,valign=c]{AIKanizsa.png} &
-\includegraphics[width=0.6\textwidth,valign=c]{AIclocks.png} \\
-\end{tabular}
-\caption{\textbf{AI errors:} Left: asked to write a program displaying
-Kanizsa's illusory rectangle, an AI produced the result shown, explaining: ``I
-have changed the Kanizsa example to make things robust and more visible [\ldots]
-A darker gray rectangle is drawn at the center, clearly visible against the
-light-gray background.'' Right: output from the AI clock project where AIs are
-asked to write programs drawing a clock; note the correct response on the right
-(see \url{https://clocks.brianmoore.com/} for more).}
-\label{fig:AIBlunders}
-\end{figure*}
 
 
 \section{Comparison with Existing Tools}\label{comparison-with-existing-tools}
 
 Table~\ref{tab:comparison} summarizes key properties of \texttt{goxpyriment}
-alongside five widely used experiment frameworks.
+alongside five other experiment frameworks.
 
 \begin{table*}[tb]
 \caption{Comparison of selected experiment frameworks.}
@@ -441,7 +486,6 @@ Language        & Go           & Python        & Python            & MATLAB     
 Deployment      & Single binary & pip/conda    & Standalone or pip & MATLAB license   & CDN / npm \\
 GC control      & Explicit disable & No        & No                & N/A              & No \\
 VSYNC sync      & Yes (SDL3)   & Yes (SDL2)    & Yes (Pyglet/PTB)  & Yes              & No \\
-VRR support     & Yes          & No            & No                & Partial          & No \\
 Hardware triggers & Yes        & Yes           & Yes               & Yes              & No \\
 Response device API & Unified  & Device-specific & Device-specific & Device-specific & N/A \\
 Event timestamp & SDL3 hardware & pygame timer & iohub/PTB clock  & \texttt{GetSecs} ($\mu$s) & Browser clock \\
@@ -457,45 +501,64 @@ Reference       & This paper   & \cite{krause2014} & \cite{peirce2019} & \cite{b
 experiment object, a \texttt{present()}-based stimulus API, a
 structured trial-loop model, and output to \texttt{.csv}-format files
 with metadata. The code for a simple experiment (Parity Decision) is
-provided in Appendix (Listing 1). The primary technical differences
+provided in Listing~\ref{paritycode}. The primary technical differences
 are the use of Go rather than Python and the use of SDL3 rather than
 the older Pygame/SDL2 stack. From the user's point of view,
 \texttt{goxpyriment} adds \emph{stream} objects which, as their name
 indicates, allow displaying sequences of stimuli with tightly
 controlled timing.
 
+Table~\ref{tab:comparison} necessarily simplifies; each framework has
+strengths that a compact matrix cannot convey. PsychoPy, in
+particular, offers a graphical Builder interface, a larger and
+extensively documented stimulus set, mature online deployment through
+PsychoJS, and a large user community. The Psychtoolbox remains a
+reference for low-level timing control on well-configured
+hardware. Relative to these established tools, \texttt{goxpyriment} is
+very young: it has no graphical builder, no online deployment, and a
+more limited stimulus library. Its distinctive contributions are
+therefore deployment simplicity and an explicit timing architecture
+rather than breadth of features. The entries in
+Table~\ref{tab:comparison} describe design characteristics; measured
+timing comparisons on identical hardware are reported in
+Section~\ref{timing-verification}.
 
-\section{Example Experiments}\label{example-experiments}
 
-The repository provides over forty demos and examples of classic
-psychology paradigms, including the Stroop task, Attentional Blink
-(RSVP), Masked Priming, Retinotopic mapping for fMRI, and adaptive
-threshold estimation using the QUEST algorithm. These examples serve
-as both functional templates and a gallery of the framework's
-capabilities.
+\subsection{Expandability}
+
+The availability of the source code makes it easy to expand
+goxpyriment, e.g., adding support for new hardware. Given a clear
+specification for an hardware interface, an human, or an AI coding
+assistant can quickly generate Go code for this hardware taking
+example from the existing packages.
 
 
 \section{Limitations and Future Directions}\label{limitations-and-future-directions}
 
-\textbf{Video playback.} The video playback functions currently
-do not expose frame-accurate timestamps or hardware trigger
-outputs. Adding precise onset timestamps and trigger support during video
-playback is our highest priority for the next release, as these
-capabilities are required for EEG and fMRI paradigms that include
-video stimuli.
+\textbf{No Eye-tracker support.} There is none for the moment. This is a
+target for future releases. The coding effort is expected to be small
+as some code has already been written to interact through TCP/IP to
+control some of the trigger devices.
 
-\textbf{Eye-tracker support.} There is none for the moment. This is
-a target for future releases.
+\textbf{No video recording}. While there is currently some support for
+recording audio responses and measuring naming times, the framework
+does not currently allow to capture videos (unless one controls a
+videorecorder through the serial interface).  As SDL3 supports recording
+video, this feature might be implemented in the future.
 
-\textbf{Audio and Video recording}. There is currently no support for recording
-audio responses and measuring naming times, nor videos. As SDL3 supports recording
-audio and vido, these features could be implemented in the future.
+\textbf{No way of sending results to a web server}.  Currently,
+results files are saved locally. In some situations, it could be
+useful to send the (anonymized) results to an on-line database, for
+example using a REST api.
 
-\textbf{Online deployment.} \texttt{goxpyriment} does not currently
-support web-based deployment. In theory, this should be possible as Go
-can compile to web assembly (wasm) and SDL3 supports EMSCRIPTEN
-(\url{https://emscripten.org/}). However, when we attempted it, we realized that
-the various tools involved are not yet mature enough.
+\textbf{Online deployment.} Currently, \texttt{goxpyriment} does not
+support web-based deployment. As Go can compile to web assembly (wasm)
+and SDL3 supports EMSCRIPTEN (\url{https://emscripten.org/}), it is an
+achievable goal. We actually have a proof of concept, having
+successfully implemented several examples of the gallery to run in the
+browser. However, work remains to be done to support all goxpyriment
+functions in the browser.  When this is achieved, the exact same
+source code will support web and local deployment.
 
 \textbf{Language barrier.}  Researchers who are unfamiliar with Go,
 that is, the vast majority, will need to invest a bit of time in
@@ -503,12 +566,14 @@ getting acquainted with the language.  To this end, many web resources
 exist, for example, \url{https://go.dev/tour/} and
 \url{https://gobyexample.com/}. As Go is a descendant of C, the syntax
 will be familiar to people who know a language of the same family,
-e.g., Java or Javascript. Finally, the examples and the migration guide
-we provide at \url{https://chrplr.github.io/goxpyriment}, are also
-meant to ease the transition.
+e.g., Java or Javascript. Finally, the examples and the migration
+guide we provide at \url{https://chrplr.github.io/goxpyriment}, are
+also meant to ease the transition. AI-Coding tools can help a lot in
+porting existing matlab or python code, adapting existing experiments,
+or creating new ones.
 
 \textbf{Name of the project.} The name ``goxpyriment'' is quite hard to
-pronounce and memorize.
+pronounce, it is recommanded to call the framework  'gox-py'.
 
 \clearpage
 
@@ -538,8 +603,8 @@ Not applicable.
 
 \subsection{Code availability}
 
-The source code of \texttt{goxpyriment} is available under the GNU
-General Public License v3 at
+The source code of \texttt{goxpyriment} is available under the Apache
+License 2.0 at
 \url{https://github.com/chrplr/goxpyriment}. All example experiments
 described in this article are included in the repository. No empirical
 data are reported in this article.
