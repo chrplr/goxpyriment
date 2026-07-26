@@ -43,7 +43,8 @@ test.bin
 # Node / browser tooling
 node_modules/
 
-# OS generated files
+# OS / office-suite generated files
+.~lock.*#
 .DS_Store
 .DS_Store?
 ._*
