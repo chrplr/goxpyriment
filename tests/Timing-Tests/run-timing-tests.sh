@@ -25,6 +25,9 @@
 #   SDL_RENDER_DRIVER=software SDL_VIDEODRIVER=wayland ./run-timing-tests.sh
 
 set -u
+# Without pipefail, `$BIN ... | tee` reports tee's status, so a test that
+# crashed would look like it succeeded and leave a truncated report behind.
+set -o pipefail
 
 # SDL reads these from the *environment*, so they must be exported — a plain
 # assignment never reaches the binary.
@@ -57,21 +60,39 @@ selected() {
 	return 1
 }
 
+CURRENT_STEP=""
+
 # step <name> <label> — prompt before running, unless the step was deselected.
 step() {
 	selected "$1" || return 1
+	CURRENT_STEP=$1
 	printf '\n──── %s : %s ────\n' "$1" "$2"
 	read -r -p 'Press Enter to start (Ctrl-C to abort the session) ' _
 	return 0
 }
 
+FAILED=""
+
 # run <report-name> <args...> — show the command, run it, save the output to
 # $OUTDIR/<report-name>.txt *and* keep it visible on the terminal.
+#
+# A failing test is reported loudly and recorded, but does not abort the
+# session: the remaining steps are still worth collecting, and the summary at
+# the end says what to redo.
 run() {
 	name=$1
 	shift
 	echo "+ $BIN $*"
 	"$BIN" "$@" 2>&1 | tee "$OUTDIR/${name}.txt"
+	rc=$?
+	if [ "$rc" -ne 0 ]; then
+		printf '\n!! %s FAILED (exit %d) — %s/%s.txt is incomplete\n' \
+			"$name" "$rc" "$OUTDIR" "$name" | tee -a "$OUTDIR/${name}.txt"
+		# Record the STEP name, not the report name: the step name is what
+		# selected() matches, so the re-run hint below is copy-pasteable.
+		FAILED="${FAILED} ${CURRENT_STEP}"
+	fi
+	return 0
 }
 
 if [ ! -x "$BIN" ]; then
@@ -139,3 +160,10 @@ step av "audio-visual synchrony (500 s)" &&
 
 printf '\nDone. Reports in %s/\n' "$OUTDIR"
 ls -1 "$OUTDIR"
+
+if [ -n "$FAILED" ]; then
+	printf '\n!! These steps FAILED and must be re-run:%s\n' "$FAILED"
+	printf '   e.g.  %s%s\n' "$0" "$FAILED"
+	exit 1
+fi
+printf '\nAll steps completed successfully.\n'
