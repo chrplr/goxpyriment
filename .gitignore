@@ -4,6 +4,7 @@ goxpy_data/
 xpd_results/
 octin_college_font/
 gvassets/
+/tmp/
 
 # Compiled binaries
 _build/

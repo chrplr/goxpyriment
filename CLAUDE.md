@@ -32,7 +32,10 @@ make deploy    # generate PDFs + build site locally
 make clean     # remove _build/ and site/
 ```
 
-PDFs and the `site/` directory are excluded from git (see `.gitignore`); they are generated locally. The push to GitHub Pages is handled by GitHub Actions (`.github/workflows/docs.yml`).
+The generated `docs/*.pdf` files **are tracked in git** — regenerate them with
+`make pdfs` and commit the result when the underlying Markdown changes. The
+`site/` directory is excluded (see `.gitignore`); it is built locally and the
+push to GitHub Pages is handled by GitHub Actions (`.github/workflows/docs.yml`).
 
 ## What this repo is
 
