@@ -28,7 +28,7 @@
   experiments implemented in Goxpyriment are provided that promote not
   only learning by humans but also improve the ability of modern
   AI-assisted coding tools to help program experiments. The framework
-  is released under the GNU General Public License v3.
+  is released under the Apache License 2.0.
 
 
 Remark: If you are looking for a simple experiment generator - with
@@ -108,7 +108,7 @@ experiments (Krause & Lindemann, 2014. *Behavior Research Methods*,
 
 ## License & citation
 
-GNU GPL v3 — see [LICENSE](https://github.com/chrplr/goxpyriment/blob/main/LICENSE.txt).
+Apache License 2.0 — see [LICENSE](https://github.com/chrplr/goxpyriment/blob/main/LICENSE.txt) and [NOTICE](https://github.com/chrplr/goxpyriment/blob/main/NOTICE).
 
 Please cite as:
 > Christophe Pallier (2026) chrplr/goxpyriment. Zenodo. https://doi.org/10.5281/zenodo.19200598

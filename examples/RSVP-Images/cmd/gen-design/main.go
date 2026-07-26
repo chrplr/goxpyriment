@@ -1,5 +1,5 @@
 // Copyright (2026) Christophe Pallier <christophe@pallier.org>
-// Distributed under the GNU General Public License v3.
+// Licensed under the Apache License, Version 2.0 (see LICENSE.txt).
 
 // gen-design generates the two RSVP design CSVs for the Hebart et al. (2023)
 // replication: one for MEG (image 500 ms + fixation 1000±200 ms ⇒ SOA

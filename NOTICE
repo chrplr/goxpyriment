@@ -1,0 +1,46 @@
+goxpyriment — a Go framework for behavioral and cognitive experiments
+Copyright 2026 Christophe Pallier <christophe@pallier.org>
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+
+--------------------------------------------------------------------------------
+Third-party components
+--------------------------------------------------------------------------------
+
+This product bundles or depends on the following third-party software. Their
+respective licenses are reproduced in vendor/<module path>/LICENSE.
+
+  Simple DirectMedia Layer 3 (SDL3, SDL3_ttf, SDL3_image, SDL3_mixer)
+      zlib license — https://www.libsdl.org/
+      Prebuilt runtime libraries are embedded in the executable by go-sdl3's
+      binsdl/binttf/binimg packages.
+
+  github.com/Zyko0/go-sdl3 .................... MIT License
+  github.com/ebitengine/purego ................ Apache License 2.0
+  github.com/funatsufumiya/go-gv-video ........ zlib-style license
+  github.com/gen2brain/mpeg ................... MIT License
+  github.com/goburrow/modbus .................. ISC License
+  github.com/goburrow/serial .................. MIT License
+  github.com/creack/goselect .................. MIT License
+  github.com/pierrec/lz4/v4 ................... BSD 3-Clause License
+  github.com/robroyd/dds ...................... Apache License 2.0
+  go.bug.st/serial ............................ BSD 3-Clause License
+  golang.org/x/sys ............................ BSD 3-Clause License
+
+The bundled Inconsolata font (assets_embed/Inconsolata.ttf) is distributed
+upstream under the SIL Open Font License, Version 1.1.
+
+The bundled sound effects (assets_embed/buzzer.wav, assets_embed/correct.wav)
+were created by the author. The bundled logo/icon artwork
+(assets_embed/logo.png) was created by the author using Google Gemini image
+generation. All are covered by this product's own license.

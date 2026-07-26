@@ -1,5 +1,5 @@
 // Copyright (2026) Christophe Pallier <christophe@pallier.org>
-// Distributed under the GNU General Public License v3.
+// Licensed under the Apache License, Version 2.0 (see LICENSE.txt).
 
 // test_stream_callback exercises PresentStreamOfStimuliFunc's per-frame
 // FrameCallback. It shows an RSVP word stream while a FrameCallback (a) draws a

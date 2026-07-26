@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Copyright (2026) Christophe Pallier <christophe@pallier.org>
-# Distributed under the GNU General Public License v3.
+# Licensed under the Apache License, Version 2.0 (see LICENSE.txt).
 
 # Build all goxpyriment examples and tests for Windows, macOS (arm64), Linux
 # (x86_64), and Linux (arm64 / Raspberry Pi). Uses Go cross-compilation

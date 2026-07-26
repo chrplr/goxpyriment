@@ -1,5 +1,5 @@
 // Copyright (2026) Christophe Pallier <christophe@pallier.org>
-// Distributed under the GNU General Public License v3.
+// Licensed under the Apache License, Version 2.0 (see LICENSE.txt).
 
 // Replication of Experiment 1 from:
 //   Planton et al. (2021). A theory of memory for binary sequences:

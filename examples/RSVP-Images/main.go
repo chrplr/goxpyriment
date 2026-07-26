@@ -1,5 +1,5 @@
 // Copyright (2026) Christophe Pallier <christophe@pallier.org>
-// Distributed under the GNU General Public License v3.
+// Licensed under the Apache License, Version 2.0 (see LICENSE.txt).
 
 // RSVP-Images replicates the rapid-serial-visual-presentation oddball task of
 // Hebart et al. (2023, THINGS-data). Object images are shown one after another

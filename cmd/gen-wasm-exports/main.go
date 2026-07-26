@@ -1,5 +1,5 @@
 // Copyright (2026) Christophe Pallier <christophe@pallier.org>
-// Distributed under the GNU General Public License v3.
+// Licensed under the Apache License, Version 2.0 (see LICENSE.txt).
 
 // Command gen-wasm-exports generates the exhaustive list of C symbols that must
 // be passed to Emscripten's -sEXPORTED_FUNCTIONS when linking SDL3.js/.wasm for

@@ -1,5 +1,5 @@
 // Copyright (2026) Christophe Pallier <christophe@pallier.org>
-// Distributed under the GNU General Public License v3.
+// Licensed under the Apache License, Version 2.0 (see LICENSE.txt).
 // Adaptive Auditory Threshold Estimation
 //
 // Measures pure-tone hearing thresholds using a 1-up/2-down staircase with

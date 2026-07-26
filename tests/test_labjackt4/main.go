@@ -1,5 +1,5 @@
 // Copyright (2026) Christophe Pallier <christophe@pallier.org>
-// Distributed under the GNU General Public License v3.
+// Licensed under the Apache License, Version 2.0 (see LICENSE.txt).
 
 // test_labjackt4 exercises a LabJack T4 as an 8-bit TTL trigger device via
 // the goxpyriment triggers package.

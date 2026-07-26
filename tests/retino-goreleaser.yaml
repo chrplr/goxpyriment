@@ -64,7 +64,7 @@ nfpms:
     maintainer: Christophe Pallier <christophe@pallier.org>
     description: Retinotopy Experiment
     homepage: https://github.com/chrplr/retinotopy-go
-    license: GPL-3.0
+    license: Apache-2.0
     formats:
       - deb
       - rpm

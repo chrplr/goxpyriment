@@ -1,5 +1,5 @@
 // Copyright (2026) Christophe Pallier <christophe@pallier.org>
-// Distributed under the GNU General Public License v3.
+// Licensed under the Apache License, Version 2.0 (see LICENSE.txt).
 //
 // Number Change Detection — replication of the paradigm from:
 // Decarli G., Piazza M. & Izard V. (2023). Are infants' preferences in the

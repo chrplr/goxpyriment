@@ -1,5 +1,5 @@
 // Copyright (2026) Christophe Pallier <christophe@pallier.org>
-// Distributed under the GNU General Public License v3.
+// Licensed under the Apache License, Version 2.0 (see LICENSE.txt).
 //
 // generate_regular produces 9 playing-card-style dot-pattern PNG files,
 // one per numerosity 1–9. Run once before building the experiment:

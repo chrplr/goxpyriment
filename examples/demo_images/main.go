@@ -1,5 +1,5 @@
 // Copyright (2026) Christophe Pallier <christophe@pallier.org>
-// Distributed under the GNU General Public License v3.
+// Licensed under the Apache License, Version 2.0 (see LICENSE.txt).
 
 // test_images loads every PNG file in the current directory and displays each
 // one, centered on the screen, for one second, using goxpyriment/stimuli.

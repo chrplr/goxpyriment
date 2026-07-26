@@ -1,5 +1,5 @@
 // Copyright (2026) Christophe Pallier <christophe@pallier.org>
-// Distributed under the GNU General Public License v3.
+// Licensed under the Apache License, Version 2.0 (see LICENSE.txt).
 
 // Package triggers provides hardware trigger interfaces for synchronising
 // stimuli with external recording equipment (EEG/MEG amplifiers, oscilloscopes,

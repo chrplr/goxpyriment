@@ -1,6 +1,5 @@
 // Copyright (2026) Christophe Pallier <christophe@pallier.org>
-// Co-authored by Claude Sonnet 4.6
-// Distributed under the GNU General Public License v3.
+// Licensed under the Apache License, Version 2.0 (see LICENSE.txt).
 
 // Package clock provides timing helpers: Wait, GetTime, and a Clock for
 // measuring durations and sleeping until a target offset.

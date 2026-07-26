@@ -150,4 +150,4 @@ Pinel at the INSERM U562 "Cognitive Neuroimaging Unit" (http://www.unicog.org).
 > large-scale databasing of individual functional cognitive networks.
 > *BMC Neuroscience*, 8, 91. https://doi.org/10.1186/1471-2202-8-91
 
-License: GNU General Public License v3.
+License: Apache License 2.0.

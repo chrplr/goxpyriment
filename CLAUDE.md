@@ -212,7 +212,7 @@ GPU textures are **lazily allocated** on first `Draw` call. `PreloadVisualOnScre
 Every `.go` file in the repository (outside `vendor/`) carries:
 ```go
 // Copyright (2026) Christophe Pallier <christophe@pallier.org>
-// Distributed under the GNU General Public License v3.
+// Licensed under the Apache License, Version 2.0 (see LICENSE.txt).
 ```
 New files must include this header.
 

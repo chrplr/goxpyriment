@@ -1,5 +1,5 @@
 // Copyright (2026) Christophe Pallier <christophe@pallier.org>
-// Distributed under the GNU General Public License v3.
+// Licensed under the Apache License, Version 2.0 (see LICENSE.txt).
 
 // Finger-Tracking experiment based on Dotan & Dehaene (2013):
 // "How do we convert a number into a finger trajectory?" (Cognition, 129).

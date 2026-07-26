@@ -1,5 +1,5 @@
 // Copyright (2026) Christophe Pallier <christophe@pallier.org>
-// Distributed under the GNU General Public License v3.
+// Licensed under the Apache License, Version 2.0 (see LICENSE.txt).
 
 // WhiteSquareSync (gv) — goxpyriment translation of the PsyScope script
 // `WhiteSquareSync_oscill.psyscript`. Plays sequences of three .gv movies

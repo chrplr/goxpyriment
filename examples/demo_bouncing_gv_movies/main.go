@@ -1,5 +1,5 @@
 // Copyright (2026) Christophe Pallier <christophe@pallier.org>
-// Distributed under the GNU General Public License v3.
+// Licensed under the Apache License, Version 2.0 (see LICENSE.txt).
 
 // bouncing_gv_movies plays two .gv movies that smoothly bounce around
 // the screen while their sizes oscillate, additively blending wherever

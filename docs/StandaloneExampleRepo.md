@@ -82,8 +82,8 @@ Keep the `.go` sources, embedded assets, tests, and `README.md`.
 
 Add these files (copy and adapt from the reference repos):
 
-- **`LICENSE`** — pick a license. goxpyriment itself is GPLv3, but **you are its
-  author**, so you may license your example however you like (Rush-Hour is MIT).
+- **`LICENSE`** — pick a license. goxpyriment itself is Apache-2.0, but **you are
+  its author**, so you may license your example however you like (Rush-Hour is MIT).
   If you change the license, update the per-file header comments to match.
 - **`build.sh`** / **`build.bat`** — a one-command local build
   (`CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o <Name> .`). These let a

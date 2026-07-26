@@ -1,5 +1,5 @@
 // Copyright (2026) Christophe Pallier <christophe@pallier.org>
-// Distributed under the GNU General Public License v3.
+// Licensed under the Apache License, Version 2.0 (see LICENSE.txt).
 //
 // generate_irregular produces 9 dot-pattern PNG files with irregular (random
 // but reproducible) layouts, one per numerosity 1–9. A fixed seed per
