@@ -1,5 +1,5 @@
 // Copyright (2026) Christophe Pallier <christophe@pallier.org>
-// Distributed under the GNU General Public License v3.
+// Licensed under the Apache License, Version 2.0 (see LICENSE.txt).
 //
 // Timing-Tests — hardware timing verification suite
 //
@@ -49,6 +49,9 @@
 //	-w                Windowed mode: 1024×768 window instead of fullscreen
 //	-d int            Display index: monitor to use (-1 = primary, default -1)
 //	-paced-flip       Use PacedFlip() instead of Update() for frame pacing in frames/av tests
+//	-gc               Leave the garbage collector running during timing-critical loops.
+//	                  Off by default (collector suspended). Run a test twice, with and
+//	                  without -gc, to measure the collector's effect on timing.
 //
 // Per-test flags — rt:
 //
@@ -154,6 +157,7 @@ var (
 	fDisplay     = flag.Int("d", -1, "Display index: monitor where the window/fullscreen will open (-1 = primary)")
 	fSysInfo     = flag.Bool("sysinfo", false, "Print system information and exit")
 	fPacedFlip   = flag.Bool("paced-flip", false, "Use PacedFlip() instead of Update() for frame pacing in frames/av tests")
+	fGC          = flag.Bool("gc", false, "Leave the garbage collector RUNNING during timing-critical loops.\n\tBy default the collector is suspended; pass -gc to measure its effect on timing\n\t(run the same test twice, with and without, to obtain the comparison).")
 
 	// ── gvsync: .gv playback / trigger synchronisation ───────────────────────
 	// Defaults describe a 60 fps train of 100 ms bright / 400 ms dark.
@@ -166,6 +170,36 @@ var (
 	fGvFile      = flag.String("gv-file", "", "gvsync: play this .gv instead of generating one (implies -gv-keep)")
 	fGvKeep      = flag.Bool("gv-keep", false, "gvsync: regenerate the stimulus and keep it on disk instead of using a temp file")
 )
+
+// ── Garbage-collector control ─────────────────────────────────────────────────
+
+// suspendGC turns the garbage collector off for the duration of a
+// timing-critical loop and returns the function that restores it.
+//
+// When -gc is passed the collector is deliberately left running so that its
+// effect on timing can be measured; the returned restore function is then a
+// no-op. Running the same test twice, with and without -gc, yields the
+// GC-on/GC-off comparison.
+//
+// Usage mirrors the pattern it replaces:
+//
+//	restoreGC := suspendGC()
+//	defer restoreGC()
+func suspendGC() func() {
+	if *fGC {
+		return func() {}
+	}
+	oldGC := debug.SetGCPercent(-1)
+	return func() { debug.SetGCPercent(oldGC) }
+}
+
+// gcLabel describes the collector state, for report headers and data comments.
+func gcLabel() string {
+	if *fGC {
+		return "on"
+	}
+	return "suspended"
+}
 
 // ── Screen fill helper ─────────────────────────────────────────────────────────
 
@@ -242,8 +276,8 @@ func runFrames(exp *control.Experiment, trig triggers.OutputTTLDevice) error {
 	var prevBrightStartT float64
 
 	return exp.Run(func() error {
-		oldGC := debug.SetGCPercent(-1)
-		defer debug.SetGCPercent(oldGC)
+		restoreGC := suspendGC()
+		defer restoreGC()
 
 		r := exp.Screen.Renderer
 		bLevel, dLevel := byte(*fLevelB), byte(*fLevelA)
@@ -462,8 +496,8 @@ func runJitter(exp *control.Experiment) error {
 	var prevT float64
 
 	return exp.Run(func() error {
-		oldGC := debug.SetGCPercent(-1)
-		defer debug.SetGCPercent(oldGC)
+		restoreGC := suspendGC()
+		defer restoreGC()
 
 		level := byte(128)
 		deadline := time.Now().Add(time.Duration(*fDurationS * float64(time.Second)))
@@ -754,8 +788,8 @@ func runRT(exp *control.Experiment, trig triggers.OutputTTLDevice) error {
 		exp.Screen.Update()
 		exp.Keyboard.WaitKey(control.K_SPACE)
 
-		oldGC := debug.SetGCPercent(-1)
-		defer debug.SetGCPercent(oldGC)
+		restoreGC := suspendGC()
+		defer restoreGC()
 
 		for i := 0; i < nTrials; i++ {
 			// Jittered ITI: meanItiMs ± 50 %
@@ -911,8 +945,8 @@ func runStream(exp *control.Experiment, trig triggers.OutputTTLDevice) error {
 		}
 		time.Sleep(500 * time.Millisecond)
 
-		oldGC := debug.SetGCPercent(-1)
-		defer debug.SetGCPercent(oldGC)
+		restoreGC := suspendGC()
+		defer restoreGC()
 
 		var durationErrors, intervalErrors []float64
 		streamStartMs := float64(clock.GetTimeNS()) / 1e6
@@ -1084,8 +1118,8 @@ func runVRR(exp *control.Experiment, trig triggers.OutputTTLDevice) error {
 		}
 		time.Sleep(500 * time.Millisecond)
 
-		oldGC := debug.SetGCPercent(-1)
-		defer debug.SetGCPercent(oldGC)
+		restoreGC := suspendGC()
+		defer restoreGC()
 
 		r := exp.Screen.Renderer
 
@@ -1187,8 +1221,8 @@ func runDrain(exp *control.Experiment) error {
 			return err
 		}
 
-		oldGC := debug.SetGCPercent(-1)
-		defer debug.SetGCPercent(oldGC)
+		restoreGC := suspendGC()
+		defer restoreGC()
 
 		for _, durMs := range durations {
 			tone := stimuli.NewTone(freqHz, durMs, 0.8)
@@ -1304,6 +1338,13 @@ func main() {
 		fmt.Printf("audio: %d Hz  %d ch  %d sample frames (~%.1f ms latency)\n",
 			spec.Freq, spec.Channels, frames,
 			float64(frames)/float64(spec.Freq)*1000)
+	}
+
+	// Record the collector state in both the console report and the data-file
+	// header, so GC-on and GC-off runs cannot be confused during analysis.
+	fmt.Printf("gc: %s during timing-critical loops\n", gcLabel())
+	if exp.Data != nil {
+		exp.Data.WriteComment("gc=" + gcLabel())
 	}
 
 	trig, _ := setupTrigger()
