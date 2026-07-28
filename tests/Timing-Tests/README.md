@@ -120,12 +120,17 @@ BBTK_CAPTURE=1 BBTK_CAPTURE_BIN=~/00_git/bbtkv3/_build/bbtk-capture \
 |---|---|---|
 | `BBTK_CAPTURE` | off | Set to `1` to record the photodiode steps |
 | `BBTK_CAPTURE_BIN` | `bbtk-capture` | Path to the binary, if not on `PATH` |
-| `BBTK_PORT` | — | Serial port; read by `bbtk-capture` itself |
+| `BBTK_PORT` | auto | Serial port; auto-detected, see below |
 | `BBTK_MARGIN_S` | 8 | Seconds recorded either side of the stimulus |
 | `BBTK_READY_TIMEOUT_S` | 120 | Give up waiting for the device |
 
 Only the photodiode steps (`av`, `av-gc`, `av-visual`) are wrapped; `check`,
 `display` and `latency` measure nothing the BBTK can see.
+
+**The port is found for you.** `/dev/ttyUSBn` numbering changes whenever the
+BBTK is replugged or power-cycled, so the script resolves the device through its
+stable `/dev/serial/by-id/*BBTK*` symlink instead, falling back to
+`bbtk-detect-port`. Set `BBTK_PORT` only to override that.
 
 **Why it waits.** `bbtk-capture` needs 11–40 s between launch and the device
 actually recording — fixed command pacing, plus an internal-memory erase whose
