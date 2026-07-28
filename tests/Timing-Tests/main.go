@@ -49,6 +49,8 @@
 //	-w                Windowed mode: 1024×768 window instead of fullscreen
 //	-d int            Display index: monitor to use (-1 = primary)
 //	-sysinfo          Print system information and exit
+//	-outdir string    Where to write the .csv/-info.txt results
+//	                  (default $HOME/goxpy_data)
 //	-gc               Leave the garbage collector running during timing loops.
 //	                  Off by default. Run a test twice, with and without, to
 //	                  measure the collector's effect.
@@ -131,6 +133,7 @@ var (
 	fWindowed    = flag.Bool("w", false, "Windowed mode (1024×768 window instead of fullscreen)")
 	fDisplay     = flag.Int("d", -1, "Display index: monitor where the window/fullscreen will open (-1 = primary)")
 	fSysInfo     = flag.Bool("sysinfo", false, "Print system information and exit")
+	fOutDir      = flag.String("outdir", "", "Directory for the .csv/-info.txt results (default: $HOME/goxpy_data).\n\tUse it to keep a session's data files beside its other outputs.")
 	fPacedFlip   = flag.Bool("paced-flip", false, "Use PacedFlip() instead of Update() for frame pacing [av]")
 	fGC          = flag.Bool("gc", false, "Leave the garbage collector RUNNING during timing-critical loops.\n\tBy default the collector is suspended; pass -gc to measure its effect on timing\n\t(run the same test twice, with and without, to obtain the comparison).")
 	fSquarePx    = flag.Int("square-px", 200, "Side of each of the five stimulus squares, in renderer pixels [av / vrr]")
@@ -1003,6 +1006,10 @@ func main() {
 	exp := control.NewExperiment("Timing-Tests", width, height, fullscreen, control.Black, control.White, 24)
 	if *fDisplay >= 0 {
 		exp.ScreenNumber = *fDisplay
+	}
+	// Must precede Initialize: that is where the data file is created.
+	if *fOutDir != "" {
+		exp.SetOutputDirectory(*fOutDir)
 	}
 	if err := exp.Initialize(); err != nil {
 		exp.End() // release any SDL subsystems already initialised before exiting

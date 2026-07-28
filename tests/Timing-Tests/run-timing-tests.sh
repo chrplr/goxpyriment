@@ -17,6 +17,7 @@
 #   SDL_AUDIODRIVER   audio backend            (default: alsa)
 #   AUDIO_BUFFSIZE    hardware buffer, frames  (default: 256)
 #   REFRESH_HZ        expected refresh rate    (default: 60)
+#   OUTDIR            session directory        (default: reports-<hostname>)
 #
 # Optional BBTK recording — when enabled, each photodiode step starts a
 # bbtk-capture in the background, waits until the device is actually recording,
@@ -47,7 +48,10 @@ REFRESH_HZ="${REFRESH_HZ:-60}"
 
 BIN=./Timing-Tests
 HOST=$(hostname -s 2>/dev/null || hostname)
-OUTDIR="reports-${HOST}"
+# Everything a session produces goes here, under the directory the script was
+# launched from: console reports, the .csv/-info.txt data files (via -outdir),
+# and any BBTK captures. Override to keep separate sessions apart.
+OUTDIR="${OUTDIR:-reports-${HOST}}"
 
 BBTK_CAPTURE="${BBTK_CAPTURE:-0}"
 BBTK_CAPTURE_BIN="${BBTK_CAPTURE_BIN:-bbtk-capture}"
@@ -102,8 +106,8 @@ FAILED=""
 run() {
 	name=$1
 	shift
-	echo "+ $BIN $*"
-	"$BIN" "$@" 2>&1 | tee "$OUTDIR/${name}.txt"
+	echo "+ $BIN $* -outdir $OUTDIR"
+	"$BIN" "$@" -outdir "$OUTDIR" 2>&1 | tee "$OUTDIR/${name}.txt"
 	rc=$?
 	if [ "$rc" -ne 0 ]; then
 		printf '\n!! %s FAILED (exit %d) — %s/%s.txt is incomplete\n' \
@@ -208,7 +212,7 @@ fi
 
 mkdir -p "$OUTDIR"
 echo "Host:    $HOST"
-echo "Reports: $OUTDIR/"
+echo "Session: $OUTDIR/  (reports, data files and any BBTK captures)"
 echo "Audio:   SDL_AUDIODRIVER=$SDL_AUDIODRIVER  buffer=$AUDIO_BUFFSIZE frames"
 if [ "$BBTK_CAPTURE" = "1" ]; then
 	echo "BBTK:    recording enabled ($BBTK_CAPTURE_BIN, ${BBTK_MARGIN_S}s margin either side)"

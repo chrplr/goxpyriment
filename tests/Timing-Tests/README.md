@@ -70,7 +70,8 @@ go run ./tests/Timing-Tests -test rt      -cycles 60
 go run ./tests/Timing-Tests -sysinfo                                 # config snapshot, then exit
 ```
 
-Results go to `~/goxpy_data/` as a `.csv` plus an `-info.txt` header recording the
+Results go to `~/goxpy_data/` by default — or wherever `-outdir` points — as a
+`.csv` plus an `-info.txt` header recording the
 display and audio configuration actually in use — including **which monitor** the
 window opened on. Read geometry from there rather than assuming; on a
 multi-monitor machine the displays differ in every relevant parameter.
@@ -136,8 +137,23 @@ the instant it sends `RUDS`. Budget that startup per step.
 Ctrl-C is safe: `bbtk-capture` traps it, stops the capture, and still writes what
 the device recorded.
 
-Captures land in `reports-<host>/bbtk-<step>-001-events.csv` alongside the console
-reports, with the raw `bbtk-capture` output in `reports-<host>/bbtk-<step>.log`.
+Everything a session produces lands in one directory under wherever you launched
+the script — `reports-<host>/` by default, or set `OUTDIR` to keep separate
+sessions apart:
+
+```
+reports-is158520/
+  av-visual.txt                              console report
+  Timing-Tests_sub-000_date-...csv           per-cycle data  (via -outdir)
+  Timing-Tests_sub-000_date-...-info.txt     display/audio configuration
+  bbtk-av-visual.log                         raw bbtk-capture output
+  bbtk-av-visual-001-events.csv              BBTK events
+  bbtk-av-visual-001-dscevents.csv
+  bbtk-av-visual-001.dat
+```
+
+The script passes `-outdir` to every run, so the data files sit beside the
+reports and captures instead of accumulating in `~/goxpy_data`.
 
 ---
 

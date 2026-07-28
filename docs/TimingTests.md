@@ -371,7 +371,9 @@ The hardware rows are the ones worth quoting in a methods section.
 
 ## Loading data in Python
 
-Each run writes two files to `~/goxpy_data/`:
+Each run writes two files to `~/goxpy_data/`, or to `-outdir` if given
+(`run-timing-tests.sh` points it at the session directory so everything from one
+session stays together):
 
 - `Timing-Tests_sub-000_date-<YYYYMMDD>-<HHMMSS>.csv` — data rows, no comments
 - `...-info.txt` — session metadata: start/end time, hostname, OS, and the display
