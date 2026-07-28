@@ -99,6 +99,24 @@ gradient — on the reference rig, 13.15 ms across 80 % of a 1280×1024 screen, 
 15.96 µs per pixel row. Two squares on the same row are microseconds apart and
 serve as a sanity check. Each display needs its own calibration.
 
+Each diode must sit at its square's **centre**: the gradient is divided by the
+top↔bottom separation, and that figure assumes it. The test prints the centres
+and the separation at startup and records them in the `-info.txt` header:
+
+```
+stimulus: five 400 px squares (corners + centre) on a 2560x1600 render area
+  centres:  x = 200 / 1280 / 2360    y = 200 / 800 / 1400
+  top↔bottom separation: 1200 px = 0.7500 of screen height
+```
+
+**Size the squares so that centre is reachable.** At `-square-px 200` on a
+1600-row panel the centre is only 100 px (~12 mm) from the bezel, where a diode
+cannot lie flat — it ends up further out, the real separation exceeds the printed
+one, and the derived sweep time comes out too large. If it exceeds one frame
+period, that is the tell: scan-out cannot outlast the frame it belongs to. Raise
+`-square-px` (400 gives ~24 mm of clearance and four times the light) until the
+centres are comfortably clear of the edge.
+
 **Discard the warm-up.** The first several cycles run long before settling
 (36–39 ms falling to ~27 ms on the reference rig). `-warmup` excludes them from
 the test's own statistics, but offline tools do not know about it — quote

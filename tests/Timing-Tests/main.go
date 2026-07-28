@@ -215,8 +215,37 @@ func newPainter(exp *control.Experiment) (paintFunc, error) {
 		{X: fw - side, Y: fh - side, W: side, H: side},             // bottom-right
 		{X: (fw - side) / 2, Y: (fh - side) / 2, W: side, H: side}, // centre
 	}
+	// Report the geometry rather than leaving it to be reconstructed later. The
+	// scan-out gradient is (bottom onset − top onset) divided by the separation
+	// below, so that fraction is part of the measurement, not a detail — and
+	// recomputing it after the fact is exactly how a run gets misread.
+	//
+	// The separation holds only if each photodiode sits at its square's CENTRE.
+	// A small square puts that centre close to the bezel, where a diode cannot
+	// lie flat; it then ends up further out, the true separation exceeds the
+	// figure below, and the derived sweep time comes out too large — possibly
+	// larger than a frame period, which is the tell that this has happened.
+	// Raise -square-px until the centres are comfortably clear of the edge.
+	sepPx := fh - side
+	sepFrac := float64(sepPx) / float64(fh)
+	cxL, cxR, cxC := side/2, fw-side/2, fw/2
+	cyT, cyB, cyC := side/2, fh-side/2, fh/2
+
 	fmt.Printf("stimulus: five %.0f px squares (corners + centre) on a %.0fx%.0f render area\n",
 		side, fw, fh)
+	fmt.Printf("  centres:  x = %.0f / %.0f / %.0f    y = %.0f / %.0f / %.0f\n",
+		cxL, cxC, cxR, cyT, cyC, cyB)
+	fmt.Printf("  top↔bottom separation: %.0f px = %.4f of screen height\n", sepPx, sepFrac)
+	fmt.Printf("  place each photodiode at its square's CENTRE — the separation assumes it\n")
+
+	if exp.Data != nil {
+		exp.Data.WriteComment(fmt.Sprintf("stim square-px: %.0f", side))
+		exp.Data.WriteComment(fmt.Sprintf("stim render-area: %.0fx%.0f", fw, fh))
+		exp.Data.WriteComment(fmt.Sprintf("stim square-centres-x: %.0f,%.0f,%.0f", cxL, cxC, cxR))
+		exp.Data.WriteComment(fmt.Sprintf("stim square-centres-y: %.0f,%.0f,%.0f", cyT, cyC, cyB))
+		exp.Data.WriteComment(fmt.Sprintf("stim top-bottom-separation-px: %.0f", sepPx))
+		exp.Data.WriteComment(fmt.Sprintf("stim top-bottom-separation-frac: %.4f", sepFrac))
+	}
 
 	return func(fg, bg control.Color) {
 		r.SetDrawColor(bg.R, bg.G, bg.B, 255)
