@@ -136,7 +136,7 @@ var (
 	fOutDir      = flag.String("outdir", "", "Directory for the .csv/-info.txt results (default: $HOME/goxpy_data).\n\tUse it to keep a session's data files beside its other outputs.")
 	fPacedFlip   = flag.Bool("paced-flip", false, "Use PacedFlip() instead of Update() for frame pacing [av]")
 	fGC          = flag.Bool("gc", false, "Leave the garbage collector RUNNING during timing-critical loops.\n\tBy default the collector is suspended; pass -gc to measure its effect on timing\n\t(run the same test twice, with and without, to obtain the comparison).")
-	fSquarePx    = flag.Int("square-px", 200, "Side of each of the five stimulus squares, in renderer pixels [av / vrr]")
+	fSquarePx    = flag.Int("square-px", 0, "Side of each of the five stimulus squares, in renderer pixels;\n\t0 = one quarter of the render height, which keeps each square's centre\n\tclear of the bezel and fixes the top↔bottom separation at 0.750 [av / vrr]")
 	fNoSound     = flag.Bool("no-sound", false, "Do not play the tone [av]")
 	fNoTTL       = flag.Bool("no-ttl", false, "Do not fire the TTL trigger [av]")
 )
@@ -201,11 +201,23 @@ func newPainter(exp *control.Experiment) (paintFunc, error) {
 		}
 	}
 
-	side := float32(*fSquarePx)
 	fw, fh := float32(w), float32(h)
-	if side <= 0 || side*2 > fw || side*2 > fh {
-		return nil, fmt.Errorf("newPainter: -square-px %d does not fit a %dx%d render area "+
-			"(corner squares would overlap)", *fSquarePx, w, h)
+
+	// Default the square to a quarter of the render height rather than a fixed
+	// pixel count. That size scales with the panel, is large enough on any
+	// display for a photodiode to sit at the square's centre well clear of the
+	// bezel — and, because the centres then land at H/8 and 7H/8, it fixes the
+	// top↔bottom separation at exactly 0.750 of screen height on every display,
+	// so the figure the gradient is divided by no longer varies per machine.
+	side := float32(*fSquarePx)
+	sideAuto := ""
+	if *fSquarePx <= 0 {
+		side = fh / 4
+		sideAuto = " (auto: ¼ of render height)"
+	}
+	if side*2 > fw || side*2 > fh {
+		return nil, fmt.Errorf("newPainter: a %.0f px square does not fit a %dx%d render area "+
+			"(corner squares would overlap)", side, w, h)
 	}
 
 	rects := []control.FRect{
@@ -225,14 +237,16 @@ func newPainter(exp *control.Experiment) (paintFunc, error) {
 	// lie flat; it then ends up further out, the true separation exceeds the
 	// figure below, and the derived sweep time comes out too large — possibly
 	// larger than a frame period, which is the tell that this has happened.
-	// Raise -square-px until the centres are comfortably clear of the edge.
+	// The default of a quarter of the render height keeps the centres clear of
+	// the edge on any panel; -square-px overrides it when you need a specific
+	// size.
 	sepPx := fh - side
 	sepFrac := float64(sepPx) / float64(fh)
 	cxL, cxR, cxC := side/2, fw-side/2, fw/2
 	cyT, cyB, cyC := side/2, fh-side/2, fh/2
 
-	fmt.Printf("stimulus: five %.0f px squares (corners + centre) on a %.0fx%.0f render area\n",
-		side, fw, fh)
+	fmt.Printf("stimulus: five %.0f px squares%s (corners + centre) on a %.0fx%.0f render area\n",
+		side, sideAuto, fw, fh)
 	fmt.Printf("  centres:  x = %.0f / %.0f / %.0f    y = %.0f / %.0f / %.0f\n",
 		cxL, cxC, cxR, cyT, cyC, cyB)
 	fmt.Printf("  top↔bottom separation: %.0f px = %.4f of screen height\n", sepPx, sepFrac)

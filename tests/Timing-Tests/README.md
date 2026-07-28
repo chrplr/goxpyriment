@@ -109,13 +109,13 @@ stimulus: five 400 px squares (corners + centre) on a 2560x1600 render area
   top↔bottom separation: 1200 px = 0.7500 of screen height
 ```
 
-**Size the squares so that centre is reachable.** At `-square-px 200` on a
-1600-row panel the centre is only 100 px (~12 mm) from the bezel, where a diode
-cannot lie flat — it ends up further out, the real separation exceeds the printed
-one, and the derived sweep time comes out too large. If it exceeds one frame
-period, that is the tell: scan-out cannot outlast the frame it belongs to. Raise
-`-square-px` (400 gives ~24 mm of clearance and four times the light) until the
-centres are comfortably clear of the edge.
+**The default size scales with the panel** — a quarter of the render height, so
+the centres land at ⅛ and ⅞ and the separation is **always 0.750**, on any
+display. That also keeps each centre well clear of the bezel, which matters: a
+diode that cannot lie flat at the centre ends up further out, the real separation
+exceeds the printed one, and the derived sweep comes out too large. If it exceeds
+one frame period, that is the tell — scan-out cannot outlast the frame it belongs
+to. `-square-px` overrides the default when you need a specific size.
 
 **Discard the warm-up.** The first several cycles run long before settling
 (36–39 ms falling to ~27 ms on the reference rig). `-warmup` excludes them from
@@ -141,7 +141,7 @@ BBTK_CAPTURE=1 BBTK_CAPTURE_BIN=~/00_git/bbtkv3/_build/bbtk-capture \
 | `BBTK_PORT` | auto | Serial port; auto-detected, see below |
 | `BBTK_MARGIN_S` | 8 | Seconds recorded either side of the stimulus |
 | `BBTK_READY_TIMEOUT_S` | 120 | Give up waiting for the device |
-| `SQUARE_PX` | 200 | Stimulus square side, px — raise it so the centres clear the bezel |
+| `SQUARE_PX` | 0 | Stimulus square side, px; 0 = ¼ of the render height |
 | `CYCLES` | 1000 | Cycles per `av` step — lower it for a quick placement check |
 
 Only the photodiode steps (`av`, `av-gc`, `av-visual`) are wrapped; `check`,
@@ -227,7 +227,7 @@ Two checks on the resulting `-events.csv`:
 |---|---|---|
 | `-frames-on` | 12 | Bright frames per cycle (12 = 200 ms at 60 Hz) |
 | `-frames-off` | 18 | Dark frames per cycle (18 = 300 ms at 60 Hz) |
-| `-square-px` | 200 | Side of each of the five squares, renderer px |
+| `-square-px` | 0 | Side of each of the five squares, px; 0 = ¼ of the render height |
 | `-level-a` | 0 | Dark luminance 0–255 (surround) |
 | `-level-b` | 255 | Bright luminance 0–255 (squares) |
 | `-soa-ms` | 0 | Visual-to-audio SOA; negative = audio first |

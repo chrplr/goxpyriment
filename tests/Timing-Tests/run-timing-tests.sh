@@ -18,7 +18,7 @@
 #   AUDIO_BUFFSIZE    hardware buffer, frames  (default: 256)
 #   REFRESH_HZ        expected refresh rate    (default: 60)
 #   OUTDIR            session directory        (default: reports-<hostname>)
-#   SQUARE_PX         stimulus square side, px (default: 200)
+#   SQUARE_PX         stimulus square side, px (default: 0 = ¼ of render height)
 #   CYCLES            cycles per av step       (default: 1000)
 #
 # Optional BBTK recording — when enabled, each photodiode step starts a
@@ -51,7 +51,7 @@ REFRESH_HZ="${REFRESH_HZ:-60}"
 # centre clears the bezel, or a photodiode cannot sit where the separation figure
 # assumes it does; CYCLES is worth lowering for a quick placement check before
 # committing to a full pass.
-SQUARE_PX="${SQUARE_PX:-200}"
+SQUARE_PX="${SQUARE_PX:-0}"   # 0 = Timing-Tests picks ¼ of the render height
 CYCLES="${CYCLES:-1000}"
 
 # Overridable so the session plumbing (capture handshake, output paths) can be
@@ -228,7 +228,11 @@ mkdir -p "$OUTDIR"
 echo "Host:    $HOST"
 echo "Session: $OUTDIR/  (reports, data files and any BBTK captures)"
 echo "Audio:   SDL_AUDIODRIVER=$SDL_AUDIODRIVER  buffer=$AUDIO_BUFFSIZE frames"
-echo "Stim:    ${SQUARE_PX} px squares, $CYCLES cycles per av step"
+if [ "$SQUARE_PX" -eq 0 ]; then
+	echo "Stim:    squares sized to ¼ of the render height, $CYCLES cycles per av step"
+else
+	echo "Stim:    ${SQUARE_PX} px squares, $CYCLES cycles per av step"
+fi
 if [ "$BBTK_CAPTURE" = "1" ]; then
 	echo "BBTK:    recording enabled ($BBTK_CAPTURE_BIN, ${BBTK_MARGIN_S}s margin either side)"
 	if [ -n "${BBTK_PORT:-}" ]; then
