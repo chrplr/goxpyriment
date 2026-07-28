@@ -24,7 +24,7 @@
 # runs the stimulus inside that window, and waits for the capture to save:
 #   BBTK_CAPTURE          set to 1 to enable   (default: off)
 #   BBTK_CAPTURE_BIN      path to bbtk-capture (default: bbtk-capture on PATH)
-#   BBTK_PORT             serial port          (default: auto-detected)
+#   BBTK_PORT             serial port          (default: bbtk-capture auto-detects)
 #   BBTK_MARGIN_S         recorded margin either side of the stimulus (default: 8)
 #   BBTK_READY_TIMEOUT_S  give up waiting for the device      (default: 120)
 #
@@ -123,36 +123,6 @@ run() {
 
 # ── Optional BBTK recording ───────────────────────────────────────────────
 #
-# bbtk_resolve_port — set BBTK_PORT if the caller did not.
-#
-# /dev/ttyUSBn numbering is assigned in enumeration order, so it changes whenever
-# the BBTK is replugged or power-cycled — exactly when you least want to be
-# editing a command line. The by-id symlink is derived from the USB descriptors
-# and is stable across both. Prefer it, and fall back to bbtk-detect-port (which
-# has to talk to each candidate port to identify it).
-bbtk_resolve_port() {
-	[ -n "${BBTK_PORT:-}" ] && return 0
-	for link in /dev/serial/by-id/*BBTK*; do
-		[ -e "$link" ] || continue
-		BBTK_PORT="$link"
-		export BBTK_PORT
-		return 0
-	done
-	# Prefer the bbtk-detect-port sitting beside bbtk-capture: it is from the
-	# same build, whereas one on PATH may be an older install.
-	detector="$(dirname "$BBTK_CAPTURE_BIN")/bbtk-detect-port"
-	[ -x "$detector" ] || detector=$(command -v bbtk-detect-port 2>/dev/null)
-	if [ -n "$detector" ] && [ -x "$detector" ]; then
-		detected=$("$detector" 2>/dev/null | sed -n 's/^BBTK found at //p' | head -1)
-		if [ -n "$detected" ]; then
-			BBTK_PORT="$detected"
-			export BBTK_PORT
-			return 0
-		fi
-	fi
-	return 1
-}
-
 # capture_start <name> <stimulus-seconds> — launch bbtk-capture and BLOCK until
 # the device is actually recording. No-op unless BBTK_CAPTURE=1.
 #
@@ -252,13 +222,10 @@ echo "Session: $OUTDIR/  (reports, data files and any BBTK captures)"
 echo "Audio:   SDL_AUDIODRIVER=$SDL_AUDIODRIVER  buffer=$AUDIO_BUFFSIZE frames"
 if [ "$BBTK_CAPTURE" = "1" ]; then
 	echo "BBTK:    recording enabled ($BBTK_CAPTURE_BIN, ${BBTK_MARGIN_S}s margin either side)"
-	if bbtk_resolve_port; then
+	if [ -n "${BBTK_PORT:-}" ]; then
 		echo "         BBTK_PORT=$BBTK_PORT"
 	else
-		echo "error: cannot find the BBTK's serial port" >&2
-		echo "       no /dev/serial/by-id/*BBTK* symlink, and bbtk-detect-port found nothing." >&2
-		echo "       Check the device is connected and powered, then set BBTK_PORT by hand." >&2
-		exit 1
+		echo "         port: auto-detected by bbtk-capture (set BBTK_PORT to override)"
 	fi
 	if ! command -v "$BBTK_CAPTURE_BIN" >/dev/null 2>&1 && [ ! -x "$BBTK_CAPTURE_BIN" ]; then
 		echo "error: BBTK_CAPTURE=1 but '$BBTK_CAPTURE_BIN' is not executable or not on PATH" >&2

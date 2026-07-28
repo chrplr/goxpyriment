@@ -145,10 +145,16 @@ BBTK_CAPTURE=1 BBTK_CAPTURE_BIN=~/00_git/bbtkv3/_build/bbtk-capture \
 Only the photodiode steps (`av`, `av-gc`, `av-visual`) are wrapped; `check`,
 `display` and `latency` measure nothing the BBTK can see.
 
-**The port is found for you.** `/dev/ttyUSBn` numbering changes whenever the
-BBTK is replugged or power-cycled, so the script resolves the device through its
-stable `/dev/serial/by-id/*BBTK*` symlink instead, falling back to
-`bbtk-detect-port`. Set `BBTK_PORT` only to override that.
+**The port is found for you.** `bbtk-capture` resolves the device through its
+stable `/dev/serial/by-id/*BBTK*` symlink, which survives replugging and
+power-cycling — unlike `/dev/ttyUSBn`, whose numbering is assigned in enumeration
+order. Set `BBTK_PORT` only to override that.
+
+**Get the duration right first time.** An interrupted capture is lost: the BBTK
+streams its data only when the programmed window completes, so there is no way to
+stop early and keep what was recorded. The script sizes the window from the
+step's own parameters, but if you interrupt a run, that recording is gone and the
+step has to be repeated.
 
 **Why it waits.** `bbtk-capture` needs 11–40 s between launch and the device
 actually recording — fixed command pacing, plus an internal-memory erase whose
