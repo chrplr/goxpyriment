@@ -46,7 +46,9 @@ export SDL_AUDIODRIVER="${SDL_AUDIODRIVER:-alsa}"
 AUDIO_BUFFSIZE="${AUDIO_BUFFSIZE:-256}"
 REFRESH_HZ="${REFRESH_HZ:-60}"
 
-BIN=./Timing-Tests
+# Overridable so the session plumbing (capture handshake, output paths) can be
+# exercised without opening a fullscreen window on someone's display.
+BIN="${BIN:-./Timing-Tests}"
 HOST=$(hostname -s 2>/dev/null || hostname)
 # Everything a session produces goes here, under the directory the script was
 # launched from: console reports, the .csv/-info.txt data files (via -outdir),
