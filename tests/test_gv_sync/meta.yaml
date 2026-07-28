@@ -1,0 +1,3 @@
+category: test
+description: Plays a synthesised .gv flash train with a TTL pulse at each bright onset; measures whether PlayGvFunc puts frames on screen when it claims to
+reference: ""

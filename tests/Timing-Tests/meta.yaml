@@ -1,3 +1,3 @@
 category: test
-description: Hardware timing verification suite: eleven sub-tests (frame jitter, true refresh rate, audio latency, photodiode/BBTK/oscilloscope checks) selected with -test <name>
+description: "Hardware timing verification suite: six sub-tests selected with -test <name>; av (visual+audio+TTL, five photodiode squares) is the default"
 reference: ""

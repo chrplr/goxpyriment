@@ -482,7 +482,7 @@ WindowServer compositor, and no third-party application can bypass it — even
 in fullscreen. 
 
 These platform differences can be measured empirically with the `display` and
-`frames` sub-tests of the bundled `Timing-Tests` suite (see
+`av` sub-tests of the bundled `Timing-Tests` suite (see
 [TimingTests.md](TimingTests.md)).
 
 ### Variable Refresh Rate (VRR) — arbitrary stimulus durations
@@ -550,7 +550,7 @@ You can characterise your panel's VRR window empirically with the
 `Timing-Tests` suite:
 
 ```bash
-go run tests/Timing-Tests/main.go -test vrr -vrr-max-ms 50 -cycles 5 -w
+go run ./tests/Timing-Tests -test vrr -vrr-max-ms 50 -cycles 5
 ```
 
 This sweeps target durations from 1 ms to 50 ms in 1 ms steps and reports
@@ -2041,9 +2041,8 @@ index and `ctx.Hold` the number of refreshes it is shown for. The callback runs
 inside the GC-disabled VSYNC loop, so it must not allocate heavily or sleep —
 see the warning below.
 
-`tests/Timing-Tests -test gvsync` is a complete worked example: it plays a
-generated flash train and fires a TTL pulse at each bright onset for photodiode
-verification.
+`tests/test_gv_sync` is a complete worked example: it plays a generated flash
+train and fires a TTL pulse at each bright onset for photodiode verification.
 
 If you need to draw around the video as well, drive the loop yourself instead.
 `CurrentFrame()` returns the frame now in the GPU texture — the one the next
@@ -2592,7 +2591,7 @@ delivers frames to the display through the WindowServer compositor, and
 no third-party application can bypass it — even in fullscreen. 
 
 These platform differences can be quantified empirically with the
-`display` and `frames` sub-tests of the bundled `Timing-Tests` suite.
+`display` and `av` sub-tests of the bundled `Timing-Tests` suite.
 
 ---
 

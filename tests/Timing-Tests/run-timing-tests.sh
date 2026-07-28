@@ -39,7 +39,7 @@ BIN=./Timing-Tests
 HOST=$(hostname -s 2>/dev/null || hostname)
 OUTDIR="reports-${HOST}"
 
-STEPS="sysinfo check display display-gc frames frames-gc tones trigger av"
+STEPS="sysinfo check display display-gc av av-gc av-visual latency"
 
 if [ "${1:-}" = "-l" ]; then
 	echo "Steps: $STEPS"
@@ -114,36 +114,36 @@ step sysinfo "system information" &&
 step check "display flash + audio sanity check" &&
 	run check -test check -audio-frames "$AUDIO_BUFFSIZE"
 
-# ── Tier 1: frame-interval distributions, GC suspended vs. GC running.
-#            This pair is the garbage-collector comparison.
+# ── No hardware: frame-interval distributions, GC suspended vs. GC running.
+#                 This pair is the garbage-collector comparison.
 step display "frame intervals, GC SUSPENDED (300 s)" &&
-	run display-gc-off -test display -duration-s 300 -hz "$REFRESH_HZ"
+	run display-gc-off -test display -duration-s 300
 
 step display-gc "frame intervals, GC RUNNING (300 s)" &&
-	run display-gc-on -test display -duration-s 300 -hz "$REFRESH_HZ" -gc
+	run display-gc-on -test display -duration-s 300 -gc
 
-# ── Tier 3: stimulus timing validation (photodiode on the screen).
-#            Also run as a GC-suspended / GC-running pair.
-step frames "single-frame flashes, GC SUSPENDED (300 s)" &&
-	run frames-gc-off -test frames -frames-on 1 -frames-off 2 -cycles 6000
+# ── No hardware: audio pipeline drain time at the chosen buffer size.
+step latency "audio pipeline latency" &&
+	run latency -test latency -audio-frames "$AUDIO_BUFFSIZE" -drain-reps 20
 
-step frames-gc "single-frame flashes, GC RUNNING (300 s)" &&
-	run frames-gc-on -test frames -frames-on 1 -frames-off 2 -cycles 6000 -gc
-
-step tones "tone stream, audio onset jitter (300 s)" &&
-	run tones -test tones -audio-frames "$AUDIO_BUFFSIZE" \
-		-tone-ms 50 -iti-ms 450 -cycles 600
-
-# ── Tier 2: trigger device characterisation (DLP-IO8-G on a TTL input line).
-step trigger "TTL square wave, DLP-IO8-G (300 s)" &&
-	run trigger -test trigger -period-ms 100 -duty 10 -duration-s 300
-
-# ── Tier 3 (cont.): audio–visual synchrony.
-step av "audio-visual synchrony (500 s)" &&
-	run av -test av -audio-frames "$AUDIO_BUFFSIZE" \
+# ── Photodiode + TTL: the main stimulus timing measurement, run as a
+#                     GC-suspended / GC-running pair. Put photodiodes on a top
+#                     and a bottom square to also capture the scan-out gradient.
+step av "visual+audio+TTL, GC SUSPENDED (500 s)" &&
+	run av-gc-off -test av -audio-frames "$AUDIO_BUFFSIZE" -hz "$REFRESH_HZ" \
 		-frames-on 12 -frames-off 18 -cycles 1000
 
-# ── Tier 4: response timing. COMMENTED OUT until the BBTK response actuator
+step av-gc "visual+audio+TTL, GC RUNNING (500 s)" &&
+	run av-gc-on -test av -audio-frames "$AUDIO_BUFFSIZE" -hz "$REFRESH_HZ" \
+		-frames-on 12 -frames-off 18 -cycles 1000 -gc
+
+# ── Photodiode only: visual path in isolation, no audio device, no trigger.
+#                    Isolates the display when the combined run looks wrong.
+step av-visual "visual only, no audio, no TTL (500 s)" &&
+	run av-visual -test av -no-sound -no-ttl \
+		-frames-on 12 -frames-off 18 -cycles 1000
+
+# ── Response timing. COMMENTED OUT until the BBTK response actuator
 #            arrives (expected ~mid-August 2026).
 #
 # This test needs a device that presses a key at a *known* delay after the

@@ -3,109 +3,87 @@
 //
 // Timing-Tests — hardware timing verification suite
 //
-// Provides twelve independent sub-tests, selected with -test <name>.
-// Tests are organised in four tiers; run them in this order:
+// Six sub-tests, selected with -test <name>. `av` is the default and the one
+// that matters; the rest are diagnostics for when it reports something odd.
 //
-// Tier 0 — sanity check (no equipment, no measurement):
+// Needs no hardware:
 //
-//	check   Verify display flash and audio output (replaces old "audio")
+//	check    Go/no-go: does this machine display and make noise at all
+//	display  Frame-interval statistics and the true refresh rate
+//	latency  Audio pipeline delay — how long does SDL hold PCM before it sounds
 //
-// Tier 1 — self-contained measurements (computer only):
+// Needs a photodiode and/or a trigger box:
 //
-//	display Frame-interval statistics and true refresh rate  (alias: jitter)
-//	latency Audio pipeline latency — how long does SDL hold PCM?  (alias: drain)
-//	stream  Sequential-stimulus (RSVP) onset / duration accuracy + triggers
-//	vrr     Variable Refresh Rate sweep: 1 ms to N ms in 1 ms steps
+//	av       THE stimulus timing test. Five squares + a synchronised tone + a
+//	         TTL pulse, every cycle. -no-sound / -no-ttl drop a modality.
+//	vrr      Variable-refresh sweep: 1 ms to N ms in 1 ms steps
+//	rt       SDL3 event-timestamp reaction-time precision
 //
-// Tier 2 — trigger device characterisation (DLP-IO8-G + oscilloscope):
+// Two tests that used to live here now have their own directories:
+// tests/test_gv_sync (.gv playback synchronisation) and tests/test_dlpio8
+// (DLP-IO8-G square-wave characterisation).
 //
-//	trigger Square-wave output for DLP-IO8-G precision test  (alias: square)
+// Why the console numbers are not the answer
 //
-// Tier 3 — stimulus timing validation (photodiode + oscilloscope):
-//
-//	frames  Alternating luminance: visual onset vs. trigger alignment
-//	        (alias: flash — single-frame capability is the special case frames-on=1)
-//	gvsync  .gv video playback: bright-square onset vs. trigger alignment
-//	tones   Regular tone stream: audio onset jitter over time  (alias: sound)
-//	av      Audio–visual synchrony with controllable SOA
-//
-// Tier 4 — response timing:
-//
-//	rt      SDL3 event-timestamp reaction-time precision test
-//
-// See README.md for full usage, equipment setup, and interpretation.
+// Every statistic printed below comes from software timestamps — when
+// goxpyriment *believes* a flip happened. Those stayed textbook-perfect
+// throughout a presentation bug that left the panel showing stale frames for
+// seconds at a time. Judge timing from the photodiode and TTL recording; treat
+// the console output as a cross-check on the software side only.
 //
 // Usage:
 //
-//	go run main.go -test <name> [flags]
+//	go run ./tests/Timing-Tests                          # av, the default
+//	go run ./tests/Timing-Tests -frames-on 12 -frames-off 18 -cycles 100
+//	go run ./tests/Timing-Tests -no-sound -no-ttl        # visual only, no hardware
+//	go run ./tests/Timing-Tests -test display
 //
 // Common flags:
 //
-//	-test string      Sub-test to run (required)
+//	-test string      Sub-test to run (default "av")
 //	-port string      Serial port for DLP-IO8-G (default: auto-detect)
 //	-trigger-pin int  Output pin on DLP-IO8-G (default 1)
-//	-trigger-ms  int  Trigger pulse duration in ms (default 5)
-//	-cycles int       Number of cycles / flashes (default 120)
+//	-trigger-ms int   Trigger pulse duration in ms (default 5)
+//	-cycles int       Number of cycles (default 120)
+//	-warmup int       Leading cycles discarded from statistics (default 10)
 //	-w                Windowed mode: 1024×768 window instead of fullscreen
-//	-d int            Display index: monitor to use (-1 = primary, default -1)
-//	-paced-flip       Use PacedFlip() instead of Update() for frame pacing in frames/av tests
-//	-gc               Leave the garbage collector running during timing-critical loops.
-//	                  Off by default (collector suspended). Run a test twice, with and
-//	                  without -gc, to measure the collector's effect on timing.
-//
-// Per-test flags — rt:
-//
-//	-iti-ms float     Mean inter-trial interval ms (jittered ±50 %; default 1000)
-//
-// Per-test flags — frames (alias: flash):
-//
-//	-level-a int      Dark luminance 0–255 (default 0)
-//	-level-b int      Bright luminance 0–255 (default 255)
-//	-frames-on  int   Bright frames per cycle (default 1)
-//	-frames-off int   Dark frames per cycle (default 9)
-//	-warmup int       Cycles discarded from statistics at start (default 10)
-//
-// Per-test flags — gvsync:
-//
-//	-gv-fps float      Frame rate of the generated .gv; must divide the refresh rate (default 60)
-//	-gv-frames-on int  Bright frames per cycle (default 6 = 100 ms at 60 fps)
-//	-gv-frames-off int Dark frames per cycle (default 24 = 400 ms at 60 fps)
-//	-gv-width int      Stimulus width in px (default 1280)
-//	-gv-height int     Stimulus height in px (default 720)
-//	-gv-square-px int  Side of the centred bright square, 0 = fill frame (default 200)
-//	-gv-file string    Play this .gv instead of generating one
-//	-gv-keep           Regenerate and keep the stimulus instead of using a temp file
-//	-cycles int        Repetitions (default 10 for this test)
-//	-warmup int        Leading cycles excluded from statistics (default 0 for this test)
+//	-d int            Display index: monitor to use (-1 = primary)
+//	-sysinfo          Print system information and exit
+//	-gc               Leave the garbage collector running during timing loops.
+//	                  Off by default. Run a test twice, with and without, to
+//	                  measure the collector's effect.
 //
 // Per-test flags — av:
 //
+//	-frames-on int    Bright frames per cycle (default 12 = 200 ms at 60 Hz)
+//	-frames-off int   Dark frames per cycle (default 18 = 300 ms at 60 Hz)
+//	-square-px int    Side of each of the five squares, renderer px (default 200)
+//	-level-a int      Dark luminance 0–255 (default 0)
+//	-level-b int      Bright luminance 0–255 (default 255)
 //	-soa-ms float     Visual-to-audio SOA in ms; negative = audio first (default 0)
-//	-frames-on  int   Bright frames per cycle; tone duration = frames-on × refresh period (default 1)
-//	-frames-off int   Dark frames per cycle (ITI between stimuli) (default 60)
 //	-freq-hz float    Tone frequency in Hz (default 1000)
+//	-hz float         Refresh rate used to derive the tone duration (default 60)
+//	-no-sound         Do not play the tone
+//	-no-ttl           Do not fire the TTL trigger
+//	-paced-flip       Use PacedFlip() instead of Update()
+//	-audio-frames int Audio hardware buffer, sample frames (0 = SDL default).
+//	                  Sets the floor on audio-onset quantisation: 256 frames at
+//	                  44100 Hz quantises tone onsets to 5.8 ms steps.
 //
-// Per-test flags — jitter:
+// Per-test flags — display:  -duration-s float (default 10)
+// Per-test flags — latency:  -freq-hz float, -drain-reps int (default 10)
+// Per-test flags — vrr:      -vrr-max-ms int (default 50), -cycles
+// Per-test flags — rt:       -iti-ms float, mean ITI jittered ±50 % (default 1000)
 //
-//	-duration-s float Duration of frame-rate measurement in seconds (default 10)
+// Placing the photodiodes
 //
-// Per-test flags — square:
+// The five squares sit at the four corners and the centre. An LCD scans out
+// top-to-bottom, so a bottom square lags a top one by close to a full frame
+// period — put a photodiode on a top square and another on a bottom one and the
+// difference is your panel's scan-out gradient, in µs per pixel row. Two squares
+// on the same row are only microseconds apart and serve as a sanity check.
 //
-//	-period-ms  float Square-wave period in ms (default 100)
-//	-duty       float Duty cycle 0–100 % (default 50)
-//	-duration-s float Duration of square-wave output in seconds (default 30)
-//
-// Per-test flags — sound:
-//
-//	-cycles int       Number of tones in the stream (default 60)
-//	-tone-ms int      Duration of each tone in ms (default 50)
-//	-iti-ms float     Silence between tones (ISI) in ms (default 450)
-//	-freq-hz float    Tone frequency in Hz (default 1000)
-//
-// Per-test flags — drain:
-//
-//	-freq-hz float    Tone frequency in Hz (default 1000)
-//	-drain-reps int   Repetitions per tone duration (default 10)
+// See docs/TimingTests.md for equipment setup and interpretation.
 
 package main
 
@@ -132,59 +110,38 @@ import (
 // ── Flags ─────────────────────────────────────────────────────────────────────
 
 var (
-	fTest        = flag.String("test", "", "Sub-test: check | display | latency | stream | vrr | trigger | frames | gvsync | tones | av | rt\n\t(legacy aliases: jitter=display  drain=latency  square=trigger  sound=tones  audio=check  flash=frames)")
+	fTest        = flag.String("test", "av", "Sub-test: av | vrr | rt | check | display | latency")
 	fPort        = flag.String("port", "", "Serial port for DLP-IO8-G (empty = auto-detect)")
 	fTriggerPin  = flag.Int("trigger-pin", 1, "DLP-IO8-G output pin (1–8)")
 	fTriggerMs   = flag.Int("trigger-ms", 5, "Trigger pulse duration (ms)")
-	fCycles      = flag.Int("cycles", 120, "Number of cycles / flashes")
-	fLevelA      = flag.Int("level-a", 0, "Dark luminance 0–255")
-	fLevelB      = flag.Int("level-b", 255, "Bright luminance 0–255")
-	fFramesOn    = flag.Int("frames-on", 1, "Bright frames per cycle [frames / stream / av tests]")
-	fFramesOff   = flag.Int("frames-off", 9, "Dark frames per cycle [frames / stream / av tests]")
-	fSoaMs       = flag.Float64("soa-ms", 0, "Visual-to-audio SOA ms; negative = audio first [av test]")
-	fItiMs       = flag.Float64("iti-ms", 1000, "Inter-trial interval ms [av test]")
-	fFreqHz      = flag.Float64("freq-hz", 1000, "Tone frequency Hz [av test]")
-	fToneMs      = flag.Int("tone-ms", 50, "Tone duration ms [av test]")
-	fDurationS   = flag.Float64("duration-s", 10, "Measurement duration in seconds [jitter / square]")
-	fPeriodMs    = flag.Float64("period-ms", 100, "Square-wave period ms [square test]")
-	fDuty        = flag.Float64("duty", 50, "Duty cycle 0–100 %% [square test]")
+	fCycles      = flag.Int("cycles", 120, "Number of cycles [av / vrr / rt]")
+	fLevelA      = flag.Int("level-a", 0, "Dark luminance 0–255 (surround) [av / vrr]")
+	fLevelB      = flag.Int("level-b", 255, "Bright luminance 0–255 (squares) [av / vrr]")
+	fFramesOn    = flag.Int("frames-on", 12, "Bright frames per cycle (12 = 200 ms at 60 Hz) [av]")
+	fFramesOff   = flag.Int("frames-off", 18, "Dark frames per cycle (18 = 300 ms at 60 Hz) [av]")
+	fSoaMs       = flag.Float64("soa-ms", 0, "Visual-to-audio SOA ms; negative = audio first [av]")
+	fItiMs       = flag.Float64("iti-ms", 1000, "Mean inter-trial interval ms, jittered ±50 % [rt]")
+	fFreqHz      = flag.Float64("freq-hz", 1000, "Tone frequency Hz [av / latency]")
+	fDurationS   = flag.Float64("duration-s", 10, "Measurement duration in seconds [display]")
 	fAudioFrames = flag.Int("audio-frames", 0, "Audio hardware buffer size in sample frames (0=SDL default). Must be set before SDL audio opens; e.g. 256, 512, 1024.")
-	fHz          = flag.Float64("hz", 60.0, "Expected display refresh rate in Hz; used to compute frame-interval targets [stream / display]")
-	fWarmup      = flag.Int("warmup", 10, "Frames to discard at the start of visual tests before recording statistics")
-	fDrainReps   = flag.Int("drain-reps", 10, "Repetitions per tone duration [drain test]")
-	fVRRMaxMs    = flag.Int("vrr-max-ms", 50, "Maximum stimulus duration to sweep in VRR test (ms, in 1 ms steps) [vrr test]")
+	fHz          = flag.Float64("hz", 60.0, "Expected display refresh rate in Hz; sets the tone duration (frames-on × 1/hz) [av]")
+	fWarmup      = flag.Int("warmup", 10, "Leading cycles discarded from statistics [av / display]")
+	fDrainReps   = flag.Int("drain-reps", 10, "Repetitions per tone duration [latency]")
+	fVRRMaxMs    = flag.Int("vrr-max-ms", 50, "Maximum stimulus duration to sweep, in 1 ms steps [vrr]")
 	fWindowed    = flag.Bool("w", false, "Windowed mode (1024×768 window instead of fullscreen)")
 	fDisplay     = flag.Int("d", -1, "Display index: monitor where the window/fullscreen will open (-1 = primary)")
 	fSysInfo     = flag.Bool("sysinfo", false, "Print system information and exit")
-	fPacedFlip   = flag.Bool("paced-flip", false, "Use PacedFlip() instead of Update() for frame pacing in frames/av tests")
+	fPacedFlip   = flag.Bool("paced-flip", false, "Use PacedFlip() instead of Update() for frame pacing [av]")
 	fGC          = flag.Bool("gc", false, "Leave the garbage collector RUNNING during timing-critical loops.\n\tBy default the collector is suspended; pass -gc to measure its effect on timing\n\t(run the same test twice, with and without, to obtain the comparison).")
-
-	// ── gvsync: .gv playback / trigger synchronisation ───────────────────────
-	// Defaults describe a 60 fps train of 100 ms bright / 400 ms dark.
-	fGvFPS       = flag.Float64("gv-fps", 60, "gvsync: frame rate of the generated .gv (must divide the display refresh rate)")
-	fGvFramesOn  = flag.Int("gv-frames-on", 6, "gvsync: bright frames per cycle (6 @ 60 fps = 100 ms)")
-	fGvFramesOff = flag.Int("gv-frames-off", 24, "gvsync: dark frames per cycle (24 @ 60 fps = 400 ms)")
-	fGvWidth     = flag.Int("gv-width", 1280, "gvsync: width of the generated .gv in pixels")
-	fGvHeight    = flag.Int("gv-height", 720, "gvsync: height of the generated .gv in pixels")
-	fGvSquarePx  = flag.Int("gv-square-px", 200, "gvsync: side of the centred bright square in pixels (0 = fill the frame)")
-	fGvFile      = flag.String("gv-file", "", "gvsync: play this .gv instead of generating one (implies -gv-keep)")
-	fGvKeep      = flag.Bool("gv-keep", false, "gvsync: regenerate the stimulus and keep it on disk instead of using a temp file")
+	fSquarePx    = flag.Int("square-px", 200, "Side of each of the five stimulus squares, in renderer pixels [av / vrr]")
+	fNoSound     = flag.Bool("no-sound", false, "Do not play the tone [av]")
+	fNoTTL       = flag.Bool("no-ttl", false, "Do not fire the TTL trigger [av]")
 )
 
 // ── Garbage-collector control ─────────────────────────────────────────────────
 
 // suspendGC turns the garbage collector off for the duration of a
 // timing-critical loop and returns the function that restores it.
-//
-// When -gc is passed the collector is deliberately left running so that its
-// effect on timing can be measured; the returned restore function is then a
-// no-op. Running the same test twice, with and without -gc, yields the
-// GC-on/GC-off comparison.
-//
-// Usage mirrors the pattern it replaces:
-//
-//	restoreGC := suspendGC()
-//	defer restoreGC()
 func suspendGC() func() {
 	if *fGC {
 		return func() {}
@@ -203,13 +160,76 @@ func gcLabel() string {
 
 // ── Screen fill helper ─────────────────────────────────────────────────────────
 
-// fillGray fills the screen with a uniform gray level (0–255) and presents it.
-// Returns the time just before and just after RenderPresent (the VSYNC wait),
-// in milliseconds with sub-millisecond precision (3 decimal places).
-func fillGray(exp *control.Experiment, level byte) (tBefore, tAfter float64) {
+// gray builds an opaque gray from a single 0–255 level.
+func gray(level byte) control.Color { return control.RGB(level, level, level) }
+
+// paintFunc renders one stimulus frame into the backbuffer: fg is the stimulus
+// colour, bg the surround. It does not present — the caller flips.
+type paintFunc func(fg, bg control.Color)
+
+// newPainter builds the per-frame paint function shared by every visual test.
+//
+// It paints five squares of -square-px side — one at each screen corner and one
+// centred — over a bg-coloured surround. Placing a photodiode on each square
+// measures the delay between screen regions: an LCD scans out top-to-bottom, so
+// the bottom squares lag the top ones by close to a full frame period. (The two
+// squares on a given row are only microseconds apart, being on the same
+// scanline; they serve as a sanity check rather than a measurement.)
+//
+// The rectangles are laid out once, here, rather than per frame: the geometry
+// never changes, and the logical-size query is a CGo call that has no business
+// inside a VSYNC-locked loop.
+//
+// Coordinates are the renderer's own — the logical presentation size when one is
+// set — so -square-px is in renderer pixels and the corners stay at the corners
+// under HiDPI scaling. A square's *physical* size therefore varies with the
+// logical/physical scale factor, which matters when comparing photodiode signal
+// amplitude across video drivers or displays.
+func newPainter(exp *control.Experiment) (paintFunc, error) {
 	r := exp.Screen.Renderer
-	r.SetDrawColor(level, level, level, 255)
-	r.Clear()
+
+	// Drawing happens in the logical presentation space when one is set; fall
+	// back to the raw output size when it is not.
+	w, h, _, err := r.LogicalPresentation()
+	if err != nil || w <= 0 || h <= 0 {
+		w, h, err = exp.Screen.Size()
+		if err != nil {
+			return nil, fmt.Errorf("newPainter: querying render size: %w", err)
+		}
+	}
+
+	side := float32(*fSquarePx)
+	fw, fh := float32(w), float32(h)
+	if side <= 0 || side*2 > fw || side*2 > fh {
+		return nil, fmt.Errorf("newPainter: -square-px %d does not fit a %dx%d render area "+
+			"(corner squares would overlap)", *fSquarePx, w, h)
+	}
+
+	rects := []control.FRect{
+		{X: 0, Y: 0, W: side, H: side},                             // top-left
+		{X: fw - side, Y: 0, W: side, H: side},                     // top-right
+		{X: 0, Y: fh - side, W: side, H: side},                     // bottom-left
+		{X: fw - side, Y: fh - side, W: side, H: side},             // bottom-right
+		{X: (fw - side) / 2, Y: (fh - side) / 2, W: side, H: side}, // centre
+	}
+	fmt.Printf("stimulus: five %.0f px squares (corners + centre) on a %.0fx%.0f render area\n",
+		side, fw, fh)
+
+	return func(fg, bg control.Color) {
+		r.SetDrawColor(bg.R, bg.G, bg.B, 255)
+		r.Clear()
+		r.SetDrawColor(fg.R, fg.G, fg.B, 255)
+		for i := range rects {
+			_ = r.RenderFillRect(&rects[i])
+		}
+	}, nil
+}
+
+// fillGray paints one stimulus frame at a uniform gray level (0–255) and
+// presents it. Returns the time just before and just after RenderPresent (the
+// VSYNC wait), in milliseconds with sub-millisecond precision.
+func fillGray(exp *control.Experiment, paint paintFunc, level byte) (tBefore, tAfter float64) {
+	paint(gray(level), gray(byte(*fLevelA)))
 	tBefore = float64(clock.GetTimeNS()) / 1e6
 	exp.Screen.Update() // blocks until VSYNC
 	tAfter = float64(clock.GetTimeNS()) / 1e6
@@ -244,211 +264,188 @@ func setupTrigger() (triggers.OutputTTLDevice, string) {
 	return trig, portName
 }
 
-// ── Test: frames (alias: flash) ────────────────────────────────────────────────
+// printStatsVsMean reports a series against its own measured mean rather than a
+// target derived from -hz. ComputeStats must run twice: the first pass exists
+// only to obtain the mean that the second pass uses as the deviation reference.
+func printStatsVsMean(label string, xs []float64) {
+	if len(xs) == 0 {
+		fmt.Printf("\n%s: no samples\n", label)
+		return
+	}
+	s := timingstats.ComputeStats(xs, 0)
+	s = timingstats.ComputeStats(xs, s.Mean)
+	timingstats.PrintStats(label, s, s.Mean)
+}
 
-// runFrames alternates between a bright phase (*fFramesOn frames at level-b) and
-// a dark phase (*fFramesOff frames at level-a) for *fCycles complete cycles.
-// A trigger pulse is sent at the onset of each bright phase.
+// ── Test: av ──────────────────────────────────────────────────────────────────
+
+// runAV is the suite's primary stimulus-timing test. By default every cycle
+// presents all three modalities at once:
 //
-// Two statistics are reported from software-side timestamps:
-//   - Bright-phase duration: time from the first bright flip to the first dark
-//     flip. Should equal frames-on × frame_interval.
-//   - Period: time from one bright onset to the next.
-//     Should equal (frames-on + frames-off) × frame_interval.
+//   - visual: five squares (four corners + centre) go bright for -frames-on
+//     frames, then the screen is dark for -frames-off frames
+//   - audio:  a tone of frames-on × frame-period, synchronised to the visual
+//     onset (or offset from it by -soa-ms)
+//   - TTL:    a -trigger-ms pulse at the visual onset
 //
-// No -hz flag is needed: frame counts are the authoritative unit and the
-// measured mean is used as the deviation reference in statistics.
-func runFrames(exp *control.Experiment, trig triggers.OutputTTLDevice) error {
-	framesOn := *fFramesOn
-	framesOff := *fFramesOff
+// -no-sound and -no-ttl drop a modality, which is how this test covers what used
+// to be three separate ones: -no-sound is a pure visual-onset test, and the audio
+// channel of a recording gives tone-onset jitter over a long session.
+//
+// Put a photodiode on one square and the trigger on a second recorder channel;
+// the quantity of interest is the offset between them and its stability. Software
+// timestamps alone cannot answer that — they only show when goxpyriment
+// *believes* the flip happened, which stayed textbook-perfect throughout a
+// presentation bug that left the panel showing stale frames for seconds. The
+// recording is the ground truth; the console statistics below are a cross-check.
+//
+// Two squares at different heights measure the panel's scan-out gradient: an LCD
+// draws top-to-bottom, so a bottom square lags a top one by close to a full frame
+// period, and a stimulus's onset therefore depends on where it sits on screen.
+func runAV(exp *control.Experiment, trig triggers.OutputTTLDevice) error {
+	framesOn, framesOff := *fFramesOn, *fFramesOff
+	frameMs := 1000.0 / *fHz
+	toneDurMs := int(math.Round(float64(framesOn) * frameMs))
 
-	fmt.Printf("frames: level-a=%d level-b=%d frames-on=%d frames-off=%d cycles=%d warmup=%d\n",
-		*fLevelA, *fLevelB, framesOn, framesOff, *fCycles, *fWarmup)
+	withSound := !*fNoSound
+	withTTL := !*fNoTTL
+	if _, isNull := trig.(triggers.NullOutputTTLDevice); isNull && withTTL {
+		fmt.Println("av: no DLP-IO8-G found — running without triggers")
+		withTTL = false
+	}
 
-	exp.Data.WriteComment(fmt.Sprintf("test=frames level-a=%d level-b=%d frames-on=%d frames-off=%d cycles=%d warmup=%d",
-		*fLevelA, *fLevelB, framesOn, framesOff, *fCycles, *fWarmup))
+	modalities := "visual"
+	if withSound {
+		modalities += "+audio"
+	}
+	if withTTL {
+		modalities += "+ttl"
+	}
+	syncMethod := "goroutine"
+	if *fSoaMs == 0 {
+		syncMethod = "PlaySyncedWithFlip"
+	}
+
+	fmt.Printf("av: %s  frames-on=%d (%.1f ms) frames-off=%d (%.1f ms)  cycles=%d  warmup=%d\n",
+		modalities, framesOn, float64(framesOn)*frameMs, framesOff, float64(framesOff)*frameMs,
+		*fCycles, *fWarmup)
+	if withSound {
+		fmt.Printf("av: tone %.0f Hz for %d ms  soa=%.1f ms  sync=%s\n",
+			*fFreqHz, toneDurMs, *fSoaMs, syncMethod)
+	}
+
+	if *fWarmup >= *fCycles {
+		return fmt.Errorf("av: -warmup %d discards all %d cycles; lower it or raise -cycles",
+			*fWarmup, *fCycles)
+	}
+
+	exp.Data.WriteComment(fmt.Sprintf(
+		"test=av level-a=%d level-b=%d square-px=%d frames-on=%d frames-off=%d cycles=%d warmup=%d hz=%.3f sound=%v ttl=%v soa-ms=%.1f freq-hz=%.0f",
+		*fLevelA, *fLevelB, *fSquarePx, framesOn, framesOff, *fCycles, *fWarmup, *fHz,
+		withSound, withTTL, *fSoaMs, *fFreqHz))
 	exp.AddDataVariableNames([]string{
-		"cycle", "t_before_ms", "t_after_ms", "bright_duration_ms", "period_ms",
+		"cycle",
+		"t_visual_before_ms", "t_visual_after_ms",
+		"bright_duration_ms", "period_ms",
+		"t_audio_queued_ms", "soa_intended_ms", "soa_actual_ms",
 	})
 
-	var brightDurations []float64
-	var periods []float64
-	var prevBrightStartT float64
+	var tone *stimuli.Tone
+	if withSound {
+		tone = stimuli.NewTone(*fFreqHz, toneDurMs, 0.8)
+		if err := tone.PreloadDevice(exp.AudioDevice); err != nil {
+			return fmt.Errorf("av: preload tone: %w", err)
+		}
+		defer tone.Unload()
+	}
+
+	soaDur := time.Duration(math.Abs(*fSoaMs) * float64(time.Millisecond))
+	audioFirst := *fSoaMs < 0
+
+	var brightDurations, periods, soaActuals []float64
+	var prevBrightStart float64
 
 	return exp.Run(func() error {
 		restoreGC := suspendGC()
 		defer restoreGC()
 
-		r := exp.Screen.Renderer
-		bLevel, dLevel := byte(*fLevelB), byte(*fLevelA)
-
 		flip := exp.Screen.Update
 		if *fPacedFlip {
 			flip = exp.Screen.PacedFlip
+		}
+
+		paint, err := newPainter(exp)
+		if err != nil {
+			return err
+		}
+		bright, dark := gray(byte(*fLevelB)), gray(byte(*fLevelA))
+
+		// fire pulses the trigger on its own goroutine: FireTrigger holds the
+		// line high for -trigger-ms, which would otherwise stall the frame loop.
+		fire := func() {
+			if withTTL {
+				go triggers.FireTrigger(trig, *fTriggerPin, time.Duration(*fTriggerMs)*time.Millisecond)
+			}
+		}
+
+		// showFrame paints one frame and presents it. PumpEvents runs every
+		// frame, not once per cycle: under a compositor the backend must be
+		// serviced on the same cadence as the flips.
+		showFrame := func(fg control.Color) {
+			paint(fg, dark)
+			flip()
+			control.PumpEvents()
+		}
+
+		// holdBright keeps the bright squares up for the remaining frames of the
+		// phase, redrawing each one so double-buffering never flips dark into view.
+		holdBright := func(remaining int) {
+			for f := 0; f < remaining; f++ {
+				showFrame(bright)
+			}
 		}
 
 		for cycle := 0; cycle < *fCycles; cycle++ {
-			// ── Bright phase ──────────────────────────────────────────────────
-			// Re-draw each frame so double-buffering never shows the opposite color.
-			var tBrightBefore, tBrightStart float64
-			for f := 0; f < framesOn; f++ {
-				r.SetDrawColor(bLevel, bLevel, bLevel, 255)
-				r.Clear()
-				tB := float64(clock.GetTimeNS()) / 1e6
-				flip()
-				tA := float64(clock.GetTimeNS()) / 1e6
-				if f == 0 {
-					tBrightBefore = tB
-					tBrightStart = tA
-					go triggers.FireTrigger(trig, *fTriggerPin, time.Duration(*fTriggerMs)*time.Millisecond)
-				}
-			}
-
-			// ── Dark phase ────────────────────────────────────────────────────
-			var tDarkStart float64
-			for f := 0; f < framesOff; f++ {
-				r.SetDrawColor(dLevel, dLevel, dLevel, 255)
-				r.Clear()
-				flip()
-				if f == 0 {
-					tDarkStart = float64(clock.GetTimeNS()) / 1e6
-				}
-			}
-
-			state := exp.PollEvents(nil)
-			if state.QuitRequested {
-				return control.EndLoop
-			}
-
-			// ── Record measurements ───────────────────────────────────────────
-			// bright_duration_ms = first dark flip − first bright flip = frames-on frame intervals
-			// period_ms          = this bright onset − previous bright onset = (on+off) frame intervals
-			brightDurMs := tDarkStart - tBrightStart
-			var periodMs float64
-			if prevBrightStartT > 0 {
-				periodMs = tBrightStart - prevBrightStartT
-			}
-
-			if cycle >= *fWarmup {
-				brightDurations = append(brightDurations, brightDurMs)
-				if periodMs > 0 {
-					periods = append(periods, periodMs)
-				}
-			}
-
-			exp.Data.Add(cycle,
-				fmt.Sprintf("%.3f", tBrightBefore),
-				fmt.Sprintf("%.3f", tBrightStart),
-				fmt.Sprintf("%.3f", brightDurMs),
-				fmt.Sprintf("%.3f", periodMs))
-
-			prevBrightStartT = tBrightStart
-		}
-
-		// Use measured mean as deviation reference — no -hz needed.
-		sDur := timingstats.ComputeStats(brightDurations, 0)
-		sDur = timingstats.ComputeStats(brightDurations, sDur.Mean)
-		timingstats.PrintStats(fmt.Sprintf("Bright-phase duration (frames-on=%d)", framesOn), sDur, sDur.Mean)
-
-		sPer := timingstats.ComputeStats(periods, 0)
-		sPer = timingstats.ComputeStats(periods, sPer.Mean)
-		timingstats.PrintStats(fmt.Sprintf("Period (frames-on=%d + frames-off=%d)", framesOn, framesOff), sPer, sPer.Mean)
-
-		return control.EndLoop
-	})
-}
-
-// ── Test: av ──────────────────────────────────────────────────────────────────
-
-// runAV presents periodic visual flashes paired with tones at a configurable SOA.
-//
-// The bright phase lasts frames-on frames; the tone duration matches that duration
-// (frames-on × refresh period, derived from -hz). The dark ITI between stimuli
-// lasts frames-off frames. -iti-ms and -tone-ms are not used by this test.
-func runAV(exp *control.Experiment, trig triggers.OutputTTLDevice) error {
-	framesOn := *fFramesOn
-	framesOff := *fFramesOff
-	frameMs := 1000.0 / *fHz
-	toneDurMs := int(math.Round(float64(framesOn) * frameMs))
-
-	syncMethod := "goroutine"
-	if *fSoaMs == 0 {
-		syncMethod = "PlaySyncedWithFlip"
-	}
-	fmt.Printf("av: soa=%.1f ms  freq=%.0f Hz  tone=%d ms (frames-on=%d × %.2f ms)  frames-off=%d  cycles=%d  sync=%s\n",
-		*fSoaMs, *fFreqHz, toneDurMs, framesOn, frameMs, framesOff, *fCycles, syncMethod)
-
-	tone := stimuli.NewTone(*fFreqHz, toneDurMs, 0.8)
-	if err := tone.PreloadDevice(exp.AudioDevice); err != nil {
-		return fmt.Errorf("av: preload tone: %w", err)
-	}
-	defer tone.Unload()
-
-	exp.AddDataVariableNames([]string{
-		"trial",
-		"t_visual_before_ms", "t_visual_after_ms",
-		"t_audio_queued_ms",
-		"soa_intended_ms", "soa_actual_ms",
-	})
-
-	soaDur := time.Duration(math.Abs(*fSoaMs) * float64(time.Millisecond))
-	audioFirst := *fSoaMs < 0
-
-	return exp.Run(func() error {
-		r := exp.Screen.Renderer
-		bLevel, dLevel := byte(*fLevelB), byte(*fLevelA)
-
-		flip := exp.Screen.Update
-		if *fPacedFlip {
-			flip = exp.Screen.PacedFlip
-		}
-
-		// holdBright redraws bright into the backbuffer for each remaining frame
-		// so double-buffering never flips the opposite color into view.
-		holdBright := func(remaining int) {
-			for f := 0; f < remaining; f++ {
-				r.SetDrawColor(bLevel, bLevel, bLevel, 255)
-				r.Clear()
-				flip()
-			}
-		}
-
-		for trial := 0; trial < *fCycles; trial++ {
 			var tVisB, tVisA, tAudioQ float64
 
-			if audioFirst {
+			switch {
+			case withSound && audioFirst:
+				// Audio leads: queue the tone, wait out the SOA, then flip.
 				tAudioQ = float64(clock.GetTimeNS()) / 1e6
 				_ = tone.Play()
 				time.Sleep(soaDur)
-				r.SetDrawColor(bLevel, bLevel, bLevel, 255)
-				r.Clear()
+				paint(bright, dark)
 				tVisB = float64(clock.GetTimeNS()) / 1e6
 				flip()
 				tVisA = float64(clock.GetTimeNS()) / 1e6
-				go triggers.FireTrigger(trig, *fTriggerPin, time.Duration(*fTriggerMs)*time.Millisecond)
+				control.PumpEvents()
+				fire()
 				holdBright(framesOn - 1)
-			} else if soaDur == 0 {
-				// SOA=0: use PlaySyncedWithFlip so the audio buffer is pre-filled
-				// before the flip and the device resumes immediately after VSYNC.
-				// This eliminates goroutine scheduling jitter and primes the audio
-				// pipeline at flip time; onset lags by at most one callback period.
-				r.SetDrawColor(bLevel, bLevel, bLevel, 255)
-				r.Clear()
+
+			case withSound && soaDur == 0:
+				// SOA=0: PlaySyncedWithFlip pre-fills the audio buffer before the
+				// flip and resumes the device immediately after VSYNC. This removes
+				// goroutine scheduling jitter from the audio path; the onset then
+				// lags by at most one callback period, which is why -audio-frames
+				// sets the floor on audio-onset quantisation.
+				paint(bright, dark)
 				tVisB = float64(clock.GetTimeNS()) / 1e6
 				flipNS, _ := tone.PlaySyncedWithFlip(exp.Screen)
 				tVisA = float64(flipNS) / 1e6
-				tAudioQ = tVisA // audio pre-buffered; onset ≤ tVisA + 1 callback period
-				go triggers.FireTrigger(trig, *fTriggerPin, time.Duration(*fTriggerMs)*time.Millisecond)
+				tAudioQ = tVisA
+				control.PumpEvents()
+				fire()
 				holdBright(framesOn - 1)
-			} else {
-				r.SetDrawColor(bLevel, bLevel, bLevel, 255)
-				r.Clear()
+
+			case withSound:
+				// Visual leads by soaDur: schedule the tone off the visual onset
+				// while holdBright keeps the screen bright concurrently.
+				paint(bright, dark)
 				tVisB = float64(clock.GetTimeNS()) / 1e6
 				flip()
 				tVisA = float64(clock.GetTimeNS()) / 1e6
-				go triggers.FireTrigger(trig, *fTriggerPin, time.Duration(*fTriggerMs)*time.Millisecond)
-				// Schedule audio at the requested SOA relative to visual onset;
-				// holdBright keeps the bright screen for the remaining frames concurrently.
+				control.PumpEvents()
+				fire()
 				tAudioQCh := make(chan float64, 1)
 				go func() {
 					time.Sleep(soaDur)
@@ -457,27 +454,66 @@ func runAV(exp *control.Experiment, trig triggers.OutputTTLDevice) error {
 				}()
 				holdBright(framesOn - 1)
 				tAudioQ = <-tAudioQCh
-			}
 
-			soaActual := tAudioQ - tVisA
-			exp.Data.Add(trial,
-				fmt.Sprintf("%.3f", tVisB), fmt.Sprintf("%.3f", tVisA), fmt.Sprintf("%.3f", tAudioQ),
-				fmt.Sprintf("%.1f", *fSoaMs),
-				fmt.Sprintf("%.1f", soaActual))
-
-			// Dark phase: frames-off frames as ITI between stimuli.
-			for f := 0; f < framesOff; f++ {
-				r.SetDrawColor(dLevel, dLevel, dLevel, 255)
-				r.Clear()
+			default:
+				// Visual only.
+				paint(bright, dark)
+				tVisB = float64(clock.GetTimeNS()) / 1e6
 				flip()
+				tVisA = float64(clock.GetTimeNS()) / 1e6
+				control.PumpEvents()
+				fire()
+				holdBright(framesOn - 1)
 			}
 
-			state := exp.PollEvents(nil)
-			if state.QuitRequested {
+			// Dark phase: frames-off frames as the ITI between stimuli. Its first
+			// flip ends the bright phase, so its timestamp gives the duration.
+			var tDarkStart float64
+			for f := 0; f < framesOff; f++ {
+				showFrame(dark)
+				if f == 0 {
+					tDarkStart = float64(clock.GetTimeNS()) / 1e6
+				}
+			}
+
+			brightMs := tDarkStart - tVisA
+			var periodMs float64
+			if prevBrightStart > 0 {
+				periodMs = tVisA - prevBrightStart
+			}
+			prevBrightStart = tVisA
+
+			if cycle >= *fWarmup {
+				brightDurations = append(brightDurations, brightMs)
+				if periodMs > 0 {
+					periods = append(periods, periodMs)
+				}
+				if withSound {
+					soaActuals = append(soaActuals, tAudioQ-tVisA)
+				}
+			}
+
+			exp.Data.Add(cycle,
+				fmt.Sprintf("%.3f", tVisB), fmt.Sprintf("%.3f", tVisA),
+				fmt.Sprintf("%.3f", brightMs), fmt.Sprintf("%.3f", periodMs),
+				fmt.Sprintf("%.3f", tAudioQ),
+				fmt.Sprintf("%.1f", *fSoaMs), fmt.Sprintf("%.3f", tAudioQ-tVisA))
+
+			if exp.PollEvents(nil).QuitRequested {
 				return control.EndLoop
 			}
 		}
-		fmt.Printf("\nav: %d trials complete. Check oscilloscope for AV sync.\n", *fCycles)
+
+		// Frame counts are the authoritative unit, so the measured mean is the
+		// deviation reference rather than a target derived from -hz.
+		printStatsVsMean(fmt.Sprintf("Bright-phase duration (frames-on=%d)", framesOn), brightDurations)
+		printStatsVsMean(fmt.Sprintf("Period (frames-on=%d + frames-off=%d)", framesOn, framesOff), periods)
+		if withSound {
+			printStatsVsMean(fmt.Sprintf("Audio queued − visual onset (intended SOA %.1f ms)", *fSoaMs), soaActuals)
+		}
+
+		fmt.Printf("\nav: %d cycles complete (%d discarded as warm-up).\n", *fCycles, *fWarmup)
+		fmt.Println("Software timestamps only — the photodiode/TTL recording is the ground truth.")
 		return control.EndLoop
 	})
 }
@@ -486,10 +522,9 @@ func runAV(exp *control.Experiment, trig triggers.OutputTTLDevice) error {
 
 // runJitter measures raw frame-interval variance by repeatedly flipping a gray screen.
 func runJitter(exp *control.Experiment) error {
-	nFrames := int(*fDurationS * *fHz) // approximate; actual count depends on refresh rate
-	fmt.Printf("jitter: ~%d frames over %.1f s  warmup=%d  (ESC to stop early)\n", nFrames, *fDurationS, *fWarmup)
+	fmt.Printf("display: %.1f s of frames  warmup=%d  (ESC to stop early)\n", *fDurationS, *fWarmup)
 
-	exp.Data.WriteComment(fmt.Sprintf("test=jitter duration-s=%.1f hz=%.2f warmup=%d", *fDurationS, *fHz, *fWarmup))
+	exp.Data.WriteComment(fmt.Sprintf("test=display duration-s=%.1f warmup=%d", *fDurationS, *fWarmup))
 	exp.AddDataVariableNames([]string{"frame", "t_before_ms", "t_after_ms", "interval_ms"})
 
 	var intervals []float64
@@ -499,12 +534,17 @@ func runJitter(exp *control.Experiment) error {
 		restoreGC := suspendGC()
 		defer restoreGC()
 
+		paint, err := newPainter(exp)
+		if err != nil {
+			return err
+		}
+
 		level := byte(128)
 		deadline := time.Now().Add(time.Duration(*fDurationS * float64(time.Second)))
 		frame := 0
 
 		for time.Now().Before(deadline) {
-			tB, tA := fillGray(exp, level)
+			tB, tA := fillGray(exp, paint, level)
 
 			var intervalMs float64
 			if prevT > 0 {
@@ -531,95 +571,9 @@ func runJitter(exp *control.Experiment) error {
 			estimatedHz = 1000.0 / s.Mean
 			s = timingstats.ComputeStats(intervals, s.Mean) // recompute late counts against actual mean
 		}
-		fmt.Printf("\nEstimated refresh rate: %.3f Hz  (use -hz %.2f for frames/flash targets)\n",
+		fmt.Printf("\nEstimated refresh rate: %.3f Hz  (pass -hz %.2f to av so the tone matches a frame)\n",
 			estimatedHz, estimatedHz)
 		timingstats.PrintStats("Frame intervals", s, s.Mean)
-		return control.EndLoop
-	})
-}
-
-// ── Test: square ──────────────────────────────────────────────────────────────
-
-// runSquare outputs a square wave on the specified DLP-IO8 pin for the
-// configured duration. No display is needed; the test shows a status screen.
-func runSquare(exp *control.Experiment, trig triggers.OutputTTLDevice) error {
-	if _, isNull := trig.(triggers.NullOutputTTLDevice); isNull {
-		return fmt.Errorf("square test requires a DLP-IO8-G (no device found)")
-	}
-
-	period := time.Duration(*fPeriodMs * float64(time.Millisecond))
-	highDur := time.Duration(float64(period) * *fDuty / 100.0)
-	totalDur := time.Duration(*fDurationS * float64(time.Second))
-	expectedCycles := int(totalDur / period)
-
-	fmt.Printf("square: period=%.1f ms  duty=%.0f %%  pin=%d  duration=%.0f s  (~%d cycles)\n",
-		*fPeriodMs, *fDuty, *fTriggerPin, *fDurationS, expectedCycles)
-
-	exp.AddDataVariableNames([]string{
-		"cycle", "edge", "target_ms", "actual_ms", "jitter_ms",
-	})
-
-	var riseJitter, fallJitter []float64
-
-	return exp.Run(func() error {
-		// Show a status screen.
-		status := stimuli.NewTextLine(
-			fmt.Sprintf("Square wave: %.1f ms period, %.0f%% duty, pin %d — press ESC to stop",
-				*fPeriodMs, *fDuty, *fTriggerPin),
-			0, 0, control.White)
-		if err := exp.Show(status); err != nil {
-			return err
-		}
-
-		start := time.Now()
-		deadline := start.Add(totalDur)
-
-		for cycle := 0; time.Now().Before(deadline); cycle++ {
-			// ── Rising edge ────────────────────────────────────────────────
-			targetRise := start.Add(time.Duration(cycle) * period)
-			sleepUntil(targetRise)
-			tRise := time.Now()
-			if err := trig.SetHigh(*fTriggerPin); err != nil {
-				return err
-			}
-			jRise := tRise.Sub(targetRise).Seconds() * 1000
-			riseJitter = append(riseJitter, jRise)
-			exp.Data.Add(cycle, "rise",
-				fmt.Sprintf("%.3f", targetRise.Sub(start).Seconds()*1000),
-				fmt.Sprintf("%.3f", tRise.Sub(start).Seconds()*1000),
-				fmt.Sprintf("%.3f", jRise))
-
-			// ── Falling edge ───────────────────────────────────────────────
-			targetFall := targetRise.Add(highDur)
-			sleepUntil(targetFall)
-			tFall := time.Now()
-			if err := trig.SetLow(*fTriggerPin); err != nil {
-				return err
-			}
-			jFall := tFall.Sub(targetFall).Seconds() * 1000
-			fallJitter = append(fallJitter, jFall)
-			exp.Data.Add(cycle, "fall",
-				fmt.Sprintf("%.3f", targetFall.Sub(start).Seconds()*1000),
-				fmt.Sprintf("%.3f", tFall.Sub(start).Seconds()*1000),
-				fmt.Sprintf("%.3f", jFall))
-
-			// Allow ESC / window-close to abort.
-			state := exp.PollEvents(nil)
-			if state.QuitRequested {
-				break
-			}
-
-			// Sleep until the end of the low phase to keep the loop near-idle.
-			nextRise := targetRise.Add(period)
-			slack := nextRise.Sub(time.Now()) - 2*time.Millisecond
-			if slack > 0 {
-				time.Sleep(slack)
-			}
-		}
-
-		_ = trig.SetLow(*fTriggerPin)
-		timingstats.PrintStats("Rising-edge jitter (ms from target)", timingstats.ComputeStats(riseJitter, 0), 0)
-		timingstats.PrintStats("Falling-edge jitter (ms from target)", timingstats.ComputeStats(fallJitter, 0), 0)
 		return control.EndLoop
 	})
 }
@@ -634,117 +588,6 @@ func sleepUntil(t time.Time) {
 	for time.Now().Before(t) {
 		// busy-spin
 	}
-}
-
-// ── Test: sound ───────────────────────────────────────────────────────────────
-
-// runSound plays a regular tone stream via stimuli.PlayStreamOfSounds and
-// reports onset-jitter statistics from the returned TimingLog.
-//
-// If a DLP-IO8-G is connected, pin *fTriggerPin is set HIGH immediately before
-// PlayStreamOfSounds and LOW immediately after it returns, producing a single
-// square pulse whose width equals the total stream duration. Connect pin 1 to
-// oscilloscope channel 2 and the audio line-out to channel 1 to compare the
-// measured pulse width against the nominal nTones × SOA value.
-func runSound(exp *control.Experiment, trig triggers.OutputTTLDevice) error {
-	toneDur := time.Duration(*fToneMs) * time.Millisecond
-	isiDur := time.Duration(*fItiMs) * time.Millisecond
-	soa := toneDur + isiDur
-	nTones := *fCycles
-
-	_, isNull := trig.(triggers.NullOutputTTLDevice)
-
-	fmt.Printf("sound: %d tones  %.0f Hz  %d ms on  %.0f ms ISI  SOA %d ms  total ~%.1f s",
-		nTones, *fFreqHz, *fToneMs, *fItiMs, soa.Milliseconds(),
-		float64(nTones)*soa.Seconds())
-	if !isNull {
-		fmt.Printf("  trigger pin %d (high→low brackets full stream)", *fTriggerPin)
-	}
-	fmt.Println()
-
-	exp.Data.WriteComment(fmt.Sprintf("test=sound cycles=%d freq-hz=%.0f tone-ms=%d iti-ms=%.0f soa-ms=%d",
-		nTones, *fFreqHz, *fToneMs, *fItiMs, soa.Milliseconds()))
-
-	tone := stimuli.NewTone(*fFreqHz, *fToneMs, 0.8)
-	if err := tone.PreloadDevice(exp.AudioDevice); err != nil {
-		return fmt.Errorf("sound: preload tone: %w", err)
-	}
-	defer tone.Unload()
-
-	sounds := make([]stimuli.AudioPlayable, nTones)
-	for i := range sounds {
-		sounds[i] = tone
-	}
-	elements := stimuli.MakeRegularSoundStream(sounds, toneDur, isiDur)
-
-	exp.AddDataVariableNames([]string{
-		"tone_num",
-		"target_onset_ms", "actual_onset_ms", "onset_error_ms",
-		"actual_offset_ms",
-		"ioi_ms", "ioi_error_ms",
-	})
-
-	return exp.Run(func() error {
-		status := stimuli.NewTextLine(
-			fmt.Sprintf("Audio timing: %d × %.0f Hz tones, %d ms on / %.0f ms ISI — ESC to stop",
-				nTones, *fFreqHz, *fToneMs, *fItiMs),
-			0, 0, control.White)
-		if err := exp.Show(status); err != nil {
-			return err
-		}
-
-		if !isNull {
-			_ = trig.SetHigh(*fTriggerPin)
-		}
-		_, timing, err := stimuli.PlayStreamOfSounds(elements)
-		if !isNull {
-			_ = trig.SetLow(*fTriggerPin)
-		}
-		if control.IsEndLoop(err) {
-			return control.EndLoop
-		}
-		if err != nil {
-			return err
-		}
-
-		soaMs := float64(soa) / 1e6 // nanoseconds → milliseconds
-		var onsetErrors, ioiVals []float64
-		var prevActualMs float64
-
-		var ref uint64
-		if len(timing) > 0 {
-			ref = timing[0].OnsetNS // stream start on the SDL clock (same clock as the trigger pulse); OnsetNS/OffsetNS are authoritative (see TimingLog)
-		}
-		for _, tl := range timing {
-			targetOnsetMs := float64(tl.Index) * soaMs
-			actualOnsetMs := float64(tl.OnsetNS-ref) / 1e6
-			actualOffsetMs := float64(tl.OffsetNS-ref) / 1e6
-			onsetErr := actualOnsetMs - targetOnsetMs
-
-			var ioiMs, ioiErr float64
-			if tl.Index > 0 {
-				ioiMs = actualOnsetMs - prevActualMs
-				ioiErr = ioiMs - soaMs
-				ioiVals = append(ioiVals, ioiMs)
-			}
-			onsetErrors = append(onsetErrors, onsetErr)
-			prevActualMs = actualOnsetMs
-
-			exp.Data.Add(
-				tl.Index,
-				fmt.Sprintf("%.3f", targetOnsetMs),
-				fmt.Sprintf("%.3f", actualOnsetMs),
-				fmt.Sprintf("%.3f", onsetErr),
-				fmt.Sprintf("%.3f", actualOffsetMs),
-				fmt.Sprintf("%.3f", ioiMs),
-				fmt.Sprintf("%.3f", ioiErr),
-			)
-		}
-
-		timingstats.PrintStats("Onset error vs target (ms)", timingstats.ComputeStats(onsetErrors, 0), 0)
-		timingstats.PrintStats("Inter-onset interval (ms)", timingstats.ComputeStats(ioiVals, soaMs), soaMs)
-		return control.EndLoop
-	})
 }
 
 // ── Test: rt ──────────────────────────────────────────────────────────────────
@@ -788,6 +631,11 @@ func runRT(exp *control.Experiment, trig triggers.OutputTTLDevice) error {
 		exp.Screen.Update()
 		exp.Keyboard.WaitKey(control.K_SPACE)
 
+		paint, err := newPainter(exp)
+		if err != nil {
+			return err
+		}
+
 		restoreGC := suspendGC()
 		defer restoreGC()
 
@@ -799,9 +647,8 @@ func runRT(exp *control.Experiment, trig triggers.OutputTTLDevice) error {
 			exp.Screen.Update()
 			time.Sleep(itiDur)
 
-			// Flash: draw white screen and flip, capturing SDL nanosecond onset.
-			exp.Screen.Renderer.SetDrawColor(255, 255, 255, 255)
-			exp.Screen.Renderer.Clear()
+			// Flash: paint the stimulus and flip, capturing SDL nanosecond onset.
+			paint(control.White, control.Black)
 			onsetNS, _ := exp.Screen.FlipTS()
 
 			// Trigger pulse after VSYNC: pixels are now on screen.
@@ -839,6 +686,7 @@ func runRT(exp *control.Experiment, trig triggers.OutputTTLDevice) error {
 // any of the quantitative tests.
 func runCheck(exp *control.Experiment) error {
 	fmt.Println("check: verifying display and audio output — watch for a bright flash, then listen for two sounds")
+	exp.Data.WriteComment("test=check")
 	return exp.Run(func() error {
 		// ── Step 1: bright flash on display ───────────────────────────────────
 		label := stimuli.NewTextLine("DISPLAY CHECK — you should see this bright screen for ~1 second.", 0, 0, control.Black)
@@ -878,159 +726,6 @@ func runCheck(exp *control.Experiment) error {
 		clock.Wait(1000)
 
 		fmt.Println("check: done. Did you see the bright flash and hear both sounds? If yes, proceed to the measurement tests.")
-		return control.EndLoop
-	})
-}
-
-// ── Test: stream ──────────────────────────────────────────────────────────────
-
-// runStream measures the timing accuracy of sequential (RSVP-style) stimulus
-// presentations — the kind of trial loop a psychologist would actually run in
-// a rapid serial visual presentation paradigm.
-//
-// *fCycles elements are presented. Each element consists of *fFramesOn
-// bright frames (luminance *fLevelB) followed by *fFramesOff dark frames
-// (luminance *fLevelA). If a DLP-IO8-G is connected, a trigger pulse is fired
-// on *fTriggerPin at the onset of every bright phase so that the software
-// timestamps can be validated against a photodiode on the oscilloscope.
-//
-// Two statistics are reported after the run:
-//   - Duration error  : actual on-duration − target on-duration (ms).
-//     A non-zero mean indicates a systematic off-by-one-frame bug or driver
-//     double-buffering; high SD indicates frame-drop events.
-//   - SOA error       : actual onset-to-onset interval − target SOA (ms).
-//     This is the quantity that matters most for RSVP experiments: if the SOA
-//     is 100 ms but the SD is 3 ms, word presentations drift in and out of
-//     phase with any auditory rhythm you might be synchronising to.
-//
-// The first *fWarmup elements are excluded from statistics (GPU pipeline warm-up).
-func runStream(exp *control.Experiment, trig triggers.OutputTTLDevice) error {
-	n := *fCycles
-	onFrames := *fFramesOn
-	offFrames := *fFramesOff
-	targetFrameMs := 1000.0 / *fHz
-	targetOnMs := float64(onFrames) * targetFrameMs
-	targetOffMs := float64(offFrames) * targetFrameMs
-	targetSOAms := targetOnMs + targetOffMs
-
-	_, isNull := trig.(triggers.NullOutputTTLDevice)
-	trigDur := time.Duration(*fTriggerMs) * time.Millisecond
-
-	fmt.Printf("stream: %d elements  on=%d frames (%.2f ms)  off=%d frames (%.2f ms)  SOA=%.2f ms  hz=%.2f  warmup=%d",
-		n, onFrames, targetOnMs, offFrames, targetOffMs, targetSOAms, *fHz, *fWarmup)
-	if !isNull {
-		fmt.Printf("  trigger pin %d (%d ms pulse)", *fTriggerPin, *fTriggerMs)
-	}
-	fmt.Println()
-
-	exp.Data.WriteComment(fmt.Sprintf(
-		"test=stream cycles=%d frames-on=%d frames-off=%d hz=%.2f warmup=%d level-a=%d level-b=%d",
-		n, onFrames, offFrames, *fHz, *fWarmup, *fLevelA, *fLevelB))
-	exp.AddDataVariableNames([]string{
-		"element",
-		"t_onset_ms", "t_offset_ms",
-		"onset_ns", "offset_ns",
-		"duration_ms", "duration_error_ms",
-		"interval_ms", "interval_error_ms",
-		"trigger",
-	})
-
-	return exp.Run(func() error {
-		status := stimuli.NewTextLine(
-			fmt.Sprintf("Stream timing: %d elements, %d on / %d off frames — press ESC to stop",
-				n, onFrames, offFrames),
-			0, 0, control.White)
-		if err := exp.Show(status); err != nil {
-			return err
-		}
-		time.Sleep(500 * time.Millisecond)
-
-		restoreGC := suspendGC()
-		defer restoreGC()
-
-		var durationErrors, intervalErrors []float64
-		streamStartMs := float64(clock.GetTimeNS()) / 1e6
-		var prevOnsetNS uint64
-
-		r := exp.Screen.Renderer
-		bR, bG, bB := byte(*fLevelB), byte(*fLevelB), byte(*fLevelB) // bright
-		dR, dG, dD := byte(*fLevelA), byte(*fLevelA), byte(*fLevelA) // dark
-
-		for elem := 0; elem < n; elem++ {
-			// ── ON phase ──────────────────────────────────────────────────────
-			var onsetNS uint64
-			var tOnsetMs float64
-
-			for f := 0; f < onFrames; f++ {
-				r.SetDrawColor(bR, bG, bB, 255)
-				r.Clear()
-				if f == 0 {
-					ns, _ := exp.Screen.FlipTS()
-					onsetNS = ns
-					tOnsetMs = float64(clock.GetTimeNS())/1e6 - streamStartMs
-					if !isNull {
-						go triggers.FireTrigger(trig, *fTriggerPin, trigDur)
-					}
-				} else {
-					exp.Screen.Update()
-				}
-			}
-
-			// ── OFF phase (ISI) ───────────────────────────────────────────────
-			var offsetNS uint64
-			var tOffsetMs float64
-
-			for f := 0; f < offFrames; f++ {
-				r.SetDrawColor(dR, dG, dD, 255)
-				r.Clear()
-				if f == 0 {
-					ns, _ := exp.Screen.FlipTS()
-					offsetNS = ns
-					tOffsetMs = float64(clock.GetTimeNS())/1e6 - streamStartMs
-				} else {
-					exp.Screen.Update()
-				}
-			}
-
-			// ── Statistics ────────────────────────────────────────────────────
-			durationMs := tOffsetMs - tOnsetMs
-			durationError := durationMs - targetOnMs
-
-			var intervalMs, intervalError float64
-			if prevOnsetNS > 0 {
-				intervalMs = float64(onsetNS-prevOnsetNS) / 1e6
-				intervalError = intervalMs - targetSOAms
-				if elem >= *fWarmup {
-					intervalErrors = append(intervalErrors, intervalError)
-				}
-			}
-			if elem >= *fWarmup {
-				durationErrors = append(durationErrors, durationError)
-			}
-			prevOnsetNS = onsetNS
-
-			exp.Data.Add(
-				elem,
-				fmt.Sprintf("%.3f", tOnsetMs),
-				fmt.Sprintf("%.3f", tOffsetMs),
-				onsetNS, offsetNS,
-				fmt.Sprintf("%.3f", durationMs),
-				fmt.Sprintf("%.3f", durationError),
-				fmt.Sprintf("%.3f", intervalMs),
-				fmt.Sprintf("%.3f", intervalError),
-				!isNull,
-			)
-
-			state := exp.PollEvents(nil)
-			if state.QuitRequested {
-				return control.EndLoop
-			}
-		}
-
-		timingstats.PrintStats(fmt.Sprintf("Duration error (target %.2f ms)", targetOnMs), timingstats.ComputeStats(durationErrors, 0), 0)
-		if len(intervalErrors) > 0 {
-			timingstats.PrintStats(fmt.Sprintf("SOA error (target %.2f ms)", targetSOAms), timingstats.ComputeStats(intervalErrors, 0), 0)
-		}
 		return control.EndLoop
 	})
 }
@@ -1121,7 +816,13 @@ func runVRR(exp *control.Experiment, trig triggers.OutputTTLDevice) error {
 		restoreGC := suspendGC()
 		defer restoreGC()
 
-		r := exp.Screen.Renderer
+		paint, err := newPainter(exp)
+		if err != nil {
+			return err
+		}
+		bright, dark := gray(byte(*fLevelB)), gray(byte(*fLevelA))
+
+		var allErrors []float64
 
 		for targetMs := 1; targetMs <= maxMs; targetMs++ {
 			targetDur := time.Duration(targetMs) * time.Millisecond
@@ -1129,8 +830,7 @@ func runVRR(exp *control.Experiment, trig triggers.OutputTTLDevice) error {
 
 			for rep := 0; rep < reps; rep++ {
 				// ── ISI: blank screen ────────────────────────────────────────
-				r.SetDrawColor(byte(*fLevelA), byte(*fLevelA), byte(*fLevelA), 255)
-				r.Clear()
+				paint(dark, dark)
 				exp.Screen.Flip() // non-blocking with vsync=0
 				time.Sleep(200 * time.Millisecond)
 
@@ -1138,16 +838,14 @@ func runVRR(exp *control.Experiment, trig triggers.OutputTTLDevice) error {
 				if !isNull {
 					_ = trig.SetHigh(*fTriggerPin)
 				}
-				r.SetDrawColor(byte(*fLevelB), byte(*fLevelB), byte(*fLevelB), 255)
-				r.Clear()
+				paint(bright, dark)
 				onsetNS, _ := exp.Screen.FlipTS() // returns immediately (vsync=0)
 
 				// ── Hold for exactly targetDur using busy-wait ────────────────
 				sleepUntil(time.Now().Add(targetDur))
 
 				// ── Offset: blank screen ─────────────────────────────────────
-				r.SetDrawColor(byte(*fLevelA), byte(*fLevelA), byte(*fLevelA), 255)
-				r.Clear()
+				paint(dark, dark)
 				offsetNS, _ := exp.Screen.FlipTS()
 
 				if !isNull {
@@ -1180,8 +878,11 @@ func runVRR(exp *control.Experiment, trig triggers.OutputTTLDevice) error {
 
 			s := timingstats.ComputeStats(durationErrors, 0)
 			fmt.Printf("── %3d ms: mean=%+.3f ms  SD=%.3f ms\n", targetMs, s.Mean, s.SD)
+			allErrors = append(allErrors, durationErrors...)
 		}
 
+		timingstats.PrintStats("Duration error across the whole sweep (ms)",
+			timingstats.ComputeStats(allErrors, 0), 0)
 		return control.EndLoop
 	})
 }
@@ -1327,12 +1028,6 @@ func main() {
 		os.Exit(0)
 	}()
 
-	if *fTest == "" {
-		exp.End() // release any SDL subsystems already initialised before exiting
-		log.Fatal("usage: go run . -test <check|display|latency|stream|vrr|trigger|frames|flash|gvsync|tones|av|rt> [flags]\n" +
-			"       (legacy aliases: jitter=display  drain=latency  square=trigger  sound=tones  audio=check)")
-	}
-
 	// Log actual audio device format so the user can verify the buffer size.
 	if spec, frames, err := exp.AudioDevice.Format(); err == nil {
 		fmt.Printf("audio: %d Hz  %d ch  %d sample frames (~%.1f ms latency)\n",
@@ -1352,37 +1047,24 @@ func main() {
 
 	var runErr error
 	switch *fTest {
-	// ── Tier 0: sanity check ─────────────────────────────────────────────────
-	case "check", "audio": // "audio" is the legacy name
+	// ── No hardware required ─────────────────────────────────────────────────
+	case "check":
 		runErr = runCheck(exp)
-	// ── Tier 1: self-contained measurements ──────────────────────────────────
-	case "display", "jitter": // "jitter" is the legacy name
+	case "display":
 		runErr = runJitter(exp)
-	case "latency", "drain": // "drain" is the legacy name
+	case "latency":
 		runErr = runDrain(exp)
-	case "stream":
-		runErr = runStream(exp, trig)
-	case "vrr":
-		runErr = runVRR(exp, trig)
-	// ── Tier 2: trigger device characterisation ───────────────────────────────
-	case "trigger", "square": // "square" is the legacy name
-		runErr = runSquare(exp, trig)
-	// ── Tier 3: stimulus timing validation ───────────────────────────────────
-	case "frames", "flash": // "flash" is the legacy name (frames-on=1 frames-off=N)
-		runErr = runFrames(exp, trig)
-	case "gvsync":
-		runErr = runGvSync(exp, trig)
-	case "tones", "sound": // "sound" is the legacy name
-		runErr = runSound(exp, trig)
+	// ── Photodiode / trigger box required ────────────────────────────────────
 	case "av":
 		runErr = runAV(exp, trig)
-	// ── Tier 4: response timing ───────────────────────────────────────────────
+	case "vrr":
+		runErr = runVRR(exp, trig)
 	case "rt":
 		runErr = runRT(exp, trig)
 	default:
 		exp.End() // release any SDL subsystems already initialised before exiting
-		log.Fatalf("unknown test %q — choose from: check display latency stream vrr trigger frames flash gvsync tones av rt\n"+
-			"  (legacy aliases: audio=check  jitter=display  drain=latency  square=trigger  sound=tones)", *fTest)
+		log.Fatalf("unknown test %q — choose from: av vrr rt check display latency\n"+
+			"  (gvsync moved to tests/test_gv_sync; trigger moved to tests/test_dlpio8)", *fTest)
 	}
 
 	if runErr != nil && !control.IsEndLoop(runErr) {
