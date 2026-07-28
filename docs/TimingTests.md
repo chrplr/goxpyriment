@@ -253,6 +253,42 @@ numbers, and say which cycles you used.
 inter-onset intervals and is not jitter — it is the buffer. Halving the buffer
 halves the step, at the cost of underrun risk.
 
+### Recording it automatically
+
+`tests/Timing-Tests/run-timing-tests.sh` can drive `bbtk-capture` so the stimulus
+always falls inside the capture window, without two terminals and a stopwatch:
+
+```bash
+BBTK_CAPTURE=1 BBTK_CAPTURE_BIN=~/00_git/bbtkv3/_build/bbtk-capture \
+    ./run-timing-tests.sh av-visual
+```
+
+It launches the capture, blocks until the device is *actually* recording, runs
+the stimulus, then waits for the capture to download and save. Only the
+photodiode steps are wrapped. `BBTK_MARGIN_S` (default 8) sets how much is
+recorded either side of the stimulus.
+
+The waiting matters: `bbtk-capture` needs 11–40 s between launch and the device
+recording — fixed command pacing plus an internal-memory erase whose duration
+depends on whether the box needs a full format — and its own "Capturing events…"
+message appears several seconds *before* that instant. The script synchronises on
+the `BBTK-CAPTURE-READY` line emitted the moment the device is armed. Budget that
+startup for every recorded step.
+
+### Microphone coupling
+
+If you are measuring audio, **max the output volume and place the BBTK microphone
+within a few millimetres of the speaker membrane.** Anything less and events are
+silently dropped: there is no warning, and the run looks like it worked.
+
+Two checks on the resulting `-events.csv`:
+
+- **N(Mic1) should equal N(TTLin1).** Far fewer means bad coupling, not bad
+  timing — a 197-cycle run yielding 6 Mic events is a placement problem.
+- **Mic duration should be close to `frames-on × frame period`** (200 ms at the
+  defaults). A 20 ms Mic pulse for a 200 ms tone means the threshold is catching
+  only the loudest fraction of the tone.
+
 ### `vrr` — arbitrary stimulus durations
 
 ```bash

@@ -105,6 +105,58 @@ steady-state numbers and say which cycles you used.
 
 ---
 
+## Recording with a BBTK
+
+`run-timing-tests.sh` can drive `bbtk-capture` for you, so the stimulus always
+falls inside the capture window without two terminals and a stopwatch:
+
+```bash
+BBTK_CAPTURE=1 BBTK_CAPTURE_BIN=~/00_git/bbtkv3/_build/bbtk-capture \
+    ./run-timing-tests.sh av-visual
+```
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `BBTK_CAPTURE` | off | Set to `1` to record the photodiode steps |
+| `BBTK_CAPTURE_BIN` | `bbtk-capture` | Path to the binary, if not on `PATH` |
+| `BBTK_PORT` | — | Serial port; read by `bbtk-capture` itself |
+| `BBTK_MARGIN_S` | 8 | Seconds recorded either side of the stimulus |
+| `BBTK_READY_TIMEOUT_S` | 120 | Give up waiting for the device |
+
+Only the photodiode steps (`av`, `av-gc`, `av-visual`) are wrapped; `check`,
+`display` and `latency` measure nothing the BBTK can see.
+
+**Why it waits.** `bbtk-capture` needs 11–40 s between launch and the device
+actually recording — fixed command pacing, plus an internal-memory erase whose
+duration depends on whether the box needs a full format. Its own "Capturing
+events…" message is printed several seconds *before* recording starts, so the
+script instead blocks on the `BBTK-CAPTURE-READY` line that `bbtk-capture` emits
+the instant it sends `RUDS`. Budget that startup per step.
+
+Ctrl-C is safe: `bbtk-capture` traps it, stops the capture, and still writes what
+the device recorded.
+
+Captures land in `reports-<host>/bbtk-<step>-001-events.csv` alongside the console
+reports, with the raw `bbtk-capture` output in `reports-<host>/bbtk-<step>.log`.
+
+---
+
+## Microphone coupling
+
+If you are measuring audio, **max the output volume and put the BBTK microphone
+within a few millimetres of the speaker membrane.** Anything less and events are
+silently missed — there is no warning, and the run looks like it worked.
+
+Two checks on the resulting `-events.csv`:
+
+- **N(Mic1) should equal N(TTLin1).** Far fewer means bad coupling, not bad
+  timing. A run of 197 cycles that yields 6 Mic events is a placement problem.
+- **Mic duration should be close to `frames-on × frame period`** (200 ms at the
+  defaults). A 20 ms Mic pulse for a 200 ms tone means the threshold is catching
+  only the loudest fraction of the tone.
+
+---
+
 ## Flags
 
 ### Common

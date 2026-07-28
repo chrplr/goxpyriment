@@ -18,6 +18,19 @@
 #   AUDIO_BUFFSIZE    hardware buffer, frames  (default: 256)
 #   REFRESH_HZ        expected refresh rate    (default: 60)
 #
+# Optional BBTK recording — when enabled, each photodiode step starts a
+# bbtk-capture in the background, waits until the device is actually recording,
+# runs the stimulus inside that window, and waits for the capture to save:
+#   BBTK_CAPTURE          set to 1 to enable   (default: off)
+#   BBTK_CAPTURE_BIN      path to bbtk-capture (default: bbtk-capture on PATH)
+#   BBTK_PORT             serial port          (read by bbtk-capture itself)
+#   BBTK_MARGIN_S         recorded margin either side of the stimulus (default: 8)
+#   BBTK_READY_TIMEOUT_S  give up waiting for the device      (default: 120)
+#
+# Each capture costs 11-40 s of device setup before the stimulus can start
+# (fixed command pacing, plus a variable internal-memory erase), which is why
+# the script waits for the device rather than guessing.
+#
 # On a Prime / hybrid-graphics laptop, force the discrete card:
 #   __NV_PRIME_RENDER_OFFLOAD=1 __GLX_VENDOR_LIBRARY_NAME=nvidia ./run-timing-tests.sh
 
@@ -35,6 +48,16 @@ REFRESH_HZ="${REFRESH_HZ:-60}"
 BIN=./Timing-Tests
 HOST=$(hostname -s 2>/dev/null || hostname)
 OUTDIR="reports-${HOST}"
+
+BBTK_CAPTURE="${BBTK_CAPTURE:-0}"
+BBTK_CAPTURE_BIN="${BBTK_CAPTURE_BIN:-bbtk-capture}"
+BBTK_MARGIN_S="${BBTK_MARGIN_S:-8}"
+BBTK_READY_TIMEOUT_S="${BBTK_READY_TIMEOUT_S:-120}"
+# Emitted by bbtk-capture the instant the device starts recording. Anything
+# earlier in its output (including its own "Capturing events..." line) is
+# several seconds premature.
+BBTK_READY_MARKER="BBTK-CAPTURE-READY"
+BBTK_PID=""
 
 STEPS="sysinfo check display display-gc av av-gc av-visual latency"
 
@@ -92,6 +115,91 @@ run() {
 	return 0
 }
 
+# ── Optional BBTK recording ───────────────────────────────────────────────
+#
+# capture_start <name> <stimulus-seconds> — launch bbtk-capture and BLOCK until
+# the device is actually recording. No-op unless BBTK_CAPTURE=1.
+#
+# The wait is the whole point. bbtk-capture needs 11-40 s between launch and the
+# device recording (fixed command pacing plus a variable internal-memory erase),
+# and its own progress output goes quiet several seconds BEFORE that instant, so
+# the only safe synchronisation is the marker it prints right after sending RUDS.
+#
+# stdin is closed deliberately: bbtk-capture puts the terminal into raw mode to
+# watch for Esc, and that terminal is shared with Timing-Tests. With </dev/null
+# the raw-mode call fails harmlessly and the stimulus keeps its own input.
+capture_start() {
+	BBTK_PID=""
+	[ "$BBTK_CAPTURE" = "1" ] || return 0
+
+	cap_name=$1
+	cap_dur=$(( $2 + 2 * BBTK_MARGIN_S ))
+	cap_log="$OUTDIR/bbtk-${cap_name}.log"
+	: >"$cap_log"
+
+	echo "+ $BBTK_CAPTURE_BIN -d $cap_dur ${OUTDIR}/bbtk-${cap_name}"
+	"$BBTK_CAPTURE_BIN" -d "$cap_dur" -no-countdown "$OUTDIR/bbtk-${cap_name}" \
+		</dev/null >"$cap_log" 2>&1 &
+	BBTK_PID=$!
+
+	printf 'waiting for the BBTK to start recording (up to %ss)' "$BBTK_READY_TIMEOUT_S"
+	cap_waited=0
+	while ! grep -q "$BBTK_READY_MARKER" "$cap_log" 2>/dev/null; do
+		if ! kill -0 "$BBTK_PID" 2>/dev/null; then
+			printf '\n!! bbtk-capture exited before recording started — see %s\n' "$cap_log"
+			tail -n 5 "$cap_log" 2>/dev/null
+			FAILED="${FAILED} ${CURRENT_STEP}"
+			BBTK_PID=""
+			return 1
+		fi
+		if [ "$cap_waited" -ge "$BBTK_READY_TIMEOUT_S" ]; then
+			printf '\n!! BBTK did not start recording within %ss — killing capture\n' "$BBTK_READY_TIMEOUT_S"
+			kill "$BBTK_PID" 2>/dev/null
+			wait "$BBTK_PID" 2>/dev/null
+			FAILED="${FAILED} ${CURRENT_STEP}"
+			BBTK_PID=""
+			return 1
+		fi
+		sleep 1
+		cap_waited=$(( cap_waited + 1 ))
+		printf '.'
+	done
+	printf ' recording (%ss window, stimulus starts now)\n' "$cap_dur"
+	return 0
+}
+
+# capture_wait — block until the running capture has downloaded and saved.
+# Files appear only when bbtk-capture exits, so this must complete before the
+# next step's prompt or the results look missing.
+capture_wait() {
+	[ -n "$BBTK_PID" ] || return 0
+	echo "waiting for the BBTK to download and save..."
+	if ! wait "$BBTK_PID"; then
+		printf '!! bbtk-capture failed — see %s/bbtk-*.log\n' "$OUTDIR"
+		FAILED="${FAILED} ${CURRENT_STEP}"
+	fi
+	BBTK_PID=""
+	return 0
+}
+
+# A capture left running past the end of the script would be orphaned mid-record
+# and lose everything, so wait it out rather than exiting from under it.
+# bbtk-capture traps SIGINT itself, so a Ctrl-C reaching both still saves.
+cleanup() {
+	if [ -n "$BBTK_PID" ]; then
+		echo "waiting for the running BBTK capture to save before exiting..."
+		wait "$BBTK_PID" 2>/dev/null
+	fi
+}
+trap cleanup EXIT
+
+# av_seconds <cycles> — how long an av run of <cycles> takes, in whole seconds.
+# One cycle is frames-on + frames-off frames at the display refresh rate.
+av_seconds() {
+	awk -v c="$1" -v on=12 -v off=18 -v hz="$REFRESH_HZ" \
+		'BEGIN { printf "%d", (c * (on + off) / hz) + 1 }'
+}
+
 if [ ! -x "$BIN" ]; then
 	echo "error: $BIN not found or not executable — build it first:" >&2
 	echo "       (from the repo root)  go build -o tests/Timing-Tests/Timing-Tests ./tests/Timing-Tests" >&2
@@ -102,6 +210,16 @@ mkdir -p "$OUTDIR"
 echo "Host:    $HOST"
 echo "Reports: $OUTDIR/"
 echo "Audio:   SDL_AUDIODRIVER=$SDL_AUDIODRIVER  buffer=$AUDIO_BUFFSIZE frames"
+if [ "$BBTK_CAPTURE" = "1" ]; then
+	echo "BBTK:    recording enabled ($BBTK_CAPTURE_BIN, ${BBTK_MARGIN_S}s margin either side)"
+	if ! command -v "$BBTK_CAPTURE_BIN" >/dev/null 2>&1 && [ ! -x "$BBTK_CAPTURE_BIN" ]; then
+		echo "error: BBTK_CAPTURE=1 but '$BBTK_CAPTURE_BIN' is not executable or not on PATH" >&2
+		echo "       set BBTK_CAPTURE_BIN to its full path, or unset BBTK_CAPTURE" >&2
+		exit 1
+	fi
+else
+	echo "BBTK:    recording disabled (set BBTK_CAPTURE=1 to record the photodiode steps)"
+fi
 
 # ── Tier 0: sanity check — catch a dead display or silent audio before
 #            committing to the long measurements.
@@ -126,19 +244,28 @@ step latency "audio pipeline latency" &&
 # ── Photodiode + TTL: the main stimulus timing measurement, run as a
 #                     GC-suspended / GC-running pair. Put photodiodes on a top
 #                     and a bottom square to also capture the scan-out gradient.
-step av "visual+audio+TTL, GC SUSPENDED (500 s)" &&
+step av "visual+audio+TTL, GC SUSPENDED (500 s)" && {
+	capture_start av-gc-off "$(av_seconds 1000)"
 	run av-gc-off -test av -audio-frames "$AUDIO_BUFFSIZE" -hz "$REFRESH_HZ" \
 		-frames-on 12 -frames-off 18 -cycles 1000
+	capture_wait
+}
 
-step av-gc "visual+audio+TTL, GC RUNNING (500 s)" &&
+step av-gc "visual+audio+TTL, GC RUNNING (500 s)" && {
+	capture_start av-gc-on "$(av_seconds 1000)"
 	run av-gc-on -test av -audio-frames "$AUDIO_BUFFSIZE" -hz "$REFRESH_HZ" \
 		-frames-on 12 -frames-off 18 -cycles 1000 -gc
+	capture_wait
+}
 
 # ── Photodiode only: visual path in isolation, no audio device, no trigger.
 #                    Isolates the display when the combined run looks wrong.
-step av-visual "visual only, no audio, no TTL (500 s)" &&
+step av-visual "visual only, no audio, no TTL (500 s)" && {
+	capture_start av-visual "$(av_seconds 1000)"
 	run av-visual -test av -no-sound -no-ttl \
 		-frames-on 12 -frames-off 18 -cycles 1000
+	capture_wait
+}
 
 # ── Response timing. COMMENTED OUT until the BBTK response actuator
 #            arrives (expected ~mid-August 2026).
