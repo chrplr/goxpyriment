@@ -157,7 +157,9 @@ capture_start() {
 			return 1
 		fi
 		if [ "$cap_waited" -ge "$BBTK_READY_TIMEOUT_S" ]; then
-			printf '\n!! BBTK did not start recording within %ss — killing capture\n' "$BBTK_READY_TIMEOUT_S"
+			printf '\n!! BBTK did not report %s within %ss — killing capture\n' \
+				"$BBTK_READY_MARKER" "$BBTK_READY_TIMEOUT_S"
+			printf '   (the device may be recording anyway; see %s)\n' "$cap_log"
 			kill "$BBTK_PID" 2>/dev/null
 			wait "$BBTK_PID" 2>/dev/null
 			FAILED="${FAILED} ${CURRENT_STEP}"
@@ -219,6 +221,18 @@ if [ "$BBTK_CAPTURE" = "1" ]; then
 	if ! command -v "$BBTK_CAPTURE_BIN" >/dev/null 2>&1 && [ ! -x "$BBTK_CAPTURE_BIN" ]; then
 		echo "error: BBTK_CAPTURE=1 but '$BBTK_CAPTURE_BIN' is not executable or not on PATH" >&2
 		echo "       set BBTK_CAPTURE_BIN to its full path, or unset BBTK_CAPTURE" >&2
+		exit 1
+	fi
+	# Probe for handshake support before touching the device. A bbtk-capture
+	# built before the marker existed never prints it, so without this check the
+	# first recorded step would simply hang until BBTK_READY_TIMEOUT_S expires.
+	if ! "$BBTK_CAPTURE_BIN" -V 2>/dev/null | grep -q "$BBTK_READY_MARKER"; then
+		echo "error: '$BBTK_CAPTURE_BIN' does not support the capture handshake" >&2
+		echo "       its -V output does not advertise $BBTK_READY_MARKER, so it" >&2
+		echo "       predates the change that added it and would never report" >&2
+		echo "       when the device starts recording." >&2
+		echo "       Rebuild bbtkv3 (make build) and point BBTK_CAPTURE_BIN at" >&2
+		echo "       the new binary — check with: $BBTK_CAPTURE_BIN -V" >&2
 		exit 1
 	fi
 else
