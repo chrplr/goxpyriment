@@ -141,6 +141,8 @@ BBTK_CAPTURE=1 BBTK_CAPTURE_BIN=~/00_git/bbtkv3/_build/bbtk-capture \
 | `BBTK_PORT` | auto | Serial port; auto-detected, see below |
 | `BBTK_MARGIN_S` | 8 | Seconds recorded either side of the stimulus |
 | `BBTK_READY_TIMEOUT_S` | 120 | Give up waiting for the device |
+| `SQUARE_PX` | 200 | Stimulus square side, px — raise it so the centres clear the bezel |
+| `CYCLES` | 1000 | Cycles per `av` step — lower it for a quick placement check |
 
 Only the photodiode steps (`av`, `av-gc`, `av-visual`) are wrapped; `check`,
 `display` and `latency` measure nothing the BBTK can see.

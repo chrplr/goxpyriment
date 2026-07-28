@@ -18,6 +18,8 @@
 #   AUDIO_BUFFSIZE    hardware buffer, frames  (default: 256)
 #   REFRESH_HZ        expected refresh rate    (default: 60)
 #   OUTDIR            session directory        (default: reports-<hostname>)
+#   SQUARE_PX         stimulus square side, px (default: 200)
+#   CYCLES            cycles per av step       (default: 1000)
 #
 # Optional BBTK recording — when enabled, each photodiode step starts a
 # bbtk-capture in the background, waits until the device is actually recording,
@@ -45,6 +47,12 @@ set -o pipefail
 export SDL_AUDIODRIVER="${SDL_AUDIODRIVER:-alsa}"
 AUDIO_BUFFSIZE="${AUDIO_BUFFSIZE:-256}"
 REFRESH_HZ="${REFRESH_HZ:-60}"
+# Stimulus geometry and length. SQUARE_PX must be large enough that each square's
+# centre clears the bezel, or a photodiode cannot sit where the separation figure
+# assumes it does; CYCLES is worth lowering for a quick placement check before
+# committing to a full pass.
+SQUARE_PX="${SQUARE_PX:-200}"
+CYCLES="${CYCLES:-1000}"
 
 # Overridable so the session plumbing (capture handshake, output paths) can be
 # exercised without opening a fullscreen window on someone's display.
@@ -220,6 +228,7 @@ mkdir -p "$OUTDIR"
 echo "Host:    $HOST"
 echo "Session: $OUTDIR/  (reports, data files and any BBTK captures)"
 echo "Audio:   SDL_AUDIODRIVER=$SDL_AUDIODRIVER  buffer=$AUDIO_BUFFSIZE frames"
+echo "Stim:    ${SQUARE_PX} px squares, $CYCLES cycles per av step"
 if [ "$BBTK_CAPTURE" = "1" ]; then
 	echo "BBTK:    recording enabled ($BBTK_CAPTURE_BIN, ${BBTK_MARGIN_S}s margin either side)"
 	if [ -n "${BBTK_PORT:-}" ]; then
@@ -274,9 +283,9 @@ step latency "audio pipeline latency" &&
 step av "visual+audio+TTL, GC SUSPENDED (500 s)" && {
 	# Skip the stimulus if the capture never started: a recorded step without a
 	# recording is 500 s spent producing data nothing can be correlated against.
-	if capture_start av-gc-off "$(av_seconds 1000)"; then
+	if capture_start av-gc-off "$(av_seconds "$CYCLES")"; then
 		run av-gc-off -test av -audio-frames "$AUDIO_BUFFSIZE" -hz "$REFRESH_HZ" \
-			-frames-on 12 -frames-off 18 -cycles 1000
+			-frames-on 12 -frames-off 18 -cycles "$CYCLES" -square-px "$SQUARE_PX"
 		capture_wait
 	fi
 }
@@ -284,9 +293,9 @@ step av "visual+audio+TTL, GC SUSPENDED (500 s)" && {
 step av-gc "visual+audio+TTL, GC RUNNING (500 s)" && {
 	# Skip the stimulus if the capture never started: a recorded step without a
 	# recording is 500 s spent producing data nothing can be correlated against.
-	if capture_start av-gc-on "$(av_seconds 1000)"; then
+	if capture_start av-gc-on "$(av_seconds "$CYCLES")"; then
 		run av-gc-on -test av -audio-frames "$AUDIO_BUFFSIZE" -hz "$REFRESH_HZ" \
-			-frames-on 12 -frames-off 18 -cycles 1000 -gc
+			-frames-on 12 -frames-off 18 -cycles "$CYCLES" -square-px "$SQUARE_PX" -gc
 		capture_wait
 	fi
 }
@@ -296,9 +305,9 @@ step av-gc "visual+audio+TTL, GC RUNNING (500 s)" && {
 step av-visual "visual only, no audio, no TTL (500 s)" && {
 	# Skip the stimulus if the capture never started: a recorded step without a
 	# recording is 500 s spent producing data nothing can be correlated against.
-	if capture_start av-visual "$(av_seconds 1000)"; then
+	if capture_start av-visual "$(av_seconds "$CYCLES")"; then
 		run av-visual -test av -no-sound -no-ttl \
-			-frames-on 12 -frames-off 18 -cycles 1000
+			-frames-on 12 -frames-off 18 -cycles "$CYCLES" -square-px "$SQUARE_PX"
 		capture_wait
 	fi
 }
