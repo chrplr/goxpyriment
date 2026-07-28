@@ -152,6 +152,8 @@ capture_start() {
 		if ! kill -0 "$BBTK_PID" 2>/dev/null; then
 			printf '\n!! bbtk-capture exited before recording started — see %s\n' "$cap_log"
 			tail -n 5 "$cap_log" 2>/dev/null
+			printf '   If it could not open the serial port, set BBTK_PORT.\n'
+			printf '   bbtk-detect-port will find the device.\n' 
 			FAILED="${FAILED} ${CURRENT_STEP}"
 			BBTK_PID=""
 			return 1
@@ -218,6 +220,12 @@ echo "Session: $OUTDIR/  (reports, data files and any BBTK captures)"
 echo "Audio:   SDL_AUDIODRIVER=$SDL_AUDIODRIVER  buffer=$AUDIO_BUFFSIZE frames"
 if [ "$BBTK_CAPTURE" = "1" ]; then
 	echo "BBTK:    recording enabled ($BBTK_CAPTURE_BIN, ${BBTK_MARGIN_S}s margin either side)"
+	if [ -z "${BBTK_PORT:-}" ]; then
+		echo "         BBTK_PORT unset — bbtk-capture will try its default (/dev/ttyUSB0)."
+		echo "         If that is not the BBTK, run bbtk-detect-port and set BBTK_PORT."
+	else
+		echo "         BBTK_PORT=$BBTK_PORT"
+	fi
 	if ! command -v "$BBTK_CAPTURE_BIN" >/dev/null 2>&1 && [ ! -x "$BBTK_CAPTURE_BIN" ]; then
 		echo "error: BBTK_CAPTURE=1 but '$BBTK_CAPTURE_BIN' is not executable or not on PATH" >&2
 		echo "       set BBTK_CAPTURE_BIN to its full path, or unset BBTK_CAPTURE" >&2
@@ -263,26 +271,35 @@ step latency "audio pipeline latency" &&
 #                     GC-suspended / GC-running pair. Put photodiodes on a top
 #                     and a bottom square to also capture the scan-out gradient.
 step av "visual+audio+TTL, GC SUSPENDED (500 s)" && {
-	capture_start av-gc-off "$(av_seconds 1000)"
-	run av-gc-off -test av -audio-frames "$AUDIO_BUFFSIZE" -hz "$REFRESH_HZ" \
-		-frames-on 12 -frames-off 18 -cycles 1000
-	capture_wait
+	# Skip the stimulus if the capture never started: a recorded step without a
+	# recording is 500 s spent producing data nothing can be correlated against.
+	if capture_start av-gc-off "$(av_seconds 1000)"; then
+		run av-gc-off -test av -audio-frames "$AUDIO_BUFFSIZE" -hz "$REFRESH_HZ" \
+			-frames-on 12 -frames-off 18 -cycles 1000
+		capture_wait
+	fi
 }
 
 step av-gc "visual+audio+TTL, GC RUNNING (500 s)" && {
-	capture_start av-gc-on "$(av_seconds 1000)"
-	run av-gc-on -test av -audio-frames "$AUDIO_BUFFSIZE" -hz "$REFRESH_HZ" \
-		-frames-on 12 -frames-off 18 -cycles 1000 -gc
-	capture_wait
+	# Skip the stimulus if the capture never started: a recorded step without a
+	# recording is 500 s spent producing data nothing can be correlated against.
+	if capture_start av-gc-on "$(av_seconds 1000)"; then
+		run av-gc-on -test av -audio-frames "$AUDIO_BUFFSIZE" -hz "$REFRESH_HZ" \
+			-frames-on 12 -frames-off 18 -cycles 1000 -gc
+		capture_wait
+	fi
 }
 
 # ── Photodiode only: visual path in isolation, no audio device, no trigger.
 #                    Isolates the display when the combined run looks wrong.
 step av-visual "visual only, no audio, no TTL (500 s)" && {
-	capture_start av-visual "$(av_seconds 1000)"
-	run av-visual -test av -no-sound -no-ttl \
-		-frames-on 12 -frames-off 18 -cycles 1000
-	capture_wait
+	# Skip the stimulus if the capture never started: a recorded step without a
+	# recording is 500 s spent producing data nothing can be correlated against.
+	if capture_start av-visual "$(av_seconds 1000)"; then
+		run av-visual -test av -no-sound -no-ttl \
+			-frames-on 12 -frames-off 18 -cycles 1000
+		capture_wait
+	fi
 }
 
 # ── Response timing. COMMENTED OUT until the BBTK response actuator
