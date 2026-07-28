@@ -243,10 +243,14 @@ renderer directly and *should* fail on an affected system; `-guarded` goes throu
 `Screen.Clear()` and must always pass. If the guarded run ever fails, the
 guarantee has regressed.
 
-**Known exposure:** `stimuli/stream.go:287` presents a frame with no commands at
-all (the "external content" branch of `renderHeld`, which relies on backbuffer
-persistence that SDL leaves undefined). It is a stronger form of the same problem
-and is not currently defended.
+**A frame with no commands at all is worse still.** `stimuli/stream.go` used to
+present one, holding external content by re-presenting in the hope the front
+buffer would persist; under a compositor that could freeze the display on a stale
+frame for the whole held slot. It now clears instead. The general rule: never
+present without drawing, and do not rely on backbuffer persistence — SDL
+invalidates the backbuffer on every present, so there is also no way to read back
+what is currently displayed (`RenderReadPixels` would capture an already-
+invalidated buffer).
 
 ## Key conventions
 

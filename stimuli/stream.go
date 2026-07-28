@@ -89,10 +89,12 @@ type FrameContext struct {
 //
 // Note: on held (audio / non-visual) frames the stream re-renders the
 // carried-over content (the last stream visual, or a blank) before invoking the
-// callback, so an overlay drawn every frame does not accumulate. The exception
-// is content drawn outside the stream (e.g. an exp.Show before the call) with no
-// intervening stream visual: that cannot be reconstructed, so it is held by
-// re-presenting and overlays over it will accumulate.
+// callback, so an overlay drawn every frame does not accumulate.
+//
+// Content drawn outside the stream (e.g. an exp.Show before the call) is not
+// carried over: the stream cannot reconstruct what it did not draw, so a held
+// slot with no preceding stream visual shows the background. Put such content in
+// the stream as a VisualStimulus if it needs to persist.
 type FrameCallback func(ctx FrameContext) error
 
 // OnsetCallback is invoked once for each stream element that has a stimulus
@@ -267,13 +269,26 @@ func PresentStreamOfStimuliHooks(screen *apparatus.Screen, elements []StreamElem
 	// backbuffer every held frame, keeping both buffers identical.
 	//
 	//   - heldVisual != nil          → re-Clear + re-Draw that stimulus
-	//   - heldVisual == nil, blank    → re-Clear to background
-	//   - heldVisual == nil, !blank   → content came from outside the stream
-	//                                   (e.g. an exp.Show before the call);
-	//                                   fall back to hold-by-re-present since we
-	//                                   cannot reconstruct it.
+	//   - otherwise                  → re-Clear to background
+	//
+	// The second case covers both an off-phase (deliberately blank) and content
+	// drawn outside the stream before the call, e.g. an exp.Show. That external
+	// content is NOT preserved, and cannot be: reading it back with
+	// RenderReadPixels would read the backbuffer, which the caller's own present
+	// already invalidated, so the capture would be undefined — on a
+	// double-buffered driver it returns the frame before the caller's. The stream
+	// has no way to reconstruct what it did not draw.
+	//
+	// This branch used to return nil, presenting a frame carrying no commands at
+	// all in the hope that the front buffer would persist. That is worse than
+	// undefined: a frame with no draw calls is not reliably scanned out under a
+	// compositor (see apparatus.Screen.fillWholeTarget), so the display could
+	// freeze on a stale frame for the whole held slot. Clearing is deterministic,
+	// and Screen.Clear guarantees the frame carries real draw work.
+	//
+	// If you need content to survive into a held slot, put it in the stream as a
+	// VisualStimulus rather than drawing it beforehand.
 	var heldVisual VisualStimulus
-	var heldBlank bool
 	renderHeld := func() error {
 		if heldVisual != nil {
 			if err := screen.Clear(); err != nil {
@@ -281,10 +296,7 @@ func PresentStreamOfStimuliHooks(screen *apparatus.Screen, elements []StreamElem
 			}
 			return heldVisual.Draw(screen)
 		}
-		if heldBlank {
-			return screen.Clear()
-		}
-		return nil // external content: preserved by re-presenting the front buffer
+		return screen.Clear()
 	}
 
 	// 4. Presentation Loop
@@ -383,7 +395,6 @@ func PresentStreamOfStimuliHooks(screen *apparatus.Screen, elements []StreamElem
 		// (if any); record it so a following held slot can reproduce it.
 		if isVisual && framesOn > 0 {
 			heldVisual = visual
-			heldBlank = false
 		}
 
 		actualOffset := time.Since(streamStartTime)
@@ -450,7 +461,6 @@ func PresentStreamOfStimuliHooks(screen *apparatus.Screen, elements []StreamElem
 		// following held slot should reproduce the blank rather than the stimulus.
 		if isVisual && framesOff > 0 {
 			heldVisual = nil
-			heldBlank = true
 		}
 
 		// When the ISI rounds to zero frames (e.g. the final element of a
