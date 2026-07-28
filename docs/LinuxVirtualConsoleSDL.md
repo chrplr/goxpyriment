@@ -36,7 +36,7 @@ SDL_VIDEODRIVER=kmsdrm go run main.go -test display
 Or via the existing wrapper:
 
 ```bash
-# edit run_pi.sh or create a run_vt.sh
+# e.g. a run_vt.sh wrapper
 SDL_VIDEODRIVER=kmsdrm go run "$@"
 ```
 
@@ -57,9 +57,8 @@ if os.Getenv("DISPLAY") == "" && os.Getenv("WAYLAND_DISPLAY") == "" {
 
 - `window.SetFullscreen(true)` after creation may be unreliable on KMSDRM; creating the window
   with fullscreen from the start (as `apparatus/screen.go` already does) is the right approach.
-- **Raspberry Pi workaround** (documented in CLAUDE.md) is different: Pi has Wayland running,
-  so `SDL_VIDEODRIVER=wayland SDL_RENDER_DRIVER=software` is correct there.
-  For a bare TTY with no compositor at all, use `kmsdrm` instead.
+- On a machine that already has a compositor running, `SDL_VIDEODRIVER=wayland`
+  is the right choice; `kmsdrm` is for a bare TTY with no compositor at all.
 - Ensure the user running the program is in the `video` (and possibly `input`) group:
   ```bash
   sudo usermod -aG video,input $USER

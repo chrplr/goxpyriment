@@ -154,8 +154,8 @@ func NewScreen(title string, width, height int, bgColor sdl.Color, fullscreen bo
 		//   - Vulkan/OpenGL on X11: the first few presents may be discarded
 		//     while the compositor or driver initialises the swap chain.
 		//   - Wayland: PumpEvents is required to let the compositor assign the
-		//     real window dimensions; window.Size() before this loop returns 1×1
-		//     (e.g. software renderer on Raspberry Pi).
+		//     real window dimensions; window.Size() before this loop can return
+		//     1×1.
 		// 10 frames is conservative but still imperceptible (<200 ms at 60 Hz).
 		for i := 0; i < 10; i++ {
 			_ = renderer.SetDrawColor(bgColor.R, bgColor.G, bgColor.B, bgColor.A)

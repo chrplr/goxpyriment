@@ -20,9 +20,6 @@
 #
 # On a Prime / hybrid-graphics laptop, force the discrete card:
 #   __NV_PRIME_RENDER_OFFLOAD=1 __GLX_VENDOR_LIBRARY_NAME=nvidia ./run-timing-tests.sh
-#
-# On a Raspberry Pi, fullscreen needs the software renderer (see CLAUDE.md):
-#   SDL_RENDER_DRIVER=software SDL_VIDEODRIVER=wayland ./run-timing-tests.sh
 
 set -u
 # Without pipefail, `$BIN ... | tee` reports tee's status, so a test that

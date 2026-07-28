@@ -1,5 +1,37 @@
 # TODO
 
+## Re-test fullscreen rendering on a Raspberry Pi
+
+The docs used to claim that on a Raspberry Pi (Ubuntu 25.10 + GNOME/Wayland)
+fullscreen mode "renders nothing (gray screen)" while windowed mode worked, and
+prescribed `SDL_RENDER_DRIVER=software SDL_VIDEODRIVER=wayland` as a workaround
+(with an `examples/run_pi.sh` wrapper). That claim was never re-verified and has
+now been removed from `CLAUDE.md`, `docs/LinuxVirtualConsoleSDL.md`,
+`docs/Fullscreen_high_pixel_density.md`, `tests/Timing-Tests/run-timing-tests.sh`
+and `apparatus/screen_newscreen_notjs.go`; `examples/run_pi.sh` is deleted.
+
+**It may have been the clear-only-frame bug all along.** That bug — a frame
+carrying no draw calls is not reliably scanned out under a compositor — produces
+exactly this symptom (a stale/blank fullscreen image while the program reports
+everything fine), appears only when a compositor is running (the Pi had Wayland),
+and is renderer-independent, which would explain why switching to the software
+renderer changed the behaviour without anyone understanding why. It was fixed in
+`apparatus.Screen` in July 2026; see the "Never present a frame with no draw
+calls" section of `apparatus/CLAUDE.md`.
+
+To re-test on a Pi:
+
+1. `go run ./examples/demo_hello_world` fullscreen, unmodified. If it renders,
+   the old claim is stale and nothing further is needed.
+2. `go run ./tests/test_clear_only_frames` — unguarded should fail on an affected
+   system, `-guarded` should pass. If unguarded fails on the Pi, the Pi was
+   hitting the same bug and the library fix covers it.
+3. `go run ./tests/Timing-Tests -test check` for a display+audio go/no-go.
+
+Record the Pi model, OS version, kernel, and compositor. If a genuine Pi-specific
+fullscreen problem survives all three, document it with that evidence rather than
+restoring the old text.
+
 ## Movie players 
 
 - improve the movie player for gv format: the gv file should be read

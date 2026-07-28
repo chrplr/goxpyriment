@@ -2,7 +2,7 @@
 
 ## Symptom
 
-On **macOS** (Retina) and possibly **Raspberry Pi**, running an experiment in fullscreen mode shows a gray screen after the initial setup UI. Windowed mode (`-w`) works correctly. The issue was reported for the `retinotopy` example but likely affects any experiment that uses hardcoded pixel dimensions.
+On **macOS** (Retina), running an experiment in fullscreen mode shows a gray screen after the initial setup UI. Windowed mode (`-w`) works correctly. The issue was reported for the `retinotopy` example but likely affects any experiment that uses hardcoded pixel dimensions.
 
 ## Root cause analysis
 
