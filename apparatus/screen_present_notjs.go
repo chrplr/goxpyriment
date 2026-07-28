@@ -9,6 +9,16 @@ import "github.com/Zyko0/go-sdl3/sdl"
 
 // present submits the backbuffer to the display. On desktop this is plain
 // SDL_RenderPresent, which blocks on VSYNC when the driver honours it.
+//
+// Do not add SDL_FlushRenderer here. It was tried, on the theory that the
+// clear-only-frame bug (see Screen.fillWholeTarget) came from the driver
+// deferring command submission until it had real GPU work — flushing should then
+// have forced the frame out regardless of what the caller drew. Measured with a
+// photodiode against tests/test_clear_only_frames, it made no difference: a frame
+// carrying no draw calls was still not scanned out. Whatever elides the frame
+// sits below SDL's command batch, so flushing that batch cannot reach it. The
+// only remedy found is to give the frame real draw work, which is what
+// fillWholeTarget does.
 func (s *Screen) present() error {
 	return s.Renderer.Present()
 }

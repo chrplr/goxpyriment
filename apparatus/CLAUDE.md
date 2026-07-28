@@ -200,6 +200,54 @@ composite when the page yields, and `PacedFlip`'s desktop busy-wait never
 yields, so its wait is a no-op on js. Measured: 60.00 Hz, SD ≈ 0.12 ms, no
 dropped frames (see `docs/WASM.md`).
 
+## Never present a frame with no draw calls
+
+A frame whose entire content is a clear — `Renderer.Clear()` then present, with no
+drawing in between — **is not reliably scanned out under a compositor**. The panel
+keeps showing a stale frame, for seconds at a time, while the client's flip
+timestamps and the compositor both report every frame presented on schedule. It is
+invisible without a photodiode.
+
+Reproduced on GNOME/Mutter under both native Wayland and Xwayland, on Intel Meteor
+Lake / i915, with the `opengl`, `vulkan` *and* `software` SDL renderers, on two
+different panels (internal eDP and external DP). It does **not** occur on the
+kmsdrm backend, where no compositor is involved. Ruled out along the way: audio
+backend, flip pacing (`SDL_RenderPresent` blocks correctly at 16.65 ms), HiDPI
+scaling, GNOME idle dimming, PSR/Panel Replay, the SDL video backend, and the
+renderer. `SDL_FlushRenderer` before the present does not help either — see the
+note in `screen_present_notjs.go`. The only remedy found is to give the frame real
+draw work.
+
+**What the library guarantees.** `Screen.Clear()` emits a full-screen
+`RenderFillRect` after the clear (`fillWholeTarget`), and `Screen.WaitFrames()`
+does the same. Everything routed through the `Screen` API is therefore safe:
+`Clear`, `ClearAndUpdate`, `Blank`, `Show`, `WaitFrames`, and every `stimuli`
+presentation path.
+
+**What it does not guarantee.** `Screen.Renderer` is public and is the documented
+extension point for custom stimulus types, so this stays reachable:
+
+```go
+screen.Renderer.SetDrawColor(0, 0, 0, 255)
+screen.Renderer.Clear()   // no draw call
+screen.Update()           // may not reach the panel
+```
+
+Closing that off would mean un-exporting `Renderer`, which breaks custom stimuli.
+So the rule for any code that drives the renderer directly: **every frame must
+contain at least one draw call.** If a frame is meant to be a uniform colour, use
+`Screen.Clear()` rather than `Renderer.Clear()`.
+
+`tests/test_clear_only_frames` is the regression test. Unguarded it drives the
+renderer directly and *should* fail on an affected system; `-guarded` goes through
+`Screen.Clear()` and must always pass. If the guarded run ever fails, the
+guarantee has regressed.
+
+**Known exposure:** `stimuli/stream.go:287` presents a frame with no commands at
+all (the "external content" branch of `renderHeld`, which relies on backbuffer
+persistence that SDL leaves undefined). It is a stronger form of the same problem
+and is not currently defended.
+
 ## Key conventions
 
 - `Clear()` + `Update()` on `Screen` maps to SDL clear + present; `Update()` blocks on VSYNC (browser: until next requestAnimationFrame).

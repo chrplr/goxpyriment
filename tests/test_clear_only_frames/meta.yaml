@@ -1,0 +1,3 @@
+category: test
+description: Presents frames whose only content is a clear (no draw calls) to verify the library defence against the compositor clear-only presentation bug
+reference: ""

@@ -263,7 +263,43 @@ func (s *Screen) Clear() error {
 	if err := s.Renderer.SetDrawColor(s.BgColor.R, s.BgColor.G, s.BgColor.B, s.BgColor.A); err != nil {
 		return fmt.Errorf("apparatus.Screen.Clear: setting draw color: %w", err)
 	}
-	return s.Renderer.Clear()
+	if err := s.Renderer.Clear(); err != nil {
+		return fmt.Errorf("apparatus.Screen.Clear: %w", err)
+	}
+	return s.fillWholeTarget()
+}
+
+// fillWholeTarget paints the entire render target with the renderer's current
+// draw color, on top of a clear that has just happened.
+//
+// This exists to defeat a presentation bug seen on Linux under a compositor
+// (GNOME/Mutter, both native Wayland and Xwayland; reproduced on Intel Meteor
+// Lake / i915 with the opengl, vulkan and software SDL renderers). A frame
+// whose only content is SDL_RenderClear — no draw calls at all — is not
+// reliably scanned out: the panel can hold a stale frame for seconds while the
+// client and the compositor both report every frame presented on time. Adding
+// one real draw call per frame makes the problem disappear. The same loop is
+// perfect on the kmsdrm backend, where no compositor is involved.
+//
+// The rendered image is unchanged — the fill uses the colour Clear just used.
+// Blend mode is forced to NONE for the fill and restored afterwards, because
+// SDL_RenderClear ignores the blend mode while SDL_RenderFillRect honours it,
+// and a translucent background colour would otherwise blend instead of replace.
+func (s *Screen) fillWholeTarget() error {
+	prev, err := s.Renderer.DrawBlendMode()
+	if err != nil {
+		return fmt.Errorf("apparatus.Screen.Clear: reading blend mode: %w", err)
+	}
+	if prev != sdl.BLENDMODE_NONE {
+		if err := s.Renderer.SetDrawBlendMode(sdl.BLENDMODE_NONE); err != nil {
+			return fmt.Errorf("apparatus.Screen.Clear: setting blend mode: %w", err)
+		}
+		defer func() { _ = s.Renderer.SetDrawBlendMode(prev) }()
+	}
+	if err := s.Renderer.RenderFillRect(nil); err != nil {
+		return fmt.Errorf("apparatus.Screen.Clear: filling target: %w", err)
+	}
+	return nil
 }
 
 // ClearAndUpdate clears the screen with the background color and presents the buffer.
@@ -392,9 +428,15 @@ func (s *Screen) VSync() (int, error) {
 func (s *Screen) WaitFrames(n int) (uint64, error) {
 	for i := 0; i < n; i++ {
 		// Re-clear backbuffer with the current draw color so both buffers stay
-		// identical and the swap is visually a no-op.
+		// identical and the swap is visually a no-op. Deliberately uses the
+		// current draw color rather than BgColor, so this cannot go through
+		// Screen.Clear; the fill is the same anti-clear-only-frame guard that
+		// Clear applies (see fillWholeTarget).
 		if err := s.Renderer.Clear(); err != nil {
 			return 0, fmt.Errorf("apparatus.Screen.WaitFrames: clearing backbuffer: %w", err)
+		}
+		if err := s.fillWholeTarget(); err != nil {
+			return 0, fmt.Errorf("apparatus.Screen.WaitFrames: %w", err)
 		}
 		if err := s.PacedFlip(); err != nil {
 			return 0, fmt.Errorf("apparatus.Screen.WaitFrames: %w", err)

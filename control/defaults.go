@@ -181,6 +181,23 @@ func PollEvent(event *Event) bool {
 	return sdl.PollEvent(event)
 }
 
+// PumpEvents services the SDL backend without dequeuing anything: it collects
+// events from the input devices and, on the Wayland and X11 video drivers,
+// dispatches the pending protocol traffic that SDL needs to keep the window in
+// sync with the compositor. Under a compositor, a per-frame loop that only
+// calls Clear + Update never reaches SDL_PumpEvents, and the frames a client
+// commits can stop matching what the compositor scans out even though the flip
+// timing looks correct (the EGL frame callback still throttles to the refresh
+// rate). Call it once per flip in any VSYNC-locked loop that does not otherwise
+// poll; it does not consume events, so a less frequent PollEvents still sees
+// ESC and quit.
+//
+// The kmsdrm backend has the same requirement for a different reason — see the
+// warm-up loop in apparatus.NewScreen.
+func PumpEvents() {
+	sdl.PumpEvents()
+}
+
 // TicksNS returns the SDL high-resolution clock in nanoseconds — the same
 // reference frame as event timestamps (KeyboardEvent.Timestamp,
 // TextInputEvent.Timestamp) and Screen.FlipTS(). Use it for stimulus-onset
