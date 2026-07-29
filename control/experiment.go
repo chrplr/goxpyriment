@@ -203,6 +203,8 @@ func NewExperiment(name string, width, height int, fullscreen bool, bg, fg sdl.C
 func NewExperimentFromFlags(name string, bg, fg sdl.Color, fontSize float32) *Experiment {
 	windowed := flag.Bool("w", false, "Windowed mode (1024×768 window instead of fullscreen)")
 	display := flag.Int("d", -1, "Display ID: monitor index where the window/fullscreen will open (-1 = primary)")
+	exclusive := flag.String("exclusive-fullscreen", "auto",
+		"Fullscreen presentation: auto | on (exclusive, bypasses the compositor where possible) | off (fullscreen-desktop)")
 	subject := flag.Int("s", 0, "Subject ID")
 	// In the browser (GOOS=js) there is no command line: synthesize os.Args
 	// from the page URL's query string (?s=3&w) now that all flags exist.
@@ -217,6 +219,15 @@ func NewExperimentFromFlags(name string, bg, fg sdl.Color, fontSize float32) *Ex
 			sProvided = true
 		}
 	})
+
+	// Applies to the window created inside Initialize below, so it must be set
+	// before then. A bad value is fatal rather than ignored: silently falling
+	// back to "auto" would change what the session measures without saying so.
+	policy, policyErr := ParseFullscreenPolicy(*exclusive)
+	if policyErr != nil {
+		log.Fatalf("-exclusive-fullscreen: %v", policyErr)
+	}
+	SetFullscreenPolicy(policy)
 
 	// Session settings, seeded from the command-line flags.
 	windowedMode := *windowed

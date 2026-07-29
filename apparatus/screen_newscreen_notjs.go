@@ -42,10 +42,61 @@ func orderedDisplays() ([]sdl.DisplayID, error) {
 	return ordered, nil
 }
 
+// FullscreenPolicy selects how a fullscreen window is presented.
+type FullscreenPolicy int
+
+const (
+	// FullscreenAuto picks per platform — see exclusiveFullscreenWanted.
+	FullscreenAuto FullscreenPolicy = iota
+	// FullscreenExclusive forces exclusive fullscreen (a concrete display mode).
+	FullscreenExclusive
+	// FullscreenDesktop forces borderless fullscreen-desktop (no mode set).
+	FullscreenDesktop
+)
+
+func (p FullscreenPolicy) String() string {
+	switch p {
+	case FullscreenExclusive:
+		return "exclusive"
+	case FullscreenDesktop:
+		return "desktop"
+	default:
+		return "auto"
+	}
+}
+
+// fullscreenPolicy is process-wide state applied when the next Screen is
+// created, mirroring how control.SetAudioSampleFrames stages the audio buffer
+// hint before the device opens. One Screen per experiment makes that safe.
+var fullscreenPolicy = FullscreenAuto
+
+// SetFullscreenPolicy overrides the automatic per-platform choice. Call it
+// BEFORE NewScreen (i.e. before Experiment.Initialize); afterwards it has no
+// effect on an already-created window.
+//
+// It exists so the choice can be MEASURED rather than assumed. The automatic
+// policy is a judgement about which backends benefit from bypassing the
+// compositor, and that judgement should be checkable on any machine — including
+// ones where the automatic answer is "no", such as Wayland, where forcing
+// exclusive is known to mis-handle cross-display requests under Mutter.
+func SetFullscreenPolicy(p FullscreenPolicy) { fullscreenPolicy = p }
+
+// FullscreenPolicyInEffect reports the policy that will be (or was) applied,
+// resolving FullscreenAuto to what it actually chose on this platform. Record it
+// alongside timing results: "exclusive" and "desktop" are not comparable.
+func FullscreenPolicyInEffect() FullscreenPolicy {
+	if exclusiveFullscreenWanted() {
+		return FullscreenExclusive
+	}
+	return FullscreenDesktop
+}
+
 // exclusiveFullscreenWanted reports whether the fullscreen window should be
 // pinned to a concrete display mode. In SDL3 a non-nil fullscreen mode means
-// EXCLUSIVE fullscreen; nil means fullscreen-desktop (borderless). Two
-// independent reasons to want it, one per platform:
+// EXCLUSIVE fullscreen; nil means fullscreen-desktop (borderless).
+//
+// SetFullscreenPolicy overrides everything below. The rest is the FullscreenAuto
+// default: two independent reasons to want exclusive, one per platform:
 //
 //   - Windows: exclusive fullscreen is what takes DWM out of the presentation
 //     chain. Fullscreen-desktop leaves every frame going through the
@@ -54,25 +105,38 @@ func orderedDisplays() ([]sdl.DisplayID, error) {
 //   - X11: same argument. Compositing window managers often unredirect
 //     fullscreen windows on their own, but "often" is not a guarantee worth
 //     resting a timing measurement on, so ask for it explicitly.
-//   - Wayland: the compositor ignores client-supplied window positions, so the
-//     mode's display is the only way to choose which monitor to open on.
 //
 // Deliberately NOT enabled elsewhere:
 //
+//   - Wayland: measured on GNOME/Mutter 2026-07-29 — SDL sends the mode's
+//     geometry but the compositor keeps the surface on its current output, so a
+//     cross-display request mode-sets the WRONG monitor and still presents
+//     there. Wayland gives clients no way to demand an output; use a single
+//     active output instead. -exclusive-fullscreen=on forces it anyway, for
+//     re-testing on other compositors.
+//
 //   - macOS: WindowServer cannot be bypassed, so exclusive fullscreen buys no
 //     timing benefit and only adds a mode-set and Spaces churn.
+//
 //   - KMS/DRM: there is no compositor to escape.
+//
 //   - dummy/offscreen and any future backend: an allowlist rather than an
 //     exclusion list, so an unfamiliar driver gets the conservative path.
 //
 // The mode passed is always the display's CURRENT mode, so no resolution or
 // refresh-rate change is ever requested — only the fullscreen style changes.
 func exclusiveFullscreenWanted() bool {
+	switch fullscreenPolicy {
+	case FullscreenExclusive:
+		return true
+	case FullscreenDesktop:
+		return false
+	}
 	if runtime.GOOS == "windows" {
 		return true
 	}
 	switch sdl.GetCurrentVideoDriver() {
-	case "windows", "x11", "wayland":
+	case "windows", "x11":
 		return true
 	}
 	return false
@@ -168,44 +232,79 @@ func NewScreen(title string, width, height int, bgColor sdl.Color, fullscreen bo
 		// whichever output had focus. Two runs of the same command could land on
 		// different monitors, which is invisible in the software timing numbers
 		// and ruins a photodiode recording.
+		// Where a fullscreen MODE is wanted (see exclusiveFullscreenWanted), the
+		// mode has to be in place BEFORE the window first enters fullscreen.
+		// Wayland is the reason: the compositor binds the surface to an output
+		// when it goes fullscreen, at map time. A window born fullscreen has
+		// already been assigned by then, and setting the mode afterwards does
+		// not move it — which is exactly why -d 0 and -d 1 both opened on the
+		// built-in panel. So for those backends: create HIDDEN and windowed,
+		// set the mode, enter fullscreen, then show.
+		//
+		// Everything else keeps the original one-step creation. That matters
+		// most on KMS/DRM, where SetFullscreen is asynchronous and window.Size()
+		// straight afterwards still reports pre-fullscreen dimensions; including
+		// WINDOW_FULLSCREEN at creation time avoids that race.
+		deferFullscreen := exclusiveFullscreenWanted()
+
+		// Embed the target display's position in the creation properties rather
+		// than calling SetPosition later. Post-creation SetPosition on a
+		// fullscreen window can crash the display manager on some compositors
+		// (KDE/GNOME on X11). The windowed path below does the same.
+		//
+		// This runs for EVERY index, including 0. Leaving index 0 to a bare
+		// CreateWindow meant the default (-d absent, or -d 0) never named a
+		// display at all, so SDL opened wherever it liked — in practice on
+		// whichever output had focus. Two runs of the same command could land on
+		// different monitors, which is invisible in the software timing numbers
+		// and ruins a photodiode recording.
 		var window *sdl.Window
 		var werr error
 		if bounds, berr := target.Bounds(); berr == nil && bounds != nil {
-			props, perr := sdl.NewProperties(map[string]any{
+			create := map[string]any{
 				"SDL.window.create.title":              title,
 				"SDL.window.create.x":                  bounds.X,
 				"SDL.window.create.y":                  bounds.Y,
 				"SDL.window.create.width":              bounds.W,
 				"SDL.window.create.height":             bounds.H,
-				"SDL.window.create.fullscreen":         true,
 				"SDL.window.create.high_pixel_density": true,
-			})
+			}
+			if deferFullscreen {
+				create["SDL.window.create.hidden"] = true
+			} else {
+				create["SDL.window.create.fullscreen"] = true
+			}
+			props, perr := sdl.NewProperties(create)
 			if perr == nil {
 				window, werr = sdl.CreateWindowWithProperties(props)
 				props.Destroy()
 			}
 		}
 		if window == nil {
+			// Degraded path: the target display could not be resolved or the
+			// properties could not be built. Open fullscreen wherever SDL picks
+			// — losing display targeting, but still opening.
+			deferFullscreen = false
 			window, werr = sdl.CreateWindow(title, 0, 0, sdl.WINDOW_HIGH_PIXEL_DENSITY|sdl.WINDOW_FULLSCREEN)
 		}
 		if werr != nil {
 			return nil, fmt.Errorf("apparatus.NewScreen: creating fullscreen window: %w", werr)
 		}
 
-		// Pin the window to the target display's current mode where that helps —
-		// on Windows to escape DWM, on Wayland because the creation x/y above
-		// cannot steer the window (compositors ignore client-supplied positions
-		// for toplevel surfaces, so the compositor picks the output itself, in
-		// practice whichever one has focus). See exclusiveFullscreenWanted.
-		//
-		// Must happen before Sync() below, so the window reaches its final state
-		// once rather than settling twice.
-		//
-		// Errors are not fatal: a display that reports no current mode should
-		// still open where the creation properties put it.
-		if exclusiveFullscreenWanted() {
+		if deferFullscreen {
+			// A display that reports no current mode is not fatal: fall through
+			// to fullscreen-desktop on whatever output the creation properties
+			// managed to reach.
 			if mode, merr := target.CurrentDisplayMode(); merr == nil && mode != nil {
 				_ = window.SetFullscreenMode(mode)
+			}
+			if err := window.SetFullscreen(true); err != nil {
+				window.Destroy()
+				return nil, fmt.Errorf("apparatus.NewScreen: entering fullscreen on display %d: %w", displayIndex, err)
+			}
+			if err := window.Show(); err != nil {
+				window.Destroy()
+				return nil, fmt.Errorf("apparatus.NewScreen: showing fullscreen window: %w", err)
 			}
 		}
 

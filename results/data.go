@@ -191,6 +191,9 @@ func (df *DataFile) WriteSystemInfo(info apparatus.SystemInfo) {
 	df.WriteComment(fmt.Sprintf("sys physical_resolution: %dx%d px", info.PhysicalW, info.PhysicalH))
 	df.WriteComment(fmt.Sprintf("sys logical_resolution: %dx%d px", info.LogicalW, info.LogicalH))
 	df.WriteComment(fmt.Sprintf("sys fullscreen: %v", info.Fullscreen))
+	if info.FullscreenMode != "" {
+		df.WriteComment(fmt.Sprintf("sys fullscreen_mode: %s", info.FullscreenMode))
+	}
 	df.WriteComment(fmt.Sprintf("sys vsync: %d", info.VSync))
 	df.WriteComment(fmt.Sprintf("sys audio_driver: %s", info.AudioDriver))
 	df.WriteComment(fmt.Sprintf("sys audio_format: %s", info.AudioFormat))

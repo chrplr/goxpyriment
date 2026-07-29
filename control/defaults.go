@@ -7,6 +7,7 @@ package control
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/Zyko0/go-sdl3/sdl"
 	"github.com/Zyko0/go-sdl3/ttf"
@@ -266,4 +267,37 @@ type DisplayInfo = apparatus.DisplayInfo
 //	exp.ScreenNumber = 1 // secondary monitor
 func ListDisplays() ([]DisplayInfo, error) {
 	return apparatus.ListDisplays()
+}
+
+// FullscreenPolicy selects how a fullscreen window is presented: exclusive
+// (a concrete display mode, taking the compositor out of the presentation
+// path where the platform allows it) or fullscreen-desktop (borderless).
+type FullscreenPolicy = apparatus.FullscreenPolicy
+
+const (
+	FullscreenAuto      = apparatus.FullscreenAuto
+	FullscreenExclusive = apparatus.FullscreenExclusive
+	FullscreenDesktop   = apparatus.FullscreenDesktop
+)
+
+// SetFullscreenPolicy overrides the automatic per-platform choice. Call it
+// before Initialize() (NewExperimentFromFlags does this for you from
+// -exclusive-fullscreen). The resolved value is recorded in every data file as
+// "sys fullscreen_mode", because exclusive and desktop results are not
+// comparable.
+func SetFullscreenPolicy(p FullscreenPolicy) { apparatus.SetFullscreenPolicy(p) }
+
+// ParseFullscreenPolicy maps the -exclusive-fullscreen values auto|on|off onto
+// a FullscreenPolicy. Unrecognised input returns an error rather than silently
+// defaulting, so a typo cannot quietly change what a session measures.
+func ParseFullscreenPolicy(s string) (FullscreenPolicy, error) {
+	switch strings.ToLower(strings.TrimSpace(s)) {
+	case "", "auto":
+		return FullscreenAuto, nil
+	case "on", "true", "1", "exclusive":
+		return FullscreenExclusive, nil
+	case "off", "false", "0", "desktop":
+		return FullscreenDesktop, nil
+	}
+	return FullscreenAuto, fmt.Errorf("invalid fullscreen policy %q (want auto, on, or off)", s)
 }

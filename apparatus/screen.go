@@ -150,20 +150,21 @@ func (s *Screen) SetLogicalSize(width, height int32) error {
 // Together with DisplayInfo it provides a complete postmortem record of the
 // software and hardware configuration used during a session.
 type SystemInfo struct {
-	SDLVersion    string // SDL library version, e.g. "3.2.10"
-	VideoDriver   string // SDL video driver, e.g. "wayland", "x11", "windows"
-	RendererName  string // GPU renderer backend, e.g. "opengl", "vulkan", "metal"
-	PhysicalW     int32  // renderer output width in physical pixels (HiDPI-aware)
-	PhysicalH     int32  // renderer output height in physical pixels
-	LogicalW      int32  // logical window width (experiment coordinate space)
-	LogicalH      int32  // logical window height
-	Fullscreen    bool   // true when running in fullscreen mode
-	VSync         int    // VSync state: 1=on, 0=off, -1=adaptive
-	AudioDriver   string // SDL audio driver, e.g. "pulseaudio", "alsa", "coreaudio"
-	AudioFormat   string // audio sample format, e.g. "SDL_AUDIO_F32LE"
-	AudioFreq     int32  // sample rate in Hz, e.g. 44100 or 48000
-	AudioChannels int32  // number of audio output channels (1=mono, 2=stereo)
-	AudioFrames   int32  // hardware buffer size in sample frames
+	SDLVersion     string // SDL library version, e.g. "3.2.10"
+	VideoDriver    string // SDL video driver, e.g. "wayland", "x11", "windows"
+	RendererName   string // GPU renderer backend, e.g. "opengl", "vulkan", "metal"
+	PhysicalW      int32  // renderer output width in physical pixels (HiDPI-aware)
+	PhysicalH      int32  // renderer output height in physical pixels
+	LogicalW       int32  // logical window width (experiment coordinate space)
+	LogicalH       int32  // logical window height
+	Fullscreen     bool   // true when running in fullscreen mode
+	FullscreenMode string // "exclusive" or "desktop" — whether the compositor was bypassed
+	VSync          int    // VSync state: 1=on, 0=off, -1=adaptive
+	AudioDriver    string // SDL audio driver, e.g. "pulseaudio", "alsa", "coreaudio"
+	AudioFormat    string // audio sample format, e.g. "SDL_AUDIO_F32LE"
+	AudioFreq      int32  // sample rate in Hz, e.g. 44100 or 48000
+	AudioChannels  int32  // number of audio output channels (1=mono, 2=stereo)
+	AudioFrames    int32  // hardware buffer size in sample frames
 }
 
 // GatherSystemInfo collects SDL and renderer properties from this Screen.
@@ -189,6 +190,12 @@ func (s *Screen) GatherSystemInfo() SystemInfo {
 	}
 	if s.Window != nil {
 		info.Fullscreen = (s.Window.Flags() & sdl.WINDOW_FULLSCREEN) != 0
+		if info.Fullscreen {
+			// Exclusive vs desktop changes whether the compositor sits in the
+			// presentation path, so results from the two are not comparable.
+			// Record which one this session actually got.
+			info.FullscreenMode = FullscreenPolicyInEffect().String()
+		}
 	}
 	if s.LogicalSize != nil {
 		info.LogicalW = int32(s.LogicalSize.X)

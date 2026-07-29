@@ -17,6 +17,25 @@ func ListDisplays() ([]DisplayInfo, error) {
 	return nil, nil
 }
 
+// FullscreenPolicy exists on WASM so callers compile unchanged, but the browser
+// gives no control over presentation mode: the canvas is what it is.
+type FullscreenPolicy int
+
+const (
+	FullscreenAuto FullscreenPolicy = iota
+	FullscreenExclusive
+	FullscreenDesktop
+)
+
+func (p FullscreenPolicy) String() string { return "n/a (browser)" }
+
+// SetFullscreenPolicy is a no-op on WASM.
+func SetFullscreenPolicy(FullscreenPolicy) {}
+
+// FullscreenPolicyInEffect always reports FullscreenAuto on WASM: there is no
+// exclusive/desktop distinction to report.
+func FullscreenPolicyInEffect() FullscreenPolicy { return FullscreenAuto }
+
 // NewScreen creates an SDL window and renderer for the WASM/browser target.
 //
 // fullscreen and displayIndex are ignored in WASM; the window is always
