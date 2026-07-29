@@ -239,7 +239,12 @@ Two checks on the resulting `-events.csv`:
 | `-audio-frames` | 0 | Audio buffer, sample frames (0 = SDL default) |
 
 `-audio-frames` sets the floor on audio-onset precision: 256 frames at 44100 Hz
-quantises tone onsets to 5.8 ms steps.
+quantises tone onsets to 5.8 ms steps, 512 frames to 11.6 ms.
+
+Smaller is not automatically better. `run-timing-tests.sh` passes **512**
+(`AUDIO_BUFFSIZE`) because 256 underran repeatedly on the ALSA path, and a
+dropped buffer disturbs tone onsets far more than the coarser quantisation does.
+Lower it only after confirming the underruns are gone.
 
 ### Other tests
 

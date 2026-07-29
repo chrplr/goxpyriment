@@ -15,7 +15,7 @@
 #
 # Environment overrides:
 #   SDL_AUDIODRIVER   audio backend            (default: alsa)
-#   AUDIO_BUFFSIZE    hardware buffer, frames  (default: 256)
+#   AUDIO_BUFFSIZE    hardware buffer, frames  (default: 512)
 #   REFRESH_HZ        expected refresh rate    (default: 60)
 #   OUTDIR            session directory        (default: reports-<hostname>)
 #   SQUARE_PX         stimulus square side, px (default: 0 = ¼ of render height)
@@ -45,7 +45,11 @@ set -o pipefail
 # SDL reads these from the *environment*, so they must be exported — a plain
 # assignment never reaches the binary.
 export SDL_AUDIODRIVER="${SDL_AUDIODRIVER:-alsa}"
-AUDIO_BUFFSIZE="${AUDIO_BUFFSIZE:-256}"
+# 512 frames (11.6 ms at 44100 Hz) rather than 256: at 256 the ALSA path
+# underran repeatedly on the reference rig, and a dropped buffer corrupts tone
+# onsets far more than the coarser quantisation does. This sets the floor on
+# audio-onset precision, so it is recorded in each run's -info.txt.
+AUDIO_BUFFSIZE="${AUDIO_BUFFSIZE:-512}"
 REFRESH_HZ="${REFRESH_HZ:-60}"
 # Stimulus geometry and length. SQUARE_PX must be large enough that each square's
 # centre clears the bezel, or a photodiode cannot sit where the separation figure
