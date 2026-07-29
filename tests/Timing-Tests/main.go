@@ -271,6 +271,20 @@ func newPainter(exp *control.Experiment) (paintFunc, error) {
 	}, nil
 }
 
+// avNowMs returns the SDL high-resolution clock in milliseconds.
+//
+// The av loop must take every timestamp from ONE clock. Screen.FlipTS() — and
+// so Tone.PlaySyncedWithFlip, which wraps it — returns sdl.TicksNS(), whose
+// origin is SDL_Init. clock.GetTimeNS() counts from Go package init, tens of
+// milliseconds earlier (see the warning in clock/clock.go). Mixing the two made
+// bright_duration_ms read ~30 ms long on every sound-enabled run, and left
+// t_visual_after earlier than t_visual_before in 100 % of cycles.
+//
+// Standardising on the SDL clock rather than the Go one keeps the precise flip
+// timestamp captured inside PlaySyncedWithFlip, and matches the rt and vrr
+// tests, which already timestamp with FlipTS.
+func avNowMs() float64 { return float64(control.TicksNS()) / 1e6 }
+
 // fillGray paints one stimulus frame at a uniform gray level (0–255) and
 // presents it. Returns the time just before and just after RenderPresent (the
 // VSYNC wait), in milliseconds with sub-millisecond precision.
@@ -457,13 +471,13 @@ func runAV(exp *control.Experiment, trig triggers.OutputTTLDevice) error {
 			switch {
 			case withSound && audioFirst:
 				// Audio leads: queue the tone, wait out the SOA, then flip.
-				tAudioQ = float64(clock.GetTimeNS()) / 1e6
+				tAudioQ = avNowMs()
 				_ = tone.Play()
 				time.Sleep(soaDur)
 				paint(bright, dark)
-				tVisB = float64(clock.GetTimeNS()) / 1e6
+				tVisB = avNowMs()
 				flip()
-				tVisA = float64(clock.GetTimeNS()) / 1e6
+				tVisA = avNowMs()
 				control.PumpEvents()
 				fire()
 				holdBright(framesOn - 1)
@@ -475,7 +489,7 @@ func runAV(exp *control.Experiment, trig triggers.OutputTTLDevice) error {
 				// lags by at most one callback period, which is why -audio-frames
 				// sets the floor on audio-onset quantisation.
 				paint(bright, dark)
-				tVisB = float64(clock.GetTimeNS()) / 1e6
+				tVisB = avNowMs()
 				flipNS, _ := tone.PlaySyncedWithFlip(exp.Screen)
 				tVisA = float64(flipNS) / 1e6
 				tAudioQ = tVisA
@@ -487,15 +501,15 @@ func runAV(exp *control.Experiment, trig triggers.OutputTTLDevice) error {
 				// Visual leads by soaDur: schedule the tone off the visual onset
 				// while holdBright keeps the screen bright concurrently.
 				paint(bright, dark)
-				tVisB = float64(clock.GetTimeNS()) / 1e6
+				tVisB = avNowMs()
 				flip()
-				tVisA = float64(clock.GetTimeNS()) / 1e6
+				tVisA = avNowMs()
 				control.PumpEvents()
 				fire()
 				tAudioQCh := make(chan float64, 1)
 				go func() {
 					time.Sleep(soaDur)
-					tAudioQCh <- float64(clock.GetTimeNS()) / 1e6
+					tAudioQCh <- avNowMs()
 					_ = tone.Play()
 				}()
 				holdBright(framesOn - 1)
@@ -504,9 +518,9 @@ func runAV(exp *control.Experiment, trig triggers.OutputTTLDevice) error {
 			default:
 				// Visual only.
 				paint(bright, dark)
-				tVisB = float64(clock.GetTimeNS()) / 1e6
+				tVisB = avNowMs()
 				flip()
-				tVisA = float64(clock.GetTimeNS()) / 1e6
+				tVisA = avNowMs()
 				control.PumpEvents()
 				fire()
 				holdBright(framesOn - 1)
@@ -518,7 +532,7 @@ func runAV(exp *control.Experiment, trig triggers.OutputTTLDevice) error {
 			for f := 0; f < framesOff; f++ {
 				showFrame(dark)
 				if f == 0 {
-					tDarkStart = float64(clock.GetTimeNS()) / 1e6
+					tDarkStart = avNowMs()
 				}
 			}
 
