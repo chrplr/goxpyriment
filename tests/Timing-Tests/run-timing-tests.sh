@@ -20,6 +20,17 @@
 #   OUTDIR            session directory        (default: reports-<hostname>)
 #   SQUARE_PX         stimulus square side, px (default: 0 = ¼ of render height)
 #   CYCLES            cycles per av step       (default: 1000)
+#   DISPLAY_IDX       monitor index for -d     (default: unset = primary)
+#   EXCLUSIVE_FS      auto | on | off          (default: auto)
+#
+# DISPLAY_IDX is the index printed by `./Timing-Tests -sysinfo`, NOT an X11/
+# Wayland output name. Index 0 is always the primary, which on a laptop is
+# usually the built-in panel rather than the monitor under test.
+#
+# Under Wayland the compositor chooses the output regardless of -d, so display
+# selection does not work there: configure the machine with a SINGLE active
+# output instead. Verified on GNOME/Mutter 2026-07-29 — see the note in
+# apparatus/screen_newscreen_notjs.go.
 #
 # Optional BBTK recording — when enabled, each photodiode step starts a
 # bbtk-capture in the background, waits until the device is actually recording,
@@ -57,6 +68,24 @@ REFRESH_HZ="${REFRESH_HZ:-60}"
 # committing to a full pass.
 SQUARE_PX="${SQUARE_PX:-0}"   # 0 = Timing-Tests picks ¼ of the render height
 CYCLES="${CYCLES:-1000}"
+
+# Display and presentation mode. Both are passed to EVERY step that opens a
+# window, so a session cannot end up with half its steps on one monitor and half
+# on another — which is exactly what happened on 2026-07-29, invisibly, because
+# the compositor placed each run by focus.
+#
+# DISPLAY_IDX is left unset by default rather than defaulting to 0: an explicit
+# "primary" is wrong on any machine where the monitor under test is secondary,
+# and silently measuring the wrong panel is worse than not passing the flag.
+DISPLAY_IDX="${DISPLAY_IDX:-}"
+EXCLUSIVE_FS="${EXCLUSIVE_FS:-auto}"
+
+# Assembled once, then appended to every run. Keeping it in one place is what
+# guarantees the steps stay comparable.
+DISPLAY_ARGS="-exclusive-fullscreen $EXCLUSIVE_FS"
+if [ -n "$DISPLAY_IDX" ]; then
+	DISPLAY_ARGS="$DISPLAY_ARGS -d $DISPLAY_IDX"
+fi
 
 # Overridable so the session plumbing (capture handshake, output paths) can be
 # exercised without opening a fullscreen window on someone's display.
@@ -120,8 +149,11 @@ FAILED=""
 run() {
 	name=$1
 	shift
-	echo "+ $BIN $* -outdir $OUTDIR"
-	"$BIN" "$@" -outdir "$OUTDIR" 2>&1 | tee "$OUTDIR/${name}.txt"
+	# $DISPLAY_ARGS is deliberately unquoted: it carries two or four separate
+	# words, not one argument. It goes on every run so no step can differ.
+	echo "+ $BIN $* $DISPLAY_ARGS -outdir $OUTDIR"
+	# shellcheck disable=SC2086
+	"$BIN" "$@" $DISPLAY_ARGS -outdir "$OUTDIR" 2>&1 | tee "$OUTDIR/${name}.txt"
 	rc=$?
 	if [ "$rc" -ne 0 ]; then
 		printf '\n!! %s FAILED (exit %d) — %s/%s.txt is incomplete\n' \
@@ -232,6 +264,12 @@ mkdir -p "$OUTDIR"
 echo "Host:    $HOST"
 echo "Session: $OUTDIR/  (reports, data files and any BBTK captures)"
 echo "Audio:   SDL_AUDIODRIVER=$SDL_AUDIODRIVER  buffer=$AUDIO_BUFFSIZE frames"
+if [ -n "$DISPLAY_IDX" ]; then
+	echo "Display: -d $DISPLAY_IDX  (check it against ./Timing-Tests -sysinfo)"
+else
+	echo "Display: primary (set DISPLAY_IDX to target another monitor)"
+fi
+echo "         fullscreen mode: $EXCLUSIVE_FS  (recorded as sys fullscreen_mode)"
 if [ "$SQUARE_PX" -eq 0 ]; then
 	echo "Stim:    squares sized to ¼ of the render height, $CYCLES cycles per av step"
 else

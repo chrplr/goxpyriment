@@ -132,6 +132,7 @@ var (
 	fVRRMaxMs    = flag.Int("vrr-max-ms", 50, "Maximum stimulus duration to sweep, in 1 ms steps [vrr]")
 	fWindowed    = flag.Bool("w", false, "Windowed mode (1024×768 window instead of fullscreen)")
 	fDisplay     = flag.Int("d", -1, "Display index: monitor where the window/fullscreen will open (-1 = primary)")
+	fExclusiveFS = flag.String("exclusive-fullscreen", "auto", "Fullscreen presentation: auto | on (exclusive, bypasses the compositor where possible) | off (fullscreen-desktop).\n\tRecorded as 'sys fullscreen_mode' in the results header; the two are not comparable.")
 	fSysInfo     = flag.Bool("sysinfo", false, "Print system information and exit")
 	fOutDir      = flag.String("outdir", "", "Directory for the .csv/-info.txt results (default: $HOME/goxpy_data).\n\tUse it to keep a session's data files beside its other outputs.")
 	fPacedFlip   = flag.Bool("paced-flip", false, "Use PacedFlip() instead of Update() for frame pacing [av]")
@@ -492,7 +493,15 @@ func runAV(exp *control.Experiment, trig triggers.OutputTTLDevice) error {
 				tVisB = avNowMs()
 				flipNS, _ := tone.PlaySyncedWithFlip(exp.Screen)
 				tVisA = float64(flipNS) / 1e6
-				tAudioQ = tVisA
+				// Timestamp AFTER the call returns, which is after it resumes the
+				// audio device. Setting tAudioQ = tVisA instead made
+				// soa_actual_ms identically zero by construction: the column, and
+				// the "mean 0.000, SD 0.000" summary it produced, measured
+				// nothing. This measures the real gap between the flip and the
+				// device being released — the software-side part of the audio
+				// path. True audio-visual sync still comes only from the Mic and
+				// Opto channels of a recording.
+				tAudioQ = avNowMs()
 				control.PumpEvents()
 				fire()
 				holdBright(framesOn - 1)
@@ -569,7 +578,10 @@ func runAV(exp *control.Experiment, trig triggers.OutputTTLDevice) error {
 		printStatsVsMean(fmt.Sprintf("Bright-phase duration (frames-on=%d)", framesOn), brightDurations)
 		printStatsVsMean(fmt.Sprintf("Period (frames-on=%d + frames-off=%d)", framesOn, framesOff), periods)
 		if withSound {
-			printStatsVsMean(fmt.Sprintf("Audio queued − visual onset (intended SOA %.1f ms)", *fSoaMs), soaActuals)
+			// Software-side only: when the tone was handed to the device, not
+			// when it reached the speaker. Audio-visual sync must be read from
+			// the Mic vs Opto channels of a photodiode/microphone recording.
+			printStatsVsMean(fmt.Sprintf("Audio released − visual onset, software side (intended SOA %.1f ms)", *fSoaMs), soaActuals)
 		}
 
 		fmt.Printf("\nav: %d cycles complete (%d discarded as warm-up).\n", *fCycles, *fWarmup)
@@ -1049,6 +1061,9 @@ func main() {
 	flag.Parse()
 	if *fSysInfo {
 		sysinfo.Collect().Print()
+		// SDL's own view, which sysinfo cannot supply: the display indices -d
+		// accepts, and the audio devices that can actually be opened.
+		control.PrintDevices()
 		return
 	}
 	if *fAudioFrames > 0 {
@@ -1060,6 +1075,13 @@ func main() {
 	if *fWindowed {
 		width, height, fullscreen = 1024, 768, false
 	}
+	// Must precede Initialize: the policy is applied when the window is created.
+	policy, err := control.ParseFullscreenPolicy(*fExclusiveFS)
+	if err != nil {
+		log.Fatalf("-exclusive-fullscreen: %v", err)
+	}
+	control.SetFullscreenPolicy(policy)
+
 	exp := control.NewExperiment("Timing-Tests", width, height, fullscreen, control.Black, control.White, 24)
 	if *fDisplay >= 0 {
 		exp.ScreenNumber = *fDisplay
