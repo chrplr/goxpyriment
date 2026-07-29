@@ -12,30 +12,101 @@ import (
 	"github.com/Zyko0/go-sdl3/sdl"
 )
 
+// orderedDisplays returns the connected displays with the primary first,
+// followed by the rest in SDL's enumeration order.
+//
+// SDL_GetDisplays does NOT promise the primary comes first. Resolving index 0
+// via GetPrimaryDisplay while indexing the raw list for every other value made
+// the two disagree: whenever the primary sat at position n > 0 it answered to
+// both 0 and n, and whatever sat at position 0 could not be selected at all.
+// Deriving both displayByIndex and ListDisplays from this one ordering keeps
+// the index accepted by -d identical to the position ListDisplays reports.
+func orderedDisplays() ([]sdl.DisplayID, error) {
+	displays, err := sdl.GetDisplays()
+	if err != nil {
+		return nil, fmt.Errorf("enumerate displays: %w", err)
+	}
+	primary := sdl.GetPrimaryDisplay()
+	ordered := make([]sdl.DisplayID, 0, len(displays))
+	for _, id := range displays {
+		if id == primary {
+			ordered = append(ordered, id)
+			break
+		}
+	}
+	for _, id := range displays {
+		if id != primary {
+			ordered = append(ordered, id)
+		}
+	}
+	return ordered, nil
+}
+
+// exclusiveFullscreenWanted reports whether the fullscreen window should be
+// pinned to a concrete display mode. In SDL3 a non-nil fullscreen mode means
+// EXCLUSIVE fullscreen; nil means fullscreen-desktop (borderless). Two
+// independent reasons to want it, one per platform:
+//
+//   - Windows: exclusive fullscreen is what takes DWM out of the presentation
+//     chain. Fullscreen-desktop leaves every frame going through the
+//     compositor, which adds presentation latency and can drop or duplicate
+//     frames — exactly what these experiments set out to avoid.
+//   - X11: same argument. Compositing window managers often unredirect
+//     fullscreen windows on their own, but "often" is not a guarantee worth
+//     resting a timing measurement on, so ask for it explicitly.
+//   - Wayland: the compositor ignores client-supplied window positions, so the
+//     mode's display is the only way to choose which monitor to open on.
+//
+// Deliberately NOT enabled elsewhere:
+//
+//   - macOS: WindowServer cannot be bypassed, so exclusive fullscreen buys no
+//     timing benefit and only adds a mode-set and Spaces churn.
+//   - KMS/DRM: there is no compositor to escape.
+//   - dummy/offscreen and any future backend: an allowlist rather than an
+//     exclusion list, so an unfamiliar driver gets the conservative path.
+//
+// The mode passed is always the display's CURRENT mode, so no resolution or
+// refresh-rate change is ever requested — only the fullscreen style changes.
+func exclusiveFullscreenWanted() bool {
+	if runtime.GOOS == "windows" {
+		return true
+	}
+	switch sdl.GetCurrentVideoDriver() {
+	case "windows", "x11", "wayland":
+		return true
+	}
+	return false
+}
+
 // displayByIndex resolves a 0-based display index to an SDL DisplayID.
 // Index 0 always refers to the primary display.
 // Returns an error if index is out of range.
 func displayByIndex(index int) (sdl.DisplayID, error) {
-	if index == 0 {
-		return sdl.GetPrimaryDisplay(), nil
-	}
-	displays, err := sdl.GetDisplays()
+	ordered, err := orderedDisplays()
 	if err != nil {
-		return 0, fmt.Errorf("enumerate displays: %w", err)
+		return 0, err
 	}
-	if index < 0 || index >= len(displays) {
-		return 0, fmt.Errorf("display index %d out of range [0, %d)", index, len(displays))
+	if len(ordered) == 0 {
+		// Enumeration succeeded but reported nothing: fall back to the primary
+		// rather than refusing to open, which is what index 0 did before.
+		if index == 0 {
+			return sdl.GetPrimaryDisplay(), nil
+		}
+		return 0, fmt.Errorf("display index %d requested but no displays were enumerated", index)
 	}
-	return displays[index], nil
+	if index < 0 || index >= len(ordered) {
+		return 0, fmt.Errorf("display index %d out of range [0, %d)", index, len(ordered))
+	}
+	return ordered[index], nil
 }
 
 // ListDisplays returns metadata for all connected displays, ordered so that
 // index 0 is the primary display. Pass an index to NewScreen (or set
 // Experiment.ScreenNumber) to open the window on a specific monitor.
 func ListDisplays() ([]DisplayInfo, error) {
-	displays, err := sdl.GetDisplays()
+	displays, err := orderedDisplays()
 	if err != nil {
-		return nil, fmt.Errorf("enumerate displays: %w", err)
+		return nil, err
 	}
 	infos := make([]DisplayInfo, len(displays))
 	for i, id := range displays {
@@ -85,28 +156,33 @@ func NewScreen(title string, width, height int, bgColor sdl.Color, fullscreen bo
 		// immediately after still returns the pre-fullscreen dimensions.
 		// Including WINDOW_FULLSCREEN at creation time avoids this race.
 		//
-		// For secondary displays, embed the target display's position in the
-		// creation properties instead of calling SetPosition after the window
-		// is already fullscreen. Post-creation SetPosition on a fullscreen
-		// window can crash the display manager on some compositors (KDE/GNOME
-		// on X11). The windowed path uses the same property-at-creation approach.
+		// Embed the target display's position in the creation properties instead
+		// of calling SetPosition after the window is already fullscreen.
+		// Post-creation SetPosition on a fullscreen window can crash the display
+		// manager on some compositors (KDE/GNOME on X11). The windowed path uses
+		// the same property-at-creation approach.
+		//
+		// This runs for EVERY index, including 0. Leaving index 0 to a bare
+		// CreateWindow meant the default (-d absent, or -d 0) never named a
+		// display at all, so SDL opened wherever it liked — in practice on
+		// whichever output had focus. Two runs of the same command could land on
+		// different monitors, which is invisible in the software timing numbers
+		// and ruins a photodiode recording.
 		var window *sdl.Window
 		var werr error
-		if displayIndex != 0 {
-			if bounds, berr := target.Bounds(); berr == nil && bounds != nil {
-				props, perr := sdl.NewProperties(map[string]any{
-					"SDL.window.create.title":              title,
-					"SDL.window.create.x":                  bounds.X,
-					"SDL.window.create.y":                  bounds.Y,
-					"SDL.window.create.width":              bounds.W,
-					"SDL.window.create.height":             bounds.H,
-					"SDL.window.create.fullscreen":         true,
-					"SDL.window.create.high_pixel_density": true,
-				})
-				if perr == nil {
-					window, werr = sdl.CreateWindowWithProperties(props)
-					props.Destroy()
-				}
+		if bounds, berr := target.Bounds(); berr == nil && bounds != nil {
+			props, perr := sdl.NewProperties(map[string]any{
+				"SDL.window.create.title":              title,
+				"SDL.window.create.x":                  bounds.X,
+				"SDL.window.create.y":                  bounds.Y,
+				"SDL.window.create.width":              bounds.W,
+				"SDL.window.create.height":             bounds.H,
+				"SDL.window.create.fullscreen":         true,
+				"SDL.window.create.high_pixel_density": true,
+			})
+			if perr == nil {
+				window, werr = sdl.CreateWindowWithProperties(props)
+				props.Destroy()
 			}
 		}
 		if window == nil {
@@ -114,6 +190,23 @@ func NewScreen(title string, width, height int, bgColor sdl.Color, fullscreen bo
 		}
 		if werr != nil {
 			return nil, fmt.Errorf("apparatus.NewScreen: creating fullscreen window: %w", werr)
+		}
+
+		// Pin the window to the target display's current mode where that helps —
+		// on Windows to escape DWM, on Wayland because the creation x/y above
+		// cannot steer the window (compositors ignore client-supplied positions
+		// for toplevel surfaces, so the compositor picks the output itself, in
+		// practice whichever one has focus). See exclusiveFullscreenWanted.
+		//
+		// Must happen before Sync() below, so the window reaches its final state
+		// once rather than settling twice.
+		//
+		// Errors are not fatal: a display that reports no current mode should
+		// still open where the creation properties put it.
+		if exclusiveFullscreenWanted() {
+			if mode, merr := target.CurrentDisplayMode(); merr == nil && mode != nil {
+				_ = window.SetFullscreenMode(mode)
+			}
 		}
 
 		// Block until the window reaches its final state (fullscreen mode
