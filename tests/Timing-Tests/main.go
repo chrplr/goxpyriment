@@ -142,6 +142,25 @@ var (
 	fNoTTL       = flag.Bool("no-ttl", false, "Do not fire the TTL trigger [av]")
 )
 
+// ── Run outcome ───────────────────────────────────────────────────────────────
+
+// aborted records that the experimenter stopped a run with Esc rather than
+// letting it finish. Every test previously unwound through control.EndLoop
+// whether it completed or was cut short, which left the two indistinguishable
+// from outside and made the process exit 0 either way.
+//
+// The distinction matters because the exit status is now read by a machine.
+// bbtk-capture -- cmd starts the stimulus inside a hardware capture window and
+// uses its status to decide whether the recording is worth keeping: a non-zero
+// status aborts the capture and saves nothing, which is the right outcome, since
+// a window already spent cannot be re-recorded and an incomplete stimulus makes
+// the trace uninterpretable.
+//
+// Partial data is still written — see the exit path in main — so an aborted run
+// remains available for inspection. It is simply not reported as a completed
+// step.
+var aborted bool
+
 // ── Garbage-collector control ─────────────────────────────────────────────────
 
 // suspendGC turns the garbage collector off for the duration of a
@@ -569,6 +588,7 @@ func runAV(exp *control.Experiment, trig triggers.OutputTTLDevice) error {
 				fmt.Sprintf("%.1f", *fSoaMs), fmt.Sprintf("%.3f", tAudioQ-tVisA))
 
 			if exp.PollEvents(nil).QuitRequested {
+				aborted = true
 				return control.EndLoop
 			}
 		}
@@ -631,6 +651,7 @@ func runJitter(exp *control.Experiment) error {
 
 			state := exp.PollEvents(nil)
 			if state.QuitRequested {
+				aborted = true
 				break
 			}
 		}
@@ -732,6 +753,7 @@ func runRT(exp *control.Experiment, trig triggers.OutputTTLDevice) error {
 			// Wait for keypress — returns SDL event timestamp (nanoseconds).
 			_, eventTS, err := exp.Keyboard.GetKeyEventTS(nil, 5000)
 			if control.IsEndLoop(err) {
+				aborted = true
 				return control.EndLoop
 			}
 
@@ -944,6 +966,7 @@ func runVRR(exp *control.Experiment, trig triggers.OutputTTLDevice) error {
 
 				state := exp.PollEvents(nil)
 				if state.QuitRequested {
+					aborted = true
 					return control.EndLoop
 				}
 			}
@@ -1033,6 +1056,7 @@ func runDrain(exp *control.Experiment) error {
 
 				state := exp.PollEvents(nil)
 				if state.QuitRequested {
+					aborted = true
 					tone.Unload()
 					return control.EndLoop
 				}
@@ -1155,5 +1179,16 @@ func main() {
 
 	if runErr != nil && !control.IsEndLoop(runErr) {
 		log.Fatalf("test error: %v", runErr)
+	}
+
+	// A run cut short with Esc measured less than was asked for, so it must not
+	// report success — see the comment on `aborted`. exp.End() is called
+	// explicitly because os.Exit skips deferred functions, and it is what
+	// finalises the data file: whatever was collected before the abort is still
+	// written and still available to look at.
+	if aborted {
+		fmt.Fprintln(os.Stderr, "\nAborted with Esc — this run is incomplete and reports failure.")
+		exp.End()
+		os.Exit(1)
 	}
 }
