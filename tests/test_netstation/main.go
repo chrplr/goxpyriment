@@ -11,6 +11,11 @@
 // start, the STIM/RESP/T<n> events should appear on the timeline, and it should
 // stop cleanly.
 //
+// Whatever happens — an error mid-run, or Ctrl-C — the recording is stopped and
+// the ECI session ended before the program exits. A recording left open is what
+// produces an .mff that cannot be reopened (Acquiring.xml present, info.xml
+// missing).
+//
 // Usage:
 //
 //	go run ./tests/test_netstation -host 134.225.198.12
@@ -18,9 +23,12 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"log"
+	"os"
+	"os/signal"
 	"time"
 
 	"github.com/chrplr/goxpyriment/triggers"
@@ -37,26 +45,53 @@ func main() {
 		log.Fatal("usage: go run ./tests/test_netstation -host <ip>")
 	}
 
+	// Ctrl-C unwinds normally so the deferred teardown still stops the
+	// recording — never leave NetStation acquiring.
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt)
+	defer stop()
+
 	addr := fmt.Sprintf("%s:%d", *hostFlag, *portFlag)
+	if err := run(ctx, addr, *nFlag, time.Duration(*isiFlag)*time.Millisecond); err != nil {
+		log.Fatalf("test_netstation: %v", err)
+	}
+	fmt.Println("\nDone.")
+}
+
+// run owns the session. Every step returns an error rather than calling
+// log.Fatal, because log.Fatal exits without running deferred functions — which
+// would skip the teardown and leave the recording open on the host.
+func run(ctx context.Context, addr string, nEvents int, isi time.Duration) (err error) {
 	fmt.Printf("Connecting to NetStation at %s ...\n", addr)
 	ns, err := triggers.NewNetStation(addr)
 	if err != nil {
-		log.Fatalf("connect: %v", err)
+		return fmt.Errorf("connect: %w", err)
 	}
-	defer ns.Close()
-	fmt.Println("  connected (ECI handshake OK)")
+	defer func() {
+		fmt.Println("\n--- Close (stop recording if needed, end ECI session) ---")
+		if cerr := ns.Close(); cerr != nil {
+			// Report it even when the run itself succeeded: a failed stop
+			// means the .mff on the host may be unusable.
+			fmt.Printf("  Close: ERROR: %v\n", cerr)
+			if err == nil {
+				err = cerr
+			}
+			return
+		}
+		fmt.Println("  closed cleanly")
+	}()
+	fmt.Printf("  connected (ECI handshake OK, protocol version %d)\n", ns.ECIVersion())
 
 	// --- Synchronize ---
 	fmt.Println("\n--- Synchronize (align host clock) ---")
 	if err := ns.Synchronize(); err != nil {
-		log.Fatalf("  Synchronize: %v", err)
+		return fmt.Errorf("Synchronize: %w", err)
 	}
 	fmt.Println("  Synchronize OK")
 
 	// --- Start recording ---
 	fmt.Println("\n--- StartRecording ---")
 	if err := ns.StartRecording(); err != nil {
-		log.Fatalf("  StartRecording: %v", err)
+		return fmt.Errorf("StartRecording: %w", err)
 	}
 	fmt.Printf("  recording = %v\n", ns.Recording())
 	time.Sleep(200 * time.Millisecond)
@@ -64,14 +99,13 @@ func main() {
 	// --- Plain event (now, 1 ms, no keys) ---
 	fmt.Println("\n--- SendEvent(\"STIM\") ---")
 	if err := ns.SendEvent("STIM"); err != nil {
-		log.Printf("  SendEvent: ERROR: %v", err)
-	} else {
-		fmt.Println("  STIM sent")
+		return fmt.Errorf("SendEvent: %w", err)
 	}
+	fmt.Println("  STIM sent")
 
 	// --- Event with explicit onset and key/value payloads ---
 	fmt.Println("\n--- SendEventFull(\"RESP\", keys corr=1 rt=423) ---")
-	respErr := ns.SendEventFull(triggers.Event{
+	if err := ns.SendEventFull(triggers.Event{
 		Code:     "RESP",
 		Start:    time.Now(),
 		Duration: 2 * time.Millisecond,
@@ -79,32 +113,34 @@ func main() {
 			{Code: "corr", Value: 1},
 			{Code: "rt", Value: 423},
 		},
-	})
-	if respErr != nil {
-		log.Printf("  SendEventFull: ERROR: %v", respErr)
-	} else {
-		fmt.Println("  RESP sent")
+	}); err != nil {
+		return fmt.Errorf("SendEventFull: %w", err)
 	}
+	fmt.Println("  RESP sent")
 
 	// --- A train of numbered events ---
-	fmt.Printf("\n--- %d numbered events, %d ms apart ---\n", *nFlag, *isiFlag)
-	isi := time.Duration(*isiFlag) * time.Millisecond
-	for i := 1; i <= *nFlag; i++ {
+	fmt.Printf("\n--- %d numbered events, %v apart ---\n", nEvents, isi)
+	for i := 1; i <= nEvents; i++ {
+		if ctx.Err() != nil {
+			fmt.Println("\n  interrupted — stopping the recording cleanly")
+			break
+		}
 		code := fmt.Sprintf("T%d", i) // padded/truncated to 4 chars by the driver
 		if err := ns.SendEvent(code); err != nil {
-			log.Printf("  event %d (%q): ERROR: %v", i, code, err)
-		} else {
-			fmt.Printf("  event %d: %q\n", i, code)
+			return fmt.Errorf("event %d (%q): %w", i, code, err)
 		}
-		time.Sleep(isi)
+		fmt.Printf("  event %d: %q\n", i, code)
+		select {
+		case <-ctx.Done():
+		case <-time.After(isi):
+		}
 	}
 
 	// --- Stop recording ---
 	fmt.Println("\n--- StopRecording ---")
 	if err := ns.StopRecording(); err != nil {
-		log.Printf("  StopRecording: ERROR: %v", err)
+		return fmt.Errorf("StopRecording: %w", err)
 	}
 	fmt.Printf("  recording = %v\n", ns.Recording())
-
-	fmt.Println("\nDone. (Close() will disconnect the ECI session.)")
+	return nil
 }

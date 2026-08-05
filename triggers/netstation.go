@@ -6,6 +6,7 @@ package triggers
 import (
 	"bytes"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -37,14 +38,40 @@ import (
 // on. (The original MATLAB NetStation routines switched between QNTEL and QMAC-
 // only because they wrote in the machine's *native* order.)
 //
+// # What ECI does and does not control (NetStation 5.x)
+//
+// ECI has exactly nine commands — endian query, attention, clock sync, NTP
+// clock sync, NTP return clock, begin/end recording, event data and exit.
+// None of them names the output file, selects a recording format or finalizes
+// it. The .mff bundle is written entirely by NetStation Acquisition, so its
+// format and version are a property of the host and its workspace, not of this
+// client.
+//
+// What this client *can* get wrong is leaving a recording open. An .mff that
+// contains Acquiring.xml and no info.xml — so neither the events nor the signal
+// can be read back — is EGI's documented signature of an acquisition that never
+// completed its recording. Every command is therefore acknowledgement-checked
+// (see [NetStation.Close]): if the host refuses a begin/end recording, the call
+// returns an error instead of silently continuing towards an unusable file.
+//
 // Ported from Gergely Csibra's NetStation MATLAB routines (2006), themselves
-// based on Rick Gilmore's routines (2005).
+// based on Rick Gilmore's routines (2005), with the acknowledgement and
+// handshake behaviour cross-checked against the NetStation 5.3-tested
+// egi-pynetstation client (github.com/nimh-sfim/egi-pynetstation).
 type NetStation struct {
-	conn      net.Conn
-	host      string
-	timeout   time.Duration
-	epoch     time.Time // reference for event/synchronization timestamps
-	recording bool
+	conn       net.Conn
+	host       string
+	timeout    time.Duration
+	epoch      time.Time // reference for event/synchronization timestamps
+	recording  bool
+	eciVersion byte
+
+	// Teardown delays, defaulted from the ns*Delay constants. Fields rather
+	// than constants so tests can zero them; there is no reason to change them
+	// at runtime.
+	stopFlushDelay  time.Duration
+	closeSettle     time.Duration
+	closeFinalDelay time.Duration
 }
 
 const (
@@ -62,6 +89,37 @@ const (
 	// passed as a duration); mirror the reference guard and clamp to 1 ms.
 	nsMaxEventDuration = 120 * time.Second
 )
+
+// ECI acknowledgement bytes. The SDK documents only 'Z'; the others were
+// established by the reference clients through testing against live hosts.
+const (
+	nsAckSuccess  byte = 'Z'  // command accepted
+	nsAckIdentify byte = 'I'  // identify reply — one version byte follows
+	nsAckFailure  byte = 'F'  // command refused
+	nsAckNoRecDev byte = 'R'  // refused: no recording device ready
+	nsAckNTPClock byte = 'S'  // NTP return clock — an NTPv4 timecode follows
+	nsAckOne      byte = 0x01 // undocumented success reply seen from NetStation
+)
+
+// checkAck turns an ECI acknowledgement byte into an error.
+//
+// The driver used to read the ack and discard it. That made two host-side
+// refusals invisible — 'F' (command refused) and 'R' (no recording device) —
+// so a StartRecording that the host had rejected still reported success, the
+// run proceeded, and the only symptom was an unreadable .mff afterwards.
+func checkAck(b byte) error {
+	switch b {
+	case nsAckSuccess, nsAckOne, nsAckNTPClock:
+		return nil
+	case nsAckFailure:
+		return fmt.Errorf("host refused the command (ECI 'F')")
+	case nsAckNoRecDev:
+		return fmt.Errorf("host is not ready to record (ECI 'R') — check that a session is open " +
+			"and an amplifier is connected in NetStation Acquisition")
+	default:
+		return fmt.Errorf("unexpected acknowledgement %#02x from host", b)
+	}
+}
 
 // NetStationOption configures a [NetStation] at construction time.
 type NetStationOption func(*NetStation)
@@ -100,8 +158,11 @@ type Event struct {
 // "10.0.0.5:55513". Returns a ready device; call [NetStation.Close] when done.
 func NewNetStation(host string, opts ...NetStationOption) (*NetStation, error) {
 	ns := &NetStation{
-		timeout: nsDefaultTimeout,
-		epoch:   time.Now(),
+		timeout:         nsDefaultTimeout,
+		epoch:           time.Now(),
+		stopFlushDelay:  nsStopFlushDelay,
+		closeSettle:     nsCloseSettle,
+		closeFinalDelay: nsCloseFinalDelay,
 	}
 	for _, opt := range opts {
 		opt(ns)
@@ -136,21 +197,31 @@ func (ns *NetStation) handshake() error {
 		return fmt.Errorf("netstation: handshake read: %w", err)
 	}
 	switch reply[0] {
-	case 'I': // identify OK — one version byte follows
+	case nsAckIdentify: // identify OK — one version byte follows
 		ver, err := ns.readN(1)
 		if err != nil {
 			return fmt.Errorf("netstation: handshake version read: %w", err)
 		}
-		if ver[0] != 1 {
-			return fmt.Errorf("netstation: unsupported ECI version %d (expected 1)", ver[0])
-		}
-		return nil
-	case 'F':
+		// Accept whatever the host reports rather than pinning version 1: the
+		// reference clients only record it, and rejecting an unknown value
+		// would lock the driver out of future NetStation releases for no gain.
+		ns.eciVersion = ver[0]
+	case nsAckFailure:
 		return fmt.Errorf("netstation: ECI handshake refused by host")
 	default:
-		return fmt.Errorf("netstation: unexpected handshake reply %q", reply[0])
+		return fmt.Errorf("netstation: unexpected handshake reply %#02x", reply[0])
 	}
+	// The NetStation 5-tested reference client sends an attention command
+	// immediately after the endian query; mirror that.
+	if err := ns.command([]byte{'A'}); err != nil {
+		return fmt.Errorf("netstation: handshake attention: %w", err)
+	}
+	return nil
 }
+
+// ECIVersion returns the protocol version byte the host reported during the
+// handshake (1 for every NetStation release tested so far).
+func (ns *NetStation) ECIVersion() byte { return ns.eciVersion }
 
 // Synchronize aligns the host's clock to ours: it sends the current experiment
 // time so that subsequent event timestamps are interpreted in the same frame.
@@ -187,7 +258,7 @@ func (ns *NetStation) StopRecording() error {
 	if !ns.recording {
 		return nil
 	}
-	time.Sleep(nsStopFlushDelay)
+	time.Sleep(ns.stopFlushDelay)
 	if err := ns.command([]byte{'E'}); err != nil {
 		return fmt.Errorf("netstation: StopRecording: %w", err)
 	}
@@ -224,14 +295,18 @@ func (ns *NetStation) SendEventFull(ev Event) error {
 
 	var buf bytes.Buffer
 	buf.WriteByte('D')
-	// Block size: everything after this uint16 field. Fixed part is 15 bytes
-	// (int32 start + int32 duration + 4-byte code + int16 label-length + uint8
-	// key-count); each key adds 12 bytes.
+	// Block size: everything after this uint16 field. The fixed part is 15
+	// bytes — int32 start, int32 duration, 4-byte code, uint8 label length,
+	// uint8 description length, uint8 key count — and each key adds 12 bytes.
+	// Label and description are always empty here, so the two length bytes are
+	// zero. (The 2006 MATLAB port wrote a single int16 zero at this position,
+	// which is the same two bytes on the wire.)
 	binary.Write(&buf, binary.LittleEndian, uint16(15+12*keyn))
 	binary.Write(&buf, binary.LittleEndian, ns.millisSince(start))
 	binary.Write(&buf, binary.LittleEndian, int32(dur.Milliseconds()))
 	writeCode4(&buf, code)
-	binary.Write(&buf, binary.LittleEndian, int16(0)) // label length (no label)
+	buf.WriteByte(0) // label length (no label)
+	buf.WriteByte(0) // description length (no description)
 	buf.WriteByte(uint8(keyn))
 	for _, k := range ev.Keys {
 		writeCode4(&buf, k.Code)
@@ -252,27 +327,48 @@ func (ns *NetStation) Recording() bool { return ns.recording }
 // Close stops recording (if active), disconnects the ECI session and closes
 // the TCP connection. Safe to call multiple times. Deliberately blocks for a
 // couple of seconds so the host can flush and finalize the recording.
+//
+// The connection is always torn down, but a failure to stop recording or to end
+// the session is now reported rather than discarded: those are precisely the
+// failures that leave NetStation with an unfinalized .mff (Acquiring.xml
+// present, info.xml missing), and they used to pass silently. Always check this
+// error — in a deferred call, log it:
+//
+//	defer func() {
+//		if err := ns.Close(); err != nil {
+//			log.Printf("netstation: %v", err)  // the recording may be unfinalized
+//		}
+//	}()
 func (ns *NetStation) Close() error {
 	if ns.conn == nil {
 		return nil
 	}
+	var errs []error
 	if ns.recording {
-		time.Sleep(nsStopFlushDelay)
-		_ = ns.command([]byte{'E'}) // stop recording
+		time.Sleep(ns.stopFlushDelay)
+		if err := ns.command([]byte{'E'}); err != nil { // stop recording
+			errs = append(errs, fmt.Errorf("stop recording: %w", err))
+		}
 		ns.recording = false
 	}
-	time.Sleep(nsCloseSettle)
-	_ = ns.command([]byte{'X'}) // end ECI session
-	time.Sleep(nsCloseFinalDelay)
-	err := ns.conn.Close()
+	time.Sleep(ns.closeSettle)
+	if err := ns.command([]byte{'X'}); err != nil { // end ECI session
+		errs = append(errs, fmt.Errorf("end ECI session: %w", err))
+	}
+	time.Sleep(ns.closeFinalDelay)
+	if err := ns.conn.Close(); err != nil {
+		errs = append(errs, fmt.Errorf("close connection: %w", err))
+	}
 	ns.conn = nil
-	return err
+	if len(errs) > 0 {
+		return fmt.Errorf("netstation: Close (the recording may be unfinalized): %w", errors.Join(errs...))
+	}
+	return nil
 }
 
-// command writes a payload and reads the host's one-byte acknowledgement,
-// keeping the request/response stream in step. The ack value is drained but not
-// validated (the reference protocol replies 'Z' on success); write and read
-// errors are surfaced.
+// command writes a payload, reads the host's one-byte acknowledgement and
+// validates it, keeping the request/response stream in step. Write, read and
+// refusal errors are all surfaced.
 func (ns *NetStation) command(payload []byte) error {
 	if ns.conn == nil {
 		return fmt.Errorf("host not connected")
@@ -280,10 +376,11 @@ func (ns *NetStation) command(payload []byte) error {
 	if _, err := ns.conn.Write(payload); err != nil {
 		return fmt.Errorf("write: %w", err)
 	}
-	if _, err := ns.readN(1); err != nil {
+	ack, err := ns.readN(1)
+	if err != nil {
 		return fmt.Errorf("acknowledgement: %w", err)
 	}
-	return nil
+	return checkAck(ack[0])
 }
 
 // readN reads exactly n bytes subject to the configured timeout.

@@ -2513,7 +2513,10 @@ import "github.com/chrplr/goxpyriment/triggers"
 
 ns, err := triggers.NewNetStation("134.225.198.12") // default ECI port 55513
 if err != nil { log.Fatal(err) }
-defer ns.Close()            // stops recording + disconnects (blocks ~2 s to flush)
+defer func() {
+    // Always check this: a failed stop can leave an unreadable .mff on the host.
+    if err := ns.Close(); err != nil { log.Printf("netstation: %v", err) }
+}()                         // stops recording + disconnects (blocks ~2 s to flush)
 
 ns.Synchronize()            // align the host clock to ours (call once after connect)
 ns.StartRecording()
@@ -2541,6 +2544,28 @@ for the accompanying metadata. The driver always advertises the `QNTEL`
 (Intel/little-endian) handshake and encodes every field little-endian, so it is
 portable regardless of the machine it runs on. See `tests/test_netstation` for a
 runnable session.
+
+**Never leave a recording open.** The output `.mff` is written by NetStation
+Acquisition — no ECI command names it, chooses its format or finalizes it, so
+nothing here can change the file's format. What *does* depend on this client is
+whether the recording is closed properly. A bundle that contains `Acquiring.xml`
+and no `info.xml`, whose events and EEG signal are both unreadable, is EGI's
+documented signature of an acquisition that never completed its recording. Two
+rules follow:
+
+- Check the error from `Close` (as above). It reports a refused stop instead of
+  swallowing it, and every ECI command's acknowledgement is now validated — a
+  host that answers `F` (refused) or `R` (not ready to record) produces an
+  error rather than a silent success.
+- Do not call `log.Fatal` between `StartRecording` and `Close`. `log.Fatal`
+  exits without running deferred functions, so the host keeps acquiring. Put
+  the session in a `run() error` function and fail from `main` after the
+  deferred `Close` has run — `tests/test_netstation/main.go` shows the pattern,
+  including a Ctrl-C trap.
+
+If a recording was left open, EGI's File Validator utility (shipped with Net
+Station 5.4, under Applications ▸ EGI ▸ Utilities) removes `Acquiring.xml` and
+makes the file openable again.
 
 #### BEL video recorder (labelled camera over TCP/IP)
 
