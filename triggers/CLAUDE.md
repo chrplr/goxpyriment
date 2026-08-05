@@ -47,6 +47,71 @@ mask, rt, _ := d.WaitForInput(ctx)
 
 **Device protocol (internal):** set HIGH pin 1–8 = '1'–'8'; set LOW = 'Q'–'I'; read = 'A'–'K'; ping = '\''; binary mode = '\\'. The public API uses 0-indexed lines; internally translated to 1-indexed for the ASCII commands.
 
+## DLPIO20 (DLP-IO20, USB-CDC)
+
+Implements both interfaces. **Untested on hardware** — written from the
+[datasheet](https://www.dlpdesign.com/usb/dlp-io20-ds-v11.pdf) rev 1.1.
+
+Binary *packet* protocol, not the IO8's single ASCII bytes: byte 0 is the
+packet length **including itself**.
+
+| Command | Packet | Returns |
+|---|---|---|
+| Ping | `02 27` | `'Y'` (0x59) — the IO8 answers `'Q'`, so the two never cross-detect |
+| Digital I/O | `05 35 <ch> <dir> <val>` | 1 byte, **only** when `dir` = `0x01` (input) |
+
+`dir` is `0x00` output / `0x01` input, `val` is `0x00` low / `0x01` high. Every
+command carries a direction, so channels are reconfigured per call — there is
+no direction register to set up at open. Byte 4 must be present even in input
+mode, where it is ignored.
+
+**Channels** (`IO20Channel`, code = datasheet channel number):
+
+| Code | Name | Notes |
+|---|---|---|
+| `0x00`–`0x0D` | `IO20_AN0`–`IO20_AN13` | digital I/O, also analog-capable |
+| `0x0E` | `IO20_RA4` | digital I/O |
+| `0x0F`–`0x11` | `IO20_P5`–`IO20_P7` | relay drivers (Darlington) — **not TTL**, cannot be read |
+| `0x12` | `IO20_RB7` | note the inversion: RB7 is `0x12`… |
+| `0x13` | `IO20_RB6` | …and RB6 is `0x13` |
+
+**8-line windows.** The TTL interfaces are 8-bit but the device has 17 usable
+digital channels, so interface lines 0–7 address a *window*:
+
+- outputs (default): `AN0`–`AN7`
+- inputs (default): `AN8`–`AN13`, `RB6`, `RB7`
+
+```go
+d, err := triggers.NewDLPIO20("/dev/ttyUSB0",
+    triggers.WithIO20OutputChannels(triggers.IO20_AN0, /* …8 total… */ triggers.IO20_AN7),
+    triggers.WithIO20InputChannels(triggers.IO20_AN8, /* …8 total… */ triggers.IO20_RB7),
+    triggers.WithIO20PollInterval(5*time.Millisecond),
+    triggers.WithIO20ReadTimeout(200*time.Millisecond),
+)
+defer d.Close()
+
+d.Send(0b00000101)                  // lines 0,2 → AN0, AN2
+d.Pulse(0, 5*time.Millisecond)
+
+// Any channel, in or out of the windows:
+d.SetChannelHigh(triggers.IO20_RA4)
+v, _ := d.ReadChannel(triggers.IO20_AN12)
+
+out, port, err := triggers.AutoDetectDLPIO20()   // → NullOutputTTLDevice{} if absent
+```
+
+A group must be exactly 8 channels, without duplicates, and no channel may be
+in both groups — `NewDLPIO20` rejects all three.
+
+**Timing.** There is no write-all command: `Send` issues 8 packets (~3.5 ms of
+wire time at 115200 baud plus USB latency), so lines do *not* change
+simultaneously. Prefer `SetHigh` on a single line for trigger onsets. On Linux
+the FTDI latency timer (16 ms default) dominates reads:
+`echo 1 | sudo tee /sys/bus/usb-serial/devices/ttyUSB0/latency_timer`.
+
+**5 V logic**, unlike the LabJack T4's 3.3 V. Inputs have no pull-ups, so patch
+a pin to +5V or GND — a floating input reads unpredictably.
+
 ## MEGTTLBox (NeuroSpin Arduino Mega)
 
 Implements both interfaces. Binary opcode protocol at 115200 baud.

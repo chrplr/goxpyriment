@@ -11,6 +11,7 @@
 //
 // Implementations:
 //   - [DLPIO8]              — DLP-IO8-G digital I/O over USB-CDC serial (output + input)
+//   - [DLPIO20]             — DLP-IO20 20-channel module over USB-CDC serial (output + input)
 //   - [MEGTTLBox]           — NeuroSpin Arduino-based TTL box (output + input)
 //   - [FT232HTrigger]       — Adafruit FT232H via MPSSE GPIO, Linux only (output + input)
 //   - [LinuxGPIOTrigger]    — Linux GPIO char device (RPi, Rock Pi, …), Linux only (output + input)

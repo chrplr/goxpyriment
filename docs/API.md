@@ -1143,6 +1143,41 @@ mask, err := d.ReadAll()            // bitmask of all 8 input lines
 mask, rt, err := d.WaitForInput(ctx)
 ```
 
+### DLPIO20 (DLP-IO20, USB-CDC serial)
+
+Implements both `OutputTTLDevice` and `InputTTLDevice`. 5 V logic (the T4 is 3.3 V).
+
+> **Untested on hardware** — written from the [datasheet](https://www.dlpdesign.com/usb/dlp-io20-ds-v11.pdf) rev 1.1. Bring it up with `tests/test_dlpio20` and a multimeter before relying on it.
+
+The device has 17 usable digital channels but the TTL interfaces are 8-bit, so interface lines 0–7 address a *window* of 8 channels — `AN0`–`AN7` for output and `AN8`–`AN13`, `RB6`, `RB7` for input by default. Channels outside the windows stay reachable through the channel-level methods.
+
+```go
+// Auto-detect (recommended): returns NullOutputTTLDevice if not found, no error.
+out, portName, err := triggers.AutoDetectDLPIO20()
+defer out.Close()
+
+// Manual, with a remapped output window:
+d, err := triggers.NewDLPIO20("/dev/ttyUSB0",
+    triggers.WithIO20OutputChannels(
+        triggers.IO20_AN0, triggers.IO20_AN1, triggers.IO20_AN2, triggers.IO20_AN3,
+        triggers.IO20_AN4, triggers.IO20_AN5, triggers.IO20_AN6, triggers.IO20_AN7),
+    triggers.WithIO20PollInterval(5*time.Millisecond),
+)
+defer d.Close()
+
+d.Send(0b00000101)                       // lines 0 and 2 → AN0, AN2
+d.Pulse(0, 5*time.Millisecond)
+mask, err := d.ReadAll()                 // bitmask of the 8 input-window channels
+
+// Any of the 20 channels, in or out of the windows:
+d.SetChannelHigh(triggers.IO20_RA4)
+v, err := d.ReadChannel(triggers.IO20_AN12)
+```
+
+Channel constants are `IO20_AN0`–`IO20_AN13`, `IO20_RA4`, `IO20_P5`–`IO20_P7` (relay drivers — not TTL, not readable), `IO20_RB6`, `IO20_RB7`.
+
+**Timing:** the device has no write-all command, so `Send` issues one 5-byte packet per line — the 8 lines change over ~3.5 ms rather than simultaneously. Use `SetHigh` on a single line for trigger onsets. On Linux, lower the FTDI latency timer (16 ms default) before timing-sensitive reads: `echo 1 | sudo tee /sys/bus/usb-serial/devices/ttyUSB0/latency_timer`.
+
 ### MEGTTLBox (NeuroSpin Arduino Mega TTL box)
 
 Implements both `OutputTTLDevice` and `InputTTLDevice`. Provides 8 TTL output lines (D30–D37) and 8 TTL input lines for a FORP response pad (D22–D29).

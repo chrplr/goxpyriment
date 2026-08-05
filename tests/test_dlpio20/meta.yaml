@@ -1,0 +1,3 @@
+category: test
+description: Exercises a DLP-IO20 as an 8-bit TTL trigger device (output + input loopback), with static hold/set modes for multimeter probing
+reference: "https://www.dlpdesign.com/usb/dlp-io20-ds-v11.pdf"

@@ -2453,11 +2453,37 @@ mask, rt, _ := box.WaitForInput(ctx)
 
 The device must be reachable on the local network. Default Modbus port 502 is used; append `:port` to the host string to override.
 
+### DLP-IO20 (USB-CDC serial)
+
+A 20-channel USB module, 5 V logic. It has more digital channels (17) than the
+8-bit TTL interfaces can express, so interface lines 0–7 address a *window* of
+8 channels — `AN0`–`AN7` for output and `AN8`–`AN13` + `RB6`/`RB7` for input by
+default. Every channel remains reachable through the channel-level methods.
+
+```go
+d, err := triggers.NewDLPIO20("/dev/ttyUSB0")   // or triggers.AutoDetectDLPIO20()
+defer d.Close()
+
+d.Send(0b00000101)                    // lines 0 and 2 → AN0, AN2
+d.SetChannelHigh(triggers.IO20_RA4)   // a channel outside the window
+v, _ := d.ReadChannel(triggers.IO20_AN12)
+```
+
+Remap the windows with `WithIO20OutputChannels` / `WithIO20InputChannels` (8
+channels each, no duplicates, no overlap between the two groups).
+
+Two caveats. The device has no write-all command, so `Send` issues one packet
+per line and the 8 lines change over ~3.5 ms rather than together — use
+`SetHigh` on a single line when trigger onset matters. And the driver is
+**untested on real hardware**: it was written from the datasheet, so verify it
+with `tests/test_dlpio20` before an experiment depends on it.
+
 ### Supported devices
 
 | Device | Type | Output | Input | Connection | Notes |
 |--------|------|--------|-------|------------|-------|
 | DLP-IO8-G | `DLPIO8` | ✓ | ✓ | USB-CDC serial | ASCII protocol |
+| DLP-IO20 | `DLPIO20` | ✓ | ✓ | USB-CDC serial | Packet protocol; 17 digital channels via 8-line windows; 5 V; untested on hardware |
 | NeuroSpin MEGTTLBox | `MEGTTLBox` | ✓ | ✓ | USB serial | Arduino Mega; binary protocol; fORP input |
 | Adafruit FT232H | `FT232HTrigger` | ✓ | ✓ | USB (usbfs) | Linux only; no libftdi needed |
 | Linux GPIO | `LinuxGPIOTrigger` | ✓ | ✓ | GPIO pins | Any Linux SBC; kernel ≥ 5.10 |
