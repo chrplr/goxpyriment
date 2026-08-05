@@ -1,0 +1,3 @@
+category: test
+description: Exercises the NeuroSpin Arduino Mega TTL box — firmware identification, TTL outputs on D30–D37, response inputs on D22–D29, and an optional jumpered loopback check.
+reference: https://github.com/neurospin/neurospin-meg-ttl-box
