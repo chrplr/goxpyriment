@@ -18,17 +18,35 @@ const (
 	t4DefaultTimeout           = 1 * time.Second
 	t4DefaultUnitID       byte = 1
 
-	t4RegFIOState     uint16 = 2500
-	t4RegEIOState     uint16 = 2501
-	t4RegFIODirection uint16 = 2504
-	t4RegEIODirection uint16 = 2505
+	// 32-bit (2 Modbus registers each) DIO bitmask registers of the LabJack
+	// T-series Modbus map. Bit N of each value refers to DIO N.
+	t4RegDIOState        uint16 = 2800 // read/write the level of every DIO
+	t4RegDIODirection    uint16 = 2850 // 0 = input, 1 = output
+	t4RegDIOAnalogEnable uint16 = 2880 // T4 only: 1 = analog, 0 = digital
+	t4RegDIOInhibit      uint16 = 2900 // 1 = ignore writes to that DIO
+
+	// t4NumDIO is the width of the DIO bitmask registers (DIO0–DIO22).
+	t4NumDIO     = 23
+	t4DIOMask    = uint32(1)<<t4NumDIO - 1
+	t4LinesPerIO = 8
+
+	// Default line groups on a T4. DIO0–DIO3 do not exist as digital lines
+	// (they are the dedicated AIN0–AIN3 screw terminals), so the outputs
+	// start at DIO4.
+	t4DefaultOutputBase = 4  // DIO4–DIO11  = FIO4–FIO7 + EIO0–EIO3
+	t4DefaultInputBase  = 12 // DIO12–DIO19 = EIO4–EIO7 + CIO0–CIO3
 )
 
 // LabJackT4 controls a LabJack T4 DAQ device over Modbus TCP.
 //
-// Wiring:
-//   - FIO0–FIO7 (8 digital I/O configured as outputs) → TTL trigger lines
-//   - EIO0–EIO7 (8 extended I/O configured as inputs) → TTL response-pad lines
+// Default wiring — the T4 has 16 digital lines, DIO4–DIO19:
+//   - outputs: DIO4–DIO11 = FIO4–FIO7 (screw terminals) + EIO0–EIO3 (DB15)
+//   - inputs:  DIO12–DIO19 = EIO4–EIO7 + CIO0–CIO3 (DB15)
+//
+// DIO0–DIO3 are *not* usable: on the T4 those are the dedicated analog inputs
+// AIN0–AIN3. DIO4–DIO11 are "flexible I/O" that power up as analog inputs;
+// [NewLabJackT4] switches them to digital mode via DIO_ANALOG_ENABLE.
+// Use [WithT4OutputBase] / [WithT4InputBase] for a different pin assignment.
 //
 // Implements both [OutputTTLDevice] and [InputTTLDevice].
 //
@@ -44,6 +62,8 @@ type LabJackT4 struct {
 	handler      *modbus.TCPClientHandler
 	client       modbus.Client
 	outputState  byte
+	outputBase   int
+	inputBase    int
 	pollInterval time.Duration
 }
 
@@ -66,9 +86,21 @@ func WithT4UnitID(id byte) LabJackT4Option {
 	return func(h *modbus.TCPClientHandler, _ *LabJackT4) { h.SlaveId = id }
 }
 
+// WithT4OutputBase sets the DIO number driven by output line 0; lines 0–7 then
+// map to dio…dio+7. Default: 4 (FIO4–FIO7 + EIO0–EIO3).
+func WithT4OutputBase(dio int) LabJackT4Option {
+	return func(_ *modbus.TCPClientHandler, t *LabJackT4) { t.outputBase = dio }
+}
+
+// WithT4InputBase sets the DIO number read as input line 0; lines 0–7 then map
+// to dio…dio+7. Default: 12 (EIO4–EIO7 + CIO0–CIO3).
+func WithT4InputBase(dio int) LabJackT4Option {
+	return func(_ *modbus.TCPClientHandler, t *LabJackT4) { t.inputBase = dio }
+}
+
 // NewLabJackT4 connects to a LabJack T4 at host (e.g. "192.168.1.100" or
-// "192.168.1.100:502"), configures FIO0–FIO7 as outputs (all LOW) and
-// EIO0–EIO7 as inputs, and returns a ready device.
+// "192.168.1.100:502"), configures the output group as digital outputs (all
+// LOW) and the input group as digital inputs, and returns a ready device.
 func NewLabJackT4(host string, opts ...LabJackT4Option) (*LabJackT4, error) {
 	if !strings.Contains(host, ":") {
 		host = fmt.Sprintf("%s:502", host)
@@ -80,10 +112,15 @@ func NewLabJackT4(host string, opts ...LabJackT4Option) (*LabJackT4, error) {
 
 	t := &LabJackT4{
 		handler:      handler,
+		outputBase:   t4DefaultOutputBase,
+		inputBase:    t4DefaultInputBase,
 		pollInterval: t4DefaultPollInterval,
 	}
 	for _, opt := range opts {
 		opt(handler, t)
+	}
+	if err := t.checkBases(); err != nil {
+		return nil, err
 	}
 
 	if err := handler.Connect(); err != nil {
@@ -91,36 +128,101 @@ func NewLabJackT4(host string, opts ...LabJackT4Option) (*LabJackT4, error) {
 	}
 	t.client = modbus.NewClient(handler)
 
-	// Configure FIO0-FIO7 as outputs, EIO0-EIO7 as inputs
-	if _, err := t.client.WriteSingleRegister(t4RegFIODirection, 0x00FF); err != nil {
+	if err := t.configure(); err != nil {
 		handler.Close()
-		return nil, fmt.Errorf("labjackt4: set FIO direction: %w", err)
-	}
-	if _, err := t.client.WriteSingleRegister(t4RegEIODirection, 0x0000); err != nil {
-		handler.Close()
-		return nil, fmt.Errorf("labjackt4: set EIO direction: %w", err)
-	}
-	// All FIO outputs LOW
-	if _, err := t.client.WriteSingleRegister(t4RegFIOState, 0x0000); err != nil {
-		handler.Close()
-		return nil, fmt.Errorf("labjackt4: init FIO state: %w", err)
+		return nil, err
 	}
 	return t, nil
 }
 
+// checkBases validates the output/input DIO groups before any I/O is attempted.
+func (t *LabJackT4) checkBases() error {
+	for _, g := range []struct {
+		name string
+		base int
+	}{{"output", t.outputBase}, {"input", t.inputBase}} {
+		if g.base < 0 || g.base+t4LinesPerIO > t4NumDIO {
+			return fmt.Errorf("labjackt4: %s base DIO%d out of range (0–%d)",
+				g.name, g.base, t4NumDIO-t4LinesPerIO)
+		}
+	}
+	if t.outputMask()&t.inputMask() != 0 {
+		return fmt.Errorf("labjackt4: output group DIO%d–DIO%d overlaps input group DIO%d–DIO%d",
+			t.outputBase, t.outputBase+7, t.inputBase, t.inputBase+7)
+	}
+	return nil
+}
+
+func (t *LabJackT4) outputMask() uint32 { return 0xFF << uint(t.outputBase) }
+func (t *LabJackT4) inputMask() uint32  { return 0xFF << uint(t.inputBase) }
+
+// configure puts the two line groups in digital mode, sets their directions and
+// drives every output LOW.
+//
+// The order matters. DIO_INHIBIT filters writes to DIO_STATE, DIO_DIRECTION and
+// DIO_ANALOG_ENABLE, so it is first cleared for the 16 lines we own (and left
+// set for every other DIO, which on a T4 includes the analog-only DIO0–DIO3).
+// The flexible lines DIO4–DIO11 power up as analog inputs and ignore digital
+// writes until DIO_ANALOG_ENABLE is cleared, so that comes before the direction
+// write. Finally the inhibit mask is narrowed to the outputs alone, so that a
+// later Send cannot disturb the input lines.
+func (t *LabJackT4) configure() error {
+	owned := t.outputMask() | t.inputMask()
+
+	steps := []struct {
+		what  string
+		reg   uint16
+		value uint32
+	}{
+		{"clear DIO inhibit", t4RegDIOInhibit, ^owned & t4DIOMask},
+		{"set digital mode", t4RegDIOAnalogEnable, 0},
+		{"set DIO direction", t4RegDIODirection, t.outputMask()},
+		{"init output state", t4RegDIOState, 0},
+		{"protect input lines", t4RegDIOInhibit, ^t.outputMask() & t4DIOMask},
+	}
+	for _, s := range steps {
+		if err := t.writeUint32(s.reg, s.value); err != nil {
+			return fmt.Errorf("labjackt4: %s: %w", s.what, err)
+		}
+	}
+	return nil
+}
+
+// writeUint32 writes a 32-bit LabJack register (2 consecutive Modbus registers,
+// big-endian) with FC16.
+func (t *LabJackT4) writeUint32(reg uint16, value uint32) error {
+	var b [4]byte
+	binary.BigEndian.PutUint32(b[:], value)
+	_, err := t.client.WriteMultipleRegisters(reg, 2, b[:])
+	return err
+}
+
+// readUint32 reads a 32-bit LabJack register (2 consecutive Modbus registers,
+// big-endian) with FC3.
+func (t *LabJackT4) readUint32(reg uint16) (uint32, error) {
+	results, err := t.client.ReadHoldingRegisters(reg, 2)
+	if err != nil {
+		return 0, err
+	}
+	if len(results) < 4 {
+		return 0, fmt.Errorf("short read: %d bytes, want 4", len(results))
+	}
+	return binary.BigEndian.Uint32(results), nil
+}
+
 // --- OutputTTLDevice ---
 
-// Send sets all 8 FIO0–FIO7 output lines simultaneously from a bitmask.
-// Bit N drives line N HIGH; zero drives it LOW. Implements [OutputTTLDevice].
+// Send sets all 8 output lines simultaneously from a bitmask. Bit N drives
+// line N HIGH; zero drives it LOW. Implements [OutputTTLDevice].
 func (t *LabJackT4) Send(mask byte) error {
-	if _, err := t.client.WriteSingleRegister(t4RegFIOState, uint16(mask)); err != nil {
+	if err := t.writeUint32(t4RegDIOState, uint32(mask)<<uint(t.outputBase)); err != nil {
 		return fmt.Errorf("labjackt4: Send: %w", err)
 	}
 	t.outputState = mask
 	return nil
 }
 
-// SetHigh drives a single FIO output line HIGH. line is 0-indexed (0–7).
+// SetHigh drives a single output line HIGH. line is 0-indexed (0–7).
 // Implements [OutputTTLDevice].
 func (t *LabJackT4) SetHigh(line int) error {
 	if line < 0 || line > 7 {
@@ -129,7 +231,7 @@ func (t *LabJackT4) SetHigh(line int) error {
 	return t.Send(t.outputState | (1 << uint(line)))
 }
 
-// SetLow drives a single FIO output line LOW. line is 0-indexed (0–7).
+// SetLow drives a single output line LOW. line is 0-indexed (0–7).
 // Implements [OutputTTLDevice].
 func (t *LabJackT4) SetLow(line int) error {
 	if line < 0 || line > 7 {
@@ -144,7 +246,7 @@ func (t *LabJackT4) Pulse(line int, dur time.Duration) error {
 	return defaultPulse(t, line, dur)
 }
 
-// AllLow drives all 8 FIO0–FIO7 output lines LOW. Implements [OutputTTLDevice].
+// AllLow drives all 8 output lines LOW. Implements [OutputTTLDevice].
 func (t *LabJackT4) AllLow() error { return t.Send(0x00) }
 
 // Close sets all output lines LOW and closes the Modbus TCP connection.
@@ -156,32 +258,32 @@ func (t *LabJackT4) Close() error {
 
 // --- InputTTLDevice ---
 
-// ReadAll returns the current state of all 8 EIO0–EIO7 input lines as a
-// bitmask. Bit N reflects line N. Implements [InputTTLDevice].
+// ReadAll returns the current state of all 8 input lines as a bitmask.
+// Bit N reflects line N. Implements [InputTTLDevice].
 func (t *LabJackT4) ReadAll() (byte, error) {
-	results, err := t.client.ReadHoldingRegisters(t4RegEIOState, 1)
+	state, err := t.readUint32(t4RegDIOState)
 	if err != nil {
 		return 0, fmt.Errorf("labjackt4: ReadAll: %w", err)
 	}
-	return byte(binary.BigEndian.Uint16(results)), nil
+	return byte((state >> uint(t.inputBase)) & 0xFF), nil
 }
 
-// ReadLine returns the state (0 or 1) of a single EIO input line (0-indexed).
+// ReadLine returns the state (0 or 1) of a single input line (0-indexed).
 // Implements [InputTTLDevice].
 func (t *LabJackT4) ReadLine(line int) (byte, error) {
 	return readLineFromMask("labjackt4", t.ReadAll, line)
 }
 
-// WaitForInput blocks until any EIO0–EIO7 input line becomes active or ctx is
-// cancelled. Returns the active-line bitmask and the elapsed reaction time.
+// WaitForInput blocks until any input line becomes active or ctx is cancelled.
+// Returns the active-line bitmask and the elapsed reaction time.
 // Implements [InputTTLDevice].
 func (t *LabJackT4) WaitForInput(ctx context.Context) (byte, time.Duration, error) {
 	return pollWaitForInput(ctx, "labjackt4", t.ReadAll, t.pollInterval)
 }
 
-// DrainInputs polls until all EIO0–EIO7 input lines are inactive or ctx is
-// cancelled. Call before [LabJackT4.WaitForInput] to clear latched presses
-// from a previous trial. Implements [InputTTLDevice].
+// DrainInputs polls until all input lines are inactive or ctx is cancelled.
+// Call before [LabJackT4.WaitForInput] to clear latched presses from a previous
+// trial. Implements [InputTTLDevice].
 func (t *LabJackT4) DrainInputs(ctx context.Context) error {
 	return pollDrainInputs(ctx, "labjackt4", t.ReadAll, t.pollInterval)
 }

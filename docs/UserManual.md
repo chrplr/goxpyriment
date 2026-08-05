@@ -2441,7 +2441,7 @@ Output-only and input-only configurations are both valid. Prerequisites: kernel 
 
 ### LabJack T4 (Modbus TCP)
 
-Communicates over Ethernet via Modbus TCP — no LabJack SDK or driver required. FIO0–FIO7 are output lines; EIO0–EIO7 are input lines.
+Communicates over Ethernet via Modbus TCP — no LabJack SDK or driver required. The eight output lines are DIO4–DIO11 (FIO4–FIO7 + EIO0–EIO3) and the eight input lines are DIO12–DIO19 (EIO4–EIO7 + CIO0–CIO3); `WithT4OutputBase` / `WithT4InputBase` move those groups. DIO0–DIO3 are the T4's dedicated analog inputs and are unavailable as digital lines.
 
 ```go
 box, err := triggers.NewLabJackT4("192.168.1.100")

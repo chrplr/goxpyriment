@@ -1243,19 +1243,21 @@ Output-only and input-only configurations are both valid — omit `WithGPIOOutpu
 
 Implements both `OutputTTLDevice` and `InputTTLDevice`. Pure-Go Modbus TCP driver — no LabJack SDK or system library required.
 
-**Wiring:** FIO0–FIO7 → 8 TTL output lines (configured as outputs on open); EIO0–EIO7 → 8 TTL input lines (configured as inputs on open).
+**Wiring:** the T4's digital lines are DIO4–DIO19. Output lines 0–7 → DIO4–DIO11 (FIO4–FIO7 screw terminals + EIO0–EIO3 on the DB15); input lines 0–7 → DIO12–DIO19 (EIO4–EIO7 + CIO0–CIO3). DIO0–DIO3 are the T4's dedicated analog inputs AIN0–AIN3 and cannot be used as digital lines. DIO4–DIO11 are *flexible I/O* that power up as analog inputs; `NewLabJackT4` switches them to digital mode (`DIO_ANALOG_ENABLE`) before setting directions.
 
 ```go
 box, err := triggers.NewLabJackT4("192.168.1.100",
     triggers.WithT4PollInterval(5*time.Millisecond), // optional; default 5 ms
     triggers.WithT4Timeout(1*time.Second),            // optional; default 1 s
     triggers.WithT4UnitID(1),                         // optional; default 1
+    triggers.WithT4OutputBase(4),                     // optional; DIO of output line 0
+    triggers.WithT4InputBase(12),                     // optional; DIO of input line 0
 )
 if err != nil { log.Fatal(err) }
 defer box.Close()
 
-box.Send(0b00000001)              // FIO0 HIGH
-box.Pulse(0, 5*time.Millisecond)  // FIO0: HIGH for 5 ms, then LOW
+box.Send(0b00000001)              // output line 0 (FIO4) HIGH
+box.Pulse(0, 5*time.Millisecond)  // FIO4: HIGH for 5 ms, then LOW
 
 _ = box.DrainInputs(ctx)
 mask, rt, err := box.WaitForInput(ctx)
