@@ -267,13 +267,13 @@ func runOneBack(screen *apparatus.Screen, pics []stimuli.VisualStimulus, isRepea
 				return res
 			}
 			if f == 0 {
-				ts, err := screen.PacedFlipTS()
+				ts, err := screen.FlipTS()
 				if err != nil {
 					return res
 				}
 				res.onsetNS[i] = ts
 				finalise(ts, i) // any earlier target whose window closed before this onset
-			} else if err := screen.PacedFlip(); err != nil {
+			} else if err := screen.Flip(); err != nil {
 				return res
 			}
 			if drainPresses(registerPress) {
@@ -286,7 +286,7 @@ func runOneBack(screen *apparatus.Screen, pics []stimuli.VisualStimulus, isRepea
 			if err := screen.Clear(); err != nil {
 				return res
 			}
-			if err := screen.PacedFlip(); err != nil {
+			if err := screen.Flip(); err != nil {
 				return res
 			}
 			if drainPresses(registerPress) {

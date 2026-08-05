@@ -33,8 +33,9 @@ sdlX, sdlY := screen.CenterToSDL(posX, posY)
 | Method | Description |
 |---|---|
 | `Clear()` | Fill with background color |
-| `Update()` / `Flip()` | Present backbuffer; blocks on VSYNC (in the browser: parks until the next requestAnimationFrame — see below) |
-| `PacedFlip()` / `PacedFlipTS()` | Update + busy-wait to the frame boundary for non-blocking drivers (no-op wait in the browser) |
+| `Update()` / `Flip()` | Present backbuffer and hold to the frame boundary, so one call = one display frame (in the browser: parks until the next requestAnimationFrame — see below) |
+| `FlipTS()` | `Flip` + the SDL nanosecond timestamp of the flip |
+| `CalibrateRefresh(n)` | Measure the actual frame period over n frames, bypassing pacing |
 | `ClearAndUpdate()` | Clear + Present in one call |
 | `Size() (w, h int32)` | Current renderer output size |
 | `FrameDuration() time.Duration` | Nominal frame time (1 / refresh rate) |
@@ -196,9 +197,41 @@ The present path is platform-split (`screen_present_notjs.go` /
 parks until the browser's next requestAnimationFrame tick
 (`sdl.WaitAnimationFrame` in the go-sdl3 fork) — required both for pacing
 (RAF = the browser's VSYNC) and for correctness: canvas updates only
-composite when the page yields, and `PacedFlip`'s desktop busy-wait never
+composite when the page yields, and the desktop busy-wait never
 yields, so its wait is a no-op on js. Measured: 60.00 Hz, SD ≈ 0.12 ms, no
 dropped frames (see `docs/WASM.md`).
+
+## Update always holds to the frame boundary
+
+`SDL_RenderPresent` cannot be trusted to block until the retrace. Under
+triple/mailbox buffering it queues the frame and returns immediately, and the
+per-frame loop then runs faster than the display — stimuli are replaced before
+the panel scans them out. This is not an exotic configuration: measured on
+Intel i915 + Wayland driving a well-behaved 120 Hz panel, unaided presents
+still came back as little as **6.95 ms** apart against an 8.33 ms frame.
+
+So `Update` presents *and then busy-waits* to the expected frame boundary
+(`paceToFrame`, `screen_present_notjs.go`). Where the driver does block
+correctly the spin exits after zero iterations and costs nothing.
+
+There is deliberately **no per-platform switch**. Whether Present blocks
+depends on driver + compositor + window mode + GPU, not on `GOOS` or the SDL
+video driver name — the same box behaves differently windowed vs fullscreen.
+Since the spin is free when unneeded, pacing unconditionally is both simpler
+and safer than predicting. This replaced the old `PacedFlip`/`PacedFlipTS`
+pair, which existed only because the caller had to choose.
+
+Pacing is skipped when VSync is off (`pacingEnabled`), since a caller who
+disabled VSync wants frames as fast as the GPU produces them. `SetVSync`
+refreshes that cached state.
+
+**Pacing enforces a minimum frame time, not a maximum.** It cannot recover a
+frame the compositor dropped. `CalibrateRefresh` is how you tell the two apart:
+it presents directly, bypassing the spin, so its median interval is the unaided
+driver behaviour. `control.Experiment.Initialize` runs it over 60 frames at
+startup and writes both rates into the data file (`sys refresh_nominal_hz`,
+`sys refresh_measured_hz`), warning on the log if they disagree by >10%.
+`tests/test_vsync_blocking` reports all three numbers interactively.
 
 ## Never present a frame with no draw calls
 

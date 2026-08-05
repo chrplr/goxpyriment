@@ -21,6 +21,7 @@ package apparatus
 
 import (
 	"fmt"
+	"sort"
 	"time"
 
 	"github.com/Zyko0/go-sdl3/sdl"
@@ -67,8 +68,10 @@ type Screen struct {
 	DefaultFont  *ttf.Font
 	CanvasOffset *sdl.FPoint   // If not nil, use this instead of true center
 	LogicalSize  *sdl.FPoint   // If not nil, use this for CenterToSDL
-	lastFlipNS   uint64        // SDL-clock (sdl.TicksNS) time of the previous PacedFlip; 0 = none yet
-	frameDur     time.Duration // cached nominal frame duration for PacedFlip (0 = not yet computed)
+	lastFlipNS   uint64        // SDL-clock (sdl.TicksNS) time of the previous present; 0 = none yet
+	frameDur     time.Duration // cached nominal frame duration used by Update's pacing (0 = not yet computed)
+	vsyncCached  int           // cached renderer VSync state; pacing is off when 0
+	vsyncKnown   bool          // whether vsyncCached has been filled in
 }
 
 // CenterToSDL converts center‑based coordinates to SDL top‑left based
@@ -150,21 +153,23 @@ func (s *Screen) SetLogicalSize(width, height int32) error {
 // Together with DisplayInfo it provides a complete postmortem record of the
 // software and hardware configuration used during a session.
 type SystemInfo struct {
-	SDLVersion     string // SDL library version, e.g. "3.2.10"
-	VideoDriver    string // SDL video driver, e.g. "wayland", "x11", "windows"
-	RendererName   string // GPU renderer backend, e.g. "opengl", "vulkan", "metal"
-	PhysicalW      int32  // renderer output width in physical pixels (HiDPI-aware)
-	PhysicalH      int32  // renderer output height in physical pixels
-	LogicalW       int32  // logical window width (experiment coordinate space)
-	LogicalH       int32  // logical window height
-	Fullscreen     bool   // true when running in fullscreen mode
-	FullscreenMode string // "exclusive" or "desktop" — whether the compositor was bypassed
-	VSync          int    // VSync state: 1=on, 0=off, -1=adaptive
-	AudioDriver    string // SDL audio driver, e.g. "pulseaudio", "alsa", "coreaudio"
-	AudioFormat    string // audio sample format, e.g. "SDL_AUDIO_F32LE"
-	AudioFreq      int32  // sample rate in Hz, e.g. 44100 or 48000
-	AudioChannels  int32  // number of audio output channels (1=mono, 2=stereo)
-	AudioFrames    int32  // hardware buffer size in sample frames
+	SDLVersion     string  // SDL library version, e.g. "3.2.10"
+	VideoDriver    string  // SDL video driver, e.g. "wayland", "x11", "windows"
+	RendererName   string  // GPU renderer backend, e.g. "opengl", "vulkan", "metal"
+	PhysicalW      int32   // renderer output width in physical pixels (HiDPI-aware)
+	PhysicalH      int32   // renderer output height in physical pixels
+	LogicalW       int32   // logical window width (experiment coordinate space)
+	LogicalH       int32   // logical window height
+	Fullscreen     bool    // true when running in fullscreen mode
+	FullscreenMode string  // "exclusive" or "desktop" — whether the compositor was bypassed
+	VSync          int     // VSync state: 1=on, 0=off, -1=adaptive
+	NominalHz      float64 // refresh rate SDL reports for the current display mode
+	MeasuredHz     float64 // refresh rate measured at startup (CalibrateRefresh); 0 = not measured
+	AudioDriver    string  // SDL audio driver, e.g. "pulseaudio", "alsa", "coreaudio"
+	AudioFormat    string  // audio sample format, e.g. "SDL_AUDIO_F32LE"
+	AudioFreq      int32   // sample rate in Hz, e.g. 44100 or 48000
+	AudioChannels  int32   // number of audio output channels (1=mono, 2=stereo)
+	AudioFrames    int32   // hardware buffer size in sample frames
 }
 
 // GatherSystemInfo collects SDL and renderer properties from this Screen.
@@ -187,6 +192,9 @@ func (s *Screen) GatherSystemInfo() SystemInfo {
 		if v, err := s.VSync(); err == nil {
 			info.VSync = v
 		}
+	}
+	if d := s.FrameDuration(); d > 0 {
+		info.NominalHz = float64(time.Second) / float64(d)
 	}
 	if s.Window != nil {
 		info.Fullscreen = (s.Window.Flags() & sdl.WINDOW_FULLSCREEN) != 0
@@ -318,12 +326,26 @@ func (s *Screen) ClearAndUpdate() error {
 	return s.Update()
 }
 
-// Update presents the rendered buffer.
+// Update presents the rendered buffer and does not return until the frame
+// boundary, so every Update occupies exactly one display frame.
 //
-// On desktop this maps to SDL_RenderPresent (blocking on VSYNC when the
-// driver honours it). In the browser (GOOS=js) it additionally parks until
-// the next requestAnimationFrame — the browser's VSYNC equivalent — because
-// canvas updates are only composited when the page yields
+// On desktop this maps to SDL_RenderPresent followed by a busy-wait to the
+// expected frame boundary (see paceToFrame). The wait exists because
+// SDL_RenderPresent cannot be trusted to block until the retrace: under
+// triple/mailbox buffering it queues the frame and returns immediately.
+// That is not an exotic configuration — measured on Intel i915 + Wayland with
+// a well-behaved 120 Hz panel, unaided presents still came back as little as
+// 6.95 ms apart against an 8.33 ms frame. Where the driver does block
+// correctly, the wait runs zero iterations and costs nothing, which is why
+// this is unconditional rather than selected per platform: the correct
+// behaviour is not predictable from GOOS, video driver, or window mode.
+//
+// Pacing is skipped when VSync is disabled, since a caller who turned VSync
+// off wants frames as fast as the GPU produces them.
+//
+// In the browser (GOOS=js) present parks until the next requestAnimationFrame
+// — the browser's VSYNC equivalent — because canvas updates are only
+// composited when the page yields, and paceToFrame is a no-op there
 // (see screen_present_js.go).
 func (s *Screen) Update() error {
 	// Ensure we are presenting the window, not a texture
@@ -332,14 +354,37 @@ func (s *Screen) Update() error {
 			return fmt.Errorf("apparatus.Screen.Update: resetting render target: %w", err)
 		}
 	}
-	return s.present()
+	// Sample the previous flip's time before presenting: present() records its
+	// own timestamp into lastFlipNS, and the boundary to wait for is one frame
+	// after the PREVIOUS flip.
+	prevFlipNS := s.lastFlipNS
+	if err := s.present(); err != nil {
+		return err
+	}
+	if s.pacingEnabled() {
+		s.paceToFrame(prevFlipNS)
+	}
+	return nil
 }
 
-// Flip is an alias for Update and presents the backbuffer to the display.
-// When VSync is enabled on the renderer, this call will typically block
-// until the next vertical retrace, providing a well-defined stimulus onset.
+// Flip is an alias for Update and presents the backbuffer to the display,
+// returning at the frame boundary.
 func (s *Screen) Flip() error {
 	return s.Update()
+}
+
+// pacingEnabled reports whether Update should hold to the frame boundary. It
+// caches the renderer's VSync state — querying SDL every frame is avoidable
+// work on this path — and SetVSync refreshes the cache.
+func (s *Screen) pacingEnabled() bool {
+	if !s.vsyncKnown {
+		v, err := s.Renderer.VSync()
+		if err != nil {
+			v = 1 // assume VSync is on; pacing is the safe default
+		}
+		s.vsyncCached, s.vsyncKnown = int(v), true
+	}
+	return s.vsyncCached != 0
 }
 
 // FlipTS presents the backbuffer (like Flip) and immediately captures the
@@ -357,41 +402,23 @@ func (s *Screen) FlipTS() (uint64, error) {
 	if err := s.Update(); err != nil {
 		return 0, fmt.Errorf("apparatus.Screen.FlipTS: %w", err)
 	}
-	return sdl.TicksNS(), nil
-}
-
-// PacedFlip presents the backbuffer (like Flip) and, when the driver does not
-// block for VSYNC (triple/mailbox buffering), busy-waits until the expected
-// frame boundary. It is a drop-in for Flip in any per-frame stimulus loop.
-//
-// On systems with well-behaved double-buffered VSYNC the busy-wait runs zero
-// iterations and overhead is negligible. On systems where SDL_RenderPresent
-// returns immediately (NVIDIA + compositor, Wayland mailbox, triple-buffer
-// drivers), it enforces the correct frame period so that each call occupies
-// exactly one display frame — preventing bright frames from being swallowed
-// before the monitor scans them out.
-func (s *Screen) PacedFlip() error {
-	if err := s.Update(); err != nil {
-		return fmt.Errorf("apparatus.Screen.PacedFlip: %w", err)
-	}
-	s.paceToFrame()
-	return nil
-}
-
-// PacedFlipTS is PacedFlip plus an SDL nanosecond timestamp captured after the
-// flip completes. Use this as a drop-in for FlipTS in timing-critical loops
-// where triple/mailbox buffering must be guarded against.
-func (s *Screen) PacedFlipTS() (uint64, error) {
-	if err := s.PacedFlip(); err != nil {
-		return 0, fmt.Errorf("apparatus.Screen.PacedFlipTS: %w", err)
-	}
-	return sdl.TicksNS(), nil
+	// Update already stamped this flip — present() records the time it
+	// returned, and paceToFrame refreshes it to the frame boundary it waited
+	// for. Reading the clock again here would be a third sdl.TicksNS() call
+	// per flip for a value already in hand, a few nanoseconds later.
+	return s.lastFlipNS, nil
 }
 
 // SetVSync toggles vertical synchronization.
 // vsync: 1 to enable, 0 to disable, -1 for adaptive vsync.
+//
+// Turning VSync off also turns off Update's frame pacing — see pacingEnabled.
 func (s *Screen) SetVSync(vsync int) error {
-	return s.Renderer.SetVSync(int32(vsync))
+	if err := s.Renderer.SetVSync(int32(vsync)); err != nil {
+		return err
+	}
+	s.vsyncCached, s.vsyncKnown = vsync, true
+	return nil
 }
 
 // FrameDuration returns the nominal duration of one display frame based on
@@ -410,6 +437,58 @@ func (s *Screen) FrameDuration() time.Duration {
 func (s *Screen) VSync() (int, error) {
 	v, err := s.Renderer.VSync()
 	return int(v), err
+}
+
+// CalibrateRefresh measures the display's actual frame period by presenting n
+// frames and returning the median interval between them.
+//
+// It deliberately bypasses Update's pacing and presents directly, so what it
+// reports is the unaided driver behaviour — otherwise it would simply measure
+// the pacing spin and always agree with the nominal rate.
+//
+// Compare the result against FrameDuration to catch the three configurations
+// that silently corrupt stimulus timing:
+//
+//   - measured ≈ nominal — the normal case.
+//   - measured well BELOW nominal — SDL_RenderPresent is not blocking to the
+//     retrace (triple/mailbox buffering). Update's pacing covers this.
+//   - measured well ABOVE nominal — frames are being dropped before they reach
+//     the panel (a compositor throttling an unfocused or occluded window will
+//     do this, as will a GPU that cannot keep up). Pacing CANNOT fix this; it
+//     enforces a minimum frame time, not a maximum.
+//
+// Each frame is a real Clear (which fills the target), never a bare present:
+// a frame carrying no draw calls is not reliably scanned out (see
+// fillWholeTarget).
+func (s *Screen) CalibrateRefresh(n int) (time.Duration, error) {
+	if n < 2 {
+		return 0, fmt.Errorf("apparatus.Screen.CalibrateRefresh: need at least 2 frames, got %d", n)
+	}
+	intervals := make([]time.Duration, 0, n-1)
+	var prev uint64
+	for i := 0; i < n; i++ {
+		if err := s.Clear(); err != nil {
+			return 0, fmt.Errorf("apparatus.Screen.CalibrateRefresh: %w", err)
+		}
+		if s.Renderer.RenderTarget() != nil {
+			if err := s.Renderer.SetRenderTarget(nil); err != nil {
+				return 0, fmt.Errorf("apparatus.Screen.CalibrateRefresh: resetting render target: %w", err)
+			}
+		}
+		if err := s.present(); err != nil {
+			return 0, fmt.Errorf("apparatus.Screen.CalibrateRefresh: %w", err)
+		}
+		now := sdl.TicksNS()
+		if prev != 0 {
+			intervals = append(intervals, time.Duration(now-prev))
+		}
+		prev = now
+	}
+	// The pacer's baseline is now a bare present rather than a paced flip;
+	// leaving it would make the first Update after calibration pace against it.
+	// That is harmless (it is at most one frame old) and self-correcting.
+	sort.Slice(intervals, func(i, j int) bool { return intervals[i] < intervals[j] })
+	return intervals[len(intervals)/2], nil
 }
 
 // WaitFrames holds the current solid-color display state for exactly n
@@ -445,7 +524,7 @@ func (s *Screen) WaitFrames(n int) (uint64, error) {
 		if err := s.fillWholeTarget(); err != nil {
 			return 0, fmt.Errorf("apparatus.Screen.WaitFrames: %w", err)
 		}
-		if err := s.PacedFlip(); err != nil {
+		if err := s.Flip(); err != nil {
 			return 0, fmt.Errorf("apparatus.Screen.WaitFrames: %w", err)
 		}
 	}

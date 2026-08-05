@@ -347,8 +347,8 @@ func animLoop(exp *control.Experiment) error {
 		_ = instrTop // already drawn above; suppress "unused" warning
 		_ = instrBot
 
-		// VSYNC-locked flip (PacedFlip guards against triple/mailbox buffering).
-		_ = screen.PacedFlip()
+		// VSYNC-locked flip (Flip guards against triple/mailbox buffering).
+		_ = screen.Flip()
 		s.frameCount++
 
 		// ---- Event handling --------------------------------------------------------

@@ -264,7 +264,7 @@ func runTrial(exp *control.Experiment, trialNum, totalTrials int, target string)
 	if err := redraw(true); err != nil {
 		return records, fmt.Errorf("runTrial: %w", err)
 	}
-	trialOnsetNS, err := screen.PacedFlipTS()
+	trialOnsetNS, err := screen.FlipTS()
 	if err != nil {
 		return records, fmt.Errorf("runTrial: %w", err)
 	}
@@ -355,7 +355,7 @@ func runTrial(exp *control.Experiment, trialNum, totalTrials int, target string)
 		if err := redraw(cursorVisible); err != nil {
 			return records, fmt.Errorf("runTrial: %w", err)
 		}
-		if err := screen.PacedFlip(); err != nil {
+		if err := screen.Flip(); err != nil {
 			return records, fmt.Errorf("runTrial: %w", err)
 		}
 	}

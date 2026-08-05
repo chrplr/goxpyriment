@@ -195,6 +195,15 @@ func (df *DataFile) WriteSystemInfo(info apparatus.SystemInfo) {
 		df.WriteComment(fmt.Sprintf("sys fullscreen_mode: %s", info.FullscreenMode))
 	}
 	df.WriteComment(fmt.Sprintf("sys vsync: %d", info.VSync))
+	// Nominal is what SDL reports for the display mode; measured is what the
+	// presents actually did at startup. A mismatch means this session's frame
+	// timing was not what the analysis will assume — see Screen.CalibrateRefresh.
+	if info.NominalHz > 0 {
+		df.WriteComment(fmt.Sprintf("sys refresh_nominal_hz: %.4f", info.NominalHz))
+	}
+	if info.MeasuredHz > 0 {
+		df.WriteComment(fmt.Sprintf("sys refresh_measured_hz: %.4f", info.MeasuredHz))
+	}
 	df.WriteComment(fmt.Sprintf("sys audio_driver: %s", info.AudioDriver))
 	df.WriteComment(fmt.Sprintf("sys audio_format: %s", info.AudioFormat))
 	df.WriteComment(fmt.Sprintf("sys audio_sample_rate_hz: %d", info.AudioFreq))

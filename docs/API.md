@@ -158,7 +158,7 @@ control.ErrCancelled  // returned when the user cancels the dialog
 | `exp.Blank(ms int) error` | Clear and flip screen, then wait `ms` milliseconds. |
 | `exp.Wait(ms int) error` | Wait `ms` ms while pumping SDL events (ESC-abortable). |
 | `exp.ShowSplash(waitForKey bool) error` | Show experiment name + version splash. |
-| `exp.Flip() error` | Present the backbuffer (VSYNC-locked when VSync is enabled). |
+| `exp.Flip() error` | Present the backbuffer and hold to the frame boundary (one call = one display frame). |
 
 ### Input
 
@@ -684,17 +684,22 @@ screen.CenterToSDL(x, y float32) (float32, float32)  // convert to SDL top-left 
 screen.CenteredRect(pos FPoint, w, h float32) *FRect  // SDL dest rect for a w×h texture centered at pos
 screen.MousePosition() (float32, float32)              // current cursor in center coords
 screen.Clear() error                                   // fill with background color
-screen.Update() error                                  // present (VSYNC-blocks)
+screen.Update() error                                  // present + hold to the frame boundary
 screen.Flip() error                                    // alias for Update
 screen.FlipTS() (uint64, error)                        // present + return SDL nanosecond timestamp after flip
 screen.FrameDuration() time.Duration                   // nominal frame duration (falls back to 60 Hz)
+screen.CalibrateRefresh(n int) (time.Duration, error)  // measured frame period, pacing bypassed
 screen.SetLogicalSize(w, h int32) error
 screen.SetVSync(vsync int) error
 screen.DisplayInfo() apparatus.DisplayInfo                    // monitor properties
 screen.Destroy()
 ```
 
-`FlipTS` returns `sdl.TicksNS()` captured immediately after `SDL_RenderPresent`. This timestamp is on the same nanosecond clock as SDL3 event timestamps, so `int64(event.Timestamp - onsetNS)` gives hardware-precision reaction time without any polling latency.
+`FlipTS` returns `sdl.TicksNS()` captured immediately after the flip. This timestamp is on the same nanosecond clock as SDL3 event timestamps, so `int64(event.Timestamp - onsetNS)` gives hardware-precision reaction time without any polling latency.
+
+`Update` (and therefore `Flip`, `FlipTS`, `Show`, `ShowTS`, `WaitFrames`) presents **and then holds to the frame boundary**, so one call always occupies exactly one display frame. This is unconditional because `SDL_RenderPresent` cannot be trusted to block until the retrace — under triple/mailbox buffering it returns immediately — and the wait costs nothing where the driver does block. Pacing is skipped when VSync is off.
+
+`CalibrateRefresh` bypasses that pacing and presents directly, so it reports the *unaided* driver behaviour; compare it against `FrameDuration`. `Initialize` runs it over 60 frames at startup and writes `sys refresh_nominal_hz` / `sys refresh_measured_hz` into the session's `-info.txt`, warning if they differ by more than 10%. Measured slower than nominal means frames are being dropped before the panel, which pacing cannot fix.
 
 ### Keyboard
 

@@ -234,12 +234,12 @@ the SDL event clock, never wall-clock deltas.
 
 ### Frame pacing (measured 2026-07-13, headless Chrome)
 
-On js, `Screen.Update()` (and therefore `Flip`/`FlipTS`/`PacedFlip`/`Show`)
+On js, `Screen.Update()` (and therefore `Flip`/`FlipTS`/`Show`)
 presents to the canvas and then parks until the browser's next
 `requestAnimationFrame` tick — the browser's VSYNC equivalent (implemented in
 `apparatus/screen_present_js.go` on top of `sdl.WaitAnimationFrame` in the
 fork). This is required for correctness, not just pacing: canvas updates are
-only composited when the page yields, and `PacedFlip`'s desktop busy-wait
+only composited when the page yields, and the desktop busy-wait
 would freeze the tab. A 250 ms fallback tick prevents deadlock in background
 tabs (where browsers throttle RAF) — but run experiments in a **focused,
 foreground tab**.
@@ -249,7 +249,7 @@ Measured flip-loop intervals (299 frames, alternating full-screen colors):
 | Loop | mean | SD | min–max | dropped frames |
 |---|---|---|---|---|
 | `Update` loop | 16.666 ms (60.00 Hz) | 0.12 ms | 16.1–17.3 ms | 0 |
-| `PacedFlip` loop | 16.666 ms (60.00 Hz) | 0.11 ms | 16.3–17.1 ms | 0 |
+| `Flip` loop | 16.666 ms (60.00 Hz) | 0.11 ms | 16.3–17.1 ms | 0 |
 
 Caveat: headless Chrome ticks a virtual 60 Hz compositor; on real hardware
 the rate follows the display (e.g. 120 Hz laptop panels) and jitter depends

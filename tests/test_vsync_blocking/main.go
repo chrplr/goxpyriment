@@ -3,38 +3,63 @@
 
 // VSYNC Blocking Test
 //
-// Compares FlipTS and PacedFlipTS to determine if the platform/driver blocks on VSYNC
-// (double-buffered, blocking Flip) or if it returns immediately (triple/mailbox/non-blocking buffering).
+// Reports what this display/driver actually does, in three numbers:
+//
+//   - NOMINAL — the frame period SDL derives from the current display mode.
+//   - UNAIDED — the period measured presenting directly, with Update's frame
+//     pacing bypassed (Screen.CalibrateRefresh). This is what SDL_RenderPresent
+//     does on its own.
+//   - PACED — the period measured through Screen.Update, which every stimulus
+//     path uses.
+//
+// UNAIDED well below NOMINAL means SDL_RenderPresent does not block to the
+// retrace (triple/mailbox buffering) and frames would be swallowed without
+// pacing. UNAIDED well above NOMINAL means frames are being dropped before
+// they reach the panel — a compositor throttling an unfocused or occluded
+// window does this — which pacing cannot fix, since it enforces a minimum
+// frame time, not a maximum.
+//
+// Also prints the display mode list, which on a variable-refresh-rate panel
+// exposes the supported rate range. Pacing targets the nominal (maximum) rate,
+// so on VRR it acts as a floor and never caps the frame rate.
 //
 // Usage:
 //
-//	go run main.go
-//	go run main.go -w     # windowed mode
+//	go run ./tests/test_vsync_blocking
+//	go run ./tests/test_vsync_blocking -w     # windowed mode
 package main
 
 import (
 	"fmt"
 	"log"
+	"sort"
 
+	"github.com/Zyko0/go-sdl3/sdl"
 	"github.com/chrplr/goxpyriment/control"
 	"github.com/chrplr/goxpyriment/stimuli"
 )
+
+const nFrames = 120
 
 func main() {
 	exp := control.NewExperimentFromFlags("VSYNC Blocking Test", control.Black, control.White, 24)
 	defer exp.End()
 
 	err := exp.Run(func() error {
-		nominalDuration := exp.Screen.FrameDuration()
-		nominalMs := float64(nominalDuration.Nanoseconds()) / 1e6
+		nominalMs := float64(exp.Screen.FrameDuration().Nanoseconds()) / 1e6
 
-		msg := stimuli.NewTextLine(fmt.Sprintf("Testing FlipTS() for 60 frames... (Nominal frame: %.2f ms)", nominalMs), 0, 0, control.White)
-		
-		// 1. Test FlipTS
-		var flipIntervals []float64
+		// UNAIDED: bypasses pacing and presents directly.
+		unaided, err := exp.Screen.CalibrateRefresh(nFrames)
+		if err != nil {
+			return err
+		}
+		unaidedMs := float64(unaided.Nanoseconds()) / 1e6
+
+		// PACED: the normal Update path every stimulus goes through.
+		msg := stimuli.NewTextLine("measuring paced frames…", 0, 0, control.White)
+		var paced []float64
 		var prevTS uint64
-
-		for i := 0; i < 60; i++ {
+		for i := 0; i < nFrames; i++ {
 			if err := exp.Screen.Clear(); err != nil {
 				return err
 			}
@@ -45,83 +70,81 @@ func main() {
 			if err != nil {
 				return err
 			}
-			if i > 5 { // Discard warm-up frames
-				flipIntervals = append(flipIntervals, float64(ts-prevTS)/1e6)
+			if i > 5 { // discard warm-up frames
+				paced = append(paced, float64(ts-prevTS)/1e6)
 			}
 			prevTS = ts
 		}
 		_ = msg.Unload()
-
-		// 2. Test PacedFlipTS
-		msg2 := stimuli.NewTextLine("Testing PacedFlipTS() for 60 frames...", 0, 0, control.White)
-		var pacedIntervals []float64
-		prevTS = 0
-
-		for i := 0; i < 60; i++ {
-			if err := exp.Screen.Clear(); err != nil {
-				return err
+		sort.Float64s(paced)
+		pacedMs := paced[len(paced)/2]
+		shortPaced := 0
+		for _, v := range paced {
+			if v < 0.9*nominalMs {
+				shortPaced++
 			}
-			if err := msg2.Draw(exp.Screen); err != nil {
-				return err
-			}
-			ts, err := exp.Screen.PacedFlipTS()
-			if err != nil {
-				return err
-			}
-			if i > 5 { // Discard warm-up frames
-				pacedIntervals = append(pacedIntervals, float64(ts-prevTS)/1e6)
-			}
-			prevTS = ts
 		}
-		_ = msg2.Unload()
 
-		// 3. Compute Averages
-		var sumFlip float64
-		for _, v := range flipIntervals {
-			sumFlip += v
+		var verdict, recommendation string
+		switch {
+		case unaidedMs < 0.9*nominalMs:
+			verdict = "NON-BLOCKING — SDL_RenderPresent returns before the retrace."
+			recommendation = "Update's frame pacing is doing real work on this system.\n" +
+				"Without it, stimulus frames would be swallowed before the panel scans them out."
+		case unaidedMs > 1.1*nominalMs:
+			verdict = "DROPPING FRAMES — presents are arriving slower than the display refresh."
+			recommendation = "Pacing cannot fix this: it enforces a minimum frame time, not a maximum.\n" +
+				"Check for a compositor throttling this window (try fullscreen, and keep it focused)."
+		default:
+			verdict = "BLOCKING — the driver honours VSYNC on its own."
+			recommendation = "Update's pacing spin exits immediately here and costs nothing."
 		}
-		avgFlip := sumFlip / float64(len(flipIntervals))
 
-		var sumPaced float64
-		for _, v := range pacedIntervals {
-			sumPaced += v
-		}
-		avgPaced := sumPaced / float64(len(pacedIntervals))
-
-		// 4. Determine Verdict
-		var verdict string
-		var recommendation string
-		if avgFlip < nominalMs*0.7 {
-			verdict = "NON-BLOCKING (Triple/mailbox buffering or driver compositor active)."
-			recommendation = "You MUST use PacedFlip() or PacedFlipTS() inside dynamic animation loops.\nUsing Flip() or FlipTS() natively will cause frame swallowing."
-		} else {
-			verdict = "BLOCKING (Double-buffered VSYNC behaves normally)."
-			recommendation = "Both FlipTS() and PacedFlipTS() are safe and performant.\nPacedFlip() will behave identically to Flip() with negligible overhead."
+		id := sdl.GetDisplayForWindow(exp.Screen.Window)
+		modeList := ""
+		if modes, err := id.FullscreenDisplayModes(); err == nil && len(modes) > 0 {
+			seen := map[string]bool{}
+			for _, m := range modes {
+				if m.W != modes[0].W || m.H != modes[0].H {
+					continue
+				}
+				k := fmt.Sprintf("%.2f", m.RefreshRate)
+				if !seen[k] {
+					seen[k] = true
+					modeList += k + "Hz "
+				}
+			}
 		}
 
 		resultText := fmt.Sprintf(
-			"RESULTS:\n\n"+
-				"Nominal Frame Duration : %6.2f ms\n"+
-				"Average FlipTS()       : %6.2f ms\n"+
-				"Average PacedFlipTS()  : %6.2f ms\n\n"+
-				"VSYNC Behavior         : %s\n\n"+
-				"Recommendation         :\n%s\n\n"+
+			"RESULTS (median of %d frames):\n\n"+
+				"Nominal frame period : %6.3f ms  (%.2f Hz)\n"+
+				"Unaided present      : %6.3f ms  (%.2f Hz)\n"+
+				"Paced (Screen.Update): %6.3f ms  (%.2f Hz)\n"+
+				"Short paced frames   : %d / %d\n"+
+				"Rates at native size : %s\n\n"+
+				"%s\n\n%s\n\n"+
 				"Press any key to exit.",
-			nominalMs, avgFlip, avgPaced, verdict, recommendation,
+			nFrames, nominalMs, 1000/nominalMs, unaidedMs, 1000/unaidedMs,
+			pacedMs, 1000/pacedMs, shortPaced, len(paced), modeList,
+			verdict, recommendation,
 		)
 
-		log.Printf("Nominal Frame Duration: %.2f ms", nominalMs)
-		log.Printf("Average FlipTS()      : %.2f ms", avgFlip)
-		log.Printf("Average PacedFlipTS() : %.2f ms", avgPaced)
-		log.Printf("Verdict: %s", verdict)
+		log.Printf("nominal %.3f ms | unaided %.3f ms | paced %.3f ms | short %d/%d",
+			nominalMs, unaidedMs, pacedMs, shortPaced, len(paced))
+		log.Printf("verdict: %s", verdict)
 
-		tb := stimuli.NewTextBox(resultText, 800, control.Origin(), control.White)
+		tb := stimuli.NewTextBox(resultText, 900, control.Origin(), control.White)
 		if err := exp.Show(tb); err != nil {
 			return err
 		}
 
-		_, err := exp.Keyboard.Wait()
-		return err
+		if _, err := exp.Keyboard.Wait(); err != nil {
+			return err
+		}
+		// One measurement per run: returning nil here would send Run around the
+		// loop and measure again indefinitely.
+		return control.EndLoop
 	})
 
 	if err != nil && !control.IsEndLoop(err) {

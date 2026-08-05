@@ -19,8 +19,19 @@ import "github.com/Zyko0/go-sdl3/sdl"
 // sits below SDL's command batch, so flushing that batch cannot reach it. The
 // only remedy found is to give the frame real draw work, which is what
 // fillWholeTarget does.
+// It records the SDL-clock time of every present in lastFlipNS, including
+// unpaced ones (Flip/FlipTS/Update). paceToFrame needs the time of the
+// PREVIOUS present to know where the next frame boundary falls; when only the
+// paced calls maintained that field, any unpaced flip in between left the
+// baseline stale — pointing at a present two or more frames back — so the
+// target was already in the past and the following paced flip did not pace at
+// all. Mixing exp.ShowTS with Screen.WaitFrames in one loop hit exactly this.
 func (s *Screen) present() error {
-	return s.Renderer.Present()
+	if err := s.Renderer.Present(); err != nil {
+		return err
+	}
+	s.lastFlipNS = sdl.TicksNS()
+	return nil
 }
 
 // paceToFrame busy-waits until the expected frame boundary after a present,
@@ -28,24 +39,31 @@ func (s *Screen) present() error {
 // buffering: NVIDIA + compositor, Wayland mailbox). On well-behaved
 // double-buffered VSYNC the wait runs zero iterations.
 //
-// The spin runs on the SDL clock (sdl.TicksNS) — the same clock PacedFlipTS
+// The spin runs on the SDL clock (sdl.TicksNS) — the same clock FlipTS
 // stamps onsets with and that input events carry — so the frame boundary the
 // spin waits for and the timestamp the caller records live on one timebase.
 // It busy-waits rather than sleeps because sub-millisecond sleep is not
 // reliable here.
-func (s *Screen) paceToFrame() {
+// prevFlipNS is the value of lastFlipNS captured BEFORE the present this call
+// follows — the frame boundary is one frame duration after that, not after the
+// present that just happened. The caller must sample it before presenting,
+// because present() overwrites lastFlipNS with its own timestamp.
+func (s *Screen) paceToFrame(prevFlipNS uint64) {
 	// Cache the nominal frame duration on first use: it is fixed for the
 	// session, and re-querying the SDL display mode every frame is avoidable
 	// work on this timing-critical path.
 	if s.frameDur == 0 {
 		s.frameDur = s.FrameDuration()
 	}
-	now := sdl.TicksNS()
-	if s.lastFlipNS != 0 {
-		target := s.lastFlipNS + uint64(s.frameDur.Nanoseconds())
-		for now < target {
-			now = sdl.TicksNS()
-		}
+	if prevFlipNS == 0 {
+		return // first flip of the session: nothing to pace against
 	}
+	target := prevFlipNS + uint64(s.frameDur.Nanoseconds())
+	now := sdl.TicksNS()
+	for now < target {
+		now = sdl.TicksNS()
+	}
+	// The flip is deemed to land at the end of the spin, which is what the
+	// next frame paces against.
 	s.lastFlipNS = now
 }

@@ -28,6 +28,11 @@ import (
 	"github.com/chrplr/goxpyriment/stimuli"
 )
 
+// calibrationFrames is how many frames Initialize presents to measure the
+// actual refresh rate. Enough for a stable median without a visible delay:
+// 60 frames is one second at 60 Hz, half of that at 120 Hz.
+const calibrationFrames = 60
+
 // EventState provides a convenient summary of the last processed input events.
 // It is updated by Experiment.PollEvents.
 type EventState struct {
@@ -306,7 +311,11 @@ func (e *Experiment) Show(v stimuli.VisualStimulus) error {
 }
 
 // ShowTS presents a visual stimulus (clear + draw + flip) and returns the
-// SDL3 nanosecond timestamp captured immediately after the VSYNC flip.
+// SDL3 nanosecond timestamp captured immediately after the flip.
+//
+// The flip holds to the frame boundary (see Screen.Update), so consecutive
+// ShowTS calls occupy exactly one display frame each even on drivers where
+// SDL_RenderPresent does not block.
 //
 // The timestamp is on the same clock as SDL3 event timestamps, so the
 // reaction time from this stimulus onset is simply:
@@ -674,6 +683,25 @@ func (e *Experiment) Initialize() error {
 	// Capture system metadata automatically so every data file has a complete
 	// record of SDL, renderer, display, and audio configuration.
 	sysInfo := e.Screen.GatherSystemInfo()
+
+	// Measure the display before the experiment starts, and record it beside
+	// the nominal rate. The two disagreeing is the single most useful signal
+	// that a session's timing is not what the analysis will assume: below
+	// nominal means the driver is not blocking on VSYNC, above means frames
+	// are being dropped on the way to the panel (a compositor throttling an
+	// unfocused window, typically). Costs calibrationFrames refresh periods,
+	// on a screen that is still blank.
+	if measured, err := e.Screen.CalibrateRefresh(calibrationFrames); err == nil && measured > 0 {
+		sysInfo.MeasuredHz = float64(time.Second) / float64(measured)
+		if sysInfo.NominalHz > 0 {
+			if ratio := sysInfo.MeasuredHz / sysInfo.NominalHz; ratio < 0.9 || ratio > 1.1 {
+				log.Printf("WARNING: measured refresh %.2f Hz differs from nominal %.2f Hz — "+
+					"stimulus durations may not be what you asked for",
+					sysInfo.MeasuredHz, sysInfo.NominalHz)
+			}
+		}
+	}
+
 	sysInfo.AudioDriver = sdl.GetCurrentAudioDriver()
 	if e.AudioDevice != 0 {
 		if spec, frames, err := e.AudioDevice.Format(); err == nil && spec != nil {

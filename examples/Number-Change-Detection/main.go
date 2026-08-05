@@ -238,7 +238,7 @@ func showAttractor(exp *control.Experiment) error {
 		_ = exp.Screen.Clear()
 		_ = circ.Draw(exp.Screen)
 		_ = msg.Draw(exp.Screen)
-		_ = exp.Screen.PacedFlip()
+		_ = exp.Screen.Flip()
 
 		done := false
 		state := exp.PollEvents(func(e sdl.Event) bool {

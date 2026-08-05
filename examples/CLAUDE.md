@@ -91,7 +91,7 @@ bools are written bare; everything else is RFC-4180 quoted.
 
 - **RT comes from the SDL event clock**, never wall-clock deltas. Use `ShowAndGetRT`,
   or `exp.ShowTS` + `Keyboard.GetKeyEventTS` and subtract. See UserManual §6.
-- **Multi-frame loops use `screen.PacedFlip()`**, not `screen.Update()` — some systems
+- **Multi-frame loops use `screen.Update()`/`Flip()`**, which hold to the frame boundary — some systems
   present in a non-blocking mode and a naive per-frame loop runs too fast. See
   UserManual §5/§6.
 - **Never draw outside `exp.Run`** (the SDL main thread). Drawing from a goroutine

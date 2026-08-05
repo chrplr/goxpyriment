@@ -235,7 +235,6 @@ Two checks on the resulting `-events.csv`:
 | `-hz` | 60 | Refresh rate used to derive the tone duration |
 | `-no-sound` | false | Do not play the tone |
 | `-no-ttl` | false | Do not fire the trigger |
-| `-paced-flip` | false | Use `PacedFlip()` instead of `Update()` |
 | `-audio-frames` | 0 | Audio buffer, sample frames (0 = SDL default) |
 
 `-audio-frames` sets the floor on audio-onset precision: 256 frames at 44100 Hz

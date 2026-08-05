@@ -178,7 +178,7 @@ func animLoop(exp *control.Experiment, imagePath string, speed, slitW, slitGap f
 		}
 		_ = hudLine.Draw(screen)
 
-		_ = screen.PacedFlip()
+		_ = screen.Flip()
 
 		// Input handling
 		state := exp.PollEvents(func(e sdl.Event) bool {

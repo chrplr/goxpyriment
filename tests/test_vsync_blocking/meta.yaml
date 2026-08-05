@@ -1,3 +1,3 @@
 category: test
-description: Compares FlipTS and PacedFlipTS to determine if the platform/driver blocks on VSYNC or returns immediately
+description: Reports nominal, unaided and paced frame periods to show whether the platform/driver blocks on VSYNC or drops frames
 reference: ""

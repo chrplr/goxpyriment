@@ -18,12 +18,13 @@ import "github.com/Zyko0/go-sdl3/sdl"
 //     nothing and freeze the tab.
 //  2. Pacing: RAF fires once per display refresh, right before the compositor
 //     paints, so each present occupies exactly one display frame — the same
-//     contract Update/PacedFlip have on a well-behaved desktop VSYNC driver.
+//     contract Update/Flip have on a well-behaved desktop VSYNC driver.
 func (s *Screen) present() error {
 	if err := s.Renderer.Present(); err != nil {
 		return err
 	}
 	sdl.WaitAnimationFrame()
+	s.lastFlipNS = sdl.TicksNS()
 	return nil
 }
 
@@ -31,4 +32,4 @@ func (s *Screen) present() error {
 // next animation frame, and a busy-wait would never yield to the event loop
 // (wedging the tab). The desktop implementation lives in
 // screen_present_notjs.go.
-func (s *Screen) paceToFrame() {}
+func (s *Screen) paceToFrame(prevFlipNS uint64) {}

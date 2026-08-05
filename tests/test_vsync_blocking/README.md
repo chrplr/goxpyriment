@@ -1,24 +1,53 @@
 # VSYNC Blocking Test
 
-This diagnostic test compares the behavior of `FlipTS()` and `PacedFlipTS()` on your system. It automatically determines whether your platform's display driver blocks on VSYNC or returns immediately (which can cause frame swallowing in tight rendering loops).
+Reports what this display and driver actually do, so you know whether a
+session's frame timing can be trusted. Run it once on any machine you plan to
+collect data on.
 
-## What it does
+## What it measures
 
-1.  Runs a loop of 60 frames using `FlipTS()`, measuring the elapsed time between consecutive frame presentations.
-2.  Runs a loop of 60 frames using `PacedFlipTS()`, measuring the same.
-3.  Calculates and displays the average frame intervals and provides a recommendation.
+Three frame periods, as medians over 120 frames:
 
-## Running the test
+| Number | How it is obtained |
+|---|---|
+| **NOMINAL** | `Screen.FrameDuration()` — derived from the current display mode. What SDL *claims*. |
+| **UNAIDED** | `Screen.CalibrateRefresh()` — presents directly with `Update`'s frame pacing bypassed. What `SDL_RenderPresent` does on its own. |
+| **PACED** | A normal `Screen.FlipTS()` loop — the path every stimulus goes through. |
 
-From the repository root, run:
-
-```bash
-go run tests/test_vsync_blocking/main.go -w
-```
-
-*Note: Use `-w` for windowed mode or omit it to run in fullscreen mode.*
+It also lists the refresh rates the display offers at its native size, which on
+a variable-refresh-rate panel exposes the supported range.
 
 ## How to interpret results
 
--   **BLOCKING (VSYNC behaves normally):** Both `FlipTS()` and `PacedFlipTS()` yield intervals close to your monitor's nominal frame duration (e.g., ~16.6 ms on a 60 Hz monitor). You can safely use either function.
--   **NON-BLOCKING (Triple/mailbox buffering or compositor active):** `FlipTS()` returns almost instantly (averaging < 2 ms), whereas `PacedFlipTS()` enforces pacing and stays close to the monitor's refresh period. On such platforms, you **must** use `PacedFlip()` or `PacedFlipTS()` inside tight rendering loops to avoid skipping/swallowing frames.
+- **BLOCKING** — unaided ≈ nominal. The driver honours VSYNC by itself, and the
+  pacing spin inside `Update` exits immediately, costing nothing.
+- **NON-BLOCKING** — unaided well *below* nominal. `SDL_RenderPresent` returns
+  before the retrace (triple/mailbox buffering, or a compositor accepting the
+  buffer). Without pacing, stimulus frames would be swallowed before the panel
+  scans them out; with it, PACED comes back to nominal. This is common — it has
+  been measured on Intel i915 + Wayland driving a well-behaved 120 Hz panel
+  (presents returning 6.95 ms apart against an 8.33 ms frame), not only on
+  NVIDIA.
+- **DROPPING FRAMES** — unaided well *above* nominal. Frames are being lost on
+  the way to the panel, typically a compositor throttling an unfocused or
+  occluded window. **Pacing cannot fix this**: it enforces a minimum frame
+  time, not a maximum. Re-run fullscreen with the window focused.
+
+"Short paced frames" counts frames that still came in under 0.9 × nominal
+through the paced path; it should be 0.
+
+## Running the test
+
+From the repository root:
+
+```bash
+go run ./tests/test_vsync_blocking        # fullscreen
+go run ./tests/test_vsync_blocking -w     # windowed
+```
+
+Windowed on a compositing desktop is the worst case and is not representative
+of how an experiment runs — always confirm fullscreen before trusting a result.
+
+The same two numbers are recorded automatically in every session's `-info.txt`
+(`sys refresh_nominal_hz`, `sys refresh_measured_hz`), so you can also check
+after the fact whether a data file was collected under good conditions.

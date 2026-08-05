@@ -303,7 +303,11 @@ exp.Screen.Update()      // present to display (VSYNC-blocks)
 
 `exp.Show(stim)` does all three in one call and is the right choice for single-stimulus presentations. For cases where you need to draw multiple stimuli simultaneously — so they appear on screen at the same time — call each `Draw` separately before the single `Update`:
 
-> **Triple/mailbox buffering.** On some systems (NVIDIA + compositor, Wayland) the system may present in a non-blocking mode — mailbox ("triple buffering"), where a newer frame replaces the pending one and `SDL_RenderPresent` returns immediately, or via a compositor that accepts your buffer rather than blocking on scanout. The display stays tear-free (it still updates only at VSYNC), but the *call* no longer paces one frame per call: it does **not** block. In a per-frame loop, the duration loop then completes without consuming wall-clock time, so the stimulus is replaced too early — its on-screen duration is unpredictably short (often, but not always, zero frames). Wayland is especially affected because presentation is driven by frame callbacks rather than a blocking swap, and reliable FIFO vsync requires recent compositor protocols. Use `screen.PacedFlip()` instead of `screen.Update()` in any loop that presents a stimulus for multiple frames: it calls `Update()` and, if the call returned before the expected frame boundary, busy-waits until the correct time. The pacing state is stored on `Screen` automatically; no extra variables are needed.
+> **Triple/mailbox buffering — handled for you.** On many systems (NVIDIA + compositor, Wayland, and more besides) `SDL_RenderPresent` does **not** block until the retrace: it queues the frame in a non-blocking mode — mailbox ("triple buffering"), where a newer frame replaces the pending one — or hands the buffer to a compositor that accepts it rather than blocking on scanout. The display stays tear-free, but the *call* no longer paces one frame per call. A per-frame loop then completes without consuming wall-clock time and the stimulus is replaced too early, its on-screen duration unpredictably short (often, but not always, zero frames).
+>
+> `screen.Update()` therefore presents **and then holds to the frame boundary**, so one call always occupies one display frame. You do not have to select a special method or detect the platform: where the driver blocks correctly the wait runs zero iterations and costs nothing. This is why there is no `PacedFlip` — it was removed once pacing became unconditional.
+>
+> The one thing pacing cannot do is recover a frame that was *dropped* on the way to the panel: it enforces a minimum frame time, not a maximum. See §Calibration below.
 
 ```go
 // Show fixation cross and stimulus simultaneously
@@ -333,9 +337,11 @@ All rendering must happen inside the `exp.Run` callback — equivalently, on the
 
 ### Frame cadence
 
-`screen.Update()` blocks until the display's vertical retrace (VSYNC). On a 60 Hz monitor this is ~16.67 ms; on a 120 Hz monitor ~8.33 ms. This is the fundamental clock of the visual display: every stimulus change is aligned to a frame boundary automatically.
+`screen.Update()` returns at the display's vertical retrace (VSYNC). On a 60 Hz monitor this is ~16.67 ms; on a 120 Hz monitor ~8.33 ms. This is the fundamental clock of the visual display: every stimulus change is aligned to a frame boundary automatically.
 
-On some systems (NVIDIA proprietary driver + compositor, Wayland) the system may select a non-blocking presentation mode (mailbox/"triple buffering") or route the swap through a compositor, so `Update()` returns before the frame is scanned out. The display is still tear-free, but you cannot rely on the call to block for one frame, and a per-frame loop then runs too fast — shortening or dropping multi-frame stimuli. (This is not VSYNC being disabled: a blocking mode such as FIFO exists; the system just isn't guaranteed to use it. Wayland paces via frame callbacks rather than a blocking swap.) Use `screen.PacedFlip()` as a drop-in for `screen.Update()` in any tight frame loop — it adds a busy-wait when needed and is a no-op on systems with correct VSYNC blocking.
+On some systems (NVIDIA proprietary driver + compositor, Wayland) the system selects a non-blocking presentation mode (mailbox/"triple buffering") or routes the swap through a compositor, so the underlying `SDL_RenderPresent` returns before the frame is scanned out. The display is still tear-free, but the call cannot be relied on to block for one frame. (This is not VSYNC being disabled: a blocking mode such as FIFO exists; the system just isn't guaranteed to use it. Wayland paces via frame callbacks rather than a blocking swap.)
+
+`screen.Update()` closes this gap itself by holding to the frame boundary after presenting, so a tight frame loop is correct on every driver without you choosing anything. Measured on Intel i915 + Wayland with a 120 Hz panel, unaided presents returned as little as 6.95 ms apart against an 8.33 ms frame; through `Update` the same loop held 8.333 ms with SD 0.06 ms.
 
 To know your frame duration at runtime:
 
@@ -343,6 +349,43 @@ To know your frame duration at runtime:
 frameDur := exp.Screen.FrameDuration()  // e.g., 16.666ms on a 60 Hz display
 fmt.Printf("Frame: %.2f ms\n", frameDur.Seconds()*1000)
 ```
+
+### Startup calibration
+
+`FrameDuration()` is the *nominal* period — what SDL derives from the display
+mode. It is not proof that your frames actually took that long. `Initialize()`
+therefore measures the display over 60 frames before the experiment starts and
+records both numbers in the `-info.txt` file:
+
+```
+# sys refresh_nominal_hz: 120.0000
+# sys refresh_measured_hz: 119.9820
+```
+
+If the two disagree by more than 10%, a warning is logged. Take it seriously —
+it means this session's stimulus durations were not what your analysis will
+assume. The two directions mean different things:
+
+| Measured vs nominal | Meaning | Does pacing help? |
+|---|---|---|
+| **≈ nominal** | Normal. | — |
+| **Faster than nominal** | `SDL_RenderPresent` is not blocking to the retrace (triple/mailbox buffering). | Yes — `Update`'s pacing is exactly this case. |
+| **Slower than nominal** | Frames are being *dropped* before reaching the panel: a compositor throttling an unfocused or occluded window, or a GPU that cannot keep up. | **No.** Pacing enforces a minimum frame time, not a maximum. |
+
+The third row is the one that catches people out. A compositor will happily
+throttle a windowed experiment to a fraction of the refresh rate while every
+timestamp your program records still looks plausible. Run fullscreen, keep the
+window focused, and check the measured rate in the info file afterwards.
+
+To measure it yourself at any point — it bypasses the pacing, so it reports the
+unaided driver behaviour:
+
+```go
+measured, err := exp.Screen.CalibrateRefresh(120)  // median over 120 frames
+```
+
+`tests/test_vsync_blocking` reports nominal, unaided and paced side by side,
+with a verdict; run it once on any machine you plan to collect data on.
 
 ### `exp.Wait` vs `clock.Wait`
 
@@ -382,7 +425,7 @@ goxpyriment exposes time through **two independent clocks with different zero po
 | Clock | Read it via | Zero point | Use it for |
 |---|---|---|---|
 | **Go monotonic clock** | `clock.GetTime()`, `clock.GetTimeNS()`, `Clock.Now()`, `Clock.NowMillis()`, `Clock.NowNanos()` | First use of the `clock` package, or `clock.NewClock()` | *Scheduling and logging in your own code*: inter-trial and inter-stimulus intervals, drift-free trial pacing (`SleepUntil`), and "time since start of block" columns in your data file |
-| **SDL event clock** | `exp.ShowTS()`, `Screen.FlipTS()`, `Screen.PacedFlipTS()`, `Keyboard.GetKeyEventTS()`, `WaitAnyEventTS()`, and the `Timestamp` field of any SDL event (all on `sdl.TicksNS()`) | SDL initialisation | **Reaction-time measurement**: whenever you subtract a stimulus onset from a response, *both* values must come from this clock |
+| **SDL event clock** | `exp.ShowTS()`, `Screen.FlipTS()`, `Keyboard.GetKeyEventTS()`, `WaitAnyEventTS()`, and the `Timestamp` field of any SDL event (all on `sdl.TicksNS()`) | SDL initialisation | **Reaction-time measurement**: whenever you subtract a stimulus onset from a response, *both* values must come from this clock |
 
 **The rule.** Measure reaction times entirely on the SDL clock — subtract a `FlipTS`/`ShowTS` onset from a `GetKeyEventTS` response. Use the Go clock only for things you *schedule* rather than *measure*: ISIs, fixation durations, block pacing, and log timestamps. Crossing the two — e.g. `keyTS - clock.GetTimeNS()` — is meaningless.
 
@@ -423,7 +466,7 @@ Use this decision guide before committing to a timing strategy.
 | Coarse ISIs and fixation durations (≥ 100 ms) | `exp.Wait(ms)` — adequate precision, keeps the event loop alive |
 | Show stimulus + timed hold (fixation, cue, mask) | `exp.ShowTimed(stim, ms)` — `Show` + `Wait` in one call |
 | Single-stimulus trial, RT relative to onset | `key, rt, err := exp.ShowAndGetRT(stim, keys, timeout)` — hardware-precise RT, clears stale events automatically |
-| Stimulus duration measured in frames (e.g. 2-frame mask) | Per-frame loop with `screen.PacedFlip()` (safe on all drivers), or `PresentStreamOfImages` (Section 10) |
+| Stimulus duration measured in frames (e.g. 2-frame mask) | Per-frame loop with `screen.Flip()` (paced, safe on all drivers), or `PresentStreamOfImages` (Section 10) |
 | Multi-stimulus sequence, RT relative to a specific stimulus | `exp.ShowTS(stim)` + `exp.Keyboard.GetKeyEventTS(...)` — nanosecond timestamps on the same SDL clock; subtract directly |
 | RSVP or rapid animation (frame-accurate presentation of many items) | `PresentStreamOfImages` / `PresentStreamOfText` (Section 10) — GC disabled, VSYNC-locked, full timing log |
 | EEG/MEG synchronisation required | Add a TTL pulse via `triggers` immediately after `exp.ShowTS` (Section 17) |
@@ -433,7 +476,7 @@ Use this decision guide before committing to a timing strategy.
 
 **When in doubt, use `ShowAndGetRT`.** It clears stale events, records the VSYNC flip timestamp, waits for the key with hardware-precision timing, and returns `(key, rtMs, error)` — the canonical single-stimulus RT call. Use raw `ShowTS` + `GetKeyEventTS` only when composing multiple stimuli before a single response.
 
-**`ShowTS` vs `FlipTS` vs `PacedFlipTS`.** `exp.ShowTS(stim)` is the standard high-level call: it clears the screen, draws the stimulus, flips, and returns the flip timestamp — one line for the common case. `exp.Screen.FlipTS()` is the lower-level primitive that only flips and timestamps, leaving clearing and drawing to you. `exp.Screen.PacedFlipTS()` is the same as `FlipTS` but adds the triple-buffering guard (busy-wait if the driver returned early); use it for the onset frame of a multi-frame stimulus in a per-frame loop. Use plain `FlipTS` only in VRR mode (where VSYNC is disabled by design) or when you have confirmed that the driver blocks correctly.
+**`ShowTS` vs `FlipTS`.** `exp.ShowTS(stim)` is the standard high-level call: it clears the screen, draws the stimulus, flips, and returns the flip timestamp — one line for the common case. `exp.Screen.FlipTS()` is the lower-level primitive that only flips and timestamps, leaving clearing and drawing to you. Both hold to the frame boundary, so both are safe in a per-frame loop; there is no third variant to choose between.
 
 ### Display compositor bypass
 
@@ -2004,11 +2047,11 @@ exp.Run(func() error {
     }
     exp.Screen.Clear()
     v.DrawAt(exp.Screen, &control.FRect{X: 100, Y: 50, W: 640, H: 480})
-    return exp.Screen.PacedFlip()   // not Update(): see Section 5
+    return exp.Screen.Flip()   // presents and holds one frame: see Section 5
 })
 ```
 
-Use `PacedFlip` rather than `Update` in any per-frame loop. On drivers that
+`Flip` is an alias for `Update`; both hold one frame. On drivers that
 present without blocking (triple/mailbox buffering), `Update` returns
 immediately and the loop runs faster than the display, swallowing frames.
 
@@ -2070,7 +2113,7 @@ exp.Run(func() error {
     exp.Screen.Clear()
     v.Draw(exp.Screen)
 
-    flipNS, err := exp.Screen.PacedFlipTS()
+    flipNS, err := exp.Screen.FlipTS()
     if err != nil {
         return err
     }

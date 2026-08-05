@@ -67,7 +67,6 @@
 //	-hz float         Refresh rate used to derive the tone duration (default 60)
 //	-no-sound         Do not play the tone
 //	-no-ttl           Do not fire the TTL trigger
-//	-paced-flip       Use PacedFlip() instead of Update()
 //	-audio-frames int Audio hardware buffer, sample frames (0 = SDL default).
 //	                  Sets the floor on audio-onset quantisation: 256 frames at
 //	                  44100 Hz quantises tone onsets to 5.8 ms steps.
@@ -135,7 +134,6 @@ var (
 	fExclusiveFS = flag.String("exclusive-fullscreen", "auto", "Fullscreen presentation: auto | on (exclusive, bypasses the compositor where possible) | off (fullscreen-desktop).\n\tRecorded as 'sys fullscreen_mode' in the results header; the two are not comparable.")
 	fSysInfo     = flag.Bool("sysinfo", false, "Print system information and exit")
 	fOutDir      = flag.String("outdir", "", "Directory for the .csv/-info.txt results (default: $HOME/goxpy_data).\n\tUse it to keep a session's data files beside its other outputs.")
-	fPacedFlip   = flag.Bool("paced-flip", false, "Use PacedFlip() instead of Update() for frame pacing [av]")
 	fGC          = flag.Bool("gc", false, "Leave the garbage collector RUNNING during timing-critical loops.\n\tBy default the collector is suspended; pass -gc to measure its effect on timing\n\t(run the same test twice, with and without, to obtain the comparison).")
 	fSquarePx    = flag.Int("square-px", 0, "Side of each of the five stimulus squares, in renderer pixels;\n\t0 = one quarter of the render height, which keeps each square's centre\n\tclear of the bezel and fixes the top↔bottom separation at 0.750 [av / vrr]")
 	fNoSound     = flag.Bool("no-sound", false, "Do not play the tone [av]")
@@ -449,10 +447,10 @@ func runAV(exp *control.Experiment, trig triggers.OutputTTLDevice) error {
 		restoreGC := suspendGC()
 		defer restoreGC()
 
+		// Update holds to the frame boundary itself; there is no longer a
+		// separate paced variant to select between (the -paced-flip flag is
+		// gone with it).
 		flip := exp.Screen.Update
-		if *fPacedFlip {
-			flip = exp.Screen.PacedFlip
-		}
 
 		paint, err := newPainter(exp)
 		if err != nil {

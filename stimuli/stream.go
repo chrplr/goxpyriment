@@ -356,9 +356,9 @@ func PresentStreamOfStimuliHooks(screen *apparatus.Screen, elements []StreamElem
 			}
 			if f == 0 {
 				// Capture the SDL nanosecond timestamp of the actual VSYNC flip.
-				// PacedFlipTS busy-waits the frame boundary on drivers that do
+				// FlipTS busy-waits the frame boundary on drivers that do
 				// not block in Present (NVIDIA+compositor, Wayland mailbox, Pi).
-				ts, err := screen.PacedFlipTS()
+				ts, err := screen.FlipTS()
 				if err != nil {
 					return userEvents, timingLogs, err
 				}
@@ -380,7 +380,7 @@ func PresentStreamOfStimuliHooks(screen *apparatus.Screen, elements []StreamElem
 					}
 				}
 			} else {
-				if err := screen.PacedFlip(); err != nil { // VSYNC-paced frame
+				if err := screen.Flip(); err != nil { // VSYNC-paced frame
 					return userEvents, timingLogs, err
 				}
 			}
@@ -423,7 +423,7 @@ func PresentStreamOfStimuliHooks(screen *apparatus.Screen, elements []StreamElem
 				}
 			}
 			if f == 0 {
-				ts, err := screen.PacedFlipTS()
+				ts, err := screen.FlipTS()
 				if err != nil {
 					return userEvents, timingLogs, err
 				}
@@ -446,7 +446,7 @@ func PresentStreamOfStimuliHooks(screen *apparatus.Screen, elements []StreamElem
 					}
 				}
 			} else {
-				if err := screen.PacedFlip(); err != nil {
+				if err := screen.Flip(); err != nil {
 					return userEvents, timingLogs, err
 				}
 			}
