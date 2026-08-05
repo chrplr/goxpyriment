@@ -155,7 +155,8 @@ func (s *Screen) SetLogicalSize(width, height int32) error {
 type SystemInfo struct {
 	SDLVersion     string  // SDL library version, e.g. "3.2.10"
 	VideoDriver    string  // SDL video driver, e.g. "wayland", "x11", "windows"
-	RendererName   string  // GPU renderer backend, e.g. "opengl", "vulkan", "metal"
+	RendererName   string  // SDL renderer BACKEND, e.g. "opengl", "vulkan", "metal" — not the GPU
+	GLRenderer     string  // OpenGL GL_RENDERER: the GPU/driver actually rendering; "" if unavailable
 	PhysicalW      int32   // renderer output width in physical pixels (HiDPI-aware)
 	PhysicalH      int32   // renderer output height in physical pixels
 	LogicalW       int32   // logical window width (experiment coordinate space)
@@ -192,6 +193,8 @@ func (s *Screen) GatherSystemInfo() SystemInfo {
 		if v, err := s.VSync(); err == nil {
 			info.VSync = v
 		}
+		// Which GPU ran it — RendererName only says which SDL backend did.
+		info.GLRenderer = glRendererString()
 	}
 	if d := s.FrameDuration(); d > 0 {
 		info.NominalHz = float64(time.Second) / float64(d)

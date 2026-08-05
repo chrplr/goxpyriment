@@ -188,6 +188,9 @@ func (df *DataFile) WriteSystemInfo(info apparatus.SystemInfo) {
 	df.WriteComment(fmt.Sprintf("sys sdl_version: %s", info.SDLVersion))
 	df.WriteComment(fmt.Sprintf("sys video_driver: %s", info.VideoDriver))
 	df.WriteComment(fmt.Sprintf("sys renderer: %s", info.RendererName))
+	if info.GLRenderer != "" {
+		df.WriteComment(fmt.Sprintf("sys gl_renderer: %s", info.GLRenderer))
+	}
 	df.WriteComment(fmt.Sprintf("sys physical_resolution: %dx%d px", info.PhysicalW, info.PhysicalH))
 	df.WriteComment(fmt.Sprintf("sys logical_resolution: %dx%d px", info.LogicalW, info.LogicalH))
 	df.WriteComment(fmt.Sprintf("sys fullscreen: %v", info.Fullscreen))

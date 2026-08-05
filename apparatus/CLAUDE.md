@@ -45,6 +45,24 @@ sdlX, sdlY := screen.CenterToSDL(posX, posY)
 | `MousePosition() (float32, float32)` | Cursor in center-based coords (HiDPI-corrected) |
 | `DisplayInfo() DisplayInfo` | Native resolution, refresh rate, pixel density, format |
 
+### SystemInfo — which GPU actually rendered
+
+`RendererName` is SDL's *backend* ("opengl", "vulkan", "metal"); it never says
+which GPU ran it. `GLRenderer` does: it reads OpenGL's `GL_RENDERER` string via
+`SDL_GL_GetProcAddress` + purego (pure Go, no CGo — see `glrenderer_notjs.go`),
+and lands in every data file as `sys gl_renderer`.
+
+It returns `""` rather than guessing when there is no current GL context, which
+is normal for the Vulkan and software renderers, and always on js.
+
+This matters on hybrid-graphics laptops. Measured on Intel + NVIDIA RTX 2000
+Ada: rendering defaults to `Mesa Intel(R) Arc(tm) Graphics (MTL)`, and
+`__NV_PRIME_RENDER_OFFLOAD=1` with `__GLX_VENDOR_LIBRARY_NAME=nvidia` (or
+`__EGL_VENDOR_LIBRARY_FILENAMES=.../10_nvidia.json`) switches it to
+`NVIDIA RTX 2000 Ada Generation Laptop GPU/PCIe/SSE2`. Frame timing was
+identical on both. Do not infer the GPU from which `/dev/dri/renderD*` node the
+process has open — that varies between identical runs.
+
 ### DisplayInfo
 
 ```go
