@@ -73,7 +73,7 @@
 //
 // Per-test flags — display:  -duration-s float (default 10)
 // Per-test flags — latency:  -freq-hz float, -drain-reps int (default 10)
-// Per-test flags — vrr:      -vrr-max-ms int (default 50), -cycles
+// Per-test flags — vrr:      -vrr-max-ms int (default 20), -vrr-reps int (default 5)
 // Per-test flags — rt:       -iti-ms float, mean ITI jittered ±50 % (default 1000)
 //
 // Placing the photodiodes
@@ -115,7 +115,7 @@ var (
 	fPort        = flag.String("port", "", "Serial port for DLP-IO8-G (empty = auto-detect)")
 	fTriggerPin  = flag.Int("trigger-pin", 1, "DLP-IO8-G output pin (1–8)")
 	fTriggerMs   = flag.Int("trigger-ms", 5, "Trigger pulse duration (ms)")
-	fCycles      = flag.Int("cycles", 120, "Number of cycles [av / vrr / rt]")
+	fCycles      = flag.Int("cycles", 120, "Number of cycles [av / rt]")
 	fLevelA      = flag.Int("level-a", 0, "Dark luminance 0–255 (surround) [av / vrr]")
 	fLevelB      = flag.Int("level-b", 255, "Bright luminance 0–255 (squares) [av / vrr]")
 	fFramesOn    = flag.Int("frames-on", 12, "Bright frames per cycle (12 = 200 ms at 60 Hz) [av]")
@@ -128,7 +128,8 @@ var (
 	fHz          = flag.Float64("hz", 60.0, "Expected display refresh rate in Hz; sets the tone duration (frames-on × 1/hz) [av]")
 	fWarmup      = flag.Int("warmup", 10, "Leading cycles discarded from statistics [av / display]")
 	fDrainReps   = flag.Int("drain-reps", 10, "Repetitions per tone duration [latency]")
-	fVRRMaxMs    = flag.Int("vrr-max-ms", 50, "Maximum stimulus duration to sweep, in 1 ms steps [vrr]")
+	fVRRMaxMs    = flag.Int("vrr-max-ms", 20, "Maximum stimulus duration to sweep, in 1 ms steps [vrr]")
+	fVRRReps     = flag.Int("vrr-reps", 5, "Repetitions per duration step [vrr].\n\tThe defaults (20 steps x 5 reps) run in about 20 s; the sweep is a\n\tpass/fail check that arbitrary durations are presentable, so it does not\n\tneed the cycle counts the av test uses. Raise both for tighter SDs.")
 	fWindowed    = flag.Bool("w", false, "Windowed mode (1024×768 window instead of fullscreen)")
 	fDisplay     = flag.Int("d", -1, "Display index: monitor where the window/fullscreen will open (-1 = primary)")
 	fExclusiveFS = flag.String("exclusive-fullscreen", "auto", "Fullscreen presentation: auto | on (exclusive, bypasses the compositor where possible) | off (fullscreen-desktop).\n\tRecorded as 'sys fullscreen_mode' in the results header; the two are not comparable.")
@@ -863,7 +864,7 @@ func runCheck(exp *control.Experiment) error {
 // affected by it.
 func runVRR(exp *control.Experiment, trig triggers.OutputTTLDevice) error {
 	maxMs := *fVRRMaxMs
-	reps := *fCycles
+	reps := *fVRRReps
 	_, isNull := trig.(triggers.NullOutputTTLDevice)
 	trigDur := time.Duration(*fTriggerMs) * time.Millisecond
 

@@ -65,7 +65,7 @@ go run ./tests/Timing-Tests -frames-on 1 -frames-off 60 -cycles 60   # single-fr
 go run ./tests/Timing-Tests -test check
 go run ./tests/Timing-Tests -test display -duration-s 30
 go run ./tests/Timing-Tests -test latency -audio-frames 256 -drain-reps 20
-go run ./tests/Timing-Tests -test vrr     -vrr-max-ms 50 -cycles 5
+go run ./tests/Timing-Tests -test vrr     # ~20 s with the defaults
 go run ./tests/Timing-Tests -test rt      -cycles 60
 go run ./tests/Timing-Tests -sysinfo                                 # config snapshot, then exit
 ```
@@ -211,7 +211,9 @@ Two checks on the resulting `-events.csv`:
 | Flag | Default | Meaning |
 |---|---|---|
 | `-test` | `av` | `av \| vrr \| rt \| check \| display \| latency` |
-| `-cycles` | 120 | Number of cycles (`av`, `vrr`, `rt`) |
+| `-cycles` | 120 | Number of cycles (`av`, `rt`) |
+| `-vrr-max-ms` | 20 | Longest duration the `vrr` sweep targets, in 1 ms steps |
+| `-vrr-reps` | 5 | Repetitions per duration step (`vrr`) |
 | `-warmup` | 10 | Leading cycles discarded from statistics |
 | `-port` | auto | Serial port for the DLP-IO8-G |
 | `-trigger-pin` | 1 | DLP-IO8-G output pin (1–8) |
