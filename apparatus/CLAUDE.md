@@ -127,7 +127,7 @@ m := &apparatus.Mouse{PollButtons: pollFunc}  // injected by control.Experiment
 
 | Method | Description |
 |---|---|
-| `ShowCursor(show bool)` | Toggle cursor visibility |
+| `ShowCursor(show bool)` | Toggle cursor visibility. `NewScreen` leaves the cursor visible, but `control.Experiment.Initialize` then hides it — see `control/CLAUDE.md` |
 | `Position() (x, y float32)` | Current cursor position in **window pixels** (not center-based) |
 | `WaitPress()` | Block until any mouse button pressed |
 | `WaitPressRT(timeoutMS)` | Returns `(button, rtMs, error)` |
@@ -270,10 +270,9 @@ note in `screen_present_notjs.go`. The only remedy found is to give the frame re
 draw work.
 
 **What the library guarantees.** `Screen.Clear()` emits a full-screen
-`RenderFillRect` after the clear (`fillWholeTarget`), and `Screen.WaitFrames()`
-does the same. Everything routed through the `Screen` API is therefore safe:
-`Clear`, `ClearAndUpdate`, `Blank`, `Show`, `WaitFrames`, and every `stimuli`
-presentation path.
+`RenderFillRect` after the clear (`fillWholeTarget`). Everything routed through
+the `Screen` API is therefore safe: `Clear`, `ClearAndUpdate`, `Blank`, `Show`,
+and every `stimuli` presentation path.
 
 **What it does not guarantee.** `Screen.Renderer` is public and is the documented
 extension point for custom stimulus types, so this stays reachable:
@@ -302,6 +301,22 @@ present without drawing, and do not rely on backbuffer persistence — SDL
 invalidates the backbuffer on every present, so there is also no way to read back
 what is currently displayed (`RenderReadPixels` would capture an already-
 invalidated buffer).
+
+## There is no "wait for n VSYNCs" call — a hold redraws every frame
+
+SDL3 has no `SDL_WaitVBlank`: the retrace is not observable on its own, so the
+only way to stay locked to the display is to present a frame. Combined with the
+rule above — a frame with no draw calls may never reach the panel — this means a
+"hold this for n frames" primitive *must* redraw its content once per frame.
+
+`Screen.WaitFrames(n)` used to offer the shortcut for solid-colour frames: it
+re-cleared the backbuffer with the renderer's **current draw colour** and
+flipped. After any stimulus that set its own colour (every `Draw` does), the
+hold painted the whole screen in that colour — a white rectangle held for 10
+frames turned the screen white for 9 of them. It has been removed. The
+replacements are `control.Experiment.ShowFrames(stim, n)` and
+`control.Experiment.BlankFrames(n)`, which run the explicit loop and return the
+first flip's timestamp. Do not reintroduce a hold that skips the redraw.
 
 ## Key conventions
 

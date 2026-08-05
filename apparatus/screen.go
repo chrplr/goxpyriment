@@ -494,45 +494,24 @@ func (s *Screen) CalibrateRefresh(n int) (time.Duration, error) {
 	return intervals[len(intervals)/2], nil
 }
 
-// WaitFrames holds the current solid-color display state for exactly n
-// additional VSYNC edges. Before each Present it re-clears the backbuffer
-// with the renderer's current draw color so that the double-buffer swap never
-// reveals a stale backbuffer. Returns the SDL nanosecond timestamp after the
-// final flip.
+// There is deliberately no "wait for n VSYNC edges" method.
 //
-// Intended use: after a solid-color Clear+Flip, hold that color for n more frames.
-//
-//	r.SetDrawColor(255, 255, 255, 255)
-//	r.Clear()
-//	screen.Flip()           // frame 0: white appears
-//	screen.WaitFrames(5)    // frames 1–5: white stays on screen
-//
-// For stimuli composed of textures or multiple draw calls, use an explicit
-// per-frame redraw loop instead:
+// Nothing in SDL3 exposes the retrace on its own — there is no SDL_WaitVBlank —
+// so the only way to be locked to the display is to present a frame, and a
+// frame that carries no draw calls is not reliably scanned out under a
+// compositor (see fillWholeTarget). A hold must therefore redraw its content
+// once per frame:
 //
 //	for i := 0; i < n; i++ {
-//	    drawMyStimulus(screen)
+//	    screen.Clear()
+//	    stim.Draw(screen)
 //	    screen.Flip()
 //	}
-func (s *Screen) WaitFrames(n int) (uint64, error) {
-	for i := 0; i < n; i++ {
-		// Re-clear backbuffer with the current draw color so both buffers stay
-		// identical and the swap is visually a no-op. Deliberately uses the
-		// current draw color rather than BgColor, so this cannot go through
-		// Screen.Clear; the fill is the same anti-clear-only-frame guard that
-		// Clear applies (see fillWholeTarget).
-		if err := s.Renderer.Clear(); err != nil {
-			return 0, fmt.Errorf("apparatus.Screen.WaitFrames: clearing backbuffer: %w", err)
-		}
-		if err := s.fillWholeTarget(); err != nil {
-			return 0, fmt.Errorf("apparatus.Screen.WaitFrames: %w", err)
-		}
-		if err := s.Flip(); err != nil {
-			return 0, fmt.Errorf("apparatus.Screen.WaitFrames: %w", err)
-		}
-	}
-	return sdl.TicksNS(), nil
-}
+//
+// control.Experiment.ShowFrames and control.Experiment.BlankFrames wrap that
+// loop. An earlier WaitFrames(n) re-cleared with the renderer's *current* draw
+// color instead of redrawing, which silently painted the whole screen with
+// whichever color the last stimulus happened to leave set.
 
 // RefreshRate returns the display's nominal refresh rate in Hz when VSync is
 // enabled, or 0 if VSync is disabled or the rate cannot be queried.

@@ -785,6 +785,16 @@ x, y := exp.Mouse.Position()
 exp.Mouse.ShowCursor(false)
 ```
 
+**The cursor is hidden by default.** `Initialize()` (and therefore `NewExperimentFromFlags`) hides the mouse pointer, so it never sits on top of your stimuli. Mouse-driven paradigms must ask for it back, right after the experiment is created:
+
+```go
+exp := control.NewExperimentFromFlags("Mouse Tracking", control.Black, control.White, 36)
+defer exp.End()
+exp.ShowCursor()   // participants need to see what they are pointing at
+```
+
+Setting `exp.CursorVisible = true` before `Initialize()` does the same thing. The participant-info dialog always shows the cursor while it is open, whatever the experiment's setting, since it is clicked.
+
 Button values: `sdl.BUTTON_LEFT`, `sdl.BUTTON_MIDDLE`, `sdl.BUTTON_RIGHT`, `sdl.BUTTON_X1`, `sdl.BUTTON_X2`.
 
 `IsPressed` and `WaitButtonReleaseTS` mirror the keyboard's `IsPressed` and `WaitKeyReleaseTS` and can be used to measure click-hold duration:

@@ -302,6 +302,12 @@ func main() {
 	exp := control.NewExperimentFromFlags("Finger Tracking", control.Black, control.White, 24)
 	defer exp.End()
 
+	// Runs on a touchscreen, but also with a mouse — where the participant needs
+	// to see what they are dragging. Initialize() hides the cursor by default.
+	if err := exp.ShowCursor(); err != nil {
+		log.Printf("Warning: could not show cursor: %v", err)
+	}
+
 	if err := exp.SetLogicalSize(logicalW, logicalH); err != nil {
 		log.Printf("Warning: could not set logical size: %v", err)
 	}

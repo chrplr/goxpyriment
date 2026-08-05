@@ -267,6 +267,12 @@ func main() {
 	exp := control.NewExperimentFromFlags("Mouse Tracking", control.Black, control.White, 36)
 	defer exp.End()
 
+	// The whole paradigm is the participant's pointer trajectory, so the cursor
+	// must be visible; Initialize() hides it by default.
+	if err := exp.ShowCursor(); err != nil {
+		log.Printf("Warning: could not show cursor: %v", err)
+	}
+
 	if err := exp.SetLogicalSize(logicalW, logicalH); err != nil {
 		log.Printf("Warning: could not set logical size: %v", err)
 	}

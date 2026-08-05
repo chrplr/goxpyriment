@@ -38,6 +38,7 @@ When `-s` is **absent** (e.g. the binary was launched by double-clicking its ico
 | `SubjectID` | `int` | Set by `-s` flag or `GetParticipantInfo` |
 | `DefaultFont` | `*ttf.Font` | Passed to stimuli that omit an explicit font |
 | `DefaultFontSize` | `int` | Font size used at init |
+| `CursorVisible` | `bool` | Mouse pointer over the experiment window. **Defaults to false — `Initialize` hides the cursor.** Set true before `Initialize`, or call `exp.ShowCursor()` after, for mouse-driven paradigms. `ShowCursor`/`HideCursor` keep it in sync |
 | `BackgroundColor` | `sdl.Color` | Screen background |
 | `ForegroundColor` | `sdl.Color` | Default text color |
 | `OutputDirectory` | `string` | Where `.csv` files are written |
@@ -47,6 +48,8 @@ When `-s` is **absent** (e.g. the binary was launched by double-clicking its ico
 - `exp.Show(stim)` — `Clear()` + `Draw()` + `Update()` in one call. Use for single-stimulus frames.
 - `exp.ShowTS(stim)` — Same as `Show` but returns the SDL3 nanosecond flip timestamp for hardware-precise RT.
 - `exp.ShowTimed(stim, durationMs)` — `Show(stim)` + `Wait(durationMs)`. For fixation crosses, cues, and passive stimulus viewing.
+- `exp.ShowFrames(stim, n)` — holds the stimulus for exactly `n` display frames, returning the first flip's timestamp (the onset). Redraws every frame; that is mandatory, not an optimisation (see `apparatus/CLAUDE.md`, "There is no 'wait for n VSYNCs' call").
+- `exp.BlankFrames(n)` — frame-locked `Blank`: clears and holds blank for `n` frames, returning the first flip's timestamp (the previous stimulus's offset).
 - `exp.ShowAndGetRT(stim, keys, timeoutMs)` — Clears stale keyboard events, shows stim with `ShowTS`, waits for a key with `GetKeyEventTS`, returns `(key, rtMs, error)` with hardware-precise RT. `timeoutMs = -1` for no timeout; returns `(0, 0, nil)` on timeout.
 - `exp.ShowEndMessage(message)` — Renders a centered completion message and waits for any key. For end-of-experiment screens.
 - `exp.ShowInstructions(text)` — Renders centered text, waits for spacebar.
@@ -67,6 +70,23 @@ type EventState struct {
     QuitRequested      bool  // sticky — stays true once ESC or window-close seen
 }
 ```
+
+## Mouse cursor: hidden by default
+
+`Initialize` calls `HideCursor` once the screen exists (`apparatus.NewScreen`
+deliberately *shows* the cursor — it also installs a cursor shape, which SDL
+does not supply on the KMS/DRM backend — so the order matters). A pointer left
+on a stimulus surface is an unintended distractor.
+
+Mouse-driven paradigms opt back in with `exp.ShowCursor()` immediately after
+creation: `examples/Mouse-tracking`, `Multiple-Object-Tracking`, `LoT-geometry`,
+`Finger-Tracking`, `Rush-Hour`. Failing to hide is cosmetic, so it warns rather
+than aborting the session.
+
+`GetParticipantInfo` is independent of all this: its dialog is clicked, so it
+shows the cursor for the lifetime of its window and restores the previous state
+on exit — correct whether it runs before `Initialize` (the usual case) or
+mid-session between blocks.
 
 ## AudioManager
 

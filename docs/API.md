@@ -142,8 +142,8 @@ control.ErrCancelled  // returned when the user cancels the dialog
 | `exp.Initialize() error` | Initializes SDL, audio, window, renderer, font, and data file. |
 | `exp.End()` | Cleans up all resources. Always `defer exp.End()` immediately after construction. |
 | `exp.Run(logic func() error) error` | Runs the main trial loop on the SDL main thread. Return `control.EndLoop` to exit cleanly. |
-| `exp.HideCursor() error` | Hides the mouse cursor. Call after `Initialize()` to prevent the cursor from appearing over stimuli. |
-| `exp.ShowCursor() error` | Makes the mouse cursor visible again. |
+| `exp.HideCursor() error` | Hides the mouse cursor. `Initialize()` already does this — only needed to hide it again after a `ShowCursor` call. |
+| `exp.ShowCursor() error` | Makes the mouse cursor visible. Call it after `Initialize()` in mouse-driven paradigms; the cursor is hidden by default so it never sits over the stimuli. Equivalent to setting `exp.CursorVisible = true` before `Initialize()`. `GetParticipantInfo` shows the cursor for its own dialog regardless. |
 
 ### Presentation Methods
 
@@ -152,6 +152,8 @@ control.ErrCancelled  // returned when the user cancels the dialog
 | `exp.Show(stim VisualStimulus) error` | Clear → draw → flip. The standard one-call stimulus presentation. |
 | `exp.ShowTS(stim VisualStimulus) (uint64, error)` | Clear → draw → flip, and return the SDL nanosecond timestamp captured immediately after the VSYNC flip. Use with `GetKeyEventTS` for hardware-precision RT measurement. |
 | `exp.ShowTimed(stim VisualStimulus, durationMs int) error` | `Show(stim)` + `Wait(durationMs)` in one call. For fixation crosses, cues, and passive stimulus viewing. |
+| `exp.ShowFrames(stim VisualStimulus, n int) (uint64, error)` | Hold the stimulus for exactly `n` display frames, returning the onset timestamp of the first flip. The stimulus is redrawn every frame — see *Holding a stimulus for a fixed number of frames* below. |
+| `exp.BlankFrames(n int) (uint64, error)` | Frame-locked counterpart of `Blank(ms)`: clear and hold blank for exactly `n` frames, returning the timestamp of the first flip (i.e. the previous stimulus's offset). |
 | `exp.ShowAndGetRT(stim VisualStimulus, keys []Keycode, timeoutMs int) (Keycode, int64, error)` | Clears stale keyboard events, shows stim with hardware-precise onset timing, waits for a key, and returns `(key, rtMs, error)`. Pass `timeoutMs = -1` for no timeout; returns `(0, 0, nil)` on timeout. This is the canonical single-stimulus RT measurement call. |
 | `exp.ShowEndMessage(message string) error` | Display a centered completion message and wait for any key. For end-of-experiment screens. |
 | `exp.ShowInstructions(text string) error` | Display centered text and wait for spacebar. |
@@ -193,6 +195,7 @@ type EventState struct {
 | `exp.GetPermutedBWSFactorCondition(name string) interface{}` | Return this subject's condition for a BWS factor. |
 | `exp.Design` | `*design.Experiment` — full design object |
 | `exp.Info` | `map[string]string` — values from `GetParticipantInfo`; set before `Initialize()` to persist them automatically to the `-info.txt` file |
+| `exp.CursorVisible` | `bool` — whether the mouse pointer is shown over the experiment window. Defaults to `false`: `Initialize()` hides the cursor. Set it to `true` before `Initialize()` (or call `ShowCursor()` after) for mouse-driven paradigms. |
 
 ### Font and Display
 
@@ -697,9 +700,31 @@ screen.Destroy()
 
 `FlipTS` returns `sdl.TicksNS()` captured immediately after the flip. This timestamp is on the same nanosecond clock as SDL3 event timestamps, so `int64(event.Timestamp - onsetNS)` gives hardware-precision reaction time without any polling latency.
 
-`Update` (and therefore `Flip`, `FlipTS`, `Show`, `ShowTS`, `WaitFrames`) presents **and then holds to the frame boundary**, so one call always occupies exactly one display frame. This is unconditional because `SDL_RenderPresent` cannot be trusted to block until the retrace — under triple/mailbox buffering it returns immediately — and the wait costs nothing where the driver does block. Pacing is skipped when VSync is off.
+`Update` (and therefore `Flip`, `FlipTS`, `Show`, `ShowTS`) presents **and then holds to the frame boundary**, so one call always occupies exactly one display frame. This is unconditional because `SDL_RenderPresent` cannot be trusted to block until the retrace — under triple/mailbox buffering it returns immediately — and the wait costs nothing where the driver does block. Pacing is skipped when VSync is off.
 
 `CalibrateRefresh` bypasses that pacing and presents directly, so it reports the *unaided* driver behaviour; compare it against `FrameDuration`. `Initialize` runs it over 60 frames at startup and writes `sys refresh_nominal_hz` / `sys refresh_measured_hz` into the session's `-info.txt`, warning if they differ by more than 10%. Measured slower than nominal means frames are being dropped before the panel, which pacing cannot fix.
+
+#### Holding a stimulus for a fixed number of frames
+
+There is no "wait for *n* VSYNC edges" call, and there cannot be a useful one: SDL3 exposes no `SDL_WaitVBlank`, so the only way to stay locked to the display is to present a frame — and a frame carrying no draw calls is not reliably scanned out under a compositor (see *Never present a frame with no draw calls* in `apparatus/CLAUDE.md`). A hold must therefore **redraw its content once per frame**:
+
+```go
+for i := 0; i < n; i++ {
+    screen.Clear()
+    stim.Draw(screen)
+    screen.Flip()
+}
+```
+
+`exp.ShowFrames(stim, n)` and `exp.BlankFrames(n)` wrap that loop and return the onset timestamp of the first flip:
+
+```go
+onsetNS, _ := exp.ShowFrames(rect, 10)   // 10 frames on screen
+offsetNS, _ := exp.BlankFrames(10)       // 10 frames blank
+exp.Data.Add(onsetNS, offsetNS)
+```
+
+A previous `Screen.WaitFrames(n)` held frames by re-clearing with the renderer's *current* draw colour rather than redrawing. After any stimulus that set its own colour, that painted the whole screen in the stimulus's colour — a white rectangle on black turned the following frames white. It has been removed; use the calls above.
 
 ### Keyboard
 

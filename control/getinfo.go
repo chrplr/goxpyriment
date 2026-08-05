@@ -8,6 +8,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -264,6 +265,22 @@ func GetParticipantInfo(title string, fields []InfoField) (map[string]string, er
 
 	window.StartTextInput()
 	defer window.StopTextInput()
+
+	// The dialog is clicked, so it needs a pointer regardless of what the
+	// experiment did to cursor visibility. Initialize() hides the cursor by
+	// default, and although this function owns its own SDL lifecycle (so it
+	// normally runs before any of that), it can also be called mid-session
+	// between blocks. Show the cursor for the dialog's lifetime and put it back
+	// the way it was on the way out.
+	cursorWasVisible := sdl.CursorVisible()
+	if err := sdl.ShowCursor(); err != nil {
+		log.Printf("control.GetParticipantInfo: could not show the mouse cursor: %v", err)
+	}
+	defer func() {
+		if !cursorWasVisible {
+			_ = sdl.HideCursor()
+		}
+	}()
 
 	// ── Colours ───────────────────────────────────────────────────────────────
 	colBg := sdl.Color{R: 245, G: 245, B: 245, A: 255}

@@ -25,7 +25,8 @@ import "github.com/Zyko0/go-sdl3/sdl"
 // paced calls maintained that field, any unpaced flip in between left the
 // baseline stale — pointing at a present two or more frames back — so the
 // target was already in the past and the following paced flip did not pace at
-// all. Mixing exp.ShowTS with Screen.WaitFrames in one loop hit exactly this.
+// all. A loop mixing paced presentation calls with unpaced raw flips hit
+// exactly this.
 func (s *Screen) present() error {
 	if err := s.Renderer.Present(); err != nil {
 		return err

@@ -5,6 +5,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"math"
 
 	"github.com/chrplr/goxpyriment/clock"
@@ -124,6 +125,12 @@ func main() {
 	fmt.Println("Main started")
 	exp := control.NewExperimentFromFlags("LoT-Geometry-Task", control.Black, control.White, 32)
 	defer exp.End()
+
+	// The participant points at a location, so the cursor must be visible;
+	// Initialize() hides it by default.
+	if err := exp.ShowCursor(); err != nil {
+		log.Printf("Warning: could not show cursor: %v", err)
+	}
 
 	fmt.Println("Experiment loaded. Starting Run...")
 

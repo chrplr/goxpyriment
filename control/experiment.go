@@ -98,6 +98,15 @@ type Experiment struct {
 	OutputDirectory string
 	// Info holds the key→value map returned by GetParticipantInfo, if called.
 	Info map[string]string
+	// CursorVisible controls whether the mouse pointer is shown over the
+	// experiment window. The zero value is false, so Initialize() hides the
+	// cursor: an experiment window is a stimulus surface and a stray pointer on
+	// it is an unintended distractor.
+	//
+	// Set it to true before Initialize(), or call ShowCursor() after it, for
+	// mouse-driven paradigms. ShowCursor and HideCursor keep this field in sync,
+	// so it always reflects the current state.
+	CursorVisible bool
 	// GammaCorrector, when non-nil, is applied by CorrectColor.
 	// Set via SetGamma or by assigning apparatus.NewGammaCorrector(...) directly.
 	GammaCorrector *apparatus.GammaCorrector
@@ -335,6 +344,68 @@ func (e *Experiment) ShowTS(v stimuli.VisualStimulus) (uint64, error) {
 		return 0, fmt.Errorf("control.Experiment.ShowTS: flipping display: %w", err)
 	}
 	return ts, nil
+}
+
+// ShowFrames presents a visual stimulus and holds it for exactly n display
+// frames, returning the SDL3 nanosecond timestamp of the first flip — the
+// stimulus onset.
+//
+// The stimulus is redrawn before every flip. That is not an optimisation
+// detail but a requirement: SDL exposes no way to wait for a retrace without
+// presenting, and a frame carrying no draw calls is not reliably scanned out
+// under a compositor (see apparatus.Screen.fillWholeTarget). Redrawing also
+// keeps the renderer's draw color consistent, which a "re-clear and flip" hold
+// does not.
+//
+// Use it when the duration must be an exact number of frames:
+//
+//	onset, _ := exp.ShowFrames(stim, 10)   // 10 frames ≈ 166.5 ms at 60 Hz
+//	exp.Screen.Clear()
+//	offset, _ := exp.Screen.FlipTS()
+//
+// For a duration in milliseconds, use ShowTimed instead.
+func (e *Experiment) ShowFrames(v stimuli.VisualStimulus, n int) (uint64, error) {
+	if n < 1 {
+		return 0, fmt.Errorf("control.Experiment.ShowFrames: n must be >= 1, got %d", n)
+	}
+	var onsetNS uint64
+	for i := 0; i < n; i++ {
+		ts, err := e.ShowTS(v)
+		if err != nil {
+			return 0, fmt.Errorf("control.Experiment.ShowFrames: frame %d: %w", i, err)
+		}
+		if i == 0 {
+			onsetNS = ts
+		}
+	}
+	return onsetNS, nil
+}
+
+// BlankFrames clears the screen and holds it blank for exactly n display
+// frames, returning the SDL3 nanosecond timestamp of the first flip — the
+// stimulus offset when it follows a ShowFrames.
+//
+// It is the frame-locked counterpart of Blank(ms), for inter-stimulus
+// intervals that must be an exact number of frames. Every frame goes through
+// Screen.Clear, so each one carries a real draw call (see ShowFrames).
+func (e *Experiment) BlankFrames(n int) (uint64, error) {
+	if n < 1 {
+		return 0, fmt.Errorf("control.Experiment.BlankFrames: n must be >= 1, got %d", n)
+	}
+	var offsetNS uint64
+	for i := 0; i < n; i++ {
+		if err := e.Screen.Clear(); err != nil {
+			return 0, fmt.Errorf("control.Experiment.BlankFrames: frame %d: %w", i, err)
+		}
+		ts, err := e.Screen.FlipTS()
+		if err != nil {
+			return 0, fmt.Errorf("control.Experiment.BlankFrames: frame %d: %w", i, err)
+		}
+		if i == 0 {
+			offsetNS = ts
+		}
+	}
+	return offsetNS, nil
 }
 
 // WaitAnyEventTS blocks until a matching input event arrives from any device
@@ -645,6 +716,23 @@ func (e *Experiment) Initialize() error {
 			return state.LastKeyUp, state.LastKeyUpTimestamp, state.QuitRequested
 		},
 	}
+	// Hide the pointer by default: an experiment window is a stimulus surface,
+	// and a stray cursor sitting on it is a distractor the experimenter did not
+	// put there. apparatus.NewScreen deliberately shows the cursor (it also has
+	// to install a cursor *shape*, which SDL does not supply on the KMS/DRM
+	// backend), so this must come after the screen exists.
+	//
+	// Mouse-driven experiments opt back in with exp.ShowCursor() right after
+	// Initialize. GetParticipantInfo is unaffected — it shows the cursor for the
+	// lifetime of its own dialog window, whether it runs before or after this.
+	if !e.CursorVisible {
+		if err := e.HideCursor(); err != nil {
+			// Non-fatal: a visible cursor is cosmetic, not a reason to abort a
+			// session that is otherwise ready to run.
+			log.Printf("Warning: could not hide the mouse cursor: %v", err)
+		}
+	}
+
 	e.Mouse = &apparatus.Mouse{
 		PollButtons: func() (uint32, bool) {
 			state := e.PollEvents(nil)
@@ -1094,13 +1182,22 @@ func (e *Experiment) Run(logic func() error) error {
 	})
 }
 
-// HideCursor hides the mouse cursor. Call this after Initialize() to prevent
-// the cursor from appearing over stimuli during the experiment.
+// HideCursor hides the mouse cursor. Initialize() already does this, so it is
+// only needed to hide the cursor again after a ShowCursor call.
 func (e *Experiment) HideCursor() error {
-	return sdl.HideCursor()
+	if err := sdl.HideCursor(); err != nil {
+		return fmt.Errorf("control.Experiment.HideCursor: %w", err)
+	}
+	e.CursorVisible = false
+	return nil
 }
 
-// ShowCursor makes the mouse cursor visible again.
+// ShowCursor makes the mouse cursor visible. Call it after Initialize() in
+// mouse-driven paradigms — Initialize() hides the cursor by default.
 func (e *Experiment) ShowCursor() error {
-	return sdl.ShowCursor()
+	if err := sdl.ShowCursor(); err != nil {
+		return fmt.Errorf("control.Experiment.ShowCursor: %w", err)
+	}
+	e.CursorVisible = true
+	return nil
 }

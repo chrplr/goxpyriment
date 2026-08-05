@@ -33,6 +33,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log"
 	"math"
 	"math/rand"
 	"runtime/debug"
@@ -536,6 +537,12 @@ func main() {
 	speed := flag.Float64("speed", 100, "Circle speed in px/s")
 	exp := control.NewExperimentFromFlags("MOT", control.Gray, control.White, 32)
 	defer exp.End()
+
+	// Responses are clicks on the tracked discs, so the cursor must be visible;
+	// Initialize() hides it by default.
+	if err := exp.ShowCursor(); err != nil {
+		log.Printf("Warning: could not show cursor: %v", err)
+	}
 
 	circleSpeed = float32(*speed)
 
