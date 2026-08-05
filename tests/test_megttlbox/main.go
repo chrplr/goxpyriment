@@ -50,6 +50,7 @@ func main() {
 	eventsFlag := flag.Bool("events", false, "live display of firmware-timestamped input events")
 	rtFlag := flag.Int("rtloop", 0, "measure host→timestamp latency N times (needs a D30→D22 jumper)")
 	atomicFlag := flag.Int("atomic", 0, "check that Send changes all 8 lines at once, N trials (needs full loopback)")
+	bbtkFlag := flag.Bool("bbtk", false, "emit a calibrated pulse sequence for external measurement (Black Box ToolKit)")
 	watchFlag := flag.Bool("watch", false, "continuously display the input lines until Enter/Ctrl-C")
 	setFlag := flag.String("set", "", "drive one output bitmask and hold it (e.g. 0xAA, 0b10101010, 170)")
 	flag.Parse()
@@ -86,6 +87,8 @@ func main() {
 		runRTLoop(ctx, box, *rtFlag)
 	case *atomicFlag > 0:
 		runAtomic(ctx, box, *atomicFlag)
+	case *bbtkFlag:
+		runBBTK(ctx, box)
 	case *watchFlag:
 		runWatch(ctx, box)
 	case *setFlag != "":
@@ -414,6 +417,136 @@ func runAtomic(ctx context.Context, box *triggers.MEGTTLBox, n int) {
 	if len(partials) > 0 {
 		fmt.Printf("  intermediate masks observed: % 02X\n", partials)
 	}
+}
+
+// --- Mode: -bbtk (calibrated sequence for an external instrument) ---
+
+// bbtkBlock is a run of identical pulses, emitted with a fixed inter-stimulus
+// interval so each one is unambiguous in the capture.
+type bbtkBlock struct {
+	label string
+	width time.Duration
+	mask  byte // lines pulsed together; bit N = line N
+	n     int
+}
+
+// runBBTK emits a pulse sequence designed to be measured by an external
+// instrument rather than by this program.
+//
+// Two claims about this box remain unverified from the host side, and neither
+// can be settled by software that lives on the host:
+//
+//   - Pulse width. The firmware times the pulse itself, but from millis(),
+//     whose 1 ms resolution truncates: a nominal 5 ms should land somewhere in
+//     4-5 ms. Only an instrument watching the wire can confirm that.
+//   - Inter-line skew. The atomic port write should change several lines on the
+//     same instruction. The firmware can be asked whether it saw them change
+//     together, but that is circular; an independent clock is better evidence.
+//
+// The sequence opens with a single long marker pulse so the capture is easy to
+// align, then runs three single-line blocks of increasing width, then a block
+// pulsing two lines together for the skew measurement.
+func runBBTK(ctx context.Context, box *triggers.MEGTTLBox) {
+	const (
+		isi       = 500 * time.Millisecond
+		blockGap  = 2 * time.Second
+		markerDur = 100 * time.Millisecond
+		nPulses   = 20
+	)
+	blocks := []bbtkBlock{
+		{"A", 5 * time.Millisecond, 0b01, nPulses},
+		{"B", 10 * time.Millisecond, 0b01, nPulses},
+		{"C", 20 * time.Millisecond, 0b01, nPulses},
+		{"D", 10 * time.Millisecond, 0b11, nPulses},
+	}
+
+	fmt.Println("\n--- BBTK mode: calibrated pulse sequence ---")
+	fmt.Println()
+	fmt.Println("  Wiring assumed (line -> Mega pin -> BBTK input):")
+	fmt.Println("    line 0 -> D30 -> TTLin2")
+	fmt.Println("    line 1 -> D31 -> TTLin1")
+	fmt.Println("    GND    -> GND        <- required; TTL without a shared")
+	fmt.Println("                            reference gives unreliable edges")
+	fmt.Println()
+	fmt.Println("  BBTK smoothing is not a concern here: it applies only to the")
+	fmt.Println("  Opto* and Mic* channels, never to TTL inputs. (On those channels")
+	fmt.Println("  it adds ~20 ms to recorded durations — worth remembering if you")
+	fmt.Println("  ever repeat this against a photodiode rather than a TTL line.)")
+	fmt.Println()
+	fmt.Println("  Schedule:")
+	fmt.Printf("    marker   1 pulse  %v on line 0, then %v gap\n", markerDur, blockGap)
+	total := markerDur + blockGap
+	for _, b := range blocks {
+		lines := "line 0"
+		if b.mask == 0b11 {
+			lines = "lines 0+1 together"
+		}
+		// millis() truncates, so the realised width spans [w-1, w].
+		lo := b.width - time.Millisecond
+		fmt.Printf("    block %s  %2d pulses  %-5s on %-18s expect %s-%s\n",
+			b.label, b.n, b.width, lines, lo, b.width)
+		total += time.Duration(b.n)*(b.width+isi) + blockGap
+	}
+	fmt.Printf("\n  Block D is the skew measurement: compare the two rising edges.\n")
+	fmt.Printf("  They should fall inside one BBTK sample — the port is written\n")
+	fmt.Printf("  in a single instruction, so any visible skew is a finding.\n")
+	fmt.Printf("\n  Total run time: about %v\n", total.Round(time.Second))
+
+	_ = box.AllLow()
+	fmt.Print("\n  Arm the BBTK, then press Enter to start (Ctrl-C to abort): ")
+	if !waitEnter(ctx, bufio.NewReader(os.Stdin)) {
+		fmt.Println("  aborted — all lines LOW.")
+		return
+	}
+
+	start := time.Now()
+	fmt.Printf("\n  marker: %v pulse on line 0\n", markerDur)
+	if err := box.Pulse(0, markerDur); err != nil {
+		log.Printf("  marker: ERROR: %v", err)
+	}
+	time.Sleep(blockGap)
+
+	for _, b := range blocks {
+		select {
+		case <-ctx.Done():
+			_ = box.AllLow()
+			fmt.Println("\n  interrupted — all lines LOW.")
+			return
+		default:
+		}
+		lines := "line 0"
+		if b.mask == 0b11 {
+			lines = "lines 0+1"
+		}
+		fmt.Printf("  block %s: %d x %v on %s  (t+%v)\n",
+			b.label, b.n, b.width, lines, time.Since(start).Round(time.Second))
+		for i := 0; i < b.n; i++ {
+			var err error
+			if b.mask == 0b01 {
+				// Single line goes through opcode 12, the path a caller takes
+				// with Pulse(line, d).
+				err = box.Pulse(0, b.width)
+			} else {
+				// Several lines at once go through opcode 11.
+				err = box.PulseMask(b.mask, b.width)
+			}
+			if err != nil {
+				log.Printf("    pulse %d: ERROR: %v", i, err)
+			}
+			time.Sleep(isi)
+		}
+		time.Sleep(blockGap)
+	}
+
+	_ = box.AllLow()
+	fmt.Printf("\n  sequence complete in %v — stop the BBTK capture.\n",
+		time.Since(start).Round(time.Second))
+	fmt.Println("\n  Reading the capture:")
+	fmt.Println("    - Widths below the requested value by up to 1 ms are expected")
+	fmt.Println("      (millis() truncation), not a defect.")
+	fmt.Println("    - The 100 ms marker separates the run from anything captured")
+	fmt.Println("      beforehand; block A starts 2 s after it ends.")
+	fmt.Println("    - Spread within a block is the jitter figure worth quoting.")
 }
 
 // --- Mode: -set (drive one static pattern) ---
