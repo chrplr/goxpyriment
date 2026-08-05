@@ -90,7 +90,21 @@ snd.Wait()  // block until playback done
 
 `PlaySoundFromMemory(device, data)` — one-shot synchronous helper, no struct needed.
 
-`PlaySyncedWithFlip(screen) (flipNS uint64, err error)` — VSYNC-synchronised playback. Pauses the audio device, pre-fills the stream, flips the display (blocking on VSYNC), then immediately resumes. Audio onset follows the flip by at most one audio callback period (≤ `frames/sampleRate` s, e.g. ≤ 11.6 ms at 512 frames/44100 Hz). Reduce with `exp.SetAudioSampleFrames(128)` before `Initialize()` (≤ 2.9 ms, higher underrun risk). **Browser (GOOS=js):** audio playback works (Web Audio backend), but the device buffer is ~2048 frames (≈ 43 ms at 48 kHz) and these onset guarantees do not transfer — treat browser audio onset as approximate (see `docs/WASM.md`).
+`PlayTS() (onsetNS uint64, err error)` — plays and returns the **estimated**
+onset on the SDL nanosecond clock (same clock as `ShowTS`/`FlipTS`/event
+timestamps), so an A/V asynchrony is a subtraction. The estimate is the moment
+the data was queued plus `OutputLatency()`; it is good to ±one callback period
+and is blind to the DAC, OS mixer DSP, Bluetooth transport and the analog path.
+For publishable numbers, measure the rig with external hardware
+(`tests/Timing-Tests -test av`) and treat `PlayTS` as the software-side bound.
+
+`OutputLatency() (time.Duration, error)` — the delay that estimate is built
+from: hardware buffer period + anything still queued in the software stream.
+Report this alongside any onset you derive from `PlayTS`.
+
+Both are available on `Tone` as well as `Sound`.
+
+`PlaySyncedWithFlip(screen) (flipNS uint64, err error)` — VSYNC-synchronised playback. Pauses the audio device, pre-fills the stream, flips the display (blocking on VSYNC), then immediately resumes. Audio onset follows the flip by at most one audio callback period (`frames/sampleRate` s). **The buffer size is the driver's choice, not a goxpyriment default** — measured 1024 frames on PipeWire at 44100 Hz, i.e. ≤ 23.2 ms, not the 512/11.6 ms often assumed. Read the real value with `snd.OutputLatency()` or `exp.AudioDevice.Format()`; reduce it with `exp.SetAudioSampleFrames(128)` before `Initialize()` (≤ 2.9 ms, higher underrun risk). **Browser (GOOS=js):** audio playback works (Web Audio backend), but the device buffer is ~2048 frames (≈ 43 ms at 48 kHz) and these onset guarantees do not transfer — treat browser audio onset as approximate (see `docs/WASM.md`).
 
 ### Tone (procedural)
 

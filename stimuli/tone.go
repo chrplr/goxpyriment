@@ -6,6 +6,7 @@ package stimuli
 import (
 	"fmt"
 	"math"
+	"time"
 
 	"github.com/Zyko0/go-sdl3/sdl"
 	"github.com/chrplr/goxpyriment/apparatus"
@@ -129,6 +130,20 @@ func (t *Tone) PlaySyncedWithFlip(screen *apparatus.Screen) (uint64, error) {
 		return 0, fmt.Errorf("PlaySyncedWithFlip: tone not loaded (call PreloadDevice first)")
 	}
 	return syncStreamWithFlip(t.Stream, t.Data, screen)
+}
+
+// OutputLatency estimates how long after queueing the tone it will be heard.
+// See Sound.OutputLatency.
+func (t *Tone) OutputLatency() (time.Duration, error) {
+	return streamOutputLatency(t.Stream)
+}
+
+// PlayTS plays the tone and returns the estimated onset timestamp on the SDL
+// nanosecond clock. See Sound.PlayTS for the accuracy bound — it is an
+// estimate from the device buffer size, good to ±one callback period, and
+// blind to the DAC and analog path.
+func (t *Tone) PlayTS() (uint64, error) {
+	return playStreamTS(t.Stream, t.Data)
 }
 
 func (t *Tone) Play() error {

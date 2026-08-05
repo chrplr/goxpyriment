@@ -161,7 +161,10 @@ the raw queue only when you need text input or bespoke event handling.
 Call **before** `NewExperiment` or `Initialize`:
 
 ```go
-control.SetAudioSampleFrames(256) // lower = less latency; default 4096
+control.SetAudioSampleFrames(256) // lower = less latency
+// The default is the DRIVER's, not goxpyriment's (measured 1024 frames =
+// 23.2 ms on PipeWire @ 44.1 kHz). Read it back with exp.AudioDevice.Format()
+// or snd.OutputLatency() — do not assume a value.
 ```
 
 ## Key conventions for this package

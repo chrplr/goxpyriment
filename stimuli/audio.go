@@ -125,10 +125,14 @@ func (s *Sound) Wait() {
 // SDL_GetAudioStreamQueued (called internally) only sees layer 1. The hardware
 // buffer in layer 2 adds a constant lag that is subtracted using the device's
 // reported buffer size.  The result is still an approximation: the returned
-// value is accurate to within ±one hardware callback period, which at the
-// default 512-frame buffer and 44100 Hz is roughly ±11.6 ms.  Calling
-// [control.SetAudioSampleFrames](128) before initialization reduces the bound
-// to ±2.9 ms at the cost of higher underrun risk.
+// value is accurate to within ±one hardware callback period.
+//
+// That period is NOT a fixed goxpyriment default — the driver picks it unless
+// [control.SetAudioSampleFrames] is called before initialization. Measured on
+// PipeWire at 44100 Hz it was 1024 frames, i.e. ±23.2 ms. Read the real value
+// back with exp.AudioDevice.Format() or [Sound.OutputLatency] rather than
+// assuming; SetAudioSampleFrames(128) would bring it to ±2.9 ms at the cost of
+// higher underrun risk.
 //
 // The reported position lags reality — it never jumps ahead.
 //
@@ -182,9 +186,11 @@ func (s *Sound) CurrentSampleFrame() (int, error) {
 // at most one audio callback period — approximately frames/sampleRate seconds,
 // where frames is the hardware buffer size set via SetAudioSampleFrames.
 //
-// At the default 512-frame buffer (44100 Hz) the lag is ≤ 11.6 ms.
-// Calling exp.SetAudioSampleFrames(128) before Initialize() reduces it to
-// ≤ 2.9 ms at the cost of higher underrun risk on loaded systems.
+// The buffer size is chosen by the driver unless SetAudioSampleFrames is
+// called before Initialize(): measured on PipeWire at 44100 Hz it was 1024
+// frames, so ≤ 23.2 ms. SetAudioSampleFrames(128) reduces it to ≤ 2.9 ms at
+// the cost of higher underrun risk on loaded systems. Use
+// [Sound.OutputLatency] to read the actual figure for this device.
 //
 // The lag is constant and measurable empirically once per setup; subtract it
 // when reporting stimulus onset times.
@@ -193,6 +199,113 @@ func (s *Sound) PlaySyncedWithFlip(screen *apparatus.Screen) (uint64, error) {
 		return 0, fmt.Errorf("PlaySyncedWithFlip: sound not loaded (call PreloadDevice first)")
 	}
 	return syncStreamWithFlip(s.Stream, s.Data, screen)
+}
+
+// OutputLatency estimates how long after queueing audio data it will actually
+// be heard: the hardware buffer period, plus anything still queued ahead of it
+// in the software stream (zero on a freshly played sound).
+//
+// See PlayTS for what this estimate can and cannot account for.
+func (s *Sound) OutputLatency() (time.Duration, error) {
+	return streamOutputLatency(s.Stream)
+}
+
+// PlayTS plays the sound and returns the estimated onset timestamp — the SDL
+// nanosecond clock, the same one ShowTS, FlipTS and input events use, so an
+// audio-visual asynchrony is a plain subtraction:
+//
+//	visualNS, _ := exp.ShowTS(stim)
+//	audioNS, _  := snd.PlayTS()
+//	avOffsetMs  := float64(int64(audioNS)-int64(visualNS)) / 1e6
+//
+// # THIS IS AN ESTIMATE, NOT A MEASUREMENT
+//
+// The returned value is the moment the data was queued plus
+// [Sound.OutputLatency]. SDL3 exposes no true output-latency query — there is
+// no equivalent of snd_pcm_delay — so the estimate is built from the device's
+// reported buffer size and is accurate to within **±one callback period**.
+//
+// That period depends on a buffer size the driver picks, not on a goxpyriment
+// default: measured 1024 frames on PipeWire at 44.1 kHz, i.e. ±23.2 ms.
+// control.SetAudioSampleFrames(128) before Initialize() brings it to ±2.9 ms
+// at the cost of higher underrun risk. Always report the value
+// [Sound.OutputLatency] gives for the actual device rather than a nominal one.
+//
+// It also cannot see anything past SDL: the DAC, any DSP the OS mixer applies,
+// Bluetooth transport, or the analog path. On a Bluetooth headset the true
+// latency can exceed this estimate by 100 ms or more.
+//
+// For a number you can publish, measure the real latency on the specific rig
+// with external hardware — tests/Timing-Tests (`-test av`) does this with a
+// photodiode and a microphone/TTL box — and treat PlayTS as the software-side
+// bound rather than ground truth.
+func (s *Sound) PlayTS() (uint64, error) {
+	return playStreamTS(s.Stream, s.Data)
+}
+
+// streamOutputLatency is the shared estimate used by Sound.OutputLatency and
+// Tone.OutputLatency.
+func streamOutputLatency(stream *sdl.AudioStream) (time.Duration, error) {
+	if stream == nil {
+		return 0, fmt.Errorf("stimuli: audio not loaded (call PreloadDevice first)")
+	}
+	device := stream.Device()
+	if device == 0 {
+		return 0, fmt.Errorf("stimuli: audio stream is not bound to a device")
+	}
+	devSpec, hwFrames, err := device.Format()
+	if err != nil {
+		return 0, fmt.Errorf("stimuli: querying audio device format: %w", err)
+	}
+	if devSpec == nil || devSpec.Freq <= 0 {
+		return 0, fmt.Errorf("stimuli: audio device reported an invalid sample rate")
+	}
+
+	// The driver plays from a hardware buffer that the audio thread refills, so
+	// data handed over now is heard one buffer period later.
+	latency := time.Duration(float64(hwFrames) / float64(devSpec.Freq) * float64(time.Second))
+
+	// Anything already queued plays first. SDL_GetAudioStreamQueued counts
+	// bytes of INPUT still to be converted, so this converts with the stream's
+	// source spec, not the device's.
+	var src, dst sdl.AudioSpec
+	if err := stream.Format(&src, &dst); err == nil && src.Freq > 0 {
+		if bytesPerFrame := int(src.Channels) * sampleByteWidth(src.Format); bytesPerFrame > 0 {
+			if queued, qErr := stream.Queued(); qErr == nil && queued > 0 {
+				frames := float64(int(queued) / bytesPerFrame)
+				latency += time.Duration(frames / float64(src.Freq) * float64(time.Second))
+			}
+		}
+	}
+	return latency, nil
+}
+
+// playStreamTS is the shared clear-stamp-queue-flush implementation used by
+// Sound.PlayTS and Tone.PlayTS.
+func playStreamTS(stream *sdl.AudioStream, data []byte) (uint64, error) {
+	if stream == nil {
+		return 0, fmt.Errorf("stimuli: audio not loaded (call PreloadDevice first)")
+	}
+	// Clear before measuring, so the estimate does not count data that is about
+	// to be discarded.
+	if err := stream.Clear(); err != nil {
+		return 0, fmt.Errorf("stimuli: clearing audio stream: %w", err)
+	}
+	latency, err := streamOutputLatency(stream)
+	if err != nil {
+		return 0, err
+	}
+	// Stamp as close to the hand-off as possible: everything above is setup.
+	now := sdl.TicksNS()
+	if err := stream.PutData(data); err != nil {
+		return 0, fmt.Errorf("stimuli: queueing audio data: %w", err)
+	}
+	// Flush emits the resampler's lookahead frames; without it playback is
+	// truncated when the source rate differs from the device rate.
+	if err := stream.Flush(); err != nil {
+		return 0, fmt.Errorf("stimuli: flushing audio stream: %w", err)
+	}
+	return now + uint64(latency), nil
 }
 
 // syncStreamWithFlip is the shared pause-fill-flip-resume implementation used
