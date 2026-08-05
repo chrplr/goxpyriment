@@ -234,10 +234,10 @@ if `OUT_PINS`/`IN_PINS` are renumbered without updating the mapping.
   the full loopback wired.
 - *Atomicity, external witness.* The above uses the firmware to judge itself,
   which is circular. A BBTKv3 watching D30 and D31 while one command pulsed both
-  recorded **zero skew on all 20 trials** — the two rising edges landed in the
-  same 0.25 ms sample every time. Skew is therefore under 250 µs, measured by an
+  recorded **zero skew on all 20 trials** — skew under 250 µs, measured by an
   instrument with no stake in the answer. Reproduce with
-  `tests/test_megttlbox/run-bbtk.sh` (block D).
+  `tests/test_megttlbox/run-bbtk.sh` (block D); details in the device repo's
+  `TIMING.md`.
 
 Legacy firmware without the capability falls back to two commands — `13`
 (set-high) then `14` (set-low) — written in a **single** `Write` so both ride the
@@ -253,27 +253,17 @@ the width is quantised to `millis()` resolution. `Pulse` also sleeps host-side
 for `dur` to honour the blocking contract, concurrently with the device's own
 timing.
 
-**Measured** (BBTKv3, 2026-08-05, 20 pulses per width, TTLin2 ← D30). Reproduce
-with `tests/test_megttlbox/run-bbtk.sh`, analyse with `analyse-bbtk.py`:
+Measured on a BBTKv3 (2026-08-05): pulses come out **~0.5–0.7 ms short**, never
+long by more than a sample. That is `millis()` truncation as predicted — the
+realised width is uniform on [w−1, w]. It is a systematic **bias, not noise**, so
+a paradigm needing a true 5 ms pulse should request 6 ms.
 
-| requested | min | median | max | mean error |
-|---|---|---|---|---|
-| 5 ms | 3.75 | 4.50 | 5.00 | −0.53 ms |
-| 10 ms | 8.25 | 9.25 | 10.25 | −0.68 ms |
-| 20 ms | 18.50 | 19.50 | 20.25 | −0.69 ms |
-
-Pulses come out **~0.5–0.7 ms short on average, never long by more than a
-sample**. That is `millis()` truncation behaving exactly as predicted: the
-realised width is uniform on [w−1, w], mean w−0.5. It is a systematic bias, not
-noise — if a paradigm needs a nominal width, ask for 1 ms more than you need, or
-accept that "5 ms" means 4–5 ms. Total spread is 1.25–2.0 ms against the 1.25 ms
-floor set by truncation plus the BBTK's 0.25 ms sampling, so firmware jitter
-contributes well under a millisecond.
-
-Onset-to-onset intervals ran **~1.5 ms longer** than requested across all
-blocks — independent corroboration of the 1.44 ms median host→device latency
-measured by the loopback method, arrived at through a completely different
-route.
+Full measurement tables, the host→device latency figures, and what remains
+unmeasured live with the device, not here:
+**[neurospin-meg-ttl-box/TIMING.md](https://github.com/neurospin/neurospin-meg-ttl-box/blob/main/TIMING.md)**
+(raw captures in that repo's `measurements/`). They characterise the hardware and
+firmware, of which this package is only one client — keep them in one place so
+the numbers cannot drift.
 
 **Reaction times: use the event API, not `WaitForInput`.** `WaitForInput` polls
 `ReadAll` every 5 ms and reports *elapsed host time*, so its resolution is the
