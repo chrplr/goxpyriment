@@ -51,12 +51,20 @@ func main() {
 	rtFlag := flag.Int("rtloop", 0, "measure host→timestamp latency N times (needs a D30→D22 jumper)")
 	atomicFlag := flag.Int("atomic", 0, "check that Send changes all 8 lines at once, N trials (needs full loopback)")
 	bbtkFlag := flag.Bool("bbtk", false, "emit a calibrated pulse sequence for external measurement (Black Box ToolKit)")
+	noPromptFlag := flag.Bool("no-prompt", false, "with -bbtk, start immediately (for bbtk-capture's `-- command` form)")
+	bbtkSecsFlag := flag.Bool("bbtk-seconds", false, "print the -bbtk sequence duration in whole seconds and exit")
 	watchFlag := flag.Bool("watch", false, "continuously display the input lines until Enter/Ctrl-C")
 	setFlag := flag.String("set", "", "drive one output bitmask and hold it (e.g. 0xAA, 0b10101010, 170)")
 	flag.Parse()
 
 	if *listFlag {
 		listPorts()
+		return
+	}
+	// Answered without touching the hardware, so run-bbtk.sh can size the
+	// capture window before the device is opened.
+	if *bbtkSecsFlag {
+		fmt.Printf("%d\n", int(bbtkTotalDuration().Seconds())+1)
 		return
 	}
 
@@ -88,7 +96,7 @@ func main() {
 	case *atomicFlag > 0:
 		runAtomic(ctx, box, *atomicFlag)
 	case *bbtkFlag:
-		runBBTK(ctx, box)
+		runBBTK(ctx, box, !*noPromptFlag)
 	case *watchFlag:
 		runWatch(ctx, box)
 	case *setFlag != "":
@@ -430,6 +438,35 @@ type bbtkBlock struct {
 	n     int
 }
 
+// BBTK sequence parameters, shared with -bbtk-seconds so run-bbtk.sh sizes the
+// capture window from the same numbers the sequence actually uses. The device
+// enforces the window itself and cannot be asked to stop early and hand back
+// what it has, so a window computed from stale constants means re-running.
+const (
+	bbtkISI       = 500 * time.Millisecond
+	bbtkBlockGap  = 2 * time.Second
+	bbtkMarkerDur = 100 * time.Millisecond
+	bbtkNPulses   = 20
+)
+
+func bbtkBlocks() []bbtkBlock {
+	return []bbtkBlock{
+		{"A", 5 * time.Millisecond, 0b01, bbtkNPulses},
+		{"B", 10 * time.Millisecond, 0b01, bbtkNPulses},
+		{"C", 20 * time.Millisecond, 0b01, bbtkNPulses},
+		{"D", 10 * time.Millisecond, 0b11, bbtkNPulses},
+	}
+}
+
+// bbtkTotalDuration is how long the sequence takes end to end, prompt excluded.
+func bbtkTotalDuration() time.Duration {
+	total := bbtkMarkerDur + bbtkBlockGap
+	for _, b := range bbtkBlocks() {
+		total += time.Duration(b.n)*(b.width+bbtkISI) + bbtkBlockGap
+	}
+	return total
+}
+
 // runBBTK emits a pulse sequence designed to be measured by an external
 // instrument rather than by this program.
 //
@@ -446,19 +483,13 @@ type bbtkBlock struct {
 // The sequence opens with a single long marker pulse so the capture is easy to
 // align, then runs three single-line blocks of increasing width, then a block
 // pulsing two lines together for the skew measurement.
-func runBBTK(ctx context.Context, box *triggers.MEGTTLBox) {
+func runBBTK(ctx context.Context, box *triggers.MEGTTLBox, prompt bool) {
 	const (
-		isi       = 500 * time.Millisecond
-		blockGap  = 2 * time.Second
-		markerDur = 100 * time.Millisecond
-		nPulses   = 20
+		isi       = bbtkISI
+		blockGap  = bbtkBlockGap
+		markerDur = bbtkMarkerDur
 	)
-	blocks := []bbtkBlock{
-		{"A", 5 * time.Millisecond, 0b01, nPulses},
-		{"B", 10 * time.Millisecond, 0b01, nPulses},
-		{"C", 20 * time.Millisecond, 0b01, nPulses},
-		{"D", 10 * time.Millisecond, 0b11, nPulses},
-	}
+	blocks := bbtkBlocks()
 
 	fmt.Println("\n--- BBTK mode: calibrated pulse sequence ---")
 	fmt.Println()
@@ -475,7 +506,6 @@ func runBBTK(ctx context.Context, box *triggers.MEGTTLBox) {
 	fmt.Println()
 	fmt.Println("  Schedule:")
 	fmt.Printf("    marker   1 pulse  %v on line 0, then %v gap\n", markerDur, blockGap)
-	total := markerDur + blockGap
 	for _, b := range blocks {
 		lines := "line 0"
 		if b.mask == 0b11 {
@@ -485,18 +515,24 @@ func runBBTK(ctx context.Context, box *triggers.MEGTTLBox) {
 		lo := b.width - time.Millisecond
 		fmt.Printf("    block %s  %2d pulses  %-5s on %-18s expect %s-%s\n",
 			b.label, b.n, b.width, lines, lo, b.width)
-		total += time.Duration(b.n)*(b.width+isi) + blockGap
 	}
+	total := bbtkTotalDuration()
 	fmt.Printf("\n  Block D is the skew measurement: compare the two rising edges.\n")
 	fmt.Printf("  They should fall inside one BBTK sample — the port is written\n")
 	fmt.Printf("  in a single instruction, so any visible skew is a finding.\n")
 	fmt.Printf("\n  Total run time: about %v\n", total.Round(time.Second))
 
 	_ = box.AllLow()
-	fmt.Print("\n  Arm the BBTK, then press Enter to start (Ctrl-C to abort): ")
-	if !waitEnter(ctx, bufio.NewReader(os.Stdin)) {
-		fmt.Println("  aborted — all lines LOW.")
-		return
+	if prompt {
+		fmt.Print("\n  Arm the BBTK, then press Enter to start (Ctrl-C to abort): ")
+		if !waitEnter(ctx, bufio.NewReader(os.Stdin)) {
+			fmt.Println("  aborted — all lines LOW.")
+			return
+		}
+	} else {
+		// Launched by bbtk-capture via its `-- command` form: recording has
+		// already begun, so start immediately rather than waiting for a human.
+		fmt.Println("\n  -no-prompt: starting immediately.")
 	}
 
 	start := time.Now()

@@ -18,6 +18,8 @@ _build/
 /tests/test_stream_images/test_stream_images
 /tests/test_stream_text/test_stream_text
 /tests/Timing-Tests/Timing-Tests
+/tests/test_megttlbox/test_megttlbox
+/tests/test_megttlbox/reports-*/
 /examples/Mouse-tracking/Mouse-tracking
 /examples/Finger-Tracking/Finger-Tracking
 /examples/Mental-Rotation-3D/main
