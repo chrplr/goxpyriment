@@ -1,0 +1,49 @@
+MEG TTL box on /dev/ttyACM0 opened.
+  firmware: firmware v1, caps 0x03
+    atomic port writes : true
+    input timestamps   : true
+
+--- BBTK mode: calibrated pulse sequence ---
+
+  Wiring assumed (line -> Mega pin -> BBTK input):
+    line 0 -> D30 -> TTLin2
+    line 1 -> D31 -> TTLin1
+    GND    -> GND        <- required; TTL without a shared
+                            reference gives unreliable edges
+
+  BBTK smoothing is not a concern here: it applies only to the
+  Opto* and Mic* channels, never to TTL inputs. (On those channels
+  it adds ~20 ms to recorded durations — worth remembering if you
+  ever repeat this against a photodiode rather than a TTL line.)
+
+  Schedule:
+    marker   1 pulse  100ms on line 0, then 2s gap
+    block A  20 pulses  5ms   on line 0             expect 4ms-5ms
+    block B  20 pulses  10ms  on line 0             expect 9ms-10ms
+    block C  20 pulses  20ms  on line 0             expect 19ms-20ms
+    block D  20 pulses  10ms  on lines 0+1 together expect 9ms-10ms
+
+  Block D is the skew measurement: compare the two rising edges.
+  They should fall inside one BBTK sample — the port is written
+  in a single instruction, so any visible skew is a finding.
+
+  Total run time: about 51s
+
+  -no-prompt: starting immediately.
+
+  marker: 100ms pulse on line 0
+  block A: 20 x 5ms on line 0  (t+2s)
+  block B: 20 x 10ms on line 0  (t+14s)
+  block C: 20 x 20ms on line 0  (t+26s)
+  block D: 20 x 10ms on lines 0+1  (t+39s)
+
+  sequence complete in 51s — stop the BBTK capture.
+
+  Reading the capture:
+    - Widths below the requested value by up to 1 ms are expected
+      (millis() truncation), not a defect.
+    - The 100 ms marker separates the run from anything captured
+      beforehand; block A starts 2 s after it ends.
+    - Spread within a block is the jitter figure worth quoting.
+
+Done.
