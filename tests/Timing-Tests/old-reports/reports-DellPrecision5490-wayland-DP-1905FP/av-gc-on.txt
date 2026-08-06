@@ -1,0 +1,11 @@
+audio: requesting 512 sample frames hardware buffer
+audio: 44100 Hz  2 ch  512 sample frames (~11.6 ms latency)
+gc: on during timing-critical loops
+DLP-IO8-G found on /dev/ttyUSB0 (trigger pin 1, pulse 5 ms)
+av: visual+audio+ttl  frames-on=12 (200.0 ms) frames-off=18 (300.0 ms)  cycles=1000  warmup=10
+av: tone 1000 Hz for 200 ms  soa=0.0 ms  sync=PlaySyncedWithFlip
+stimulus: five 240 px squares (auto: ¼ of render height) (corners + centre) on a 1536x960 render area
+  centres:  x = 120 / 768 / 1416    y = 120 / 480 / 840
+  top↔bottom separation: 720 px = 0.7500 of screen height
+  place each photodiode at its square's CENTRE — the separation assumes it
+2026/07/29 08:07:56 Results saved in reports-DellPrecision5490-wayland-DP-1905FP/Timing-Tests_sub-000_date-20260729-080748.csv (info: reports-DellPrecision5490-wayland-DP-1905FP/Timing-Tests_sub-000_date-20260729-080748-info.txt)

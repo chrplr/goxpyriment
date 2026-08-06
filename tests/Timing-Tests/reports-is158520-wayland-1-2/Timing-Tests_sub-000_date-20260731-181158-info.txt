@@ -1,0 +1,47 @@
+# --EXPERIMENT INFO
+# e mainfile: Timing-Tests
+# e cmdline: ./Timing-Tests -test av -no-sound -audio-frames 512 -hz 60 -frames-on 1 -frames-off 2 -cycles 1000 -square-px 0 -exclusive-fullscreen auto -outdir reports-is158520-wayland-1-2
+# e start_time: 20260731-181158
+# e hostname: is158520
+# e username: cp983411
+# e os: linux/amd64
+# e framework: goxpyriment (devel) --- see http://chrplr.github.io/goxpyriment
+# e framework_author: Christophe Pallier <christophe@pallier.org>
+# --SUBJECT INFO
+# s id: 0
+# #
+# --SYSTEM INFO
+# sys sdl_version: 3.4.0
+# sys video_driver: wayland
+# sys renderer: opengl
+# sys physical_resolution: 1680x1050 px
+# sys logical_resolution: 1680x1050 px
+# sys fullscreen: true
+# sys fullscreen_mode: desktop
+# sys vsync: 1
+# sys audio_driver: pipewire
+# sys audio_format: SDL_AUDIO_S16LE
+# sys audio_sample_rate_hz: 44100
+# sys audio_channels: 2
+# sys audio_buffer_frames: 512
+# --DISPLAY INFO
+# d id: 3
+# d name: Built-in display
+# d native_resolution: 1680x1050
+# d pixel_density: 1.00
+# d content_scale: 1.00
+# d refresh_rate_hz: 59.9500
+# d bits_per_pixel: 32
+# d bits_per_channel: 8
+# d pixel_format: SDL_PIXELFORMAT_XRGB8888
+# d bounds: 0,0 1680x1050
+# gc=suspended
+# test=av level-a=0 level-b=255 square-px=0 frames-on=1 frames-off=2 cycles=1000 warmup=10 hz=60.000 sound=false ttl=true soa-ms=0.0 freq-hz=1000
+# stim square-px: 262
+# stim render-area: 1680x1050
+# stim square-centres-x: 131,840,1549
+# stim square-centres-y: 131,525,919
+# stim top-bottom-separation-px: 788
+# stim top-bottom-separation-frac: 0.7500
+# e end_time: 20260731-181204.604
+# e duration: 00:00:05.755

@@ -1,0 +1,77 @@
+audio: requesting 512 sample frames hardware buffer
+audio: 44100 Hz  2 ch  512 sample frames (~11.6 ms latency)
+gc: suspended during timing-critical loops
+DLP-IO8-G found on /dev/ttyUSB0 (trigger pin 1, pulse 5 ms)
+av: visual+audio+ttl  frames-on=12 (200.0 ms) frames-off=18 (300.0 ms)  cycles=1000  warmup=10
+av: tone 1000 Hz for 200 ms  soa=0.0 ms  sync=PlaySyncedWithFlip
+stimulus: five 256 px squares (auto: ¼ of render height) (corners + centre) on a 1280x1024 render area
+  centres:  x = 128 / 640 / 1152    y = 128 / 512 / 896
+  top↔bottom separation: 768 px = 0.7500 of screen height
+  place each photodiode at its square's CENTRE — the separation assumes it
+
+── Bright-phase duration (frames-on=12) ───────────────────────────────
+  n       : 990
+  target  : 200.846 ms
+  mean    : 200.846 ms
+  SD      : 4.421 ms
+  min/max : 197.930 / 249.236 ms
+  p5/p95  : 199.679 / 200.517 ms
+  >0.5 ms : 966 (97.6 %)
+  >1.0 ms : 275 (27.8 %)
+  histogram (10 bins):
+  [197.930, 203.061) ms :   946  ****************************************
+  [203.061, 208.191) ms :     0  
+  [208.191, 213.322) ms :     0  
+  [213.322, 218.452) ms :    36  *
+  [218.452, 223.583) ms :     0  
+  [223.583, 228.713) ms :     0  
+  [228.713, 233.844) ms :     7  
+  [233.844, 238.975) ms :     0  
+  [238.975, 244.105) ms :     0  
+  [244.105, 249.236) ms :     1  
+
+── Period (frames-on=12 + frames-off=18) ───────────────────────────────
+  n       : 990
+  target  : 502.110 ms
+  mean    : 502.110 ms
+  SD      : 7.542 ms
+  min/max : 498.040 / 566.361 ms
+  p5/p95  : 499.526 / 516.601 ms
+  >0.5 ms : 990 (100.0 %)
+  >1.0 ms : 988 (99.8 %)
+  histogram (10 bins):
+  [498.040, 504.872) ms :   888  ****************************************
+  [504.872, 511.704) ms :     0  
+  [511.704, 518.536) ms :    79  ***
+  [518.536, 525.368) ms :     0  
+  [525.368, 532.200) ms :     2  
+  [532.200, 539.032) ms :    12  
+  [539.032, 545.864) ms :     0  
+  [545.864, 552.696) ms :     8  
+  [552.696, 559.528) ms :     0  
+  [559.528, 566.361) ms :     1  
+
+── Audio queued − visual onset (intended SOA 0.0 ms) ───────────────────────────────
+  n       : 990
+  target  : 0.000 ms
+  mean    : 0.000 ms
+  SD      : 0.000 ms
+  min/max : 0.000 / 0.000 ms
+  p5/p95  : 0.000 / 0.000 ms
+  >0.5 ms : 0 (0.0 %)
+  >1.0 ms : 0 (0.0 %)
+  histogram (10 bins):
+  [  0.000,   1.000) ms :   990  ****************************************
+  [  1.000,   2.000) ms :     0  
+  [  2.000,   3.000) ms :     0  
+  [  3.000,   4.000) ms :     0  
+  [  4.000,   5.000) ms :     0  
+  [  5.000,   6.000) ms :     0  
+  [  6.000,   7.000) ms :     0  
+  [  7.000,   8.000) ms :     0  
+  [  8.000,   9.000) ms :     0  
+  [  9.000,  10.000) ms :     0  
+
+av: 1000 cycles complete (10 discarded as warm-up).
+Software timestamps only — the photodiode/TTL recording is the ground truth.
+2026/07/29 08:03:09 Results saved in reports-DellPrecision5490-wayland-DP-1905FP/Timing-Tests_sub-000_date-20260729-075447.csv (info: reports-DellPrecision5490-wayland-DP-1905FP/Timing-Tests_sub-000_date-20260729-075447-info.txt)

@@ -20,6 +20,8 @@
 #   OUTDIR            session directory        (default: reports-<hostname>)
 #   SQUARE_PX         stimulus square side, px (default: 0 = ¼ of render height)
 #   CYCLES            cycles per av step       (default: 1000)
+#   FRAMES_ON         bright frames per cycle  (default: 12)
+#   FRAMES_OFF        dark frames per cycle    (default: 18)
 #   DISPLAY_IDX       monitor index for -d     (default: unset = primary)
 #   EXCLUSIVE_FS      auto | on | off          (default: auto)
 #
@@ -75,6 +77,41 @@ REFRESH_HZ="${REFRESH_HZ:-60}"
 # committing to a full pass.
 SQUARE_PX="${SQUARE_PX:-0}"   # 0 = Timing-Tests picks ¼ of the render height
 CYCLES="${CYCLES:-1000}"
+
+# Cycle composition. The defaults (12 on / 18 off = 200/300 ms at 60 Hz) are what
+# every recorded session so far used, so leave them alone unless the point of the
+# run is to change them.
+#
+# Shortening the cycle changes what a missed deadline looks like. At 12 frames on,
+# a late flip only moves an edge inside a long plateau and shows up as a millisecond
+# or two of jitter; at 1 frame on, the flash is instead absent or doubled, which the
+# photodiode registers as a missing or double-length event. That makes short cycles
+# far more sensitive to anything that stalls the render loop — the garbage collector
+# in particular.
+#
+# Two things to watch when you do shorten it:
+#
+#   - CYCLES is not exposure. GC pauses arrive per unit time, not per cycle, so
+#     1000 cycles of 4 frames is ~67 s against ~500 s for 1000 cycles of 30. Scale
+#     CYCLES up to keep the wall-clock comparable, or the shorter run will flatter
+#     the collector for no reason other than having sampled less of it.
+#   - The panel may not keep up. Opto events run ~20 ms longer than the stimulus
+#     (threshold hysteresis plus LCD decay) — more than a single frame at 60 Hz. Pilot
+#     any 1-frame configuration with a small CYCLES and check N(Opto1) == N(TTLin1)
+#     before committing to a long capture, or you will be measuring the display's
+#     response rather than the framework's.
+FRAMES_ON="${FRAMES_ON:-12}"
+FRAMES_OFF="${FRAMES_OFF:-18}"
+
+for _v in CYCLES FRAMES_ON FRAMES_OFF; do
+	eval "_n=\$$_v"
+	# shellcheck disable=SC2154  # _n is assigned by the eval above
+	case "$_n" in
+		'' | *[!0-9]*) echo "error: $_v must be a positive integer (got '$_n')" >&2; exit 1 ;;
+	esac
+	[ "$_n" -gt 0 ] || { echo "error: $_v must be greater than zero" >&2; exit 1; }
+done
+unset _v _n
 
 # Display and presentation mode. Both are passed to EVERY step that opens a
 # window, so a session cannot end up with half its steps on one monitor and half
@@ -221,10 +258,20 @@ run_recorded() {
 
 # av_seconds <cycles> — how long an av run of <cycles> takes, in whole seconds.
 # One cycle is frames-on + frames-off frames at the display refresh rate.
+#
+# This must stay in step with the -frames-on/-frames-off actually passed to the
+# steps below: it sizes the BBTK capture window, and the device enforces that
+# window itself, so an underestimate truncates the recording with no way to
+# recover it. Hence FRAMES_ON/FRAMES_OFF rather than the literals this used to
+# carry.
 av_seconds() {
-	awk -v c="$1" -v on=12 -v off=18 -v hz="$REFRESH_HZ" \
+	awk -v c="$1" -v on="$FRAMES_ON" -v off="$FRAMES_OFF" -v hz="$REFRESH_HZ" \
 		'BEGIN { printf "%d", (c * (on + off) / hz) + 1 }'
 }
+
+# Computed once so the step labels can quote the real figure rather than the
+# 500 s they used to hard-code, which was only ever right at the defaults.
+AV_SECONDS=$(av_seconds "$CYCLES")
 
 if [ ! -x "$BIN" ]; then
 	echo "error: $BIN not found or not executable — build it first:" >&2
@@ -246,6 +293,17 @@ if [ "$SQUARE_PX" -eq 0 ]; then
 	echo "Stim:    squares sized to ¼ of the render height, $CYCLES cycles per av step"
 else
 	echo "Stim:    ${SQUARE_PX} px squares, $CYCLES cycles per av step"
+fi
+# Print the cycle in frames AND milliseconds: the frame counts are what the flags
+# carry, but the millisecond figures are what a reader of the report needs, and
+# they depend on REFRESH_HZ.
+awk -v on="$FRAMES_ON" -v off="$FRAMES_OFF" -v hz="$REFRESH_HZ" -v secs="$AV_SECONDS" \
+	'BEGIN { printf "         cycle: %d on + %d off = %d frames (%.1f + %.1f = %.1f ms at %g Hz)\n         av step duration: %d s per run\n", \
+		on, off, on+off, on*1000/hz, off*1000/hz, (on+off)*1000/hz, hz, secs }'
+if [ "$FRAMES_ON" -le 2 ]; then
+	echo "         NOTE: frames-on=$FRAMES_ON is at or below the panel's response time on"
+	echo "               typical LCDs — verify N(Opto1) == N(TTLin1) on a short pilot"
+	echo "               before trusting a long capture at this setting."
 fi
 if [ "$BBTK_CAPTURE" = "1" ]; then
 	echo "BBTK:    recording enabled ($BBTK_CAPTURE_BIN, ${BBTK_MARGIN_S}s margin either side)"
@@ -299,22 +357,25 @@ step latency "audio pipeline latency" &&
 # ── Photodiode + TTL: the main stimulus timing measurement, run as a
 #                     GC-suspended / GC-running pair. Put photodiodes on a top
 #                     and a bottom square to also capture the scan-out gradient.
-step av "visual+audio+TTL, GC SUSPENDED (500 s)" &&
-	run_recorded av-gc-off "$(av_seconds "$CYCLES")" \
+step av "visual+audio+TTL, GC SUSPENDED (${AV_SECONDS} s)" &&
+	run_recorded av-gc-off "$AV_SECONDS" \
 		-test av -audio-frames "$AUDIO_BUFFSIZE" -hz "$REFRESH_HZ" \
-		-frames-on 12 -frames-off 18 -cycles "$CYCLES" -square-px "$SQUARE_PX"
+		-frames-on "$FRAMES_ON" -frames-off "$FRAMES_OFF" \
+		-cycles "$CYCLES" -square-px "$SQUARE_PX"
 
-step av-gc "visual+audio+TTL, GC RUNNING (500 s)" &&
-	run_recorded av-gc-on "$(av_seconds "$CYCLES")" \
+step av-gc "visual+audio+TTL, GC RUNNING (${AV_SECONDS} s)" &&
+	run_recorded av-gc-on "$AV_SECONDS" \
 		-test av -audio-frames "$AUDIO_BUFFSIZE" -hz "$REFRESH_HZ" \
-		-frames-on 12 -frames-off 18 -cycles "$CYCLES" -square-px "$SQUARE_PX" -gc
+		-frames-on "$FRAMES_ON" -frames-off "$FRAMES_OFF" \
+		-cycles "$CYCLES" -square-px "$SQUARE_PX" -gc
 
 # ── Photodiode only: visual path in isolation, no audio device, no trigger.
 #                    Isolates the display when the combined run looks wrong.
-step av-visual "visual only, no audio, no TTL (500 s)" &&
-	run_recorded av-visual "$(av_seconds "$CYCLES")" \
+step av-visual "visual only, no audio, no TTL (${AV_SECONDS} s)" &&
+	run_recorded av-visual "$AV_SECONDS" \
 		-test av -no-sound -no-ttl \
-		-frames-on 12 -frames-off 18 -cycles "$CYCLES" -square-px "$SQUARE_PX"
+		-frames-on "$FRAMES_ON" -frames-off "$FRAMES_OFF" \
+		-cycles "$CYCLES" -square-px "$SQUARE_PX"
 
 # ── Response timing. COMMENTED OUT until the BBTK response actuator
 #            arrives (expected ~mid-August 2026).

@@ -88,9 +88,7 @@ Every cycle presents all three modalities at once:
 | Audio | Tone of `frames-on × frame-period`, synced to the visual onset (or offset by `-soa-ms`) |
 | TTL | A `-trigger-ms` pulse at the visual onset |
 
-`-no-sound` and `-no-ttl` drop a modality. That is how one test covers what used
-to be three: `-no-sound` is a pure visual-onset test, and the audio channel of a
-recording gives tone-onset jitter over a long session.
+`-no-sound` and `-no-ttl` drop a modality. 
 
 **Placing the photodiodes.** An LCD paints top to bottom, so a bottom square
 lights close to a full frame period after a top one. Put one photodiode on a top
@@ -143,6 +141,23 @@ BBTK_CAPTURE=1 BBTK_CAPTURE_BIN=~/00_git/bbtkv3/_build/bbtk-capture \
 | `BBTK_READY_TIMEOUT_S` | 120 | Give up waiting for the device |
 | `SQUARE_PX` | 0 | Stimulus square side, px; 0 = ¼ of the render height |
 | `CYCLES` | 1000 | Cycles per `av` step — lower it for a quick placement check |
+| `FRAMES_ON` | 12 | Bright frames per cycle |
+| `FRAMES_OFF` | 18 | Dark frames per cycle |
+
+`FRAMES_ON`/`FRAMES_OFF` resize the BBTK capture window automatically, so a
+shortened cycle no longer needs the window recomputed by hand. Two caveats when
+you shorten it:
+
+- **Cycles are not exposure.** GC pauses arrive per unit time, so 1000 cycles of
+  4 frames is ~67 s against ~500 s for 1000 cycles of 30. Scale `CYCLES` up to
+  match the wall-clock of the run you are comparing against, or the shorter run
+  flatters the collector purely by sampling less of it.
+- **Check the panel keeps up.** Opto events run ~20 ms longer than the stimulus
+  (threshold hysteresis plus LCD decay) — more than one frame at 60 Hz. Pilot any
+  `FRAMES_ON=1` configuration with a small `CYCLES` and confirm
+  N(Opto1) = N(TTLin1) before committing to a long capture, or you are measuring
+  display response rather than the framework. The script prints a warning at
+  `FRAMES_ON` ≤ 2.
 
 Only the photodiode steps (`av`, `av-gc`, `av-visual`) are wrapped; `check`,
 `display` and `latency` measure nothing the BBTK can see.
@@ -198,9 +213,23 @@ Two checks on the resulting `-events.csv`:
 
 - **N(Mic1) should equal N(TTLin1).** Far fewer means bad coupling, not bad
   timing. A run of 197 cycles that yields 6 Mic events is a placement problem.
-- **Mic duration should be close to `frames-on × frame period`** (200 ms at the
-  defaults). A 20 ms Mic pulse for a 200 ms tone means the threshold is catching
-  only the loudest fraction of the tone.
+- **Mic duration should be close to `frames-on × frame period` + 20 ms** — about
+  **220 ms** at the defaults, not 200. The BBTK's smoothing filter holds the line
+  high for ~20 ms past the true falling edge on every channel it covers (`Mic1`,
+  `Mic2`, `Opto1`–`Opto4`); `TTLin1` is outside the mask and so reads true. Recent
+  captures carry a `DurationCorrected` column with that tail already removed —
+  compare *that* against 200 ms, or subtract 20 ms yourself from `Duration` on
+  older three-column files.
+
+  A genuinely short pulse — say 20 ms for a 200 ms tone — still means the
+  threshold is catching only the loudest fraction of the tone. Judge that after
+  accounting for the offset, not before.
+
+The same +20 ms applies to `Opto1`/`Opto2`, so photodiode durations read ~220 ms
+for a 200 ms stimulus. It is a fixed instrument offset, independent of stimulus
+length: do not read it as LCD rise/decay or as a threshold problem. **Onsets are
+unaffected** — smoothing does not delay the leading edge — so every latency in
+these tests (TTL→photodiode, scan-out, AV sync) stands as recorded.
 
 ---
 

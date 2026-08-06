@@ -1,0 +1,18 @@
+Trying to open /dev/serial/by-id/usb-BBTK_BBTK_BBTK_V3_BBTKBBTKV3-if00-port0 at 115200 bps...
+ok!
+Trying to connect to BBTK...
+ok!
+bbtkv3 is alive
+Setting Smoothing mask to {Mic1:true Mic2:true Opto4:false Opto3:false Opto2:true Opto1:true}
+Getting thresholds...
+{Mic1:63 Mic2:63 Sounder1:63 Sounder2:63 Opto1:63 Opto2:63 Opto3:63 Opto4:63}
+Clearing Timing data... Ok
+Capturing events (with DSCM) for 27 seconds... 
+BBTK-CAPTURE-READY duration=27
+started: [./Timing-Tests -test av -no-sound -no-ttl -frames-on 12 -frames-off 18 -cycles 20 -square-px 0 -exclusive-fullscreen auto -outdir reports-is158520]
+2026/07/30 08:00:32 Results saved in reports-is158520/Timing-Tests_sub-000_date-20260730-080022.csv (info: reports-is158520/Timing-Tests_sub-000_date-20260730-080022-info.txt)
+
+Downloading data...ok!
+Raw Data saved to reports-is158520/bbtk-av-visual-002.dat
+DSC Events saved to reports-is158520/bbtk-av-visual-002-dscevents.csv
+Events saved to reports-is158520/bbtk-av-visual-002-events.csv

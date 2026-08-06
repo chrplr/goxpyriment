@@ -45,6 +45,52 @@ func main() {
 }
 ```
 
+The following example runs a loops where a white square is displayed every seconds, and a short tone is played. No response is required.
+
+```
+package main
+
+import (
+	. "github.com/chrplr/goxpyriment/control"
+	"github.com/chrplr/goxpyriment/stimuli"
+)
+
+func main() {
+	exp := NewExperimentFromFlags("Test", Black, White, 32)
+	defer exp.End()
+
+	w, h, _ := exp.Screen.Size()
+	rect := stimuli.NewRectangle(0, 0, float32(w)/2.0, float32(h)/2.0, White)
+
+	sound := stimuli.NewTone(440, 120, 0.5)
+	sound.PreloadDevice(exp.AudioDevice)    // generates the sound
+
+	instr := stimuli.NewTextBox(
+        "A white rectangle will be displayed periodicallay\n\nPress any key to start\n\n'Esc' to interrupt", 
+        600, FPoint{}, White)
+
+	exp.AddDataVariableNames([]string{"onset", "duration"})
+
+	exp.Run(func() error {
+		exp.Show(instr)
+		exp.Keyboard.Wait()
+
+		for {
+			onsetNS, _ := exp.ShowTS(rect)
+			sound.Play()
+			exp.Wait(200)
+			exp.Screen.Clear()
+			offsetNS, _ := exp.Screen.FlipTS()
+			duration_ms := (offsetNS - onsetNS) / 1_000_000
+			exp.Wait(800)
+
+			exp.Data.Add(onsetNS/1_000_000, duration_ms)
+		}
+	})
+
+}
+```
+
 
 ---
 

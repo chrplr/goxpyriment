@@ -1,0 +1,76 @@
+audio: requesting 512 sample frames hardware buffer
+audio: 44100 Hz  2 ch  512 sample frames (~11.6 ms latency)
+gc: suspended during timing-critical loops
+DLP-IO8-G found on /dev/ttyUSB0 (trigger pin 1, pulse 5 ms)
+av: visual+audio+ttl  frames-on=12 (200.0 ms) frames-off=18 (300.0 ms)  cycles=1000  warmup=10
+av: tone 1000 Hz for 200 ms  soa=0.0 ms  sync=PlaySyncedWithFlip
+stimulus: five 256 px squares (auto: ¼ of render height) (corners + centre) on a 1280x1024 render area
+  centres:  x = 128 / 640 / 1152    y = 128 / 512 / 896
+  top↔bottom separation: 768 px = 0.7500 of screen height
+  place each photodiode at its square's CENTRE — the separation assumes it
+
+── Bright-phase duration (frames-on=12) ───────────────────────────────
+  n       : 990
+  target  : 200.189 ms
+  mean    : 200.189 ms
+  SD      : 1.836 ms
+  min/max : 198.477 / 217.041 ms
+  p5/p95  : 199.664 / 200.347 ms
+  >0.5 ms : 82 (8.3 %)
+  >1.0 ms : 24 (2.4 %)
+  histogram (10 bins):
+  [198.477, 200.333) ms :   937  ****************************************
+  [200.333, 202.189) ms :    38  *
+  [202.189, 204.046) ms :     1  
+  [204.046, 205.902) ms :     1  
+  [205.902, 207.759) ms :     0  
+  [207.759, 209.615) ms :     0  
+  [209.615, 211.471) ms :     0  
+  [211.471, 213.328) ms :     1  
+  [213.328, 215.184) ms :     3  
+  [215.184, 217.041) ms :     9  
+
+── Period (frames-on=12 + frames-off=18) ───────────────────────────────
+  n       : 990
+  target  : 500.397 ms
+  mean    : 500.397 ms
+  SD      : 3.072 ms
+  min/max : 498.473 / 533.057 ms
+  p5/p95  : 499.469 / 500.476 ms
+  >0.5 ms : 593 (59.9 %)
+  >1.0 ms : 73 (7.4 %)
+  histogram (10 bins):
+  [498.473, 501.931) ms :   958  ****************************************
+  [501.931, 505.390) ms :     1  
+  [505.390, 508.848) ms :     0  
+  [508.848, 512.307) ms :     0  
+  [512.307, 515.765) ms :     9  
+  [515.765, 519.223) ms :    20  
+  [519.223, 522.682) ms :     0  
+  [522.682, 526.140) ms :     0  
+  [526.140, 529.598) ms :     0  
+  [529.598, 533.057) ms :     2  
+
+── Audio released − visual onset, software side (intended SOA 0.0 ms) ───────────────────────────────
+  n       : 990
+  target  : 0.007 ms
+  mean    : 0.007 ms
+  SD      : 0.023 ms
+  min/max : 0.001 / 0.274 ms
+  p5/p95  : 0.002 / 0.016 ms
+  >0.5 ms : 0 (0.0 %)
+  >1.0 ms : 0 (0.0 %)
+  histogram (10 bins):
+  [  0.001,   0.028) ms :   959  ****************************************
+  [  0.028,   0.056) ms :    14  
+  [  0.056,   0.083) ms :     1  
+  [  0.083,   0.110) ms :     3  
+  [  0.110,   0.137) ms :     5  
+  [  0.137,   0.165) ms :     2  
+  [  0.165,   0.192) ms :     0  
+  [  0.192,   0.219) ms :     1  
+  [  0.219,   0.246) ms :     2  
+  [  0.246,   0.274) ms :     3  
+
+av: 1000 cycles complete (10 discarded as warm-up).
+Software timestamps only — the photodiode/TTL recording is the ground truth.

@@ -1,0 +1,53 @@
+audio: 44100 Hz  2 ch  1024 sample frames (~23.2 ms latency)
+gc: suspended during timing-critical loops
+DLP-IO8-G found on /dev/ttyUSB1 (trigger pin 1, pulse 5 ms)
+av: visual  frames-on=12 (200.0 ms) frames-off=18 (300.0 ms)  cycles=20  warmup=10
+stimulus: five 256 px squares (auto: ¼ of render height) (corners + centre) on a 1280x1024 render area
+  centres:  x = 128 / 640 / 1152    y = 128 / 512 / 896
+  top↔bottom separation: 768 px = 0.7500 of screen height
+  place each photodiode at its square's CENTRE — the separation assumes it
+
+── Bright-phase duration (frames-on=12) ───────────────────────────────
+  n       : 10
+  target  : 199.920 ms
+  mean    : 199.920 ms
+  SD      : 0.139 ms
+  min/max : 199.725 / 200.124 ms
+  p5/p95  : 199.725 / 200.124 ms
+  >0.5 ms : 0 (0.0 %)
+  >1.0 ms : 0 (0.0 %)
+  histogram (10 bins):
+  [199.725, 199.765) ms :     2  ****************************************
+  [199.765, 199.804) ms :     0  
+  [199.804, 199.844) ms :     2  ****************************************
+  [199.844, 199.884) ms :     0  
+  [199.884, 199.924) ms :     1  ********************
+  [199.924, 199.964) ms :     1  ********************
+  [199.964, 200.004) ms :     1  ********************
+  [200.004, 200.044) ms :     0  
+  [200.044, 200.084) ms :     2  ****************************************
+  [200.084, 200.124) ms :     1  ********************
+
+── Period (frames-on=12 + frames-off=18) ───────────────────────────────
+  n       : 10
+  target  : 500.355 ms
+  mean    : 500.355 ms
+  SD      : 0.786 ms
+  min/max : 499.622 / 502.373 ms
+  p5/p95  : 499.622 / 502.373 ms
+  >0.5 ms : 3 (30.0 %)
+  >1.0 ms : 1 (10.0 %)
+  histogram (10 bins):
+  [499.622, 499.897) ms :     3  ******************************
+  [499.897, 500.172) ms :     1  **********
+  [500.172, 500.447) ms :     4  ****************************************
+  [500.447, 500.722) ms :     0  
+  [500.722, 500.997) ms :     1  **********
+  [500.997, 501.272) ms :     0  
+  [501.272, 501.547) ms :     0  
+  [501.547, 501.822) ms :     0  
+  [501.822, 502.098) ms :     0  
+  [502.098, 502.373) ms :     1  **********
+
+av: 20 cycles complete (10 discarded as warm-up).
+Software timestamps only — the photodiode/TTL recording is the ground truth.

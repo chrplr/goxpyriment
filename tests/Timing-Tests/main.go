@@ -124,7 +124,7 @@ var (
 	fItiMs       = flag.Float64("iti-ms", 1000, "Mean inter-trial interval ms, jittered ±50 % [rt]")
 	fFreqHz      = flag.Float64("freq-hz", 1000, "Tone frequency Hz [av / latency]")
 	fDurationS   = flag.Float64("duration-s", 10, "Measurement duration in seconds [display]")
-	fAudioFrames = flag.Int("audio-frames", 0, "Audio hardware buffer size in sample frames (0=SDL default). Must be set before SDL audio opens; e.g. 256, 512, 1024.")
+	fAudioFrames = flag.Int("audio-frames", 0, "Audio hardware buffer size in sample frames, e.g. 256, 512, 1024,... (0=SDL default) ")
 	fHz          = flag.Float64("hz", 60.0, "Expected display refresh rate in Hz; sets the tone duration (frames-on × 1/hz) [av]")
 	fWarmup      = flag.Int("warmup", 10, "Leading cycles discarded from statistics [av / display]")
 	fDrainReps   = flag.Int("drain-reps", 10, "Repetitions per tone duration [latency]")
