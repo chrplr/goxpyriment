@@ -213,9 +213,34 @@ New files must include this header.
 - **Error handling:** functions return `error`; callers use `log.Fatalf` or propagate. No panics in library code.
 - **GC during timing:** disable with `debug.SetGCPercent(-1)` and defer restore around any VSYNC-locked loop, following the pattern in `stimuli/stream.go` and `stimuli/gvvideo.go`.
 
+## Before pushing: read the workflows, don't guess
+
+`go build ./...` passing on this machine does not mean CI passes. Read
+`.github/workflows/*.yml` and run what it actually runs — the file is short and
+the check costs one grep. Two failures on 2026-08-07 were both discoverable this
+way beforehand:
+
+- **Cross-compilation targets.** CI builds `GOOS=js GOARCH=wasm` (with
+  `triggers/` excluded, which is itself the clue that this target exists). New
+  build-tagged files were cross-compiled for windows, darwin and freebsd but not
+  for the browser, and a `!linux && !windows && !darwin` tag silently caught
+  `js/wasm`. `x/sys/unix` compiles there and defines none of the syscalls, so
+  nothing fails until link time. Any new `_other.go` fallback needs
+  `&& !js && !wasip1` and a sandbox implementation.
+- **Generated files.** `README.md` is generated from `docs/index.md` by
+  `cmd/gen-readme`, and a CI job fails if they drift. Editing `docs/index.md`
+  without running `make readme` left it red for three pushes. Before editing any
+  file, check whether the `Makefile` has a target that regenerates it.
+
+The general rule: a repo states its own invariants in its workflows, Makefile
+and build tags. Inferring them from the source alone finds the ones that happen
+to be visible.
+
 ## Go Development
 
 - After writing or modifying Go code, always run `go build ./...` and `go vet ./...` to verify the project compiles and vets cleanly before reporting completion. (The `/verify` skill does both.)
+- Before pushing, also run the CI workflow's own steps, including the
+  `GOOS=js GOARCH=wasm` builds. See the section above.
 - Never silently swallow errors; always check and surface error returns (especially in rendering/SDL code) so failures are visible instead of producing blank screens.
 
 ## Build & Environment
