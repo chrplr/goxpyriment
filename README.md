@@ -65,7 +65,8 @@ organized by package. [[PDF](docs/API.pdf)]
 **Misc** — focused how-to guides: [migrating from PsychoPy / Expyriment /
 Psychtoolbox](docs/MigrationGuide.md), [checking your computer's
 timing](docs/TimingTests.md), [video playback](docs/MediaMovies.md), [packaging &
-sharing binaries](docs/How_to_package_your_experiment.md), Linux tuning, and
+sharing binaries](docs/How_to_package_your_experiment.md), [giving your
+experiment real-time priority on Linux](docs/SettingPriorityUnderLinux.md), and
 more, all found under the **Misc** tab in the navigation bar at the top
 of the page.
 
