@@ -135,15 +135,45 @@ Sched:      policy: SCHED_OTHER  nice: 0  (real-time NOT available to this user)
 ```
 
 Those three lines are three different situations with three different fixes, and
-they are worth being able to tell apart after the fact. The last one is this
-setup not being in place; the middle one is it being in place but the program not
-having been started under `chrt`. Without the line in the data you would be left
-comparing timing distributions and guessing which had happened.
+they are worth being able to tell apart after the fact.
+
+The **last** is this setup not being in place — go back to Step 2. The **middle**
+is the setup working but the program not having asked: for a goxpyriment program
+that means `-no-realtime` was passed, since otherwise it asks on its own; for
+anything else it means no `chrt` prefix. Without the line in the data you would
+be left comparing timing distributions and guessing which had happened.
 
 ---
 
 ### ⚠️ A Friendly "Warning"
-Since you are giving your code the ability to run at `-20` niceness (the highest possible priority), a "busy loop" in your Go code (like `for { }` without a sleep) could potentially **freeze your entire desktop**. 
 
-Because your code is now more "important" than the mouse driver or the window manager, the OS won't interrupt your code to let you click "Stop." Always keep a terminal open with a `top` or `htop` window ready, or test your logic with lower priority first!
+Once this grant is in place, goxpyriment programs run at real-time priority **by
+default** — you no longer have to remember a `chrt` prefix, and equally you no
+longer get a reminder that you are asking for it. A busy loop (`for { }` with no
+sleep, or a spin-wait) is then running above the window manager and the input
+handling, and the OS will not interrupt it to let you click "Stop".
+
+Two things bound the damage, and it is worth knowing which one you are relying
+on:
+
+- **In-program elevation raises only one thread** — the experiment's own. The Go
+  runtime's other threads, including the garbage collector, stay at normal
+  priority, so a spinning goroutine occupies one core rather than all of them.
+- **`chrt -f 50 prog` raises the whole process**, because the policy is set
+  before `exec` and every thread inherits it. That is the more dangerous of the
+  two, and the one this warning was originally written about.
+
+Either way: keep a terminal with `top` or `htop` open while developing, and use
+`-no-realtime` when stepping through code in a debugger — a breakpoint hit on a
+real-time thread can leave the desktop unresponsive until the process is killed.
+
+The kernel's real-time throttle (`/proc/sys/kernel/sched_rt_runtime_us`, 950 ms
+per second by default) is a backstop, not a licence: it stops a runaway task
+locking the machine completely, but a machine at 95 % real-time occupancy is not
+usable.
+
+> **Note on the grant itself:** goxpyriment only uses `rtprio`. The `nice -20`
+> and `memlock unlimited` lines in Step 2 are there because they are commonly
+> wanted alongside it and cost nothing, not because anything here requires them.
+> Granting `rtprio` alone is enough if you prefer the smaller privilege.
 
