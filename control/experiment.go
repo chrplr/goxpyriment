@@ -26,6 +26,7 @@ import (
 	"github.com/chrplr/goxpyriment/design"
 	"github.com/chrplr/goxpyriment/results"
 	"github.com/chrplr/goxpyriment/stimuli"
+	"github.com/chrplr/goxpyriment/sysinfo"
 )
 
 // calibrationFrames is how many frames Initialize presents to measure the
@@ -220,6 +221,10 @@ func NewExperimentFromFlags(name string, bg, fg sdl.Color, fontSize float32) *Ex
 	exclusive := flag.String("exclusive-fullscreen", "auto",
 		"Fullscreen presentation: auto | on (exclusive, bypasses the compositor where possible) | off (fullscreen-desktop)")
 	subject := flag.Int("s", 0, "Subject ID")
+	noRealtime := flag.Bool("no-realtime", false,
+		"Do not request real-time scheduling priority (see -realtime-priority)")
+	realtimePrio := flag.Int("realtime-priority", 50,
+		"Real-time scheduling priority to request at startup (1-99); must not exceed the RLIMIT_RTPRIO granted to this user")
 	// In the browser (GOOS=js) there is no command line: synthesize os.Args
 	// from the page URL's query string (?s=3&w) now that all flags exist.
 	platformPrepareFlags()
@@ -242,6 +247,29 @@ func NewExperimentFromFlags(name string, bg, fg sdl.Color, fontSize float32) *Ex
 		log.Fatalf("-exclusive-fullscreen: %v", policyErr)
 	}
 	SetFullscreenPolicy(policy)
+
+	// Ask for real-time scheduling before anything timing-critical starts.
+	//
+	// Attempted by default rather than on request. There is no cost to trying:
+	// if the privilege was never granted this fails and the run continues at
+	// normal priority, exactly as it would have. Making it opt-in would mean the
+	// common case -- launching by clicking the icon, where no chrt prefix is
+	// possible -- silently gets the worse timing, which is the case that most
+	// needs the help.
+	//
+	// Failure is reported and never fatal. An experiment that refused to run
+	// because it could not get real-time priority would be worse than one that
+	// runs slightly less precisely and says so. What it must not do is fail
+	// silently: on a loaded host this is worth milliseconds, and the run's own
+	// system report records what it ended up with (sysinfo.SchedulingInfo).
+	//
+	// This runs on the main goroutine, which init() has locked to its OS thread,
+	// so the elevation lands on the thread the experiment loop will use.
+	if !*noRealtime {
+		if err := sysinfo.RaiseToRealTime(*realtimePrio); err != nil {
+			log.Printf("real-time scheduling not obtained, continuing at normal priority: %v", err)
+		}
+	}
 
 	// Session settings, seeded from the command-line flags.
 	windowedMode := *windowed
@@ -624,6 +652,13 @@ var (
 	pumpEvents       = sdl.PumpEvents
 	hasEvent         = sdl.HasEvent
 	getKeyboardState = sdl.GetKeyboardState
+)
+
+// SDL seams for End, so unit tests can exercise its panic backstop without a
+// loaded SDL library (same pattern as the pump seams above).
+var (
+	ttfQuit = ttf.Quit
+	sdlQuit = sdl.Quit
 )
 
 // Wait blocks for the given number of milliseconds while keeping the OS
@@ -1093,7 +1128,29 @@ func (e *Experiment) OpenMicrophone(spec *sdl.AudioSpec) error {
 	return nil
 }
 
+// End releases everything the experiment holds — data file, font, screen, audio
+// device, microphone, and the SDL/TTF libraries themselves. Defer it right after
+// the experiment is created.
+//
+// End is also the backstop for the ESC/quit sentinel. Wait and ShowTS abort by
+// panicking with the internal exitPanic value, which Run recovers; an experiment
+// that does not wrap its logic in Run has nothing to catch it, and pressing ESC
+// would surface as a crash. Since every experiment defers End, and a deferred
+// function may call recover directly, absorbing the sentinel here makes ESC exit
+// cleanly with or without Run.
+//
+// Any other panic is re-raised once the cleanup below has run, so genuine bugs
+// still fail loudly. The re-raise costs the original stack trace — Go reports
+// the panic as "[recovered]" and prints the frames of the re-panic instead —
+// which is the same trade Run's recover has always made.
 func (e *Experiment) End() {
+	if r := recover(); r != nil {
+		if _, ok := r.(exitPanic); !ok && !e.platformHandleCrash(r) {
+			// Not our sentinel, and no browser error overlay took charge of it:
+			// let the real crash propagate, but only after cleanup has run.
+			defer panic(r)
+		}
+	}
 	e.finalizeData()
 	if e.DefaultFont != nil {
 		e.DefaultFont.Close()
@@ -1110,8 +1167,8 @@ func (e *Experiment) End() {
 	if e.Microphone != nil {
 		e.Microphone.Close()
 	}
-	ttf.Quit()
-	sdl.Quit()
+	ttfQuit()
+	sdlQuit()
 	if e.ttfLoader != nil {
 		e.ttfLoader.Unload()
 	}

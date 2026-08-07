@@ -411,11 +411,18 @@ the window actually opened on.
   took dropped frames from ~5 % to zero and removed a frame of latency. Failing
   that, use a plain window manager (i3, openbox).
 - Disable CPU frequency scaling: `cpupower frequency-set -g performance`.
-- **Run with real-time scheduling.** Grant your user the privilege once, then run
-  the test normally:
+- **Run with real-time scheduling.** Grant your user the privilege once (below);
+  after that, goxpyriment programs — Timing-Tests included — request priority 50
+  at startup on their own, so nothing needs prefixing:
   ```bash
-  chrt -f 50 Timing-Tests -test display -duration-s 30
+  Timing-Tests -test display -duration-s 30       # asks for real-time itself
+  Timing-Tests -no-realtime -test display         # opt out
+  chrt -f 50 some-other-program                   # for anything that does not
   ```
+  This matters most when a program is launched by clicking its icon, where there
+  is no command line to prefix. If the grant is missing the program says so and
+  continues at normal priority rather than refusing to run, and the `Sched:` line
+  in its system report records which it got.
   The privilege comes from a file you add to `/etc/security/limits.d/` — **not**
   from editing `/etc/security/limits.conf`, which is package-managed and can be
   replaced on upgrade, taking your setting with it. See [Setting priority under

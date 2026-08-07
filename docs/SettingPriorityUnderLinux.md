@@ -62,11 +62,31 @@ sudo usermod -aG goxpyriment $USER
 
 ### Step 5: Actually Use It
 
-The grant only makes real-time priority *available*. Nothing runs at it until
-you ask, so launch the experiment through `chrt`:
+The grant only makes real-time priority *available* — nothing runs at it until
+something asks.
+
+**goxpyriment programs ask for themselves.** Any experiment built with
+`NewExperimentFromFlags` requests priority 50 at startup, so once Steps 1-4 are
+done there is nothing further to do — including when the program is launched by
+clicking its icon, where no command-line prefix is possible. If the grant is not
+in place it says so and continues at normal priority rather than refusing to run:
+
+```
+real-time scheduling not obtained, continuing at normal priority: real-time
+scheduling is not permitted for this user (RLIMIT_RTPRIO is 0). ...
+```
+
+Two flags control it:
 
 ```bash
-chrt -f 50 ./my-experiment
+./my-experiment -no-realtime               # do not ask at all
+./my-experiment -realtime-priority 20      # ask for something other than 50
+```
+
+**For anything else**, or to override, use `chrt`:
+
+```bash
+chrt -f 50 ./some-other-program
 ```
 
 `-f` selects SCHED_FIFO and `50` is the priority. **It must not exceed the
