@@ -107,3 +107,6 @@ paper/megastudy/
 # --- LaTeX float files (endfloat package) -----------------------------------
 paper/*.fff
 paper/*.ttt
+
+# Working notes kept locally, not published.
+paper/eval_july26.md
