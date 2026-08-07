@@ -414,7 +414,7 @@ the window actually opened on.
 - **Run with real-time scheduling.** Grant your user the privilege once, then run
   the test normally:
   ```bash
-  chrt -r 80 Timing-Tests -test display -duration-s 30
+  chrt -f 50 Timing-Tests -test display -duration-s 30
   ```
   The privilege comes from a file you add to `/etc/security/limits.d/` — **not**
   from editing `/etc/security/limits.conf`, which is package-managed and can be
@@ -436,7 +436,12 @@ the window actually opened on.
   belongs to another package (jackd), which can revoke it on reconfigure — and a
   run that quietly loses real-time priority looks exactly like a run that had it.
 
-  You *can* skip the setup with `sudo chrt -r 80 Timing-Tests …`, but the test
+  The priority must not exceed the `rtprio` value granted in the setup above.
+  Asking for more fails with "Operation not permitted" -- the same error as
+  having no grant at all, so it is easily misdiagnosed. The setup document
+  grants 50, hence `-f 50` here; keep the two numbers equal.
+
+  You *can* skip the setup with `sudo chrt -f 50 Timing-Tests …`, but the test
   then runs as root: data files land owned by root and it picks up root's
   environment, not yours. Fine for a one-off check, wrong for collecting data.
 - Consider a real-time kernel — see <https://ubuntu.com/blog/enable-real-time-ubuntu>.

@@ -60,6 +60,27 @@ sudo usermod -aG goxpyriment $USER
 * You **must** log out of your Linux session and log back in.
 * Alternatively, you can run `su - $USER` in your terminal to start a sub-shell with the new permissions for testing.
 
+### Step 5: Actually Use It
+
+The grant only makes real-time priority *available*. Nothing runs at it until
+you ask, so launch the experiment through `chrt`:
+
+```bash
+chrt -f 50 ./my-experiment
+```
+
+`-f` selects SCHED_FIFO and `50` is the priority. **It must not exceed the
+`rtprio` value granted in Step 2** — asking for more fails with "Operation not
+permitted", which is the same error you get when the grant is missing entirely,
+so it is easy to misdiagnose. Keep the two numbers equal unless you have a
+reason not to.
+
+The policy is inherited by child processes, so one `chrt` covers the whole run.
+It does not persist to your shell or to the next command; that is deliberate.
+You *can* make a shell real-time with `chrt -f -p 50 $$`, but do not: every
+command you then type runs above most system threads, and a mistyped one is
+very hard to interrupt.
+
 ---
 
 ### How to Verify it Worked
