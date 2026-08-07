@@ -113,7 +113,7 @@ func main() {
 		for i, path := range seqFiles {
 			pic := stimuli.NewPicture(path, 0, 0)
 			if err := stimuli.PreloadVisualOnScreen(exp.Screen, pic); err != nil {
-				log.Fatalf("loading %s: %v", path, err)
+				return fmt.Errorf("loading %s: %w", path, err)
 			}
 			scale := float32(*boxSize) / max(pic.Width, pic.Height)
 			pic.Width *= scale
@@ -124,7 +124,7 @@ func main() {
 		// Preload the buzzer once so it can be fired (non-blocking) on a miss.
 		buzzer := stimuli.NewSoundFromMemory(assets_embed.BuzzerWav)
 		if err := buzzer.PreloadDevice(exp.AudioDevice); err != nil {
-			log.Fatalf("loading buzzer: %v", err)
+			return fmt.Errorf("loading buzzer: %w", err)
 		}
 
 		exp.AddDataVariableNames([]string{"position", "filename", "is_repeat", "responded", "rt_ms"})

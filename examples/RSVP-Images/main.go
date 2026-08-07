@@ -107,17 +107,20 @@ func main() {
 		total := 2 * len(trials)
 		done := 0
 		lastPct := -1
-		progress := func() {
+		progress := func() error {
 			pct := done * 100 / total
 			if pct == lastPct {
-				return // throttle: only redraw when the percentage changes
+				return nil // throttle: only redraw when the percentage changes
 			}
 			lastPct = pct
 			if err := drawProgress(exp.Screen, done, total); err != nil {
-				log.Fatalf("drawing progress: %v", err)
+				return fmt.Errorf("drawing progress: %w", err)
 			}
+			return nil
 		}
-		progress()
+		if err := progress(); err != nil {
+			return err
+		}
 
 		// Phase 1 — parallel CPU build.
 		pics := make([]*stimuli.Picture, len(trials))
@@ -143,18 +146,20 @@ func main() {
 		for n := 0; n < len(trials); n++ {
 			r := <-results
 			if r.err != nil {
-				log.Fatalf("trial %d (%s): %v", r.idx, trials[r.idx].filePath, r.err)
+				return fmt.Errorf("trial %d (%s): %w", r.idx, trials[r.idx].filePath, r.err)
 			}
 			pics[r.idx] = r.pic
 			done++
-			progress()
+			if err := progress(); err != nil {
+				return err
+			}
 		}
 
 		// Phase 2 — serial GPU upload + scaling (must run on the main thread).
 		for i, pic := range pics {
 			// Preload to populate native Width/Height, then scale to fit the box.
 			if err := stimuli.PreloadVisualOnScreen(exp.Screen, pic); err != nil {
-				log.Fatalf("trial %d (%s): preloading: %v", i, trials[i].filePath, err)
+				return fmt.Errorf("trial %d (%s): preloading: %w", i, trials[i].filePath, err)
 			}
 			scale := float32(*boxSize) / max(pic.Width, pic.Height)
 			pic.Width *= scale
@@ -164,12 +169,14 @@ func main() {
 			onsetMs[i] = int(trials[i].onsetSec*1000 + 0.5)
 			durationMs[i] = int(trials[i].durationSec*1000 + 0.5)
 			done++
-			progress()
+			if err := progress(); err != nil {
+				return err
+			}
 		}
 
 		elements, err := stimuli.MakeVisualStream(stims, onsetMs, durationMs)
 		if err != nil {
-			log.Fatalf("building stream: %v", err)
+			return fmt.Errorf("building stream: %w", err)
 		}
 		// Convert to the heterogeneous stream form so we can pass a per-frame
 		// callback (to draw the fixation dot during the ISI).
@@ -200,7 +207,7 @@ func main() {
 
 		events, timing, err := stimuli.PresentStreamOfStimuliFunc(exp.Screen, generic, 0, 0, drawDot)
 		if err != nil && !control.IsEndLoop(err) {
-			log.Fatalf("presenting stream: %v", err)
+			return fmt.Errorf("presenting stream: %w", err)
 		}
 
 		// Score responses: attribute each SPACE press to the image whose onset most
