@@ -131,8 +131,31 @@ func (d *DLPIO8) SetLow(line int) error {
 	return err
 }
 
-// Send sets all 8 output lines simultaneously from a bitmask.
-// Bit N drives line N. Implements [OutputTTLDevice].
+// Send drives all 8 output lines from a bitmask. Bit N drives line N.
+// Implements [OutputTTLDevice].
+//
+// NOT SIMULTANEOUS, and it cannot be. The DLP-IO8 has no multi-channel command:
+// every command is a single ASCII byte affecting one line, so this sends eight
+// of them and the module acts on each as it arrives. The port takes about
+// 610 us to settle and shows partly-updated values throughout.
+//
+// Measured on a DLP-IO8-G at 115200 8N1 with a Siglent SDS1104X-E, n=99: the
+// gap between consecutive lines is 86.2 us, and ch1 to ch8 is 609.5 us. The
+// spacing is quantised rather than jittery (each gap is either ~83.0 or
+// ~92.7 us, never between) and the gaps are anti-correlated, so the total is
+// reproducible to about 14 us. See github.com/chrplr/dlp-io8-g,
+// measurements/README.md.
+//
+// The consequence for an experiment: against a system sampling at 1 kHz, 610 us
+// is around 61% of a sample period, so a multi-bit code change is sampled
+// mid-transition roughly three times in five and recorded as a value that was
+// never sent.
+//
+// Prefer one line per event type, pulsed. A single line is one command byte, so
+// there is no skew at all, and eight lines still distinguish eight events. Use
+// Send for a multi-bit code only when the acquisition reads the code some
+// milliseconds after the onset edge rather than latching it at the edge, or
+// when a separate strobe line is raised last once the code has settled.
 func (d *DLPIO8) Send(mask byte) error {
 	for line := 0; line < 8; line++ {
 		var err error
@@ -149,6 +172,15 @@ func (d *DLPIO8) Send(mask byte) error {
 }
 
 // Pulse drives line HIGH for dur, then LOW. Implements [OutputTTLDevice].
+//
+// The device has no pulse timer of its own, so the width is the interval
+// between two host writes and inherits host scheduling in full. Measured on a
+// DLP-IO8-G, n=50 per width: on an idle host the realised width is within 20 us
+// of the request with under 120 us of spread, but under CPU load the median
+// error reaches +1.85 ms with 4.75 ms of spread -- and the host's own busy-wait
+// interval degrades identically, so the cause is the scheduler descheduling the
+// process, not the USB path. Real-time priority is the fix; see
+// docs/SettingPriorityUnderLinux.md.
 func (d *DLPIO8) Pulse(line int, dur time.Duration) error {
 	return defaultPulse(d, line, dur)
 }

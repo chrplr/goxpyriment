@@ -440,7 +440,10 @@ the window actually opened on.
   then runs as root: data files land owned by root and it picks up root's
   environment, not yours. Fine for a one-off check, wrong for collecting data.
 - Consider a real-time kernel — see <https://ubuntu.com/blog/enable-real-time-ubuntu>.
-- Reduce USB trigger latency — see the DLP-IO8 section below.
+- **Lower the FTDI latency timer** if you read responses over a USB serial
+  device — see the DLP-IO8 section below. Note it does *not* reduce the latency
+  of *sending* a trigger; that is USB frame scheduling, which the timer does not
+  touch.
 
 **Windows**
 
@@ -494,7 +497,81 @@ use that everywhere — including in your actual experiment.
 
 ## DLP-IO8
 
-See <https://github.com/chrplr/dlp-io8-g>.
+Driver: `triggers/dlpio8.go`. Full protocol notes and raw data at
+<https://github.com/chrplr/dlp-io8-g>; the timing figures below were measured
+there with a Siglent SDS1104X-E and are repeated because they change how you
+should use the device.
+
+### Lower the FTDI latency timer before reading anything
+
+The DLP-IO8 is an FTDI device, and the `ftdi_sio` driver defaults to a **16 ms
+latency timer**: the chip holds a partly-filled buffer that long before sending
+it to the host. A poll the module answers instantly still takes 16 ms to come
+back.
+
+Measured, n=300 per setting, for an 8-channel read:
+
+| `latency_timer` | round trip | poll rate |
+|---|---|---|
+| **16 (default)** | **15.98 ms** | **63 Hz** |
+| 4 | 3.99 ms | 251 Hz |
+| 1 | 1.01 ms | 995 Hz |
+
+The relationship is exactly `round trip = latency_timer`, so the module's own
+processing is negligible and the whole cost is driver batching. A polling loop
+gets the worst case rather than the average: waiting for each reply
+synchronises the loop to the timer and pays the full 16 ms every iteration.
+
+```bash
+echo 1 | sudo tee /sys/bus/usb-serial/devices/ttyUSB0/latency_timer
+```
+
+That reverts on replug. To make it stick:
+
+```
+# /etc/udev/rules.d/99-ftdi-latency.rules
+SUBSYSTEM=="usb-serial", DRIVERS=="ftdi_sio", ATTR{latency_timer}="1"
+```
+
+The rule applies to every FTDI serial device on the machine, not just this one.
+That is usually what you want, but it is worth knowing it is system-wide.
+
+**It does nothing for sending triggers.** Output latency is governed by USB
+frame scheduling. Do not expect this setting to make a trigger arrive sooner.
+
+### A multi-bit code is not atomic
+
+There is no multi-channel command: every command is one ASCII byte affecting one
+line. `Send(mask)` therefore emits eight bytes which the module acts on as they
+arrive, and **the port takes ~610 µs to settle**, showing partly-updated values
+throughout. Measured n=99: 86.2 µs per byte, 609.5 µs from the first line to the
+eighth.
+
+Against a system sampling at 1 kHz that is about 61 % of a sample period, so a
+code change is sampled mid-transition roughly three times in five and recorded
+as a value that was never sent.
+
+**Use one line per event type, pulsed.** A single line is one command byte, so
+there is no skew at all, and eight lines still distinguish eight event types.
+Reserve `Send` for a multi-bit code for the cases where the acquisition reads
+the code milliseconds after the onset edge rather than latching it at the edge,
+or where a strobe line is raised last once the code has settled.
+
+### Pulse width is only as good as your scheduling
+
+The device has no pulse timer, so a pulse is two host writes and the width
+inherits host scheduling in full. Measured n=50 per width:
+
+| host state | median error | spread |
+|---|---|---|
+| idle | −10 to −20 µs | ≤ 120 µs |
+| under CPU load | up to +1.85 ms | up to 4.75 ms |
+
+The host's own busy-wait interval degrades by the same amount, tracking the wire
+to within 80 µs — so the cause is the scheduler descheduling the process, not
+the USB path or the device. See [Setting priority under
+Linux](SettingPriorityUnderLinux.md); that is the fix, and it is a different
+mechanism from the latency timer above.
 
 ## Parallel port alternative
 
