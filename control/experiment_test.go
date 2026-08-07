@@ -90,6 +90,56 @@ func TestWaitAbort(t *testing.T) {
 	exp.Wait(1000)
 }
 
+// stubQuit replaces the SDL/TTF shutdown seams so End can run in a unit test
+// with no SDL library loaded. It returns the restore function.
+func stubQuit() func() {
+	oldTTF, oldSDL := ttfQuit, sdlQuit
+	ttfQuit, sdlQuit = func() {}, func() {}
+	return func() { ttfQuit, sdlQuit = oldTTF, oldSDL }
+}
+
+// TestEndRecoversExitPanic verifies End's backstop: an experiment that does not
+// wrap its logic in Run must still exit cleanly when Wait or ShowTS aborts on
+// ESC, because the deferred End absorbs the sentinel.
+func TestEndRecoversExitPanic(t *testing.T) {
+	defer stubQuit()()
+
+	exp := &Experiment{}
+
+	func() {
+		defer func() {
+			if r := recover(); r != nil {
+				t.Errorf("exitPanic escaped End: %v", r)
+			}
+		}()
+		defer exp.End()
+		panic(exitPanic{err: sdl.EndLoop})
+	}()
+}
+
+// TestEndRepanicsOtherPanics verifies that End's backstop only swallows the
+// internal sentinel: a genuine bug must still reach the top of the program,
+// after End has released its resources.
+func TestEndRepanicsOtherPanics(t *testing.T) {
+	defer stubQuit()()
+
+	exp := &Experiment{}
+
+	func() {
+		defer func() {
+			r := recover()
+			if r == nil {
+				t.Fatal("End swallowed a panic that was not the exit sentinel")
+			}
+			if s, ok := r.(string); !ok || s != "boom" {
+				t.Errorf("expected the original panic value, got %v", r)
+			}
+		}()
+		defer exp.End()
+		panic("boom")
+	}()
+}
+
 // TestIsEndLoop verifies the helper function correctly identifies the sentinel.
 func TestIsEndLoop(t *testing.T) {
 	if !IsEndLoop(sdl.EndLoop) {

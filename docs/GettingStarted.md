@@ -25,12 +25,12 @@ package main
 import (
     "log"
 
-    "github.com/chrplr/goxpyriment/control"
+    . "github.com/chrplr/goxpyriment/control"
     "github.com/chrplr/goxpyriment/stimuli"
 )
 
 func main() {
-    exp := control.NewExperimentFromFlags("SimpleTrial", control.Black, control.White, 32)
+    exp := NewExperimentFromFlags("SimpleTrial", Black, White, 32)
     defer exp.End()
 
     fixation := stimuli.NewFixCross(20, 3, control.White)
@@ -41,13 +41,13 @@ func main() {
     exp.ShowTimed(fixation, 500)  // hold fixation for 500 ms
 
     exp.Show(target)
-    exp.Keyboard.WaitKey(control.K_SPACE)
+    exp.Keyboard.WaitKey(K_SPACE)
 }
 ```
 
-The following example runs a loops where a white square is displayed every seconds, and a short tone is played. No response is required.
+The following example goesa bit furhter: it runs a loops where a white square and a short tone are presented every second.
 
-```
+```go
 package main
 
 import (

@@ -243,73 +243,79 @@ func main() {
 		"n_presentations", "repro_error_ms",
 	})
 
-	// ── Instructions ─────────────────────────────────────────────────────────
-	err := showAndWait(exp,
-		"Perception of Temporal Patterns\n\n"+
-			"You will hear rhythmic sequences of tones.\n\n"+
-			"LEARNING PHASE\n"+
-			"The sequence repeats automatically.\n"+
-			"Tap along with the rhythm using SPACE.\n"+
-			"Press ENTER when you are ready to reproduce it.\n\n"+
-			"REPRODUCTION PHASE\n"+
-			"Tap SPACE once for each tone onset,\n"+
-			"for 4 complete repetitions of the pattern (36 taps total).\n\n"+
-			"Press SPACE to begin.",
-		control.K_SPACE)
-	if err != nil {
-		return
-	}
+	runErr := exp.Run(func() error {
+		// ── Instructions ─────────────────────────────────────────────────────
+		err := showAndWait(exp,
+			"Perception of Temporal Patterns\n\n"+
+				"You will hear rhythmic sequences of tones.\n\n"+
+				"LEARNING PHASE\n"+
+				"The sequence repeats automatically.\n"+
+				"Tap along with the rhythm using SPACE.\n"+
+				"Press ENTER when you are ready to reproduce it.\n\n"+
+				"REPRODUCTION PHASE\n"+
+				"Tap SPACE once for each tone onset,\n"+
+				"for 4 complete repetitions of the pattern (36 taps total).\n\n"+
+				"Press SPACE to begin.",
+			control.K_SPACE)
+		if err != nil {
+			return control.EndLoop
+		}
 
-	// ── Trial loop ───────────────────────────────────────────────────────────
-	order := rand.Perm(len(sequences))
+		// ── Trial loop ───────────────────────────────────────────────────────────
+		order := rand.Perm(len(sequences))
 
-	for _, idx := range order {
-		seq := sequences[idx]
-		stream := buildStream(seq, sound)
+		for _, idx := range order {
+			seq := sequences[idx]
+			stream := buildStream(seq, sound)
 
-		// -- Learning phase --------------------------------------------------
-		presentations := 0
-		for {
-			presentations++
-			events, _, streamErr := stimuli.PlayStreamOfSounds(stream)
-			if streamErr != nil {
-				log.Printf("stream error: %v", streamErr)
-				return
+			// -- Learning phase --------------------------------------------------
+			presentations := 0
+			for {
+				presentations++
+				events, _, streamErr := stimuli.PlayStreamOfSounds(stream)
+				if streamErr != nil {
+					log.Printf("stream error: %v", streamErr)
+					return control.EndLoop
+				}
+				if enterPressed(events) {
+					break
+				}
 			}
-			if enterPressed(events) {
+
+			// -- Reproduction phase ----------------------------------------------
+			nTaps := 4 * len(seq.intervals) // 4 periods × 9 tones = 36 taps
+			err = showMsg(exp,
+				fmt.Sprintf("Reproduce the rhythm.\n"+
+					"Tap SPACE for each beat — 4 full cycles (%d taps).\n\n"+
+					"Start tapping now...", nTaps))
+			if err != nil {
+				return control.EndLoop
+			}
+
+			taps, tapErr := collectTaps(nTaps)
+			if tapErr != nil {
 				break
 			}
+
+			repError := reproductionError(taps, seq)
+			exp.Data.Add(seq.id, seq.category, *soundFlag, presentations, repError)
+
+			fmt.Printf("Seq %2d (cat %d): %2d presentation(s), error = %d ms\n",
+				seq.id, seq.category, presentations, repError)
+
+			// Brief blank between trials
+			if err = exp.Blank(500); err != nil {
+				return control.EndLoop
+			}
 		}
 
-		// -- Reproduction phase ----------------------------------------------
-		nTaps := 4 * len(seq.intervals) // 4 periods × 9 tones = 36 taps
-		err = showMsg(exp,
-			fmt.Sprintf("Reproduce the rhythm.\n"+
-				"Tap SPACE for each beat — 4 full cycles (%d taps).\n\n"+
-				"Start tapping now...", nTaps))
-		if err != nil {
-			return
-		}
-
-		taps, tapErr := collectTaps(nTaps)
-		if tapErr != nil {
-			break
-		}
-
-		repError := reproductionError(taps, seq)
-		exp.Data.Add(seq.id, seq.category, *soundFlag, presentations, repError)
-
-		fmt.Printf("Seq %2d (cat %d): %2d presentation(s), error = %d ms\n",
-			seq.id, seq.category, presentations, repError)
-
-		// Brief blank between trials
-		if err = exp.Blank(500); err != nil {
-			return
-		}
+		// ── End ──────────────────────────────────────────────────────────────────
+		_ = showAndWait(exp,
+			"Thank you! The experiment is complete.\n\nPress SPACE to exit.",
+			control.K_SPACE)
+		return control.EndLoop
+	})
+	if runErr != nil && !control.IsEndLoop(runErr) {
+		exp.Fatal("experiment error: %v", runErr)
 	}
-
-	// ── End ──────────────────────────────────────────────────────────────────
-	_ = showAndWait(exp,
-		"Thank you! The experiment is complete.\n\nPress SPACE to exit.",
-		control.K_SPACE)
 }

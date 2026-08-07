@@ -75,151 +75,157 @@ func main() {
 
 	exp.AddDataVariableNames([]string{"trial_idx", "has_j", "has_k", "lag", "response", "is_correct", "rt"})
 
-	if err := showInstructions(exp); err != nil {
-		if control.IsEndLoop(err) {
-			return
+	err := exp.Run(func() error {
+		if err := showInstructions(exp); err != nil {
+			if control.IsEndLoop(err) {
+				return control.EndLoop
+			}
+			exp.Fatal("instruction error: %v", err)
 		}
-		exp.Fatal("instruction error: %v", err)
-	}
 
-	// 1. Create Design
-	var trialConfigs []TrialConfig
-	// 5 reps of lags 1-8 = 40 trials
-	for lag := 1; lag <= 8; lag++ {
+		// 1. Create Design
+		var trialConfigs []TrialConfig
+		// 5 reps of lags 1-8 = 40 trials
+		for lag := 1; lag <= 8; lag++ {
+			for i := 0; i < 5; i++ {
+				trialConfigs = append(trialConfigs, TrialConfig{HasJ: true, HasK: true, Lag: lag})
+			}
+		}
+		// 10 J only
+		for i := 0; i < 10; i++ {
+			trialConfigs = append(trialConfigs, TrialConfig{HasJ: true, HasK: false, Lag: 0})
+		}
+		// 5 K only
 		for i := 0; i < 5; i++ {
-			trialConfigs = append(trialConfigs, TrialConfig{HasJ: true, HasK: true, Lag: lag})
+			trialConfigs = append(trialConfigs, TrialConfig{HasJ: false, HasK: true, Lag: 0})
 		}
-	}
-	// 10 J only
-	for i := 0; i < 10; i++ {
-		trialConfigs = append(trialConfigs, TrialConfig{HasJ: true, HasK: false, Lag: 0})
-	}
-	// 5 K only
-	for i := 0; i < 5; i++ {
-		trialConfigs = append(trialConfigs, TrialConfig{HasJ: false, HasK: true, Lag: 0})
-	}
-	// 5 Neither
-	for i := 0; i < 5; i++ {
-		trialConfigs = append(trialConfigs, TrialConfig{HasJ: false, HasK: false, Lag: 0})
-	}
-	design.ShuffleList(trialConfigs)
-
-	// 8 training trials (not logged) with the same response/feedback logic.
-	var trainingConfigs []TrialConfig
-	for i := 0; i < 8; i++ {
-		trainingConfigs = append(trainingConfigs, TrialConfig{
-			HasJ: design.CoinFlip(0.5),
-			HasK: design.CoinFlip(0.5),
-			Lag:  design.RandInt(1, 8),
-		})
-	}
-	design.ShuffleList(trainingConfigs)
-
-	fixation := stimuli.NewFixCross(20, 2, control.Black)
-
-	runOne := func(config TrialConfig) (string, bool, int64, error) {
-		items := generateLetters(config)
-
-		// A. Fixation
-		if err := exp.Show(fixation); err != nil {
-			return "", false, 0, err
+		// 5 Neither
+		for i := 0; i < 5; i++ {
+			trialConfigs = append(trialConfigs, TrialConfig{HasJ: false, HasK: false, Lag: 0})
 		}
-		clock.Wait(FixationDuration)
+		design.ShuffleList(trialConfigs)
 
-		// B. RSVP Stream (VSYNC-locked, frame-accurate item onsets)
-		if _, _, err := stimuli.PresentStreamOfText(
-			exp.Screen, items,
-			ItemDuration*time.Millisecond, 0,
-			0, 0, control.Black,
-		); err != nil {
-			return "", false, 0, err
+		// 8 training trials (not logged) with the same response/feedback logic.
+		var trainingConfigs []TrialConfig
+		for i := 0; i < 8; i++ {
+			trainingConfigs = append(trainingConfigs, TrialConfig{
+				HasJ: design.CoinFlip(0.5),
+				HasK: design.CoinFlip(0.5),
+				Lag:  design.RandInt(1, 8),
+			})
 		}
+		design.ShuffleList(trainingConfigs)
 
-		// C. Response Screen
-		prompt := stimuli.NewTextLine("What did you see? (J, K, B=Both, N=Neither)", 0, 0, control.Black)
-		if err := exp.Show(prompt); err != nil {
-			return "", false, 0, err
-		}
+		fixation := stimuli.NewFixCross(20, 2, control.Black)
 
-		startTime := clock.GetTime()
-		key, err := exp.Keyboard.WaitKeys([]control.Keycode{control.K_J, control.K_K, control.K_B, control.K_N, control.K_ESCAPE}, -1)
-		if err != nil {
-			return "", false, 0, err
-		}
-		rt := clock.GetTime() - startTime
+		runOne := func(config TrialConfig) (string, bool, int64, error) {
+			items := generateLetters(config)
 
-		if key == control.K_ESCAPE {
-			return "", false, rt, control.EndLoop
-		}
-
-		// Evaluate response
-		response := ""
-		isCorrect := false
-		switch key {
-		case control.K_J:
-			response = "j"
-			isCorrect = config.HasJ && !config.HasK
-		case control.K_K:
-			response = "k"
-			isCorrect = !config.HasJ && config.HasK
-		case control.K_B:
-			response = "both"
-			isCorrect = config.HasJ && config.HasK
-		case control.K_N:
-			response = "neither"
-			isCorrect = !config.HasJ && !config.HasK
-		}
-
-		// Feedback
-		if !isCorrect {
-			_ = stimuli.PlayBuzzer(exp.AudioDevice)
-		}
-
-		// ITI
-		if err := exp.Blank(1000); err != nil {
-			return response, isCorrect, rt, err
-		}
-
-		return response, isCorrect, rt, nil
-	}
-
-	// 2. Training Loop (8 trials, feedback, not logged).
-	for _, config := range trainingConfigs {
-		if _, _, _, err := runOne(config); err != nil {
-			if control.IsEndLoop(err) {
-				return
+			// A. Fixation
+			if err := exp.Show(fixation); err != nil {
+				return "", false, 0, err
 			}
-			exp.Fatal("training trial error: %v", err)
-		}
-	}
+			clock.Wait(FixationDuration)
 
-	// Training finished screen.
-	trainDone := stimuli.NewTextBox(
-		"Training finished.\n\nPress a key to go on to the main experiment.",
-		650,
-		control.FPoint{X: 0, Y: 0},
-		control.White,
-	)
-	if err := exp.Show(trainDone); err != nil {
-		exp.Fatal("training-finished screen error: %v", err)
-	}
-	if _, err := exp.Keyboard.Wait(); err != nil && !control.IsEndLoop(err) {
-		exp.Fatal("training-finished wait error: %v", err)
-	}
-
-	// 3. Main Trial Loop (logged).
-	for i, config := range trialConfigs {
-		response, isCorrect, rt, err := runOne(config)
-		if err != nil {
-			if control.IsEndLoop(err) {
-				return
+			// B. RSVP Stream (VSYNC-locked, frame-accurate item onsets)
+			if _, _, err := stimuli.PresentStreamOfText(
+				exp.Screen, items,
+				ItemDuration*time.Millisecond, 0,
+				0, 0, control.Black,
+			); err != nil {
+				return "", false, 0, err
 			}
-			exp.Fatal("trial error: %v", err)
+
+			// C. Response Screen
+			prompt := stimuli.NewTextLine("What did you see? (J, K, B=Both, N=Neither)", 0, 0, control.Black)
+			if err := exp.Show(prompt); err != nil {
+				return "", false, 0, err
+			}
+
+			startTime := clock.GetTime()
+			key, err := exp.Keyboard.WaitKeys([]control.Keycode{control.K_J, control.K_K, control.K_B, control.K_N, control.K_ESCAPE}, -1)
+			if err != nil {
+				return "", false, 0, err
+			}
+			rt := clock.GetTime() - startTime
+
+			if key == control.K_ESCAPE {
+				return "", false, rt, control.EndLoop
+			}
+
+			// Evaluate response
+			response := ""
+			isCorrect := false
+			switch key {
+			case control.K_J:
+				response = "j"
+				isCorrect = config.HasJ && !config.HasK
+			case control.K_K:
+				response = "k"
+				isCorrect = !config.HasJ && config.HasK
+			case control.K_B:
+				response = "both"
+				isCorrect = config.HasJ && config.HasK
+			case control.K_N:
+				response = "neither"
+				isCorrect = !config.HasJ && !config.HasK
+			}
+
+			// Feedback
+			if !isCorrect {
+				_ = stimuli.PlayBuzzer(exp.AudioDevice)
+			}
+
+			// ITI
+			if err := exp.Blank(1000); err != nil {
+				return response, isCorrect, rt, err
+			}
+
+			return response, isCorrect, rt, nil
 		}
 
-		// Log data
-		exp.Data.Add(
-			i+1, config.HasJ, config.HasK, config.Lag, response, isCorrect, rt,
+		// 2. Training Loop (8 trials, feedback, not logged).
+		for _, config := range trainingConfigs {
+			if _, _, _, err := runOne(config); err != nil {
+				if control.IsEndLoop(err) {
+					return control.EndLoop
+				}
+				exp.Fatal("training trial error: %v", err)
+			}
+		}
+
+		// Training finished screen.
+		trainDone := stimuli.NewTextBox(
+			"Training finished.\n\nPress a key to go on to the main experiment.",
+			650,
+			control.FPoint{X: 0, Y: 0},
+			control.White,
 		)
+		if err := exp.Show(trainDone); err != nil {
+			exp.Fatal("training-finished screen error: %v", err)
+		}
+		if _, err := exp.Keyboard.Wait(); err != nil && !control.IsEndLoop(err) {
+			exp.Fatal("training-finished wait error: %v", err)
+		}
+
+		// 3. Main Trial Loop (logged).
+		for i, config := range trialConfigs {
+			response, isCorrect, rt, err := runOne(config)
+			if err != nil {
+				if control.IsEndLoop(err) {
+					return control.EndLoop
+				}
+				exp.Fatal("trial error: %v", err)
+			}
+
+			// Log data
+			exp.Data.Add(
+				i+1, config.HasJ, config.HasK, config.Lag, response, isCorrect, rt,
+			)
+		}
+		return control.EndLoop
+	})
+	if err != nil && !control.IsEndLoop(err) {
+		exp.Fatal("experiment error: %v", err)
 	}
 }

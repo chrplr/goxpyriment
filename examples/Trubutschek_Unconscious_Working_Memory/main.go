@@ -219,103 +219,109 @@ func main() {
 	defer exp.End()
 
 	// Show instructions
-	if err := showInstructions(exp); err != nil {
-		if control.IsEndLoop(err) {
-			return
+	err := exp.Run(func() error {
+		if err := showInstructions(exp); err != nil {
+			if control.IsEndLoop(err) {
+				return control.EndLoop
+			}
+			exp.Fatal("instruction error: %v", err)
 		}
-		exp.Fatal("instruction error: %v", err)
-	}
 
-	exp.AddDataVariableNames([]string{"trial", "target_idx", "delay", "distractor", "rating"})
+		exp.AddDataVariableNames([]string{"trial", "target_idx", "delay", "distractor", "rating"})
 
-	points := getCirclePoints(NumPositions, Radius)
-	fixation := stimuli.NewFixCross(20, 2, control.White)
+		points := getCirclePoints(NumPositions, Radius)
+		fixation := stimuli.NewFixCross(20, 2, control.White)
 
-	var trialConfigs []TrialConfig
-	for loc := 0; loc < NumPositions; loc++ {
-		for rep := 0; rep < 8; rep++ {
+		var trialConfigs []TrialConfig
+		for loc := 0; loc < NumPositions; loc++ {
+			for rep := 0; rep < 8; rep++ {
+				trialConfigs = append(trialConfigs, TrialConfig{
+					TargetPosIdx:     loc,
+					Delay:            []float64{2.5, 3.0, 3.5, 4.0}[design.RandInt(0, 3)],
+					HasDistractor:    design.CoinFlip(0.5),
+					DistractorPosIdx: design.RandInt(0, NumPositions-1),
+				})
+			}
+		}
+		for i := 0; i < 40; i++ {
 			trialConfigs = append(trialConfigs, TrialConfig{
-				TargetPosIdx:     loc,
+				TargetPosIdx:     -1,
 				Delay:            []float64{2.5, 3.0, 3.5, 4.0}[design.RandInt(0, 3)],
 				HasDistractor:    design.CoinFlip(0.5),
 				DistractorPosIdx: design.RandInt(0, NumPositions-1),
 			})
 		}
-	}
-	for i := 0; i < 40; i++ {
-		trialConfigs = append(trialConfigs, TrialConfig{
-			TargetPosIdx:     -1,
-			Delay:            []float64{2.5, 3.0, 3.5, 4.0}[design.RandInt(0, 3)],
-			HasDistractor:    design.CoinFlip(0.5),
-			DistractorPosIdx: design.RandInt(0, NumPositions-1),
-		})
-	}
-	design.ShuffleList(trialConfigs)
+		design.ShuffleList(trialConfigs)
 
-	// 8 training trials (not logged, with feedback if rating inconsistent with target presence).
-	var trainingConfigs []TrialConfig
-	for i := 0; i < 8; i++ {
-		targetIdx := -1
-		if design.CoinFlip(0.7) { // most trials with a target
-			targetIdx = design.RandInt(0, NumPositions-1)
-		}
-		trainingConfigs = append(trainingConfigs, TrialConfig{
-			TargetPosIdx:     targetIdx,
-			Delay:            []float64{2.5, 3.0, 3.5, 4.0}[design.RandInt(0, 3)],
-			HasDistractor:    design.CoinFlip(0.5),
-			DistractorPosIdx: design.RandInt(0, NumPositions-1),
-		})
-	}
-	design.ShuffleList(trainingConfigs)
-
-	for _, config := range trainingConfigs {
-		_, rating, err := runTrial(exp, config, points, fixation)
-		if err != nil {
-			if control.IsEndLoop(err) {
-				return
+		// 8 training trials (not logged, with feedback if rating inconsistent with target presence).
+		var trainingConfigs []TrialConfig
+		for i := 0; i < 8; i++ {
+			targetIdx := -1
+			if design.CoinFlip(0.7) { // most trials with a target
+				targetIdx = design.RandInt(0, NumPositions-1)
 			}
-			exp.Fatal("training trial error: %v", err)
+			trainingConfigs = append(trainingConfigs, TrialConfig{
+				TargetPosIdx:     targetIdx,
+				Delay:            []float64{2.5, 3.0, 3.5, 4.0}[design.RandInt(0, 3)],
+				HasDistractor:    design.CoinFlip(0.5),
+				DistractorPosIdx: design.RandInt(0, NumPositions-1),
+			})
 		}
+		design.ShuffleList(trainingConfigs)
 
-		// Simple feedback rule: if a target was present, ratings 1 (unseen) are treated as errors;
-		// if no target was present, ratings >1 are treated as errors.
-		var correct bool
-		if config.TargetPosIdx >= 0 {
-			correct = rating >= 2
-		} else {
-			correct = rating == 1
-		}
-		if !correct {
-			_ = stimuli.PlayBuzzer(exp.AudioDevice)
-		}
-	}
-
-	// Training finished screen.
-	trainDone := stimuli.NewTextBox(
-		"Training finished.\n\nPress a key to go on to the main experiment.",
-		650,
-		control.FPoint{X: 0, Y: 0},
-		control.White,
-	)
-	if err := exp.Show(trainDone); err != nil {
-		exp.Fatal("training-finished screen error: %v", err)
-	}
-	if _, err := exp.Keyboard.Wait(); err != nil && !control.IsEndLoop(err) {
-		exp.Fatal("training-finished wait error: %v", err)
-	}
-
-	// Main experimental trials (logged; no additional buzzer feedback).
-	for i, config := range trialConfigs {
-		_, rating, err := runTrial(exp, config, points, fixation)
-		if err != nil {
-			if control.IsEndLoop(err) {
-				break
+		for _, config := range trainingConfigs {
+			_, rating, err := runTrial(exp, config, points, fixation)
+			if err != nil {
+				if control.IsEndLoop(err) {
+					return control.EndLoop
+				}
+				exp.Fatal("training trial error: %v", err)
 			}
-			exp.Fatal("trial error: %v", err)
+
+			// Simple feedback rule: if a target was present, ratings 1 (unseen) are treated as errors;
+			// if no target was present, ratings >1 are treated as errors.
+			var correct bool
+			if config.TargetPosIdx >= 0 {
+				correct = rating >= 2
+			} else {
+				correct = rating == 1
+			}
+			if !correct {
+				_ = stimuli.PlayBuzzer(exp.AudioDevice)
+			}
 		}
 
-		exp.Data.Add(
-			i+1, config.TargetPosIdx, config.Delay, config.HasDistractor, rating,
+		// Training finished screen.
+		trainDone := stimuli.NewTextBox(
+			"Training finished.\n\nPress a key to go on to the main experiment.",
+			650,
+			control.FPoint{X: 0, Y: 0},
+			control.White,
 		)
+		if err := exp.Show(trainDone); err != nil {
+			exp.Fatal("training-finished screen error: %v", err)
+		}
+		if _, err := exp.Keyboard.Wait(); err != nil && !control.IsEndLoop(err) {
+			exp.Fatal("training-finished wait error: %v", err)
+		}
+
+		// Main experimental trials (logged; no additional buzzer feedback).
+		for i, config := range trialConfigs {
+			_, rating, err := runTrial(exp, config, points, fixation)
+			if err != nil {
+				if control.IsEndLoop(err) {
+					break
+				}
+				exp.Fatal("trial error: %v", err)
+			}
+
+			exp.Data.Add(
+				i+1, config.TargetPosIdx, config.Delay, config.HasDistractor, rating,
+			)
+		}
+		return control.EndLoop
+	})
+	if err != nil && !control.IsEndLoop(err) {
+		exp.Fatal("experiment error: %v", err)
 	}
 }

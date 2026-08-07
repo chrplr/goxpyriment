@@ -58,7 +58,7 @@ func main() {
     trials := buildTrials()
     design.ShuffleList(trials)
 
-    exp.Run(func() error {            // all rendering happens inside Run
+    err := exp.Run(func() error {     // all rendering happens inside Run
         exp.ShowInstructions("…\n\nPress SPACE to start.")
         for i, t := range trials {
             exp.Blank(1000)          // inter-trial interval
@@ -66,14 +66,28 @@ func main() {
             key, rt, _ := exp.ShowAndGetRT(stim, responseKeys, -1)
             exp.Data.Add(i, t.cond, keyName(key), rt, isCorrect(key, t))
         }
-        return nil                   // return control.EndLoop to stop early
+        return control.EndLoop       // the experiment is over — see below
     })
+    if err != nil && !control.IsEndLoop(err) {
+        exp.Fatal("experiment error: %v", err)
+    }
 }
 ```
 
 `exp.ShowAndGetRT(stim, keys, timeoutMS)` is the canonical single-stimulus RT call:
 it clears stale events, flips with a VSYNC timestamp, waits for a key with
 hardware-precision timing, and returns `(key, rtMs, error)`.
+
+**`Run` calls the callback repeatedly**, so a body like the one above — which runs
+the whole experiment in one pass — *must* finish with `return control.EndLoop`.
+Returning `nil` means "this frame is done, call me again", and restarts the
+experiment from the instructions screen forever. Only a per-frame body (draw one
+frame, return) returns `nil`, and it still needs an `EndLoop` escape.
+
+`Run` is also what recovers the ESC/quit sentinel that `Wait`, `Blank` and
+`ShowTS` panic with. `exp.End()` recovers it too, so an experiment written
+without `Run` still exits cleanly on ESC — but wrap the logic in `Run` anyway:
+it is where the browser build hooks its frame loop and its crash overlay.
 
 ## How results are saved
 

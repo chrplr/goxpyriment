@@ -133,85 +133,91 @@ func main() {
 		"Try to respond as quickly and accurately as you can.\n\n" +
 		"Press SPACE to start."
 
-	instructions := stimuli.NewTextBox(instrText, 900, control.FPoint{X: 0, Y: 0}, control.DefaultTextColor)
-	if err := instructions.Present(exp.Screen, true, true); err != nil {
-		log.Fatal(err)
-	}
-	for {
-		key, err := exp.Keyboard.Wait()
-		if err != nil && !control.IsEndLoop(err) {
+	err := exp.Run(func() error {
+		instructions := stimuli.NewTextBox(instrText, 900, control.FPoint{X: 0, Y: 0}, control.DefaultTextColor)
+		if err := instructions.Present(exp.Screen, true, true); err != nil {
 			log.Fatal(err)
 		}
-		if key == control.K_SPACE || control.IsEndLoop(err) {
-			break
-		}
-	}
-
-	trialIndex := 0
-
-	// Run each old item as a study–test pair with the specified VF and lag.
-	for _, p := range pairs {
-		trialIndex++
-		if err := runStudy(exp, fixation, p); err != nil {
-			if control.IsEndLoop(err) {
-				return
+		for {
+			key, err := exp.Keyboard.Wait()
+			if err != nil && !control.IsEndLoop(err) {
+				log.Fatal(err)
 			}
-			exp.Fatal("study error: %v", err)
-		}
-
-		clock.Wait(p.LagMs)
-
-		key, rt, correct, err := runTest(exp, p.Word, true)
-		if err != nil {
-			if control.IsEndLoop(err) {
-				return
+			if key == control.K_SPACE || control.IsEndLoop(err) {
+				break
 			}
-			exp.Fatal("test error: %v", err)
 		}
 
-		exp.Data.Add(
-			trialIndex,
-			"old",
-			p.Word,
-			p.VF,
-			p.LagTag,
-			p.LagMs,
-			key,
-			rt,
-			correct,
-		)
+		trialIndex := 0
 
-		// Short ITI after test.
-		if err := exp.Blank(1000); err != nil {
-			log.Fatal(err)
-		}
-	}
-
-	// Now present new-only central words.
-	for _, w := range newWords {
-		trialIndex++
-		key, rt, correct, err := runTest(exp, w, false)
-		if err != nil {
-			if control.IsEndLoop(err) {
-				return
+		// Run each old item as a study–test pair with the specified VF and lag.
+		for _, p := range pairs {
+			trialIndex++
+			if err := runStudy(exp, fixation, p); err != nil {
+				if control.IsEndLoop(err) {
+					return control.EndLoop
+				}
+				exp.Fatal("study error: %v", err)
 			}
-			exp.Fatal("new test error: %v", err)
-		}
-		exp.Data.Add(
-			trialIndex,
-			"new",
-			w,
-			"NA",
-			"NA",
-			0,
-			key,
-			rt,
-			correct,
-		)
 
-		if err := exp.Blank(1000); err != nil {
-			log.Fatal(err)
+			clock.Wait(p.LagMs)
+
+			key, rt, correct, err := runTest(exp, p.Word, true)
+			if err != nil {
+				if control.IsEndLoop(err) {
+					return control.EndLoop
+				}
+				exp.Fatal("test error: %v", err)
+			}
+
+			exp.Data.Add(
+				trialIndex,
+				"old",
+				p.Word,
+				p.VF,
+				p.LagTag,
+				p.LagMs,
+				key,
+				rt,
+				correct,
+			)
+
+			// Short ITI after test.
+			if err := exp.Blank(1000); err != nil {
+				log.Fatal(err)
+			}
 		}
+
+		// Now present new-only central words.
+		for _, w := range newWords {
+			trialIndex++
+			key, rt, correct, err := runTest(exp, w, false)
+			if err != nil {
+				if control.IsEndLoop(err) {
+					return control.EndLoop
+				}
+				exp.Fatal("new test error: %v", err)
+			}
+			exp.Data.Add(
+				trialIndex,
+				"new",
+				w,
+				"NA",
+				"NA",
+				0,
+				key,
+				rt,
+				correct,
+			)
+
+			if err := exp.Blank(1000); err != nil {
+				log.Fatal(err)
+			}
+		}
+		return control.EndLoop
+	})
+	if err != nil && !control.IsEndLoop(err) {
+		exp.Fatal("experiment error: %v", err)
 	}
 }
 

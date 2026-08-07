@@ -108,56 +108,62 @@ func main() {
 	// square, preserving aspect ratio so nothing is distorted. Preloading here
 	// populates each picture's native Width/Height, which we then override, and
 	// uploads the texture to the GPU so the loop never stalls on first draw.
-	pics := make([]stimuli.VisualStimulus, len(seqFiles))
-	for i, path := range seqFiles {
-		pic := stimuli.NewPicture(path, 0, 0)
-		if err := stimuli.PreloadVisualOnScreen(exp.Screen, pic); err != nil {
-			log.Fatalf("loading %s: %v", path, err)
-		}
-		scale := float32(*boxSize) / max(pic.Width, pic.Height)
-		pic.Width *= scale
-		pic.Height *= scale
-		pics[i] = pic
-	}
-
-	// Preload the buzzer once so it can be fired (non-blocking) on a miss.
-	buzzer := stimuli.NewSoundFromMemory(assets_embed.BuzzerWav)
-	if err := buzzer.PreloadDevice(exp.AudioDevice); err != nil {
-		log.Fatalf("loading buzzer: %v", err)
-	}
-
-	exp.AddDataVariableNames([]string{"position", "filename", "is_repeat", "responded", "rt_ms"})
-
-	exp.ShowInstructions(fmt.Sprintf(
-		"One-Back Picture Task\n\n"+
-			"%d pictures will flash by, one every %d ms.\n\n"+
-			"Press SPACE whenever a picture is IDENTICAL\n"+
-			"to the one shown immediately before it.\n"+
-			"A buzzer sounds if you miss a repeat.\n\n"+
-			"Press SPACE to begin (ESC to abort).",
-		len(seqFiles), (durationOn + durationOff).Milliseconds(),
-	))
-
-	res := runOneBack(exp.Screen, pics, seqIsRepeat, buzzer, time.Duration(*windowMs)*time.Millisecond)
-
-	var hits, misses, falseAlarms, nShown int
-	for i := range res.onsetNS {
-		exp.Data.Add(i+1, filepath.Base(seqFiles[i]), seqIsRepeat[i], res.responded[i], res.rtMs[i])
-		switch {
-		case seqIsRepeat[i]:
-			nShown++
-			if res.responded[i] {
-				hits++
-			} else {
-				misses++
+	err := exp.Run(func() error {
+		pics := make([]stimuli.VisualStimulus, len(seqFiles))
+		for i, path := range seqFiles {
+			pic := stimuli.NewPicture(path, 0, 0)
+			if err := stimuli.PreloadVisualOnScreen(exp.Screen, pic); err != nil {
+				log.Fatalf("loading %s: %v", path, err)
 			}
-		case res.responded[i]:
-			falseAlarms++
+			scale := float32(*boxSize) / max(pic.Width, pic.Height)
+			pic.Width *= scale
+			pic.Height *= scale
+			pics[i] = pic
 		}
-	}
 
-	log.Printf("presented %d images (%d one-back targets)", len(res.onsetNS), nShown)
-	log.Printf("hits %d/%d, misses %d, false alarms %d", hits, nShown, misses, falseAlarms)
+		// Preload the buzzer once so it can be fired (non-blocking) on a miss.
+		buzzer := stimuli.NewSoundFromMemory(assets_embed.BuzzerWav)
+		if err := buzzer.PreloadDevice(exp.AudioDevice); err != nil {
+			log.Fatalf("loading buzzer: %v", err)
+		}
+
+		exp.AddDataVariableNames([]string{"position", "filename", "is_repeat", "responded", "rt_ms"})
+
+		exp.ShowInstructions(fmt.Sprintf(
+			"One-Back Picture Task\n\n"+
+				"%d pictures will flash by, one every %d ms.\n\n"+
+				"Press SPACE whenever a picture is IDENTICAL\n"+
+				"to the one shown immediately before it.\n"+
+				"A buzzer sounds if you miss a repeat.\n\n"+
+				"Press SPACE to begin (ESC to abort).",
+			len(seqFiles), (durationOn + durationOff).Milliseconds(),
+		))
+
+		res := runOneBack(exp.Screen, pics, seqIsRepeat, buzzer, time.Duration(*windowMs)*time.Millisecond)
+
+		var hits, misses, falseAlarms, nShown int
+		for i := range res.onsetNS {
+			exp.Data.Add(i+1, filepath.Base(seqFiles[i]), seqIsRepeat[i], res.responded[i], res.rtMs[i])
+			switch {
+			case seqIsRepeat[i]:
+				nShown++
+				if res.responded[i] {
+					hits++
+				} else {
+					misses++
+				}
+			case res.responded[i]:
+				falseAlarms++
+			}
+		}
+
+		log.Printf("presented %d images (%d one-back targets)", len(res.onsetNS), nShown)
+		log.Printf("hits %d/%d, misses %d, false alarms %d", hits, nShown, misses, falseAlarms)
+		return control.EndLoop
+	})
+	if err != nil && !control.IsEndLoop(err) {
+		exp.Fatal("experiment error: %v", err)
+	}
 }
 
 // oneBackResult holds the per-position outcome of the presentation loop.

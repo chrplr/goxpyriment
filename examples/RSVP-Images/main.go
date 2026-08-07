@@ -98,144 +98,150 @@ func main() {
 	//      and advances the bar.
 	//   2. The GPU upload (PreloadVisualOnScreen) is serial — SDL renderer calls
 	//      must stay on the main thread — and finishes the bar.
-	stims := make([]stimuli.VisualStimulus, len(trials))
-	onsetMs := make([]int, len(trials))
-	durationMs := make([]int, len(trials))
+	err = exp.Run(func() error {
+		stims := make([]stimuli.VisualStimulus, len(trials))
+		onsetMs := make([]int, len(trials))
+		durationMs := make([]int, len(trials))
 
-	// total work units for the progress bar: build + preload, one each per trial.
-	total := 2 * len(trials)
-	done := 0
-	lastPct := -1
-	progress := func() {
-		pct := done * 100 / total
-		if pct == lastPct {
-			return // throttle: only redraw when the percentage changes
-		}
-		lastPct = pct
-		if err := drawProgress(exp.Screen, done, total); err != nil {
-			log.Fatalf("drawing progress: %v", err)
-		}
-	}
-	progress()
-
-	// Phase 1 — parallel CPU build.
-	pics := make([]*stimuli.Picture, len(trials))
-	type buildResult struct {
-		idx int
-		pic *stimuli.Picture
-		err error
-	}
-	jobs := make(chan int, len(trials))
-	results := make(chan buildResult, len(trials))
-	for w := 0; w < runtime.NumCPU(); w++ {
-		go func() {
-			for i := range jobs {
-				pic, err := buildPicture(trials[i], *maxPx, *pixelSize)
-				results <- buildResult{i, pic, err}
+		// total work units for the progress bar: build + preload, one each per trial.
+		total := 2 * len(trials)
+		done := 0
+		lastPct := -1
+		progress := func() {
+			pct := done * 100 / total
+			if pct == lastPct {
+				return // throttle: only redraw when the percentage changes
 			}
-		}()
-	}
-	for i := range trials {
-		jobs <- i
-	}
-	close(jobs)
-	for n := 0; n < len(trials); n++ {
-		r := <-results
-		if r.err != nil {
-			log.Fatalf("trial %d (%s): %v", r.idx, trials[r.idx].filePath, r.err)
+			lastPct = pct
+			if err := drawProgress(exp.Screen, done, total); err != nil {
+				log.Fatalf("drawing progress: %v", err)
+			}
 		}
-		pics[r.idx] = r.pic
-		done++
 		progress()
-	}
 
-	// Phase 2 — serial GPU upload + scaling (must run on the main thread).
-	for i, pic := range pics {
-		// Preload to populate native Width/Height, then scale to fit the box.
-		if err := stimuli.PreloadVisualOnScreen(exp.Screen, pic); err != nil {
-			log.Fatalf("trial %d (%s): preloading: %v", i, trials[i].filePath, err)
+		// Phase 1 — parallel CPU build.
+		pics := make([]*stimuli.Picture, len(trials))
+		type buildResult struct {
+			idx int
+			pic *stimuli.Picture
+			err error
 		}
-		scale := float32(*boxSize) / max(pic.Width, pic.Height)
-		pic.Width *= scale
-		pic.Height *= scale
-
-		stims[i] = pic
-		onsetMs[i] = int(trials[i].onsetSec*1000 + 0.5)
-		durationMs[i] = int(trials[i].durationSec*1000 + 0.5)
-		done++
-		progress()
-	}
-
-	elements, err := stimuli.MakeVisualStream(stims, onsetMs, durationMs)
-	if err != nil {
-		log.Fatalf("building stream: %v", err)
-	}
-	// Convert to the heterogeneous stream form so we can pass a per-frame
-	// callback (to draw the fixation dot during the ISI).
-	generic := make([]stimuli.StreamElement, len(elements))
-	for i, el := range elements {
-		generic[i] = stimuli.StreamElement{
-			Stimulus:    el.Stimulus,
-			DurationOn:  el.DurationOn,
-			DurationOff: el.DurationOff,
+		jobs := make(chan int, len(trials))
+		results := make(chan buildResult, len(trials))
+		for w := 0; w < runtime.NumCPU(); w++ {
+			go func() {
+				for i := range jobs {
+					pic, err := buildPicture(trials[i], *maxPx, *pixelSize)
+					results <- buildResult{i, pic, err}
+				}
+			}()
 		}
-	}
+		for i := range trials {
+			jobs <- i
+		}
+		close(jobs)
+		for n := 0; n < len(trials); n++ {
+			r := <-results
+			if r.err != nil {
+				log.Fatalf("trial %d (%s): %v", r.idx, trials[r.idx].filePath, r.err)
+			}
+			pics[r.idx] = r.pic
+			done++
+			progress()
+		}
 
-	exp.AddDataVariableNames([]string{"onset", "duration", "trial_type", "file_path", "reaction_time"})
+		// Phase 2 — serial GPU upload + scaling (must run on the main thread).
+		for i, pic := range pics {
+			// Preload to populate native Width/Height, then scale to fit the box.
+			if err := stimuli.PreloadVisualOnScreen(exp.Screen, pic); err != nil {
+				log.Fatalf("trial %d (%s): preloading: %v", i, trials[i].filePath, err)
+			}
+			scale := float32(*boxSize) / max(pic.Width, pic.Height)
+			pic.Width *= scale
+			pic.Height *= scale
 
-	exp.ShowInstructions(
-		"Keep your eyes on the central dot.\n\n" +
-			"A fast sequence of object pictures will be shown.\n" +
-			"Press SPACE as fast as you can whenever a\n" +
-			"PIXELATED (oddball) picture appears.\n\n" +
-			"Press SPACE to begin (ESC to abort).")
+			stims[i] = pic
+			onsetMs[i] = int(trials[i].onsetSec*1000 + 0.5)
+			durationMs[i] = int(trials[i].durationSec*1000 + 0.5)
+			done++
+			progress()
+		}
 
-	// The fixation dot is drawn on every frame so it is visible during the
-	// fixation/ISI period (it also rides on top of each image, marking centre).
-	dot := stimuli.NewCircle(float32(*dotSize), control.Black)
-	drawDot := func(ctx stimuli.FrameContext) error {
-		return dot.Draw(ctx.Screen)
-	}
+		elements, err := stimuli.MakeVisualStream(stims, onsetMs, durationMs)
+		if err != nil {
+			log.Fatalf("building stream: %v", err)
+		}
+		// Convert to the heterogeneous stream form so we can pass a per-frame
+		// callback (to draw the fixation dot during the ISI).
+		generic := make([]stimuli.StreamElement, len(elements))
+		for i, el := range elements {
+			generic[i] = stimuli.StreamElement{
+				Stimulus:    el.Stimulus,
+				DurationOn:  el.DurationOn,
+				DurationOff: el.DurationOff,
+			}
+		}
 
-	events, timing, err := stimuli.PresentStreamOfStimuliFunc(exp.Screen, generic, 0, 0, drawDot)
+		exp.AddDataVariableNames([]string{"onset", "duration", "trial_type", "file_path", "reaction_time"})
+
+		exp.ShowInstructions(
+			"Keep your eyes on the central dot.\n\n" +
+				"A fast sequence of object pictures will be shown.\n" +
+				"Press SPACE as fast as you can whenever a\n" +
+				"PIXELATED (oddball) picture appears.\n\n" +
+				"Press SPACE to begin (ESC to abort).")
+
+		// The fixation dot is drawn on every frame so it is visible during the
+		// fixation/ISI period (it also rides on top of each image, marking centre).
+		dot := stimuli.NewCircle(float32(*dotSize), control.Black)
+		drawDot := func(ctx stimuli.FrameContext) error {
+			return dot.Draw(ctx.Screen)
+		}
+
+		events, timing, err := stimuli.PresentStreamOfStimuliFunc(exp.Screen, generic, 0, 0, drawDot)
+		if err != nil && !control.IsEndLoop(err) {
+			log.Fatalf("presenting stream: %v", err)
+		}
+
+		// Score responses: attribute each SPACE press to the image whose onset most
+		// recently preceded it. First press per image wins; the rest stay "n/a".
+		rt := make([]interface{}, len(trials))
+		for i := range rt {
+			rt[i] = "n/a"
+		}
+		for _, ev := range events {
+			if ev.Event.Type != sdl.EVENT_KEY_DOWN {
+				continue
+			}
+			if ev.Event.KeyboardEvent().Key != control.K_SPACE {
+				continue
+			}
+			idx := mostRecentOnset(timing, ev.TimestampNS)
+			if idx < 0 {
+				continue // press before any image onset
+			}
+			if _, alreadyScored := rt[idx].(int64); alreadyScored {
+				continue
+			}
+			rt[idx] = int64(ev.TimestampNS-timing[idx].OnsetNS) / 1_000_000
+		}
+
+		for i, t := range trials {
+			exp.Data.Add(t.onsetSec, t.durationSec, t.trialType, t.filePath, rt[i])
+		}
+
+		nCatch := 0
+		for _, t := range trials {
+			if t.trialType == "catch" {
+				nCatch++
+			}
+		}
+		log.Printf("presented %d images (%d catch); responses scored to nearest preceding onset", len(trials), nCatch)
+		return control.EndLoop
+	})
 	if err != nil && !control.IsEndLoop(err) {
-		log.Fatalf("presenting stream: %v", err)
+		exp.Fatal("experiment error: %v", err)
 	}
-
-	// Score responses: attribute each SPACE press to the image whose onset most
-	// recently preceded it. First press per image wins; the rest stay "n/a".
-	rt := make([]interface{}, len(trials))
-	for i := range rt {
-		rt[i] = "n/a"
-	}
-	for _, ev := range events {
-		if ev.Event.Type != sdl.EVENT_KEY_DOWN {
-			continue
-		}
-		if ev.Event.KeyboardEvent().Key != control.K_SPACE {
-			continue
-		}
-		idx := mostRecentOnset(timing, ev.TimestampNS)
-		if idx < 0 {
-			continue // press before any image onset
-		}
-		if _, alreadyScored := rt[idx].(int64); alreadyScored {
-			continue
-		}
-		rt[idx] = int64(ev.TimestampNS-timing[idx].OnsetNS) / 1_000_000
-	}
-
-	for i, t := range trials {
-		exp.Data.Add(t.onsetSec, t.durationSec, t.trialType, t.filePath, rt[i])
-	}
-
-	nCatch := 0
-	for _, t := range trials {
-		if t.trialType == "catch" {
-			nCatch++
-		}
-	}
-	log.Printf("presented %d images (%d catch); responses scored to nearest preceding onset", len(trials), nCatch)
 }
 
 // loadDesign reads a design CSV with header onset,duration,trial_type,file_path.
