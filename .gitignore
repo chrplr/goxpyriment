@@ -110,3 +110,6 @@ paper/*.ttt
 
 # Working notes kept locally, not published.
 paper/eval_july26.md
+
+# Digilent WaveForms SDK drops this wherever the process runs
+DebugErc.log

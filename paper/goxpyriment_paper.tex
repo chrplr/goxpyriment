@@ -284,6 +284,33 @@ To reduce the likelihood of latencies, goxpyriment provides additional functions
   \texttt{TimingLog} records the target and actual onsets for post-hoc
   verification, as well as the timing of keys pressed during the
   presentation of the stream.
+
+\item[Real-Time Scheduling Priority] On Linux, an experiment built with
+  \texttt{goxpyriment} requests the \texttt{SCHED\_FIFO} real-time
+  scheduling policy for itself at start-up (priority 50 by default),
+  rather than relying on the user to remember a \texttt{chrt} prefix on
+  the command line --- which is in any case impossible when the program
+  is launched by clicking its icon. The request is made with
+  \texttt{sched\_setscheduler()} on the main thread, to which the Go
+  runtime has been pinned, so that the elevation applies to the thread
+  that runs the trial loop. Under the default (\texttt{SCHED\_OTHER})
+  policy the kernel may deschedule the process at any point, including
+  between a stimulus onset and the trigger that marks it; this is the
+  dominant source of the rare, large latencies that otherwise survive
+  the measures above.
+
+  The request is not silently mandatory. It requires a system-level
+  grant (an \texttt{rtprio} limit for the user, set in
+  \texttt{/etc/security/limits.d/}), and if that grant is absent the
+  program reports the reason and continues at normal priority rather
+  than refusing to run. It can be disabled with the
+  \texttt{-no-realtime} flag --- useful when debugging, since a
+  breakpoint hit on a real-time thread can leave the desktop
+  unresponsive --- and the priority can be changed with
+  \texttt{-realtime-priority}. The policy actually obtained is recorded
+  in the session's system report, so that a data set carries evidence of
+  the conditions under which it was collected rather than of the
+  conditions that were intended.
 \end{description}
 
 \subsection{Triggers}
