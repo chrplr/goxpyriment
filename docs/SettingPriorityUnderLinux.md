@@ -23,6 +23,29 @@ Linux stores these specific "privilege" rules in `/etc/security/limits.d/`. You 
     @goxpyriment - memlock unlimited
     ```
 3.  **Save and Exit:** Press `Ctrl + O`, then `Enter` to save, and `Ctrl + X` to exit.
+4.  **Check the text actually landed:**
+    ```bash
+    grep rtprio /etc/security/limits.d/*.conf
+    ```
+    Worth the two seconds. An editor opened *without* `sudo` — or a graphical
+    editor that cannot write to `/etc` — may fail to save without making it
+    obvious. The only later symptom is `ulimit -r` still returning `0` after a
+    re-login, which is easy to misread as "the limits system doesn't work" rather
+    than "the file was never written".
+
+> **Why a new file rather than `/etc/security/limits.conf`?**
+> That file belongs to the `libpam-modules` package and can be replaced on
+> upgrade, silently taking your setting with it. Anything you add under
+> `/etc/security/limits.d/` is yours and survives.
+
+> **Why not simply join an existing group such as `audio`?**
+> Tempting, because on many systems `audio` already carries an rtprio grant. But
+> that grant is installed by the jackd package and can be revoked by
+> `dpkg-reconfigure -p high jackd2`, and it hands out far more than you need
+> (`rtprio 95`, `memlock unlimited`). The real objection is subtler: an
+> experiment that has quietly lost real-time priority behaves exactly like one
+> that still has it, right up until you look at the timing data. A group of your
+> own cannot be switched off by another package's maintainer script.
 
 ### Step 3: Add Yourself (and others) to the Group
 Simply creating the group isn't enough; you have to tell Linux which users belong to it. Replace `$USER` with a specific username if you are adding someone else.

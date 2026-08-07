@@ -136,6 +136,36 @@ Then:
    [Viewing the documentation locally](ViewingDocsLocally.md).
 
 
+### One extra step on a Linux machine used for data collection
+
+Nothing above requires special privileges, and you can write and run
+experiments without doing any of this. But an experiment that has to
+present stimuli on time competes with everything else on the machine, and
+the operating system has no reason to prefer it — so on a machine that will
+actually collect data, grant your user real-time scheduling before you
+start trusting its timing.
+
+The procedure is in [Setting priority under
+Linux](SettingPriorityUnderLinux.md): create a group, add a file to
+`/etc/security/limits.d/`, add yourself to the group, then **log out and log
+back in** — the limits are read at login, so a new terminal is not enough.
+
+Two things that catch people out:
+
+- Add a *new file* under `/etc/security/limits.d/`, rather than editing
+  `/etc/security/limits.conf`. The latter is package-managed and can be
+  replaced on upgrade, silently taking your setting with it.
+- If your editor cannot write to `/etc` it may fail without saying so.
+  Check the file afterwards with
+  `grep rtprio /etc/security/limits.d/*.conf`, and check the grant is live
+  with `ulimit -r` after logging back in — it should print your chosen
+  priority, not `0`.
+
+Once that is in place you can verify the machine's timing end to end with
+[Timing Tests](TimingTests.md), which also lists the other Linux tuning
+worth doing (disabling the compositor is the single largest improvement).
+
+
 ### Program your own experiments
 
 Follow the step-by-step guide in [Creating Your Own

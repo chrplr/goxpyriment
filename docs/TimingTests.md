@@ -411,20 +411,34 @@ the window actually opened on.
   took dropped frames from ~5 % to zero and removed a frame of latency. Failing
   that, use a plain window manager (i3, openbox).
 - Disable CPU frequency scaling: `cpupower frequency-set -g performance`.
-- Run with real-time scheduling:
+- **Run with real-time scheduling.** Grant your user the privilege once, then run
+  the test normally:
   ```bash
-  sudo chrt -r 80 Timing-Tests -test display -duration-s 30
+  chrt -r 80 Timing-Tests -test display -duration-s 30
   ```
-  For this you must first have edited `/etc/security/limits.conf`:
-  ```
-  # Change username to your login
-  username    -       nice -20
-  username    -       rtprio    99
-  username    -       memlock   unlimited
-  ```
-  Changes apply after login; check with `ulimit -r`, which should return `99`.
-  Use `@goxpy` instead of a username to grant this to a group
-  (`usermod -aG goxpy $USER`).
+  The privilege comes from a file you add to `/etc/security/limits.d/` — **not**
+  from editing `/etc/security/limits.conf`, which is package-managed and can be
+  replaced on upgrade, taking your setting with it. See [Setting priority under
+  Linux](SettingPriorityUnderLinux.md) for the procedure: create a group, drop in
+  `/etc/security/limits.d/99-goxpyriment.conf`, add yourself, log out and back in.
+
+  Two traps worth knowing before you spend a session on it:
+
+  - **The limit is inherited from your login session.** A new terminal will not
+    pick up the change; only a full logout and login will. Check `ulimit -r`
+    before trusting a run — if it still says `0`, the grant is not in effect and
+    `chrt` will simply fail.
+  - **Editing the file without `sudo` fails silently in some editors.** Confirm
+    the text actually landed, with `grep rtprio /etc/security/limits.d/*.conf`,
+    rather than assuming the save worked.
+
+  Do not reuse an existing group such as `audio` for this. Its rtprio grant
+  belongs to another package (jackd), which can revoke it on reconfigure — and a
+  run that quietly loses real-time priority looks exactly like a run that had it.
+
+  You *can* skip the setup with `sudo chrt -r 80 Timing-Tests …`, but the test
+  then runs as root: data files land owned by root and it picks up root's
+  environment, not yours. Fine for a one-off check, wrong for collecting data.
 - Consider a real-time kernel — see <https://ubuntu.com/blog/enable-real-time-ubuntu>.
 - Reduce USB trigger latency — see the DLP-IO8 section below.
 
