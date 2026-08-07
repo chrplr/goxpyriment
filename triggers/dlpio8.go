@@ -57,7 +57,12 @@ func NewDLPIO8(device string) (*DLPIO8, error) {
 	if err != nil {
 		return nil, fmt.Errorf("dlpio8: open %s: %w", device, err)
 	}
-	p.SetReadTimeout(200 * time.Millisecond)
+	// Unchecked, a failure here leaves reads blocking forever, so an absent
+	// device hangs the experiment instead of returning an error.
+	if err := p.SetReadTimeout(200 * time.Millisecond); err != nil {
+		p.Close()
+		return nil, fmt.Errorf("dlpio8: set read timeout on %s: %w", device, err)
+	}
 
 	d := &DLPIO8{port: p, pollInterval: dlpDefaultPollInterval}
 	if ok, err := d.ping(); err != nil || !ok {
@@ -75,12 +80,17 @@ func NewDLPIO8(device string) (*DLPIO8, error) {
 	return d, nil
 }
 
-// AutoDetectDLPIO8 scans all available serial ports for a DLP-IO8-G. On
-// success it returns the device and the matched port name. If no device is
-// found it returns a [NullOutputTTLDevice] and logs a warning; callers do not
-// need to nil-check the returned [OutputTTLDevice].
+// AutoDetectDLPIO8 looks for a DLP-IO8-G and returns it with the port name it
+// was found on. If none is found it returns a [NullOutputTTLDevice] and logs a
+// warning; callers do not need to nil-check the returned [OutputTTLDevice].
+//
+// It does not probe every serial port. Opening one is not free — a USB-CDC port
+// resets the device behind it, so a blind sweep reboots any Arduino on the
+// machine, and an instrument with its own command grammar can be left
+// mid-stream by unsolicited probe bytes. See [dlpPortCandidates] for how the
+// search is narrowed on each platform.
 func AutoDetectDLPIO8() (OutputTTLDevice, string, error) {
-	ports, err := serial.GetPortsList()
+	ports, err := dlpPortCandidates()
 	if err != nil {
 		return NullOutputTTLDevice{}, "", fmt.Errorf("dlpio8: enumerate ports: %w", err)
 	}

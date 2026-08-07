@@ -12,7 +12,11 @@ import (
 	"go.bug.st/serial"
 )
 
-// DLP-IO20 binary command set (USB-CDC / virtual COM port, FTDI).
+// DLP-IO20 binary command set (FTDI virtual COM port).
+//
+// FTDI, not USB-CDC: it appears as ttyUSB rather than ttyACM, and so is subject
+// to the ftdi_sio latency timer, which CDC devices are not. That distinction
+// matters — see the note on read round-trips in [DLPIO20].
 //
 // Unlike the DLP-IO8, which takes single ASCII bytes, the DLP-IO20 uses
 // multi-byte packets whose first byte is the packet length *including itself*:
@@ -127,7 +131,11 @@ var (
 // or a parallel port / LabJack. On Linux the FTDI latency timer (16 ms by
 // default) dominates read round-trips; lower it with
 //
-//	echo 1 | sudo tee /sys/bus/usb-serial/devices/ttyUSB0/latency_timer
+//	echo 1 | sudo tee /sys/bus/usb-serial/devices/ttyUSBn/latency_timer
+//
+// Measured on a DLP-IO8 on the same driver: the round trip for a read tracks
+// the timer exactly, 15.98 ms at the default of 16 and 1.01 ms at 1, so a
+// polling loop runs at 63 Hz or 995 Hz depending on nothing but that setting.
 type DLPIO20 struct {
 	port         serial.Port
 	outputs      [io20LinesPerGroup]IO20Channel
@@ -216,7 +224,12 @@ func NewDLPIO20(device string, opts ...DLPIO20Option) (*DLPIO20, error) {
 	if err != nil {
 		return nil, fmt.Errorf("dlpio20: open %s: %w", device, err)
 	}
-	p.SetReadTimeout(d.readTimeout)
+	// Unchecked, a failure here leaves reads blocking forever, so an absent
+	// device hangs the experiment instead of returning an error.
+	if err := p.SetReadTimeout(d.readTimeout); err != nil {
+		p.Close()
+		return nil, fmt.Errorf("dlpio20: set read timeout on %s: %w", device, err)
+	}
 	d.port = p
 
 	if ok, err := d.ping(); err != nil || !ok {
@@ -268,15 +281,20 @@ func io20CheckOverlap(outputs, inputs [io20LinesPerGroup]IO20Channel) error {
 	return nil
 }
 
-// AutoDetectDLPIO20 scans all available serial ports for a DLP-IO20. On
-// success it returns the device and the matched port name. If no device is
-// found it returns a [NullOutputTTLDevice] and logs a warning; callers do not
-// need to nil-check the returned [OutputTTLDevice].
+// AutoDetectDLPIO20 looks for a DLP-IO20 and returns it with the port name it
+// was found on. If none is found it returns a [NullOutputTTLDevice] and logs a
+// warning; callers do not need to nil-check the returned [OutputTTLDevice].
 //
 // A DLP-IO8 on another port is not mistaken for a DLP-IO20: it answers the
 // ping with 'Q' rather than 'Y'.
+//
+// It does not probe every serial port. Opening one is not free — a USB-CDC port
+// resets the device behind it, so a blind sweep reboots any Arduino on the
+// machine, and an instrument with its own command grammar can be left
+// mid-stream by unsolicited probe bytes. See [dlpPortCandidates] for how the
+// search is narrowed on each platform.
 func AutoDetectDLPIO20(opts ...DLPIO20Option) (OutputTTLDevice, string, error) {
-	ports, err := serial.GetPortsList()
+	ports, err := dlpPortCandidates()
 	if err != nil {
 		return NullOutputTTLDevice{}, "", fmt.Errorf("dlpio20: enumerate ports: %w", err)
 	}
@@ -404,8 +422,20 @@ func (d *DLPIO20) SetLow(line int) error {
 
 // Send sets all 8 output lines from a bitmask. Bit N drives line N.
 //
-// The device has no write-all command, so this issues 8 packets in line order;
-// the lines therefore change over ~3.5 ms rather than simultaneously.
+// The device has no write-all command, so this issues 8 packets of 5 bytes in
+// line order — 40 bytes, about 3.5 ms of wire time at 115200 — and the lines
+// change across that whole interval rather than together.
+//
+// Against a system sampling at 1 kHz, 3.5 ms is three and a half sample
+// periods, so a code change is not merely at risk of being caught
+// mid-transition: it is CERTAIN to be, across several consecutive samples. If a
+// multi-bit code has to be unambiguous, have the receiving system latch on a
+// separate strobe raised once the code has settled, or use one line per event
+// type — a single packet, no skew, and eight distinguishable events.
+//
+// For comparison, the DLP-IO8's single-byte commands settle in ~610 µs, which
+// is measured (86.2 µs per byte, n=99); the 3.5 ms here is arithmetic from the
+// packet size and has not been measured on hardware.
 // Implements [OutputTTLDevice].
 func (d *DLPIO20) Send(mask byte) error {
 	for line := 0; line < io20LinesPerGroup; line++ {
@@ -417,6 +447,13 @@ func (d *DLPIO20) Send(mask byte) error {
 }
 
 // Pulse drives line HIGH for dur, then LOW. Implements [OutputTTLDevice].
+//
+// The device has no pulse timer, so the width is the interval between two host
+// writes and inherits host scheduling in full. Measured on the closely related
+// DLP-IO8 (n=50 per width): within ~20 µs of the request on an idle host, but a
+// median error of +1.85 ms with 4.75 ms of spread under CPU load, returning to
+// ~0.1 ms of spread when the process runs at real-time priority. See
+// docs/SettingPriorityUnderLinux.md.
 func (d *DLPIO20) Pulse(line int, dur time.Duration) error {
 	return defaultPulse(d, line, dur)
 }
