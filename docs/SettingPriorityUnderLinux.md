@@ -80,7 +80,24 @@ Run:
 ```bash
 ulimit -r
 ```
-It should return **`50`**.
+It should return **`50`**. If it still returns `0`, the grant is not in effect —
+either the file was never written, or you have not fully logged out and back in.
+
+**4. Check from inside your experiment.**
+Any goxpyriment program's system report includes a `Sched:` line, so a recorded
+run carries its own evidence:
+
+```
+Sched:      policy: SCHED_FIFO  priority: 50  REAL-TIME
+Sched:      policy: SCHED_OTHER  nice: 0  (real-time available up to 50, not used)
+Sched:      policy: SCHED_OTHER  nice: 0  (real-time NOT available to this user)
+```
+
+Those three lines are three different situations with three different fixes, and
+they are worth being able to tell apart after the fact. The last one is this
+setup not being in place; the middle one is it being in place but the program not
+having been started under `chrt`. Without the line in the data you would be left
+comparing timing distributions and guessing which had happened.
 
 ---
 

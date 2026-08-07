@@ -73,6 +73,10 @@ type SysInfo struct {
 	Memory  MemInfo
 	GPUs    []GPUInfo
 	Audio   AudioInfo
+	// Sched is how the OS is scheduling this process. It belongs in a system
+	// report because it changes timing results by more than the experiment code
+	// does, and leaves no trace in the recorded data.
+	Sched SchedulingInfo
 }
 
 // Collect gathers all system information and returns it as a SysInfo.
@@ -84,6 +88,7 @@ func Collect() SysInfo {
 		Memory:  collectMemory(),
 		GPUs:    collectGPUs(),
 		Audio:   collectAudio(),
+		Sched:   collectScheduling(),
 	}
 }
 
@@ -218,6 +223,11 @@ func (s SysInfo) String() string {
 			lines = append(lines, serverParts)
 		}
 		ws("Audio", lines...)
+	}
+
+	// Scheduling
+	if line := s.Sched.String(); line != "" {
+		ws("Sched", []string{line})
 	}
 
 	return b.String()
