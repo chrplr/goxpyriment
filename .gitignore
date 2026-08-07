@@ -69,3 +69,41 @@ paper/*.fdb_latexmk
 paper/*.fls
 paper/*.log
 paper/*.run.xml
+
+# --- Compiled example binaries built at the repo root -----------------------
+# Go names a binary after its package directory, so `go build ./examples/Foo`
+# run from the repo root leaves "Foo" here rather than under examples/. They
+# have no extension, and no glob can distinguish an extensionless binary from
+# an extensionless source file -- Makefile and NOTICE live at this root -- so
+# they are listed by name.
+#
+# Prefer `go build -o _build/ ./examples/...`, which sidesteps this entirely:
+# _build/ is already ignored above, and nothing new needs adding here when an
+# example is added.
+/Attentional-Blink
+/Hemispheric-differences-word-processing
+/Memory-Iconic-Sperling
+/Perception-of-Temporal-Patterns
+/RSVP-Images
+/RSVP-Images-OneBack
+/Trubutschek_Unconscious_Working_Memory
+/demo_simple_audio_visual_stim
+/examples/Rush-Hour/Rush-Hour
+
+# --- Editor and session leftovers -------------------------------------------
+.Rhistory
+# Crash artefacts from an interrupted save. paper/*.bbl and *.bcf are ignored
+# above, but the suffix defeats those patterns.
+paper/*-SAVE-ERROR
+
+# --- Data produced by running the examples ----------------------------------
+# Recordings from a test run of picture_naming: output, not input.
+examples/picture_naming/sub-*.wav
+
+# --- Not for a public repository --------------------------------------------
+# Third-party PDF (Bridges et al. 2020, the timing mega-study) and notes on it.
+paper/megastudy/
+
+# --- LaTeX float files (endfloat package) -----------------------------------
+paper/*.fff
+paper/*.ttt
