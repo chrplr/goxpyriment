@@ -19,12 +19,17 @@ Everything below is aimed at the second quantity.
 1. **Never sleep for an inter-trial interval. Count frames.**
 2. **Fire the trigger synchronously, on the flip thread, immediately after the
    flip returns** — not from a goroutine.
-3. **Run at real-time priority**, and read the warning about busy-waits in
+3. **Discard the first several trials.** They are measurably different.
+4. **Run at real-time priority**, and read the warning about busy-waits in
    [Setting priority under Linux](SettingPriorityUnderLinux.md).
-4. **One TTL line per event type.** A multi-bit code on a DLP-IO8 takes ~610 µs
+5. **One TTL line per event type.** A multi-bit code on a DLP-IO8 takes ~610 µs
    to settle and will be sampled mid-transition.
-5. **Measure it on your own rig.** The numbers below are one host and two
+6. **Measure it on your own rig.** The numbers below are one host and two
    panels; yours will differ.
+
+Done properly this gives **sd 0.38 ms** on the hardware tested. Each of the
+first three is worth a factor of three to twelve, and none of them is visible
+in the data if you get it wrong.
 
 ## Where the time actually goes
 
@@ -54,6 +59,9 @@ a drifting phase. Measured over 35 trials with a sleep-based ITI:
 | trigger→light spread | **14.1 ms** | **3.4 ms** |
 | sd | 2.80 ms | 1.13 ms |
 | host clock vs display clock | drifts 0.27 ms per trial | — |
+
+(Those frame-counted figures include the warm-up trials. Discard them and it
+improves to sd 0.38 ms — see below.)
 
 The failure mode is worth recognising because it does **not** look like noise. The
 trigger-to-light delay walks smoothly across a run — 27 ms at the start, 41 ms in
@@ -127,6 +135,46 @@ prev = onset
 For EEG and MEG this is the difference between an unknown error and a known one.
 Log the flip timestamp on every trial and put it in the data file.
 
+## Discard the first trials — they are genuinely different
+
+The first few trials after a run starts have a longer and more variable delay
+than everything that follows, and they dominate the summary statistics if left
+in. Same recording, the only difference being how many leading trials are
+excluded:
+
+| | all trials | discarding 10 |
+|---|---|---|
+| trigger→light sd | 1.127 ms | **0.384 ms** |
+| spread | 3.44 ms | **1.15 ms** |
+
+Three times the sd, from the first handful of trials. On the BBTK recording of
+the same test the raw sequence starts at 32.25 ms and settles to about 25 ms
+within four trials, so the transient is real and not an artifact of one
+instrument.
+
+`tests/Timing-Tests` already discards ten cycles (`-warmup`). An experiment
+should do the equivalent: present some warm-up trials before the first one that
+counts, or mark the early trials in the data so the analysis can drop them.
+
+## Two instruments agree
+
+Everything above was measured with an Analog Discovery 3. The same
+`Timing-Tests` run was also recorded with a Black Box ToolKit v3 — a different
+sensor, a different front end and its own clock — with both instruments on the
+same trigger line:
+
+| after warm-up | AD3 (1 µs resolution) | BBTK v3 (250 µs) |
+|---|---|---|
+| trigger→light sd | 0.384 ms | 0.794 ms |
+| spread | 1.15 ms | 2.50 ms |
+| mean trial-to-trial step | 0.274 ms | 0.425 ms |
+
+The BBTK reads slightly worse throughout, which is what its 250 µs quantisation
+predicts: a 0.425 ms mean step is 1.7 of its quanta, so it is measuring its own
+resolution floor as much as the display's behaviour. The two are consistent, and
+the agreement is worth more than either alone because nothing is shared between
+them but the signal.
+
 ## The floor you cannot code around
 
 **Frame quantisation.** A stimulus can only appear when the panel scans it out.
@@ -145,15 +193,20 @@ record where it was.
 
 ## The honest assessment for EEG / MEG
 
-With a frame-counted ITI and a synchronous trigger, the trigger-to-stimulus delay
-on the hardware tested is **stable to about 1 ms sd, with occasional whole-frame
-slips**, on top of a constant offset of 20–40 ms that is panel-specific and must
-be measured per display.
+With a frame-counted ITI, a synchronous trigger and warm-up trials discarded,
+the trigger-to-stimulus delay on the hardware tested is **stable to sd 0.38 ms
+over a 1.15 ms range**, on top of a constant offset of 20–40 ms that is
+panel-specific and must be measured per display. Occasional whole-frame slips
+sit on top of that, and are detectable from the flip timestamps.
 
-Whether that is good enough depends on the paradigm. For ERP components measured
-in tens of milliseconds it is comfortable. For anything needing sub-millisecond
-onset certainty it is not, and no software change will make it so — the panel is
-the limit.
+That is good enough for EEG and MEG. Sub-millisecond consistency is what the
+recording needs, and it is what the measurement shows, from two independent
+instruments.
+
+The three ways to lose it are all in this page and all avoidable: sleeping for
+the ITI costs a factor of twelve in spread, firing the trigger from a goroutine
+costs a factor of forty in the host term, and keeping the warm-up trials costs a
+factor of three in sd. None of them announce themselves in the data.
 
 The robust answer for both cases is the same one used in MEG labs generally:
 **record a photodiode alongside the TTL** and use the photodiode as the onset in
