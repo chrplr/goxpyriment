@@ -112,6 +112,9 @@ func main() {
 		"if >0, blank by flipping this many frames instead of sleeping -- keeps the\n"+
 			"display in steady-state flipping, so the stimulus flip stays vsync-locked")
 	fCal := flag.Bool("calibrate", false, "emit TTL pulses only, for the LED zero point")
+	fNoPrompt := flag.Bool("no-prompt", false,
+		"skip the calibration instruction screen and start pulsing at once, so that a\n"+
+			"capture in another process can be synchronised to the emitter's own output")
 
 	exp := control.NewExperimentFromFlags("Photodiode Latency Test", control.Black, control.White, 32)
 	defer exp.End()
@@ -135,7 +138,7 @@ func main() {
 	}
 
 	if *fCal {
-		calibrate(exp, trig, *fLine, *fTrials, *fISI)
+		calibrate(exp, trig, *fLine, *fTrials, *fISI, *fNoPrompt)
 		return
 	}
 
@@ -305,7 +308,8 @@ func setupTrigger(port string) (triggers.OutputTTLDevice, string) {
 // point: during calibration the only thing that should reach the photodiode is
 // the LED, so anything drawn would contaminate the measurement being made. The
 // progress counter goes to the terminal, not the panel.
-func calibrate(exp *control.Experiment, trig triggers.OutputTTLDevice, line, n int, isi time.Duration) {
+func calibrate(exp *control.Experiment, trig triggers.OutputTTLDevice, line, n int,
+	isi time.Duration, noPrompt bool) {
 	msg := fmt.Sprintf(
 		"CALIBRATION - zero point\n\n"+
 			"Wire an LED and its resistor to TTL line %d, and point the\n"+
@@ -318,12 +322,16 @@ func calibrate(exp *control.Experiment, trig triggers.OutputTTLDevice, line, n i
 			"throughout so that only the LED reaches the diode.\n\n"+
 			"[ press any key to start ]", line, n, isi)
 
-	box := stimuli.NewTextBox(msg, 1400, control.Origin(), control.White)
-	if err := exp.Show(box); err != nil {
-		log.Fatalf("showing the calibration instructions: %v", err)
-	}
-	if _, err := exp.Keyboard.Wait(); err != nil {
-		log.Fatalf("waiting for a key: %v", err)
+	if noPrompt {
+		fmt.Println("  -no-prompt: skipping the instruction screen")
+	} else {
+		box := stimuli.NewTextBox(msg, 1400, control.Origin(), control.White)
+		if err := exp.Show(box); err != nil {
+			log.Fatalf("showing the calibration instructions: %v", err)
+		}
+		if _, err := exp.Keyboard.Wait(); err != nil {
+			log.Fatalf("waiting for a key: %v", err)
+		}
 	}
 
 	// Black from here on, so the diode sees the LED and nothing else.

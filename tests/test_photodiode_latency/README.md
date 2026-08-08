@@ -162,8 +162,16 @@ asymmetry is negligible rather than assume it.
 | `-isi-frames N` | 0 | if >0, blank by flipping N frames instead of sleeping |
 | `-calibrate` | off | LED zero-point mode |
 
+| `-no-prompt` | off | skip the calibration instruction screen and pulse at once |
+
 Plus the usual `-w` (windowed), `-d N` (display), `-s ID` (subject), and
 `-no-realtime` / `-realtime-priority N`.
+
+**Pass `-s` for any unattended run.** Without it `NewExperimentFromFlags` opens
+the participant-info dialog and waits, which from a script looks exactly like a
+hang: no output at all, because the dialog blocks before the first line is
+printed. `-s 1 -no-prompt` together give a run that starts pulsing immediately
+and can be synchronised to by watching its stdout for `emitting`.
 
 **Run it at real-time priority.** The program prints the policy it actually got
 and warns if `gap_us` ever exceeds 1 ms, which is the point at which the trials
