@@ -77,6 +77,36 @@ Record the panel, refresh rate, GPU driver, compositor and session type
 window was fullscreen or windowed — the blocking behaviour depends on all of
 them.
 
+## triggers/dlpio8.go and dlpio20.go duplicate published modules
+
+Both files carry their own copy of the device protocol and their own
+`go.bug.st/serial` calls. Standalone clients for the same two devices are now
+published and verified against the hardware:
+
+- [github.com/chrplr/dlpio8](https://github.com/chrplr/dlpio8)
+- [github.com/chrplr/dlpio20](https://github.com/chrplr/dlpio20)
+
+Keeping the copies was a deliberate choice, not an oversight: `triggers/` needs
+`OutputTTLDevice`/`InputTTLDevice`, an 8-line window over a 20-channel device,
+`AutoDetect*` returning a null device, and it must be excluded from `GOOS=js`
+builds. None of that belongs in a device library. But two implementations of one
+protocol will drift, and the drift will be found the hard way, so the cost is
+recorded here rather than left implicit.
+
+If it is ever revisited, the shape is a thin adapter: `triggers/dlpio20.go`
+becomes a type embedding `*dlpio20.Device` and satisfying the TTL interfaces,
+with the window mapping staying here. The blockers are that it adds a dependency
+to the library module and that `tests/test_dlpio20` and `tests/test_dlpio8` must
+be re-run against real hardware to confirm nothing regressed — neither is hard,
+but neither is free.
+
+One concrete thing already fixed upstream and worth copying if these files are
+touched: resolving the port by globbing `/dev/serial/by-id/*DLP*` matches *both*
+devices, so with an IO8 and an IO20 attached the lookup is ambiguous and fails.
+Match `*DLP-IO8*` or `*DLP-IO20*` instead. Note also that DLP ships these
+modules with a fixed USB serial number, so by-id can never distinguish two of
+the same model.
+
 ## Movie players 
 
 - improve the movie player for gv format: the gv file should be read
