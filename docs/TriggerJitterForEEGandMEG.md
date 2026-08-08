@@ -20,17 +20,19 @@ Everything below is aimed at the second quantity.
 2. **Fire the trigger synchronously, on the flip thread, immediately after the
    flip returns** — not from a goroutine.
 3. **Discard the first several trials.** They are measurably different.
-4. **Run at real-time priority**, and read the warning about busy-waits in
+4. **Run at real-time priority.** Measured worth: it halves the jitter, 2.34 ms
+   to 1.32 ms over five minutes. Read the warning about busy-waits in
    [Setting priority under Linux](SettingPriorityUnderLinux.md).
 5. **One TTL line per event type.** A multi-bit code on a DLP-IO8 takes ~610 µs
    to settle and will be sampled mid-transition.
 6. **Measure it on your own rig.** The numbers below are one host and two
    panels; yours will differ.
 
-Done properly this gives **sd 2.3 ms over a five-minute run** on the hardware
-tested — and, importantly, none of that 2.3 ms is the display, which puts every
-one of 598 stimuli on an exact frame boundary. It is the host being late to
-notice the flip. See "The jitter is in the timestamp, not in the display".
+Done properly, and at real-time priority, this gives **sd 1.3 ms over a
+five-minute run** on the hardware tested — against 2.3 ms for the same run at
+normal priority. None of it is the display, which put every one of 1188 stimuli
+across both runs on an exact frame boundary. It is the host being late to notice
+the flip. See "The jitter is in the timestamp, not in the display".
 
 ## Where the time actually goes
 
@@ -205,12 +207,46 @@ Two things follow, and they point in opposite directions from the usual advice:
   exact grid, the true onsets of a whole block can be recovered by fitting that
   grid to the flip timestamps, which is not possible for genuinely random noise.
 
-The run that produced these numbers was at **normal scheduling priority**. A
-one-sided, several-millisecond lateness in returning from a vsync wait is what
-preemption looks like, so this is the first thing to re-measure under
-`chrt -f 50` — see [Setting priority under Linux](SettingPriorityUnderLinux.md).
-Until that measurement exists, treat the cause as identified and the cure as
-untested.
+### Real-time priority halves it — and that is measured, not assumed
+
+A one-sided, several-millisecond lateness in returning from a vsync wait is what
+preemption looks like. The run above was at normal priority, so the same
+protocol was repeated changing nothing but `chrt -f 50`:
+
+| five minutes, same rig, same night | SCHED_OTHER | SCHED_FIFO 50 |
+|---|---|---|
+| trigger→light sd, **AD3** | 2.342 ms | **1.320 ms** |
+| trigger→light sd, **BBTK v3** | 2.33 ms | **1.32 ms** |
+| p05–p95 spread (BBTK) | 7.2 ms | **3.0 ms** |
+| `ShowTS` timestamps > 1 ms off the frame grid | 12.85 % | **6.43 %** |
+| TTL edges > 1 ms off the frame grid | 13.07 % | **6.28 %** |
+| **photons > 1 ms off the frame grid** | **0.00 %** | **0.00 %** |
+| trial-to-trial steps > 3 ms | 30 of 597 | **10 of 589** |
+| mean delay | 21.18 ms | 20.96 ms |
+
+Real-time scheduling **halves the jitter** and leaves the mean where it was,
+which is the signature of removing a delay that only ever happened sometimes.
+Both instruments agree on the improved figure to three significant figures, as
+they did on the worse one.
+
+The off-grid fractions for `ShowTS` and for the TTL fall together — 12.85 → 6.43
+and 13.07 → 6.28 — which confirms the trigger is simply following the flip
+timestamp and contributes nothing of its own. And the photons stay exactly where
+they were: perfectly frame-locked in both conditions. Scheduling never touched
+the display, only the software's knowledge of it.
+
+**It is not a complete fix.** 6.4 % of flips are still late, and 1.32 ms is not
+1.32 µs. Whatever remains is not answered here.
+
+⚠️ **`tests/Timing-Tests` does not request real-time priority**, so its own
+numbers — including the SCHED_OTHER column above — are at normal priority unless
+you launch it under `chrt`. It builds its experiment with
+`control.NewExperiment`, and the elevation lives in
+`control.NewExperimentFromFlags`, so nothing is attempted and nothing is
+logged. Experiments built the normal way, through `NewExperimentFromFlags`, do
+ask. Check `sched_policy` in your data file's header rather than assuming
+either way, and see [Setting priority under
+Linux](SettingPriorityUnderLinux.md).
 
 ## Discard the first trials — they are genuinely different
 
@@ -282,21 +318,21 @@ the trigger-to-stimulus delay on the hardware tested has **sd 2.3 ms across a
 five-minute block**, on a mean of about 21 ms that is panel-specific. Two
 independent instruments agree on that figure.
 
-Where that 2.3 ms lives matters more than its size. The panel puts the stimulus
-on an exact frame boundary on every one of 598 trials; the software is late to
-notice on about one trial in eight, by up to 6 ms. The jitter is in the
-timestamp, not in the photons.
+Where that jitter lives matters more than its size. The panel puts the stimulus
+on an exact frame boundary on every one of 1188 trials measured; the software is
+late to notice on 6 % of them at real-time priority and 13 % at normal priority.
+The jitter is in the timestamp, not in the photons.
 
 **Whether this is good enough depends on the paradigm.** For ERP components with
-latencies of tens of milliseconds, averaged over many trials, 2.3 ms of onset
-jitter is a modest smear. For anything resolving fine temporal structure — early
-auditory components, phase measures, single-trial latency — it is not.
+latencies of tens of milliseconds, averaged over many trials, 1.3 ms of onset
+jitter is a small smear. For anything resolving fine temporal structure — early
+auditory components, phase measures, single-trial latency — measure it on your
+own rig before relying on it.
 
-But unlike a genuinely noisy display, this one is fixable in principle, and
-there are two independent routes. The measured cause is a preemptible vsync
-wait, so **real-time priority is the first thing to try** and has not yet been
-measured. Failing that, the frame grid is exact enough to reconstruct the true
-onsets after the fact.
+Unlike a genuinely noisy display, this one has somewhere to go. Real-time
+priority is worth a factor of two and is one flag. Beyond that, the frame grid
+is exact enough — 6 µs — to reconstruct the true onsets after the fact, which is
+possible precisely because the residual is not random.
 
 The three ways to make it worse are all in this page and all avoidable: sleeping
 for the ITI costs a factor of twelve in spread, firing the trigger from a
