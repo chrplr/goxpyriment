@@ -27,9 +27,10 @@ Everything below is aimed at the second quantity.
 6. **Measure it on your own rig.** The numbers below are one host and two
    panels; yours will differ.
 
-Done properly this gives **sd 0.38 ms** on the hardware tested. Each of the
-first three is worth a factor of three to twelve, and none of them is visible
-in the data if you get it wrong.
+Done properly this gives **sd 2.3 ms over a five-minute run** on the hardware
+tested, most of it in occasional jumps rather than continuous scatter — see the
+assessment at the end, and measure your own display before trusting any of these
+numbers.
 
 ## Where the time actually goes
 
@@ -60,8 +61,9 @@ a drifting phase. Measured over 35 trials with a sleep-based ITI:
 | sd | 2.80 ms | 1.13 ms |
 | host clock vs display clock | drifts 0.27 ms per trial | — |
 
-(Those frame-counted figures include the warm-up trials. Discard them and it
-improves to sd 0.38 ms — see below.)
+(Both from 35-trial runs. Over five minutes the frame-counted figure is worse —
+sd 2.3 ms — for the reason in "Measure over a realistic run length" below. The
+comparison between the two ITI styles stands; the absolute value does not.)
 
 The failure mode is worth recognising because it does **not** look like noise. The
 trigger-to-light delay walks smoothly across a run — 27 ms at the start, 41 ms in
@@ -135,6 +137,33 @@ prev = onset
 For EEG and MEG this is the difference between an unknown error and a known one.
 Log the flip timestamp on every trial and put it in the data file.
 
+## Measure over a realistic run length, not a pilot
+
+This is the trap that caught the author of this page, twice.
+
+Trial to trial the delay is extremely stable: the median step between
+consecutive trials is **0.06 ms**. Sample thirteen trials and the sd comes out
+at 0.38 ms, which looks superb. Sample 598 — five minutes, a realistic block —
+and it is **2.34 ms**, six times worse.
+
+Nothing changed except the observation window. The delay sits on a plateau,
+drifting by tens of microseconds per trial, and then jumps:
+
+| trial-to-trial step | value |
+|---|---|
+| median | 0.06 ms |
+| p95 | 3.01 ms |
+| max | 16.47 ms (one frame) |
+| steps > 1 ms | 82 of 597 |
+| steps > 3 ms | 30 of 597 |
+
+Over 598 trials the delay ranged from 14 to 27 ms, with two excursions to 38 ms.
+The jumps are not all whole frames — 3.3, 4.0, 6.5, 10.5 and 16.5 ms all occur —
+so they are not purely a dropped frame either.
+
+**A short pilot will tell you the timing is excellent, and it will be wrong.**
+Measure over the length of a real block.
+
 ## Discard the first trials — they are genuinely different
 
 The first few trials after a run starts have a longer and more variable delay
@@ -163,17 +192,24 @@ Everything above was measured with an Analog Discovery 3. The same
 sensor, a different front end and its own clock — with both instruments on the
 same trigger line:
 
-| after warm-up | AD3 (1 µs resolution) | BBTK v3 (250 µs) |
+| five-minute run, ~598 trials | AD3 (1 µs resolution) | BBTK v3 (250 µs) |
 |---|---|---|
-| trigger→light sd | 0.384 ms | 0.794 ms |
-| spread | 1.15 ms | 2.50 ms |
-| mean trial-to-trial step | 0.274 ms | 0.425 ms |
+| trigger→light **sd** | **2.340 ms** | **2.327 ms** |
+| spread | 24.74 ms | 24.75 ms |
+| p05 – p95 | 17.1 – 24.5 ms | 19.8 – 27.0 ms |
+| mean | 21.18 ms | 23.84 ms |
 
-The BBTK reads slightly worse throughout, which is what its 250 µs quantisation
-predicts: a 0.425 ms mean step is 1.7 of its quanta, so it is measuring its own
-resolution floor as much as the display's behaviour. The two are consistent, and
-the agreement is worth more than either alone because nothing is shared between
-them but the signal.
+The two instruments agree on the variability to three decimal places while
+differing by 2.7 ms in the mean. That is exactly the expected pattern: the
+offset depends on where each instrument's threshold sits on the panel's 5.5 ms
+ramp, and is constant; the jitter does not depend on the threshold at all. It is
+also the strongest evidence available that the number is real, since the two
+share nothing but the signal.
+
+Over a short window the BBTK looks worse than the AD3 (sd 0.79 against 0.38 ms
+across thirteen trials) because a 0.43 ms mean step is only 1.7 of its 250 µs
+quanta. Over a realistic run that resolution difference is irrelevant — the
+quantity being measured is ten times its resolution.
 
 ## The floor you cannot code around
 
@@ -194,14 +230,20 @@ record where it was.
 ## The honest assessment for EEG / MEG
 
 With a frame-counted ITI, a synchronous trigger and warm-up trials discarded,
-the trigger-to-stimulus delay on the hardware tested is **stable to sd 0.38 ms
-over a 1.15 ms range**, on top of a constant offset of 20–40 ms that is
-panel-specific and must be measured per display. Occasional whole-frame slips
-sit on top of that, and are detectable from the flip timestamps.
+the trigger-to-stimulus delay on the hardware tested has **sd 2.3 ms across a
+five-minute block**, on a mean of about 21 ms that is panel-specific. Two
+independent instruments agree on that figure.
 
-That is good enough for EEG and MEG. Sub-millisecond consistency is what the
-recording needs, and it is what the measurement shows, from two independent
-instruments.
+Its shape matters more than the number. Consecutive trials differ by a median of
+0.06 ms, so within a plateau the timing is excellent; the variance comes from
+occasional jumps of 3 to 16 ms, 82 of them in 597 trials.
+
+**Whether this is good enough depends on the paradigm.** For ERP components with
+latencies of tens of milliseconds and averaging over many trials, 2.3 ms of
+onset jitter is a modest smear. For anything resolving fine temporal structure —
+early auditory components, phase measures, single-trial latency — it is not, and
+no software change will fix it, because the jumps are in the display pipeline
+and not in the experiment code.
 
 The three ways to lose it are all in this page and all avoidable: sleeping for
 the ITI costs a factor of twelve in spread, firing the trigger from a goroutine
