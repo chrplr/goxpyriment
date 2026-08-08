@@ -220,3 +220,24 @@ subsystem.
   onset detection.
 
 
+
+## `tests/Timing-Tests` never asks for real-time scheduling
+
+It builds its experiment with `control.NewExperiment` (`main.go:1109`), and the
+`RaiseToRealTime` call lives only in `control.NewExperimentFromFlags`
+(`control/experiment.go:268`). So `-no-realtime` and `-realtime-prio` are
+absent, no elevation is attempted, and — the part that cost real time — no
+warning is printed either, because the code path is skipped rather than failing.
+A five-minute run recorded on 2026-08-08 was at SCHED_OTHER throughout while the
+user's `RLIMIT_RTPRIO` was 50 and available.
+
+Verified with `chrt -p` sampled every 2 s across a whole run: SCHED_OTHER at
+every sample.
+
+The measurement it distorted is now controlled by launching under `chrt -f 50`,
+and the data file records the policy (below), so this is no longer silent. Still
+worth deciding whether the test should elevate itself; if it does, every earlier
+Timing-Tests number becomes non-comparable, so it needs a flag and a note rather
+than a quiet default.
+
+Other tests that call `control.NewExperiment` directly have the same gap.

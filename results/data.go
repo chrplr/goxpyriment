@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/chrplr/goxpyriment/apparatus"
+	"github.com/chrplr/goxpyriment/sysinfo"
 )
 
 // Default settings for OutputFile and DataFile.
@@ -212,6 +213,27 @@ func (df *DataFile) WriteSystemInfo(info apparatus.SystemInfo) {
 	df.WriteComment(fmt.Sprintf("sys audio_sample_rate_hz: %d", info.AudioFreq))
 	df.WriteComment(fmt.Sprintf("sys audio_channels: %d", info.AudioChannels))
 	df.WriteComment(fmt.Sprintf("sys audio_buffer_frames: %d", info.AudioFrames))
+
+	// Scheduling last, because it is the line that decides whether two runs are
+	// comparable at all. A five-minute recording on this hardware gave 12.9% of
+	// flips more than 1 ms off the frame grid at SCHED_OTHER; nothing else in
+	// this block moves the timing by that much, and none of it is recoverable
+	// from the stimulus timings afterwards. sched_available is written even
+	// when the run did not ask for real time, because RealTime=false with
+	// RealTimeMax=0 diagnoses itself as a missing privilege rather than a
+	// missing request.
+	sched := sysinfo.Scheduling()
+	df.WriteComment(fmt.Sprintf("sys sched_policy: %s", sched.Policy))
+	df.WriteComment(fmt.Sprintf("sys sched_realtime: %v", sched.RealTime))
+	if sched.RealTime {
+		df.WriteComment(fmt.Sprintf("sys sched_priority: %d", sched.Priority))
+	} else {
+		df.WriteComment(fmt.Sprintf("sys sched_nice: %d", sched.Nice))
+	}
+	df.WriteComment(fmt.Sprintf("sys sched_realtime_available: %d", sched.RealTimeMax))
+	if sched.Fidelity != "" {
+		df.WriteComment(fmt.Sprintf("sys sched_fidelity: %s", sched.Fidelity))
+	}
 }
 
 // WriteDisplayInfo appends display properties as comment lines in the metadata
