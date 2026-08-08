@@ -10,18 +10,28 @@ both events land on the instrument's own timebase, its clock offset cancels —
 you never have to reconcile the instrument's clock with the host's.
 
 ```bash
-go run ./tests/test_photodiode_latency                        # fullscreen, diode at centre
-go run ./tests/test_photodiode_latency -diode top -trials 200
-go run ./tests/test_photodiode_latency -calibrate             # LED zero point
+go run ./tests/test_photodiode_latency                      # fullscreen, diode at top-left
+go run ./tests/test_photodiode_latency -diode center -trials 200
+go run ./tests/test_photodiode_latency -isi-frames 15       # steady-state flipping
+go run ./tests/test_photodiode_latency -calibrate           # LED zero point
 ```
 
 ## Wiring
 
 - DLP-IO8 line 0 (`-line N` to change) to the instrument's TTL input, grounds
   common.
-- Photodiode **on the patch**, on the screen. `-diode top|center|bottom` or
-  `-diode x,y` in pixels from the screen centre; the patch is drawn where you
-  say the diode is.
+- Photodiode **on the patch**, on the screen. The patch is drawn where you say
+  the diode is: `topleft`, `top`, `topright`, `left`, `center`, `right`,
+  `bottomleft`, `bottom`, `bottomright`, or `x,y` in pixels from the screen
+  centre.
+
+  **Top-left is the default, and it is the right one for a latency question.**
+  Scanout starts at the top-left corner and sweeps down, so a diode there adds
+  the least scanout delay to the answer. Moving it to the bottom adds nearly a
+  whole frame — 16.7 ms at 60 Hz — which is larger than everything else this
+  test measures put together. Comparing `-diode topleft` against
+  `-diode bottomleft` measures that sweep directly, if you want the number for
+  your own panel.
 
 ## Which instrument
 
@@ -137,7 +147,7 @@ asymmetry is negligible rather than assume it.
 | `-trials N` | 100 | number of trials |
 | `-line N` | 0 | DLP-IO8 output line |
 | `-port` | auto | serial port of the DLP-IO8 |
-| `-diode` | `center` | `top`, `center`, `bottom`, or `x,y` in px from centre |
+| `-diode` | `topleft` | 4 corners, 4 edge midpoints, `center`, or `x,y` in px |
 | `-patch N` | 240 | side of the white patch, in px |
 | `-frames N` | 2 | frames the patch stays on |
 | `-isi D` | 500ms | blank interval between trials (sleep) |

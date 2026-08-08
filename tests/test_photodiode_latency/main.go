@@ -46,6 +46,11 @@
 // position is a flag, and the position is written into every row of the data.
 // Comparing two runs that placed the diode differently is meaningless.
 //
+// -diode defaults to topleft for that reason: scanout starts at the top-left
+// corner, so a diode there adds the least of this term. The named positions
+// cover all four corners, the four edge midpoints and the centre; anything else
+// is "x,y" in pixels from the screen centre.
+//
 // Pixel response is the other one: an LCD takes milliseconds to go from black
 // to white, and where the instrument's threshold falls on that curve sets the
 // answer. An Analog Discovery records the whole waveform, so the threshold
@@ -64,9 +69,10 @@
 //
 // Usage:
 //
-//	go run ./tests/test_photodiode_latency                      # fullscreen, diode at centre
-//	go run ./tests/test_photodiode_latency -diode top -trials 200
-//	go run ./tests/test_photodiode_latency -calibrate           # LED zero point
+//	go run ./tests/test_photodiode_latency                    # fullscreen, diode at top-left
+//	go run ./tests/test_photodiode_latency -diode center -trials 200
+//	go run ./tests/test_photodiode_latency -isi-frames 15     # steady-state flipping
+//	go run ./tests/test_photodiode_latency -calibrate         # LED zero point
 //
 // Controls:
 //
@@ -94,8 +100,9 @@ func main() {
 	fTrials := flag.Int("trials", 100, "number of trials")
 	fLine := flag.Int("line", 0, "TTL output line to pulse (0-7)")
 	fPort := flag.String("port", "", "serial port of the DLP-IO8 (default: auto-detect)")
-	fDiode := flag.String("diode", "center",
-		`photodiode position: "top", "center", "bottom", or "x,y" in pixels from the centre`)
+	fDiode := flag.String("diode", "topleft",
+		`photodiode position: topleft, top, topright, left, center, right, `+
+			`bottomleft, bottom, bottomright, or "x,y" in pixels from the centre`)
 	fPatch := flag.Int("patch", 240, "side of the white patch, in pixels")
 	fFrames := flag.Int("frames", 2, "frames the patch stays on")
 	fISI := flag.Duration("isi", 500*time.Millisecond, "blank interval between trials")
@@ -295,21 +302,46 @@ func calibrate(exp *control.Experiment, trig triggers.OutputTTLDevice, line, n i
 }
 
 // diodePosition returns the patch centre in goxpyriment's centre-based
-// coordinates. The named positions inset the patch by half its side so it sits
-// fully on the panel.
+// coordinates. The named positions inset the patch by half its side plus a
+// small margin, so the whole square sits on the panel rather than half of it
+// hanging off the edge.
+//
+// Prefer "topleft" when the question is the display's latency. Scanout begins
+// at the top-left corner and sweeps down, so a diode there sees light with the
+// least scanout delay added — at 60 Hz a diode at the bottom sees the same
+// frame nearly 16.7 ms later, and that term is larger than everything else this
+// test measures put together. Putting the diode where scanout starts does not
+// remove the term, but it makes it as small as the panel allows.
 func diodePosition(spec string, w, h, patch int32) (float32, float32, error) {
 	inset := float32(patch)/2 + 8
+	left, right := -float32(w)/2+inset, float32(w)/2-inset
+	top, bottom := -float32(h)/2+inset, float32(h)/2-inset
+
 	switch strings.ToLower(strings.TrimSpace(spec)) {
 	case "center", "centre":
 		return 0, 0, nil
 	case "top":
-		return 0, -float32(h)/2 + inset, nil
+		return 0, top, nil
 	case "bottom":
-		return 0, float32(h)/2 - inset, nil
+		return 0, bottom, nil
+	case "left":
+		return left, 0, nil
+	case "right":
+		return right, 0, nil
+	case "topleft", "top-left", "tl":
+		return left, top, nil
+	case "topright", "top-right", "tr":
+		return right, top, nil
+	case "bottomleft", "bottom-left", "bl":
+		return left, bottom, nil
+	case "bottomright", "bottom-right", "br":
+		return right, bottom, nil
 	}
 	var x, y float32
 	if _, err := fmt.Sscanf(spec, "%f,%f", &x, &y); err != nil {
-		return 0, 0, fmt.Errorf(`-diode %q: want "top", "center", "bottom" or "x,y"`, spec)
+		return 0, 0, fmt.Errorf(`-diode %q: want one of topleft, top, topright, `+
+			`left, center, right, bottomleft, bottom, bottomright, or "x,y" in `+
+			`pixels from the screen centre`, spec)
 	}
 	return x, y, nil
 }
