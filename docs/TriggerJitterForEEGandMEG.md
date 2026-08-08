@@ -295,6 +295,17 @@ across thirteen trials) because a 0.43 ms mean step is only 1.7 of its 250 µs
 quanta. Over a realistic run that resolution difference is irrelevant — the
 quantity being measured is ten times its resolution.
 
+## How this compares with other packages
+
+Bridges et al. (2020) measured this same quantity — trigger pulse to pixels
+changing — for PsychoPy, PsychToolBox, Presentation, E-Prime, OpenSesame and
+Expyriment, on a 60 Hz panel. Their best is 0.18 ms and their worst is 4.82 ms.
+The 1.32 ms here is worse than thirteen of their fourteen lab configurations,
+and the lag identifies why: ours is one frame longer than every Linux and
+Windows configuration they tested, which is the signature of a compositor
+holding a buffer. See
+[the mega-study comparison](TimingMegastudyComparison.md).
+
 ## The floor you cannot code around
 
 **Frame quantisation.** A stimulus can only appear when the panel scans it out.
