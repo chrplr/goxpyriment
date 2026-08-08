@@ -15,9 +15,10 @@ import sys
 
 HERE = pathlib.Path(__file__).resolve().parent
 FIGS = HERE.parent / "figures"
-IMAGES = {"__SEQ__": "timing-sequence-5min.png",
+IMAGES = {"__STACK__": "timing-stacks.png",
+          "__SEQ__": "timing-sequence-5min.png",
           "__WAY__": "traces-wayland.png",
-          "__KMS__": "traces-kmsdrm.png"}
+          "__XORG__": "traces-xorg.png"}
 
 html = (HERE / "console-timing-report.src.html").read_text()
 for key, name in IMAGES.items():
