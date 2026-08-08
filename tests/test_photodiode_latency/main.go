@@ -294,18 +294,44 @@ func setupTrigger(port string) (triggers.OutputTTLDevice, string) {
 	return d, name
 }
 
-// calibrate emits TTL pulses and draws nothing, for the LED zero point.
+// calibrate pulses the TTL line for the LED zero point.
+//
+// It shows the instructions on the screen first and waits for a key, because
+// this program is normally fullscreen and a fullscreen black window hides the
+// terminal the instructions would otherwise print to -- leaving the operator
+// looking at an empty screen with no idea what is expected of them.
+//
+// Once the pulsing starts the screen goes black and stays black. That is the
+// point: during calibration the only thing that should reach the photodiode is
+// the LED, so anything drawn would contaminate the measurement being made. The
+// progress counter goes to the terminal, not the panel.
 func calibrate(exp *control.Experiment, trig triggers.OutputTTLDevice, line, n int, isi time.Duration) {
-	fmt.Println("\nCALIBRATION: no visual stimulus.")
-	fmt.Println("Wire an LED (with its resistor) to the TTL line and point the photodiode")
-	fmt.Println("at the LED. The interval the instrument reports is its own TTL-versus-optical")
-	fmt.Println("input asymmetry plus the LED's rise time, which is microseconds. Subtract")
-	fmt.Println("that offset from the real runs.")
-	fmt.Printf("\nemitting %d pulses on line %d, one every %v\n\n", n, line, isi)
+	msg := fmt.Sprintf(
+		"CALIBRATION - zero point\n\n"+
+			"Wire an LED and its resistor to TTL line %d, and point the\n"+
+			"photodiode at the LED, not at this screen.\n\n"+
+			"The interval the instrument then reports between the TTL edge\n"+
+			"and the light is its own TTL-versus-optical input asymmetry,\n"+
+			"plus the LED's rise time of a few microseconds. Subtract it\n"+
+			"from the real runs.\n\n"+
+			"%d pulses will be sent, one every %v, with the screen black\n"+
+			"throughout so that only the LED reaches the diode.\n\n"+
+			"[ press any key to start ]", line, n, isi)
 
+	box := stimuli.NewTextBox(msg, 1400, control.Origin(), control.White)
+	if err := exp.Show(box); err != nil {
+		log.Fatalf("showing the calibration instructions: %v", err)
+	}
+	if _, err := exp.Keyboard.Wait(); err != nil {
+		log.Fatalf("waiting for a key: %v", err)
+	}
+
+	// Black from here on, so the diode sees the LED and nothing else.
 	if err := exp.Screen.ClearAndUpdate(); err != nil {
 		log.Fatalf("clearing the screen: %v", err)
 	}
+	fmt.Printf("\n  emitting %d pulses on line %d, one every %v\n\n", n, line, isi)
+
 	for i := 0; i < n; i++ {
 		if err := trig.SetHigh(line); err != nil {
 			log.Fatalf("pulse %d: %v", i, err)
@@ -320,6 +346,9 @@ func calibrate(exp *control.Experiment, trig triggers.OutputTTLDevice, line, n i
 		time.Sleep(isi)
 	}
 	fmt.Printf("\r  %d pulses sent\n", n)
+	fmt.Println("\n  If the photodiode channel comes out flat, the LED is not lit or the")
+	fmt.Println("  diode is not pointed at it. The TTL channel shows the pulses either way,")
+	fmt.Println("  so the two cases are easy to tell apart.")
 }
 
 // spot is one patch position, named for the data file.
