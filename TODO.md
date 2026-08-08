@@ -32,6 +32,51 @@ Record the Pi model, OS version, kernel, and compositor. If a genuine Pi-specifi
 fullscreen problem survives all three, document it with that evidence rather than
 restoring the old text.
 
+## Test frame pacing on a 480 Hz monitor
+
+`apparatus.paceToFrame` sleeps down to the last 2 ms of the frame and spins only
+that, so a 60 Hz present loop sits at ~10% CPU duty instead of ~100%. The reason
+that matters is the kernel's real-time throttle: `control` requests SCHED_FIFO 50
+by default, and a real-time thread at 100% duty is suspended for 50 ms once a
+second on a loaded host (measured: 24 stalls in 25 s under `stress-ng`, 51.0 ms
+each, one per second exactly; 0 stalls in 25 s idle). See the warning at the end
+of `docs/SettingPriorityUnderLinux.md`.
+
+**But it does not sleep when under 3 ms of the wait remains**, and a 480 Hz frame
+is 2.083 ms — shorter than the tail alone. Above roughly 330 Hz this reverts to a
+pure spin by design, because a sub-millisecond sleep can overshoot the frame
+boundary by more than it saves (worst `time.Sleep` overshoot measured here:
+0.734 ms at SCHED_FIFO 50). A missed frame is a worse failure than a busy CPU.
+
+So on a 480 Hz panel the exposure comes back — but only in combination with a
+driver whose `SDL_RenderPresent` does not block. That combination has not been
+observed; a fast panel is usually on a driver that blocks properly, in which case
+the wait is empty and none of this is reachable. Untested because there is no
+480 Hz monitor to hand (noted 2026-08-08).
+
+To test, when one is available:
+
+1. `go run ./tests/test_vsync_blocking` fullscreen on the 480 Hz panel. The
+   verdict is the whole question. **BLOCKING** means the wait is empty, the spin
+   runs zero iterations, and nothing here is reachable at any refresh rate —
+   stop, there is no problem. **NON-BLOCKING** means the pacing spin covers a
+   full 2.083 ms frame at ~100% duty and the throttle applies.
+2. If NON-BLOCKING, confirm the stalls before believing they matter: run an
+   experiment under `stress-ng --cpu 0` and look for frame intervals near 50 ms.
+   Note that `test_vsync_blocking`'s `short N/M` counter will *not* show them —
+   it counts intervals shorter than 0.9x nominal, and a throttle stall makes an
+   interval long, not short. Nothing in `tests/` currently reports a maximum
+   frame interval; adding that to `test_vsync_blocking` alongside the median is
+   the small piece of work this step needs.
+3. If the stalls are real, the fix is not in `paceToFrame` — pick one of
+   `sysctl kernel.sched_rt_runtime_us=-1` on that machine, `-no-realtime`, or a
+   display mode whose present blocks.
+
+Record the panel, refresh rate, GPU driver, compositor and session type
+(X11/Wayland), the three numbers `test_vsync_blocking` prints, and whether the
+window was fullscreen or windowed — the blocking behaviour depends on all of
+them.
+
 ## Movie players 
 
 - improve the movie player for gv format: the gv file should be read
