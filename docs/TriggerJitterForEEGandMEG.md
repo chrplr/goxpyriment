@@ -16,6 +16,9 @@ Everything below is aimed at the second quantity.
 
 ## The short version
 
+0. **If you can, run without a compositor.** A bare Linux console under
+   KMS/DRM measured **twelve times** better than the same binary in a Wayland
+   session — 0.11 ms against 1.34. Nothing else here comes close.
 1. **Never sleep for an inter-trial interval. Count frames.**
 2. **Fire the trigger synchronously, on the flip thread, immediately after the
    flip returns** — not from a goroutine.
@@ -28,11 +31,11 @@ Everything below is aimed at the second quantity.
 6. **Measure it on your own rig.** The numbers below are one host and two
    panels; yours will differ.
 
-Done properly, and at real-time priority, this gives **sd 1.3 ms over a
-five-minute run** on the hardware tested — against 2.3 ms for the same run at
-normal priority. None of it is the display, which put every one of 1188 stimuli
-across both runs on an exact frame boundary. It is the host being late to notice
-the flip. See "The jitter is in the timestamp, not in the display".
+Done properly, at real-time priority and **without a compositor**, this gives
+**sd 0.11 ms over a five-minute run** on the hardware tested. In a Wayland
+session the same binary gives 1.34 ms, and at normal priority 2.34 ms. None of
+it is ever the display, which put every one of 1779 stimuli measured on an exact
+frame boundary. See "The jitter is in the timestamp, not in the display".
 
 ## Where the time actually goes
 
@@ -207,6 +210,43 @@ Two things follow, and they point in opposite directions from the usual advice:
   exact grid, the true onsets of a whole block can be recovered by fitting that
   grid to the flip timestamps, which is not possible for genuinely random noise.
 
+### Removing the compositor is worth twelve times more than anything else
+
+The same protocol again, in a bare Linux console with `SDL_VIDEODRIVER=kmsdrm`
+and no display server at all:
+
+| five minutes each | Wayland, FIFO 50 | **KMS/DRM console, FIFO 50** |
+|---|---|---|
+| trigger→light sd, AD3 | 1.344 ms | **0.113 ms** |
+| trigger→light sd, BBTK | 1.35 ms | **0.17 ms** |
+| p05–p95 | 3.12 ms | **0.38 ms** |
+| full range over 590 trials | 18.8–36.7 ms | **18.58–19.13 ms** |
+| largest trial-to-trial step | 16.7 ms | **0.275 ms** |
+| `ShowTS` > 1 ms off the frame grid | 6.4 % | **0 of 640** |
+
+Twelve times better, and the mechanism is gone rather than reduced: not one flip
+in 640 lands more than 1 ms off the frame grid, where a Wayland session misses
+on one trial in fifteen. The whole five-minute run fits in a 0.55 ms band.
+
+**This is the single largest effect on this page.** Real-time priority is worth
+1.8×; the compositor is worth 12×.
+
+It also means the earlier sections diagnosed the mechanism correctly and blamed
+the wrong layer for the offset. Removing the compositor removed the *variance*
+around the one-frame lag but not the lag itself, which only fell 2.8 ms, from
+21.75 to 18.91. goxpyriment emits its trigger about one frame before the photons
+either way. That residual is consistent with `Update()` returning when the flip
+is queued at one vblank while the content appears at the next — 16.66 ms plus
+about 2 ms of scanout down to the patch.
+
+For EEG and MEG the distinction is the whole point: a constant 19 ms is
+subtracted in analysis and costs nothing, and 1.3 ms of scatter around it cannot
+be.
+
+See [the mega-study comparison](TimingMegastudyComparison.md) — on a bare
+console this beats every configuration in the published table; under Wayland it
+is near the bottom of it.
+
 ### Real-time priority halves it — and that is measured, not assumed
 
 A one-sided, several-millisecond lateness in returning from a vsync wait is what
@@ -300,10 +340,12 @@ quantity being measured is ten times its resolution.
 Bridges et al. (2020) measured this same quantity — trigger pulse to pixels
 changing — for PsychoPy, PsychToolBox, Presentation, E-Prime, OpenSesame and
 Expyriment, on a 60 Hz panel. Their best is 0.18 ms and their worst is 4.82 ms.
-The 1.32 ms here is worse than thirteen of their fourteen lab configurations,
-and the lag identifies why: ours is one frame longer than every Linux and
-Windows configuration they tested, which is the signature of a compositor
-holding a buffer. See
+
+goxpyriment measures **0.17 ms on the same class of instrument in a bare
+console**, which is the best figure in that table, and **1.32 ms under
+Wayland**, which is worse than thirteen of the fourteen. Same binary, same
+machine, same night. That column describes a display stack at least as much as
+it describes a package. See
 [the mega-study comparison](TimingMegastudyComparison.md).
 
 ## The floor you cannot code around
