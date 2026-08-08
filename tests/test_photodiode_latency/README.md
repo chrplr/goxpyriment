@@ -20,18 +20,23 @@ go run ./tests/test_photodiode_latency -calibrate           # LED zero point
 
 - DLP-IO8 line 0 (`-line N` to change) to the instrument's TTL input, grounds
   common.
-- Photodiode **on the patch**, on the screen. The patch is drawn where you say
-  the diode is: `topleft`, `top`, `topright`, `left`, `center`, `right`,
-  `bottomleft`, `bottom`, `bottomright`, or `x,y` in pixels from the screen
-  centre.
+- Photodiode **on a patch**, on the screen. By default (`-diode all`) a patch is
+  drawn at each of the four corners and the centre, so the diode can go
+  anywhere and be moved between runs without changing anything. `-diode
+  corners`, a single name, several joined with `+` (`topleft+center`), or one
+  `x,y` pair in pixels also work.
 
-  **Top-left is the default, and it is the right one for a latency question.**
-  Scanout starts at the top-left corner and sweeps down, so a diode there adds
-  the least scanout delay to the answer. Moving it to the bottom adds nearly a
-  whole frame — 16.7 ms at 60 Hz — which is larger than everything else this
-  test measures put together. Comparing `-diode topleft` against
-  `-diode bottomleft` measures that sweep directly, if you want the number for
-  your own panel.
+  **Top-left is the position a latency question wants.** Scanout begins at the
+  top-left corner and sweeps down, so a diode there adds the least scanout
+  delay. Measured on a 60 Hz panel here: median TTL-to-light of **19.0 ms** at
+  the top-left against **23.0 ms** at the centre. A diode at the bottom would add
+  nearly a whole frame, 16.7 ms, which is larger than everything else this test
+  measures put together.
+
+  Note `+y is up`: `Screen.CenterToSDL` computes `centreY - y`. And positions are
+  in the renderer's **logical** space, which is not the panel's pixel count —
+  3840x2160 of hardware presented at 2304x1296 here. The program prints the
+  space and every patch centre at startup; check them against what you see.
 
 ## Which instrument
 
@@ -147,7 +152,7 @@ asymmetry is negligible rather than assume it.
 | `-trials N` | 100 | number of trials |
 | `-line N` | 0 | DLP-IO8 output line |
 | `-port` | auto | serial port of the DLP-IO8 |
-| `-diode` | `topleft` | 4 corners, 4 edge midpoints, `center`, or `x,y` in px |
+| `-diode` | `all` | `all`, `corners`, names joined with `+`, or `x,y` in px (+y up) |
 | `-patch N` | 240 | side of the white patch, in px |
 | `-frames N` | 2 | frames the patch stays on |
 | `-isi D` | 500ms | blank interval between trials (sleep) |
@@ -167,7 +172,7 @@ busy-wait.
 ## Output
 
 A CSV in `~/goxpy_data/` with one row per trial: `trial`, `flip_ts_ns`,
-`trigger_ts_ns`, `gap_us`, `patch_x`, `patch_y`, `patch_px`, `frames`, `policy`,
+`trigger_ts_ns`, `gap_us`, `patch_positions`, `patch_xy`, `patch_px`, `frames`, `policy`,
 `priority`, `isi_ms`, `onset_interval_ms`.
 
 `onset_interval_ms` is onset to onset, spanning the ISI and the whole trial —

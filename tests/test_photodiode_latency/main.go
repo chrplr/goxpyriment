@@ -89,6 +89,7 @@ import (
 	"time"
 
 	"github.com/Zyko0/go-sdl3/sdl"
+	"github.com/chrplr/goxpyriment/apparatus"
 	"github.com/chrplr/goxpyriment/control"
 	"github.com/chrplr/goxpyriment/stimuli"
 	"github.com/chrplr/goxpyriment/sysinfo"
@@ -100,9 +101,10 @@ func main() {
 	fTrials := flag.Int("trials", 100, "number of trials")
 	fLine := flag.Int("line", 0, "TTL output line to pulse (0-7)")
 	fPort := flag.String("port", "", "serial port of the DLP-IO8 (default: auto-detect)")
-	fDiode := flag.String("diode", "topleft",
-		`photodiode position: topleft, top, topright, left, center, right, `+
-			`bottomleft, bottom, bottomright, or "x,y" in pixels from the centre`)
+	fDiode := flag.String("diode", "all",
+		`where to draw patches: "all" (4 corners + centre), "corners", one or more `+
+			`of topleft/top/topright/left/center/right/bottomleft/bottom/bottomright `+
+			`joined with "+", or a single "x,y" in pixels from the centre (+y is up)`)
 	fPatch := flag.Int("patch", 240, "side of the white patch, in pixels")
 	fFrames := flag.Int("frames", 2, "frames the patch stays on")
 	fISI := flag.Duration("isi", 500*time.Millisecond, "blank interval between trials")
@@ -137,25 +139,44 @@ func main() {
 		return
 	}
 
-	w, h, err := exp.Screen.Size()
-	if err != nil {
-		log.Fatalf("screen size: %v", err)
+	// Positions must be computed in the space the renderer draws in, which is
+	// the logical presentation size when one is set and the output size
+	// otherwise -- exactly what Screen.CenterToSDL falls back through. Sizing
+	// from RenderOutputSize instead puts a corner patch off-screen on any
+	// display that uses logical presentation.
+	var dw, dh float32
+	if ls := exp.Screen.LogicalSize; ls != nil {
+		dw, dh = ls.X, ls.Y
+	} else {
+		ow, oh, err := exp.Screen.Renderer.CurrentOutputSize()
+		if err != nil {
+			log.Fatalf("screen size: %v", err)
+		}
+		dw, dh = float32(ow), float32(oh)
 	}
-	px, py, err := diodePosition(*fDiode, w, h, int32(*fPatch))
+	spots, err := diodePositions(*fDiode, dw, dh, float32(*fPatch))
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Printf("screen %dx%d, patch %d px centred at (%+.0f, %+.0f) from screen centre\n",
-		w, h, *fPatch, px, py)
+	fmt.Printf("drawing space %.0fx%.0f, patch %d px at:\n", dw, dh, *fPatch)
+	for _, p := range spots {
+		fmt.Printf("    %-12s (%+.0f, %+.0f) from centre\n", p.name, p.x, p.y)
+	}
 	fmt.Printf("trigger: line %d on %s\n", *fLine, port)
 	fmt.Println("\nPut the photodiode ON the patch. The instrument measures the interval")
 	fmt.Println("from the TTL rising edge to the light rising edge; add gap_us back to it.")
 
-	patch := stimuli.NewRectangle(px, py, float32(*fPatch), float32(*fPatch), control.White)
+	patches := make([]*stimuli.Rectangle, len(spots))
+	for i, p := range spots {
+		patches[i] = stimuli.NewRectangle(p.x, p.y, float32(*fPatch), float32(*fPatch), control.White)
+	}
+	// A stimulus that draws every patch, so one ShowTS presents them all in the
+	// same frame and the diode can sit at any of them without reconfiguring.
+	patch := &multiPatch{patches}
 
 	exp.AddDataVariableNames([]string{
 		"trial", "flip_ts_ns", "trigger_ts_ns", "gap_us",
-		"patch_x", "patch_y", "patch_px", "frames",
+		"patch_positions", "patch_xy", "patch_px", "frames",
 		"policy", "priority", "isi_ms", "onset_interval_ms",
 	})
 
@@ -231,7 +252,7 @@ func main() {
 
 		fmt.Printf("%-6d  %-12d  %-10.1f  %-16.1f\n", trial, flipTS, gapUS, onsetMS)
 		exp.Data.Add(trial, flipTS, trigTS, fmt.Sprintf("%.1f", gapUS),
-			fmt.Sprintf("%.0f", px), fmt.Sprintf("%.0f", py), *fPatch, *fFrames,
+			spotNames(spots), spotCoords(spots), *fPatch, *fFrames,
 			sched.Policy, sched.Priority,
 			fmt.Sprintf("%.0f", float64(fISI.Milliseconds())),
 			fmt.Sprintf("%.3f", onsetMS))
@@ -301,49 +322,119 @@ func calibrate(exp *control.Experiment, trig triggers.OutputTTLDevice, line, n i
 	fmt.Printf("\r  %d pulses sent\n", n)
 }
 
-// diodePosition returns the patch centre in goxpyriment's centre-based
-// coordinates. The named positions inset the patch by half its side plus a
-// small margin, so the whole square sits on the panel rather than half of it
-// hanging off the edge.
+// spot is one patch position, named for the data file.
+type spot struct {
+	name string
+	x, y float32
+}
+
+// multiPatch draws several rectangles as one stimulus, so a single ShowTS puts
+// them all on the same frame.
+type multiPatch struct{ rects []*stimuli.Rectangle }
+
+func (m *multiPatch) Draw(sc *apparatus.Screen) error {
+	for _, r := range m.rects {
+		if err := r.Draw(sc); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (m *multiPatch) Present(sc *apparatus.Screen, clear, update bool) error {
+	return stimuli.PresentDrawable(m, sc, clear, update)
+}
+
+func (m *multiPatch) GetPosition() sdl.FPoint  { return sdl.FPoint{} }
+func (m *multiPatch) SetPosition(p sdl.FPoint) {}
+func (m *multiPatch) Preload() error           { return nil }
+func (m *multiPatch) Unload() error            { return nil }
+
+func spotNames(spots []spot) string {
+	out := make([]string, len(spots))
+	for i, p := range spots {
+		out[i] = p.name
+	}
+	return strings.Join(out, "+")
+}
+
+func spotCoords(spots []spot) string {
+	out := make([]string, len(spots))
+	for i, p := range spots {
+		out[i] = fmt.Sprintf("%.0f,%.0f", p.x, p.y)
+	}
+	return strings.Join(out, "+")
+}
+
+// diodePositions parses -diode into one or more patch centres, in
+// goxpyriment's centre-based coordinates.
+//
+// Note the sign convention: Screen.CenterToSDL computes centreY - y, so +y is
+// UP. A "top" position therefore has a POSITIVE y. Getting this backwards puts
+// the square at the bottom of the screen, which is exactly what it looks like:
+// the program reports "top" and the panel shows it at the bottom.
+//
+// Accepted: a single name, several names joined with "+", the keywords "all"
+// (four corners and the centre) and "corners", or one "x,y" pair in pixels.
 //
 // Prefer "topleft" when the question is the display's latency. Scanout begins
 // at the top-left corner and sweeps down, so a diode there sees light with the
-// least scanout delay added — at 60 Hz a diode at the bottom sees the same
+// least scanout delay added -- at 60 Hz a diode at the bottom sees the same
 // frame nearly 16.7 ms later, and that term is larger than everything else this
-// test measures put together. Putting the diode where scanout starts does not
-// remove the term, but it makes it as small as the panel allows.
-func diodePosition(spec string, w, h, patch int32) (float32, float32, error) {
-	inset := float32(patch)/2 + 8
-	left, right := -float32(w)/2+inset, float32(w)/2-inset
-	top, bottom := -float32(h)/2+inset, float32(h)/2-inset
+// test measures put together. "all" lights every corner at once, so the diode
+// can be moved between runs without changing anything.
+func diodePositions(spec string, w, h, patch float32) ([]spot, error) {
+	inset := patch/2 + 8
+	left, right := -w/2+inset, w/2-inset
+	top, bottom := h/2-inset, -h/2+inset // +y is up
 
-	switch strings.ToLower(strings.TrimSpace(spec)) {
-	case "center", "centre":
-		return 0, 0, nil
-	case "top":
-		return 0, top, nil
-	case "bottom":
-		return 0, bottom, nil
-	case "left":
-		return left, 0, nil
-	case "right":
-		return right, 0, nil
-	case "topleft", "top-left", "tl":
-		return left, top, nil
-	case "topright", "top-right", "tr":
-		return right, top, nil
-	case "bottomleft", "bottom-left", "bl":
-		return left, bottom, nil
-	case "bottomright", "bottom-right", "br":
-		return right, bottom, nil
+	named := map[string]spot{
+		"center": {"center", 0, 0}, "centre": {"center", 0, 0},
+		"top": {"top", 0, top}, "bottom": {"bottom", 0, bottom},
+		"left": {"left", left, 0}, "right": {"right", right, 0},
+		"topleft": {"topleft", left, top}, "top-left": {"topleft", left, top},
+		"tl":       {"topleft", left, top},
+		"topright": {"topright", right, top}, "top-right": {"topright", right, top},
+		"tr":         {"topright", right, top},
+		"bottomleft": {"bottomleft", left, bottom}, "bottom-left": {"bottomleft", left, bottom},
+		"bl":          {"bottomleft", left, bottom},
+		"bottomright": {"bottomright", right, bottom}, "bottom-right": {"bottomright", right, bottom},
+		"br": {"bottomright", right, bottom},
 	}
-	var x, y float32
-	if _, err := fmt.Sscanf(spec, "%f,%f", &x, &y); err != nil {
-		return 0, 0, fmt.Errorf(`-diode %q: want one of topleft, top, topright, `+
-			`left, center, right, bottomleft, bottom, bottomright, or "x,y" in `+
-			`pixels from the screen centre`, spec)
+
+	spec = strings.ToLower(strings.TrimSpace(spec))
+	switch spec {
+	case "all":
+		return []spot{named["topleft"], named["topright"], named["center"],
+			named["bottomleft"], named["bottomright"]}, nil
+	case "corners":
+		return []spot{named["topleft"], named["topright"],
+			named["bottomleft"], named["bottomright"]}, nil
 	}
-	return x, y, nil
+
+	var out []spot
+	for _, part := range strings.Split(spec, "+") {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+		if p, ok := named[part]; ok {
+			out = append(out, p)
+			continue
+		}
+		var x, y float32
+		if _, err := fmt.Sscanf(part, "%f,%f", &x, &y); err != nil {
+			return nil, fmt.Errorf(`-diode %q: want "all", "corners", one or more of `+
+				`topleft top topright left center right bottomleft bottom bottomright `+
+				`joined with "+", or a single "x,y" in pixels from the screen centre `+
+				`(+y is up)`, spec)
+		}
+		out = append(out, spot{fmt.Sprintf("%.0f,%.0f", x, y), x, y})
+	}
+	if len(out) == 0 {
+		return nil, fmt.Errorf("-diode %q: no position given", spec)
+	}
+	return out, nil
 }
 
 func summarise(gaps []float64, trials int) {
