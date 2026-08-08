@@ -2,7 +2,12 @@ Here are the step-by-step instructions to set up the `goxpyriment` group with th
 
 ---
 
-### Step 1: Create the Group
+#If you are here because of EEG or MEG trigger timing, read
+[Minimising trigger-to-stimulus jitter](TriggerJitterForEEGandMEG.md) as well:
+real-time priority is necessary but nowhere near sufficient, and the dominant
+term is not the one most people expect.
+
+## Step 1: Create the Group
 First, you need to create the group in the system database.
 
 ```bash

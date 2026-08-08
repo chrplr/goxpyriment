@@ -14,6 +14,11 @@ timing behaviour of your computer before running a psychophysical experiment.
 
 ---
 
+> For the EEG/MEG question specifically — how consistent the delay is between
+> a TTL trigger and the physical stimulus — see
+> [Minimising trigger-to-stimulus jitter](TriggerJitterForEEGandMEG.md), which
+> gives the measured decomposition and the two things that matter most.
+
 ## Why timing matters
 
 In a psychology experiment every stimulus has an intended onset and offset time.
