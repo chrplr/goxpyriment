@@ -1,0 +1,3 @@
+category: test
+description: Measures the audio clock's rate error against the system clock in ppm, by regressing frames consumed on monotonic time over a long tone
+reference: ""
