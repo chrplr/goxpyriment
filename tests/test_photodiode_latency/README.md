@@ -1,0 +1,131 @@
+# test_photodiode_latency
+
+Measures the delay between the timestamp `ShowTS` returns and the moment light
+actually leaves the screen.
+
+Each trial blanks the display, presents a white patch with `ShowTS`, and raises
+a TTL line on a DLP-IO8 on the very next statement. An external two-channel
+instrument records the TTL edge and a photodiode sitting on the patch. Because
+both events land on the instrument's own timebase, its clock offset cancels —
+you never have to reconcile the instrument's clock with the host's.
+
+```bash
+go run ./tests/test_photodiode_latency                        # fullscreen, diode at centre
+go run ./tests/test_photodiode_latency -diode top -trials 200
+go run ./tests/test_photodiode_latency -calibrate             # LED zero point
+```
+
+## Wiring
+
+- DLP-IO8 line 0 (`-line N` to change) to the instrument's TTL input, grounds
+  common.
+- Photodiode **on the patch**, on the screen. `-diode top|center|bottom` or
+  `-diode x,y` in pixels from the screen centre; the patch is drawn where you
+  say the diode is.
+
+## Which instrument
+
+**Prefer an Analog Discovery 3.** Two reasons, and the second is the one that
+matters:
+
+1. Resolution: ~1 µs against a BBTK's ~250 µs.
+2. **Both AD3 channels are the same ADC on the same timebase**, so there is no
+   asymmetry between a "TTL input" and an "optical input" to worry about. On an
+   instrument whose two inputs are different circuits, any difference in their
+   internal latency is a systematic that does *not* cancel in the subtraction,
+   and you would have to calibrate it out (see below).
+
+The AD3 also records the whole waveform rather than a thresholded crossing,
+which turns the LCD's rise time from a hidden systematic into a choice you make
+in the analysis. `dlp-io8-g/measurements/ad3-capture.py` will capture it and
+`ad3.py`'s `rising_edges` interpolates crossings to well under a sample.
+
+A BBTK is still perfectly usable at millisecond precision, and its optical
+sensor is purpose-built. If you have both, running both is genuine
+corroboration by independent instruments.
+
+## Reading the result
+
+The instrument gives you `M = T_light − T_TTL`. What you want is
+`Δ = T_light − T_ShowTS`, and:
+
+```
+Δ = M + gap + L_dlp
+```
+
+- **`gap`** is this program's own delay between `ShowTS` returning and the TTL
+  write being issued. It is logged per trial as `gap_us`, so add it back. It is
+  small only because the trigger is fired synchronously on the flip thread —
+  measured here at **p50 34 µs, max 37 µs** at `SCHED_FIFO` 50. `triggers.FireTrigger`
+  launches from a goroutine instead, and that path has been measured at +0.73 ms
+  with about 1 ms of spread at normal priority under load, which is why this test
+  does not use it.
+- **`L_dlp`** is the DLP's own write-to-edge latency, which cannot be measured on
+  this bench: nothing here shares a clock with the device and the module has no
+  clock of its own. Bounded at **0.793 ms** by arithmetic alone and at a few tens
+  of microseconds by extrapolating the FTDI latency-timer sweep — see
+  [Why no absolute latency is quoted here](https://github.com/chrplr/dlp-io8-g#why-no-absolute-latency-is-quoted-here).
+
+Both extra terms are non-negative, so **the instrument's figure alone is a lower
+bound on Δ.**
+
+## The systematic that dwarfs all of the above
+
+`ShowTS` returns a host-side timestamp taken after the flip. The photons for a
+given screen row appear when the scanout reaches that row, so a diode at the top
+of the panel sees light almost immediately and one at the bottom nearly a frame
+later — **16.7 ms at 60 Hz, sixteen times the millisecond this test is trying to
+resolve.**
+
+So: fix the diode's position, let the program draw the patch there, and note
+that `patch_x`/`patch_y` are written into every row of the data. Two runs that
+placed the diode differently are not comparable, and a run whose diode position
+was not recorded is not interpretable.
+
+Pixel response is the other one. An LCD takes milliseconds to go from black to
+white, and where the threshold falls on that curve sets the answer. Report the
+threshold, and prefer the instrument that lets you choose it after the fact.
+
+## Zero point (`-calibrate`)
+
+Draws nothing and emits TTL pulses. Wire an LED and its resistor to the same TTL
+line and point the photodiode at the LED. The interval the instrument then
+reports is its own TTL-versus-optical input asymmetry plus the LED's rise, and an
+LED rises in microseconds — so that figure is the offset to subtract from the
+real runs.
+
+Worth doing on a BBTK. Worth doing on an AD3 too, once, to confirm the
+asymmetry is negligible rather than assume it.
+
+## Flags
+
+| flag | default | meaning |
+|---|---|---|
+| `-trials N` | 100 | number of trials |
+| `-line N` | 0 | DLP-IO8 output line |
+| `-port` | auto | serial port of the DLP-IO8 |
+| `-diode` | `center` | `top`, `center`, `bottom`, or `x,y` in px from centre |
+| `-patch N` | 240 | side of the white patch, in px |
+| `-frames N` | 2 | frames the patch stays on |
+| `-isi D` | 500ms | blank interval between trials |
+| `-calibrate` | off | LED zero-point mode |
+
+Plus the usual `-w` (windowed), `-d N` (display), `-s ID` (subject), and
+`-no-realtime` / `-realtime-priority N`.
+
+**Run it at real-time priority.** The program prints the policy it actually got
+and warns if `gap_us` ever exceeds 1 ms, which is the point at which the trials
+are measuring the scheduler rather than the display. See
+[docs/SettingPriorityUnderLinux.md](../../docs/SettingPriorityUnderLinux.md) —
+including the warning there about not combining `chrt` with a continuous
+busy-wait.
+
+## Output
+
+A CSV in `~/goxpy_data/` with one row per trial: `trial`, `flip_ts_ns`,
+`trigger_ts_ns`, `gap_us`, `patch_x`, `patch_y`, `patch_px`, `frames`, `policy`,
+`priority`, `isi_ms`, `onset_interval_ms`.
+
+`onset_interval_ms` is onset to onset, spanning the ISI and the whole trial —
+not a frame interval. It is there so that a trial which took much longer than
+its neighbours is visible in the data rather than silently averaged in.

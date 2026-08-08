@@ -1,0 +1,3 @@
+category: test
+description: Measures the delay between the timestamp ShowTS returns and light actually leaving the screen, by firing a DLP-IO8 TTL synchronously on the flip thread and letting an AD3 or BBTK time the TTL against a photodiode
+reference: ""
