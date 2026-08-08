@@ -241,3 +241,26 @@ Timing-Tests number becomes non-comparable, so it needs a flag and a note rather
 than a quiet default.
 
 Other tests that call `control.NewExperiment` directly have the same gap.
+
+## Presentation latency: one to two frames deeper than Psychtoolbox
+
+Measured 8 August 2026, photodiode against the TTL, same panel throughout:
+
+    bare Xorg + openbox, exclusive fullscreen   35.74 ms   sd 0.083
+    KMS/DRM, no display server                  18.91 ms   sd 0.113
+    Xorg - KMS/DRM = 16.826 ms = 1.010 frames
+
+So `ShowTS` returns one frame before the photons on bare hardware and two frames
+before them under X. Bridges et al. (2020) measure 2.35-7.10 ms for every Linux
+and Windows package they tested, PsychToolBox on Ubuntu at 4.53 -- their flip
+returns essentially at scanout.
+
+This costs nothing scientifically: it is constant to 83 us, so it subtracts out
+of any analysis, and the precision on that stack is the best in their table. But
+it is a software property, not a hardware one, and it is the only figure in this
+whole investigation that looks reducible. Worth understanding before deciding
+whether to change anything -- likely candidates are the GL swap-chain depth and
+whether SDL is being given the chance to page-flip rather than blit.
+
+Do not "fix" it without re-measuring: a change that lowers the mean and raises
+the variance would be a straight loss.

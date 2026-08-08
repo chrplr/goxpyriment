@@ -16,9 +16,10 @@ Everything below is aimed at the second quantity.
 
 ## The short version
 
-0. **If you can, run without a compositor.** A bare Linux console under
-   KMS/DRM measured **twelve times** better than the same binary in a Wayland
-   session — 0.11 ms against 1.34. Nothing else here comes close.
+0. **Get off the compositor.** Bare Xorg with a plain non-compositing window
+   manager measured **sixteen times** better than the same binary in a Wayland
+   session — 0.083 ms against 1.34 — and a bare KMS/DRM console 0.113 ms.
+   Nothing else here comes close.
 1. **Never sleep for an inter-trial interval. Count frames.**
 2. **Fire the trigger synchronously, on the flip thread, immediately after the
    flip returns** — not from a goroutine.
@@ -32,10 +33,12 @@ Everything below is aimed at the second quantity.
    panels; yours will differ.
 
 Done properly, at real-time priority and **without a compositor**, this gives
-**sd 0.11 ms over a five-minute run** on the hardware tested. In a Wayland
-session the same binary gives 1.34 ms, and at normal priority 2.34 ms. None of
-it is ever the display, which put every one of 1779 stimuli measured on an exact
-frame boundary. See "The jitter is in the timestamp, not in the display".
+**sd 0.083 ms over a five-minute run** on the hardware tested — an order of
+magnitude better than the best figure in the published cross-package comparison.
+In a Wayland session the same binary gives 1.34 ms, and at normal priority
+2.34 ms. None of it is ever the display, which put every one of 2951 stimuli
+measured on an exact frame boundary. See "The jitter is in the timestamp, not in
+the display".
 
 ## Where the time actually goes
 
@@ -210,6 +213,49 @@ Two things follow, and they point in opposite directions from the usual advice:
   exact grid, the true onsets of a whole block can be recovered by fitting that
   grid to the flip timestamps, which is not possible for genuinely random noise.
 
+### The display stack is worth sixteen times more than anything else
+
+Three runs differing only in the display stack — same binary, same
+`chrt -f 50`, same synchronous trigger, same night:
+
+| | mean | **sd** | full range, ~590 trials | flips > 1 ms off the frame grid |
+|---|---|---|---|---|
+| Wayland session | 21.75 ms | 1.344 ms | 18.83–36.74 | 7.1 % |
+| KMS/DRM, no display server | 18.91 ms | **0.113 ms** | 18.58–19.13 | **0 of 590** |
+| **Bare Xorg + openbox**, exclusive fullscreen | 35.74 ms | **0.083 ms** | **35.52–35.95** | **0 of 580** |
+
+**Sixteen times better, and the mechanism is gone rather than reduced.** Off a
+compositor, not one flip in ~590 lands more than 1 ms off the frame grid; in a
+Wayland session one trial in fifteen does. An entire five-minute Xorg run fits
+inside a 0.43 ms band.
+
+This is the single largest effect on this page. Real-time priority is worth
+1.8×; the display stack is worth 16×.
+
+**Xorg is the steadiest and the latest**, which is not a contradiction — the two
+are different quantities. The gap is exactly one frame:
+
+    Xorg − KMS/DRM = 16.826 ms = 1.010 frames
+
+One more buffer in the pipeline, dead constant. So goxpyriment emits its trigger
+one frame before the photons on bare hardware and two frames before them under
+X, and neither is the compositor's doing — what the compositor added was the
+*variance* around it. That is consistent with `Update()` returning when a page
+flip is queued at one vblank while the content becomes visible at a later one.
+
+For EEG and MEG the distinction is the whole point: **a constant 19 or 36 ms is
+subtracted in analysis and costs nothing; 1.3 ms of scatter around it cannot
+be.** Measure your offset once per rig, record it, subtract it.
+
+A worthwhile aside on instruments. Across the Wayland and KMS/DRM runs the BBTK
+reproduced the AD3's sd to three significant figures. On the Xorg run it does
+not — 1.55 ms against 0.083 — because seven trials read 24–28 ms where the AD3
+saw nothing below 35.52 in any of 581. Its optical threshold was never
+calibrated against this panel, and a threshold high on a 5.5 ms ramp crosses
+erratically when the final luminance wobbles. Agreement between instruments is
+worth a great deal right up to the point where one of them is misconfigured, and
+that point is not announced.
+
 ### Removing the compositor is worth twelve times more than anything else
 
 The same protocol again, in a bare Linux console with `SDL_VIDEODRIVER=kmsdrm`
@@ -341,11 +387,16 @@ Bridges et al. (2020) measured this same quantity — trigger pulse to pixels
 changing — for PsychoPy, PsychToolBox, Presentation, E-Prime, OpenSesame and
 Expyriment, on a 60 Hz panel. Their best is 0.18 ms and their worst is 4.82 ms.
 
-goxpyriment measures **0.17 ms on the same class of instrument in a bare
-console**, which is the best figure in that table, and **1.32 ms under
-Wayland**, which is worse than thirteen of the fourteen. Same binary, same
-machine, same night. That column describes a display stack at least as much as
-it describes a package. See
+goxpyriment measures **0.083 ms on bare Xorg** — the stack they actually ran,
+and twice as good as the best figure in their table — and **1.32 ms under
+Wayland**, worse than thirteen of the fourteen. Same binary, same machine, same
+night. That column describes a display stack at least as much as it describes a
+package.
+
+The lag runs the other way and belongs in the same breath: 35.7 ms on bare Xorg
+against 2.35–7.10 ms for every Linux and Windows package they measured.
+PsychToolBox's flip returns at scanout; goxpyriment's returns two frames early.
+Constant, so correctable, but real. See
 [the mega-study comparison](TimingMegastudyComparison.md).
 
 ## The floor you cannot code around

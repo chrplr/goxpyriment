@@ -9,9 +9,11 @@ synchrony for PsychoPy, PsychToolBox, Presentation, E-Prime, OpenSesame and
 Expyriment across three operating systems. This page puts goxpyriment's measured
 numbers next to it, on the visual measures.
 
-**Short answer: with a compositor, goxpyriment is worse than thirteen of their
-fourteen lab configurations. Without one — KMS/DRM in a bare console —
-it is better than all fourteen. The compositor was the entire jitter.**
+**Short answer: the display stack decides this, not the package. In a Wayland
+session goxpyriment is worse than thirteen of their fourteen lab
+configurations. On bare Xorg — the stack they actually measured — it is better
+than all fourteen, by a factor of two, at sd 0.083 ms. The same binary, the
+same machine, the same night.**
 
 The protocol mapping — which flags reproduce their trial structure — lives in
 `paper/megastudy/megastudy_timing_tests.md`, which is not tracked because that
@@ -29,47 +31,63 @@ across machines, and so should we.
 Built-in 2560×1600 laptop panel at **60.0400 Hz** (SDL) / **60.0395 Hz**
 (measured from the photodiode train — 8 ppm apart), Mesa, Intel Arc (MTL).
 12 frames on, 18 off, 640 cycles, fullscreen, photodiode on the top-left patch.
-Both instruments recorded every run simultaneously: an Analog Discovery 3 at
-200 kS/s with the TTL and the photodiode in **one acquisition** (so the
-instrument's clock cancels), and a Black Box ToolKit v3 on the same trigger
-line. `onset` is the photodiode's 10 % crossing.
+An Analog Discovery 3 at 200 kS/s recorded the TTL and the photodiode in **one
+acquisition**, so the instrument's clock cancels; a Black Box ToolKit v3 was on
+the same trigger line throughout. `onset` is the photodiode's 10 % crossing.
 
-| | **A** Wayland, normal priority, goroutine trigger | **B** Wayland, FIFO 50, goroutine | **C** Wayland, FIFO 50, **synchronous** | **D** **KMS/DRM bare console**, FIFO 50, synchronous |
-|---|---|---|---|---|
-| harness | `Timing-Tests -test av -no-sound` | + `chrt -f 50` | `test_photodiode_latency` | same, `SDL_VIDEODRIVER=kmsdrm` |
-| n | 598 | 590 | 590 | 591 |
-| **sd, AD3** | 2.342 ms | 1.320 ms | 1.344 ms | **0.113 ms** |
-| **sd, BBTK** | 2.33 ms | 1.32 ms | 1.35 ms | **0.17 ms** |
-| p05–p95, AD3 | 7.36 ms | 3.10 ms | 3.12 ms | **0.38 ms** |
-| full range, AD3 | 14.0–38.8 | 18.5–37.6 | 18.8–36.7 | **18.58–19.13** |
-| largest trial-to-trial step | 16.5 ms | 18.1 ms | 16.7 ms | **0.275 ms** |
-| steps > 1 ms | 82 | 37 | 43 | **0 of 590** |
-| TTL > 1 ms off the frame grid | 13.07 % | 6.28 % | 7.13 % | **0.00 %** |
-| `ShowTS` > 1 ms off the frame grid | 12.85 % | 6.43 % | — | **0 of 640** |
-| **photons > 1 ms off the frame grid** | **0.00 %** | **0.00 %** | **0.00 %** | **0.00 %** |
-| mean, AD3 | 21.18 ms | 20.96 ms | 21.75 ms | 18.91 ms |
-| mean, BBTK | 23.8 ms | 23.8 ms | 24.4 ms | 21.3 ms |
+Five runs. A→C vary the software while holding the stack fixed; C, D and E vary
+only the stack.
 
-Three things were tested. Real-time priority is worth a factor of 1.8. Firing
-the trigger synchronously rather than from a goroutine is worth **nothing** —
-1.344 against 1.320, in the wrong direction. Removing the compositor is worth a
-factor of **twelve**.
+| | harness / stack | n | **sd, AD3** | mean, AD3 | steps > 1 ms | TTL > 1 ms off the frame grid |
+|---|---|---|---|---|---|---|
+| **A** | Wayland, normal priority, goroutine trigger | 598 | 2.342 ms | 21.18 | 82 | 13.07 % |
+| **B** | Wayland, FIFO 50, goroutine | 590 | 1.320 ms | 20.96 | 37 | 6.28 % |
+| **C** | Wayland, FIFO 50, synchronous | 590 | 1.344 ms | 21.75 | 43 | 7.13 % |
+| **D** | **KMS/DRM**, no display server | 591 | **0.113 ms** | 18.91 | **0** | **0.00 %** |
+| **E** | **Bare Xorg + openbox**, exclusive fullscreen | 581 | **0.083 ms** | 35.74 | **0** | **0.00 %** |
 
-`test_photodiode_latency` logs its own flip-to-trigger gap, so the host's
-contribution is measured rather than inferred: **median 11.0 µs, p95 27.9 µs,
-max 37.7 µs**. Under 0.04 ms, in every condition. The trigger code was never
-the problem.
+Photons were more than 1 ms off a whole frame period in **0.00 %** of intervals
+in all five runs — median error 6 µs, worst case 169 µs, 2951 trials. The panel
+was never the variable.
+
+Three software hypotheses were tested against the fixed Wayland stack. Real-time
+priority is worth 1.8×. Firing the trigger synchronously rather than from a
+goroutine is worth **nothing** — 1.344 against 1.320, in the wrong direction;
+`test_photodiode_latency` logs its own flip-to-trigger gap and puts the entire
+host-side path at **median 11 µs, max 38 µs**. Changing the display stack is
+worth **16×**.
+
+## The stack decides it, and it is not a single axis
+
+| only the stack differs (all FIFO 50, synchronous trigger) | mean | sd | full range |
+|---|---|---|---|
+| Wayland session | 21.75 ms | 1.344 ms | 18.83–36.74 |
+| KMS/DRM, no display server | 18.91 ms | 0.113 ms | 18.58–19.13 |
+| **Bare Xorg + openbox** | **35.74 ms** | **0.083 ms** | **35.52–35.95** |
+
+Xorg is the **steadiest and the latest**. The lag difference is not approximate:
+
+    Xorg − KMS/DRM = 16.826 ms = 1.010 frames
+
+One whole extra buffer in the pipeline, and dead constant. Neither Xorg nor
+KMS/DRM puts a single flip more than 1 ms off the frame grid, in 580 and 590
+intervals respectively; Wayland misses on one trial in fifteen.
+
+So the answer to "where does X11 fall between the other two" is: neither
+between nor beyond. It is a different trade — best-in-class stability bought
+with an extra frame of latency.
 
 ## Against Table 2
 
 Their "visual onset" is *"the difference between the occurrence of the trigger
-pulse and the pixels changing on the LCD screen"* — the same quantity, and their
-monitor is also 60 Hz, so frame quantisation matches. They used a BBTK v2, so
-the BBTK column below is the like-for-like instrument.
+pulse and the pixels changing on the LCD screen"* — the same quantity, their
+monitor is also 60 Hz, and **bare Xorg is the stack they ran**, which makes E
+the honest row to compare.
 
-| configuration | Var (ms) |
+| configuration | onset Var (ms) |
 |---|---|
-| **goxpyriment, KMS/DRM (AD3 0.113)** | **0.17** |
+| **goxpyriment — bare Xorg (E)** | **0.083** |
+| **goxpyriment — KMS/DRM console (D)** | **0.113** |
 | PsychToolBox Ubuntu · E-Prime Win10 | 0.18 |
 | PsychToolBox Win10 · Expyriment Win10 | 0.19 |
 | PsychoPy Ubuntu · Presentation Win10 | 0.34 |
@@ -79,54 +97,40 @@ the BBTK column below is the like-for-like instrument.
 | PsychoPy macOS | 0.55 |
 | OpenSesame Win10 · Expyriment Ubuntu | 0.72 / 0.73 |
 | OpenSesame macOS | 0.79 |
-| **goxpyriment, Wayland (B, C)** | **1.32 / 1.34** |
-| **goxpyriment, Wayland (A)** | **2.34** |
+| **goxpyriment — Wayland (B, C)** | **1.32 / 1.34** |
+| **goxpyriment — Wayland, normal priority (A)** | **2.34** |
 | Expyriment macOS | 4.82 |
 
-On a bare console goxpyriment is at the top of the table; under Wayland it is
-near the bottom. Same binary, same machine, same night. **The number in that
-column is a property of the display stack far more than of the package**, which
-is worth remembering when reading anyone's row in it, including the published
-ones.
+On the stack they measured, goxpyriment has **the best onset precision in the
+table**, twice as good as the best published figure. In a Wayland session the
+same binary is worse than thirteen of the fourteen. Nobody's row in that column
+is a property of their package alone.
 
-Note the BBTK's 0.17 ms is at its 250 µs quantisation floor — it is reporting
-its own resolution. The AD3, at 1 µs, says 0.113 ms. Several of the published
-0.18–0.19 figures are presumably at the same floor.
+The lag tells the opposite story and should be reported alongside:
 
-**Visual duration Var:** 3.30 / 3.25 ms under Wayland, but the shape matters —
-it is 2.6–3.0 % of trials running exactly one frame long and nothing else.
-Excluding those, 0.15 ms. Against their Ubuntu rows (PTB 0.15, PsychoPy 1.19,
-Expyriment 8.31, OpenSesame 9.16) this is mid-pack under a compositor and
-best-in-class without one.
+| | visual onset lag |
+|---|---|
+| PsychToolBox / PsychoPy / E-Prime, Linux & Windows | 2.35 – 7.10 ms |
+| PsychoPy macOS · PsychToolBox macOS (the 10.13 buffering bug) | 18.24 / 21.52 ms |
+| Expyriment macOS — their worst | 29.02 ms |
+| **goxpyriment, bare Xorg** | **35.74 ms** |
 
-## What the compositor did, and the one thing it did not do
+PsychToolBox's flip returns essentially *at* scanout. goxpyriment's returns two
+frames early, and on KMS/DRM one frame early. **That is a software property, not
+a hardware one, and it is the one number here that looks reducible.** It costs
+nothing scientifically — a constant offset subtracts out of any analysis — but
+it is a real difference in how deep the swap chain runs. See `TODO.md`.
 
-**The prediction was half right, and the half that failed is informative.**
+**Visual duration Var:** 3.30 / 3.25 ms under Wayland, from 2.6–3.0 % of trials
+running exactly one frame long and nothing else; excluding those, 0.15 ms.
+Against their Ubuntu rows (PTB 0.15, PsychoPy 1.19, Expyriment 8.31, OpenSesame
+9.16) that is mid-pack under a compositor.
 
-Predicted: removing the compositor removes one frame of buffering, so the *mean*
-drops by ~16.7 ms to about 5 ms, matching the Linux rows, and the jitter goes
-with it.
+## Threshold sensitivity, and where the second instrument stops being usable
 
-Observed: the jitter went — completely, 7.13 % of late flips to 0.00 %. The mean
-dropped only **2.8 ms**, from 21.75 to 18.91.
-
-So goxpyriment still emits its trigger about one frame before the photons, with
-or without a compositor, and that frame is **not** the compositor's doing. What
-the compositor added was the *variance* around it. The remaining offset is
-consistent with `Update()` returning when the page flip is queued at one vblank
-while the content becomes visible at the next: 16.66 ms plus roughly 2 ms of
-scanout down to the patch accounts for the 18.9 ms almost exactly.
-
-For EEG and MEG that distinction is everything. A constant 19 ms offset is
-subtracted in analysis and costs nothing. The 1.3 ms of scatter around it could
-not be.
-
-## Threshold sensitivity, and why the BBTK's calibration does not matter here
-
-The BBTK's Opto1 threshold was left at its default 63 and never calibrated
-against this panel, which is why it reads 21.3 ms where the AD3 at 10 % reads
-18.9. Sweeping the AD3's onset level across the panel's whole rise shows what
-that can and cannot affect:
+The BBTK's Opto1 threshold was left at its default and never calibrated against
+this panel. Sweeping the AD3's onset level across the panel's whole rise shows
+what a threshold can and cannot affect:
 
 | onset level | Wayland (C): mean / sd | KMS/DRM (D): mean / sd |
 |---|---|---|
@@ -135,26 +139,34 @@ that can and cannot affect:
 | 50 % | 24.70 / 1.344 | 21.86 / 0.102 |
 | 90 % | 27.22 / 1.345 | 24.38 / 0.094 |
 
-A 6 ms sweep of the threshold moves the **mean by 6 ms and the sd by at most
-0.02 ms**. Every precision figure on this page is therefore insensitive to where
-either instrument's threshold sits; every lag figure is not. Quote the lag only
-with the level attached, which is why `extract-onsets.py` records it in the file.
+A 6 ms sweep moves the **mean by 6 ms and the sd by at most 0.02 ms**. So every
+precision figure here is threshold-insensitive and every lag figure is not —
+quote a lag only with its level attached, which is why `extract-onsets.py`
+records it in the file.
 
-The lag conclusion survives anyway: even at 5 %, the earliest defensible level,
-KMS/DRM gives 18.31 ms against PsychToolBox Ubuntu's 4.53, and no threshold
-choice can close 14 ms on a panel whose entire rise is 6 ms.
+For A–D the BBTK independently reproduced the AD3's sd to three significant
+figures (2.33/2.342, 1.32/1.320, 1.35/1.344, 0.17/0.113 — the last at its 250 µs
+quantisation floor). **For E it does not, and should not be quoted.** It reports
+sd 1.55 ms against the AD3's 0.083, because seven trials read 24–28 ms where the
+AD3 saw nothing below 35.52 ms in any of 581. An uncalibrated threshold sitting
+high on a 5.5 ms ramp crosses erratically when the final luminance wobbles, and
+this is the condition where that finally showed. Calibrating Opto1 against this
+panel would be needed before the BBTK can corroborate E, and before any BBTK lag
+here can be set beside a published BBTK lag.
 
 ## What this licenses saying
 
-That goxpyriment's own timing code is not a limiting factor: the trigger path is
-under 40 µs, and on a bare console the trigger-to-photon interval is stable to
-0.113 ms over five minutes, better than any configuration in the published
-table.
+That goxpyriment's own timing code is not a limiting factor anywhere: the
+host-side trigger path is under 40 µs in every run, and on the stack the
+published study used, the trigger-to-photon interval is stable to **83 µs over
+five minutes** — better than any configuration in that study.
 
-That a Wayland session costs a factor of twelve in onset precision on this
-machine, and that this is the dominant term for anyone doing EEG or MEG with a
-compositor running — whatever package they use.
+That a Wayland session costs a factor of sixteen in onset precision on this
+machine, and is the dominant term for anyone doing EEG or MEG with a compositor
+running, whatever package they use.
 
-Not yet tested: **Xorg**, which is the configuration Bridges et al. actually
-measured and the one most labs will have. It sits somewhere between these two
-and nothing here says where. That needs a different machine.
+That goxpyriment carries one to two frames more presentation latency than
+PsychToolBox does. Constant, correctable, and worth fixing anyway.
+
+One machine, one panel. The study's own authors decline to generalise across
+machines, and so should this.
