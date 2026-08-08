@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Events Statistics Report</title>
+<style>
+  body { font-family: sans-serif; max-width: 1100px; margin: 2em auto; color: #222; }
+  h1 { border-bottom: 2px solid #444; padding-bottom: 0.3em; }
+  h2 { border-bottom: 1px solid #aaa; margin-top: 2em; }
+  table { border-collapse: collapse; margin: 1em 0; font-size: 0.9em; }
+  th, td { border: 1px solid #ccc; padding: 0.35em 0.7em; text-align: right; }
+  th { background: #f0f0f0; text-align: center; }
+  td:first-child, th:first-child { text-align: left; }
+  img { max-width: 100%; margin: 0.5em 0 1.5em; display: block; }
+  blockquote { background: #fff8e1; border-left: 4px solid #f5a623; margin: 0.5em 0; padding: 0.4em 0.8em; }
+</style>
+</head>
+<body>
+<h1>Events Statistics Report</h1>
+<h2>Duration Statistics (ms)</h2>
+<table>
+<tr><th>Type</th><th>N</th><th>Min</th><th>P5</th><th>P25</th><th>P50</th><th>P75</th><th>P95</th><th>Max</th><th>Range</th><th>P95-P05</th><th>Mean</th><th>SD</th></tr>
+<tr><td>TTLin1</td><td>599</td><td>5.0</td><td>5.0</td><td>5.0</td><td>5.2</td><td>5.2</td><td>5.2</td><td>5.5</td><td>0.5</td><td>0.2</td><td>5.2</td><td>0.12</td></tr>
+<tr><td>Opto1</td><td>598</td><td>224.5</td><td>224.5</td><td>224.8</td><td>224.8</td><td>225.0</td><td>225.0</td><td>258.2</td><td>33.8</td><td>0.5</td><td>225.4</td><td>3.30</td></tr>
+</table>
+<h3>Duration Histograms</h3>
+<img src="paper-tt-001_dur_TTLin1.png" alt="Duration – TTLin1">
+<blockquote><strong>Warning:</strong> 1 outlier(s) excluded from Opto1 (&gt; 50.000 ms from median)</blockquote>
+<img src="paper-tt-001_dur_Opto1.png" alt="Duration – Opto1">
+<h2>Inter-Onset Interval / Jitter Statistics (ms)</h2>
+<table>
+<tr><th>Type</th><th>N</th><th>Min</th><th>P5</th><th>P25</th><th>P50</th><th>P75</th><th>P95</th><th>Max</th><th>Range</th><th>P95-P05</th><th>Mean</th><th>SD</th></tr>
+<tr><td>TTLin1</td><td>598</td><td>499.5</td><td>499.5</td><td>499.8</td><td>499.8</td><td>500.0</td><td>513.8</td><td>530.5</td><td>31.0</td><td>14.2</td><td>501.1</td><td>4.50</td></tr>
+<tr><td>Opto1</td><td>598</td><td>499.5</td><td>499.5</td><td>499.8</td><td>499.8</td><td>499.8</td><td>516.2</td><td>533.0</td><td>33.5</td><td>16.8</td><td>501.1</td><td>5.30</td></tr>
+</table>
+<h3>Jitter Histograms</h3>
+<img src="paper-tt-001_jitter_TTLin1.png" alt="Jitter (IOI) – TTLin1">
+<img src="paper-tt-001_jitter_Opto1.png" alt="Jitter (IOI) – Opto1">
+<h2>Paired-Event Onset Differences relative to TTLin1 (ms)</h2>
+<h3>Tables</h3>
+<table>
+<tr><th>Type</th><th>N</th><th>Min</th><th>P5</th><th>P25</th><th>P50</th><th>P75</th><th>P95</th><th>Max</th><th>Range</th><th>P95-P05</th><th>Mean</th><th>SD</th></tr>
+<tr><td>TTLin1→Opto1</td><td>599</td><td>16.5</td><td>19.8</td><td>22.2</td><td>24.2</td><td>25.0</td><td>27.0</td><td>41.2</td><td>24.8</td><td>7.2</td><td>23.8</td><td>2.33</td></tr>
+</table>
+<h3>Paired-Event Histograms</h3>
+<img src="paper-tt-001_diff_TTLin1_to_Opto1.png" alt="Onset Diff – TTLin1→Opto1">
+<h2>Timeline Plots</h2>
+<img src="paper-tt-001_timeline_dur_TTLin1.png" alt="Duration over time – TTLin1">
+<img src="paper-tt-001_timeline_soa_TTLin1.png" alt="SOA over time – TTLin1">
+<img src="paper-tt-001_timeline_dur_Opto1.png" alt="Duration over time – Opto1">
+<img src="paper-tt-001_timeline_soa_Opto1.png" alt="SOA over time – Opto1">
+</body>
+</html>

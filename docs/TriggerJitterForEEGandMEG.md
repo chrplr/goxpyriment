@@ -28,9 +28,9 @@ Everything below is aimed at the second quantity.
    panels; yours will differ.
 
 Done properly this gives **sd 2.3 ms over a five-minute run** on the hardware
-tested, most of it in occasional jumps rather than continuous scatter — see the
-assessment at the end, and measure your own display before trusting any of these
-numbers.
+tested — and, importantly, none of that 2.3 ms is the display, which puts every
+one of 598 stimuli on an exact frame boundary. It is the host being late to
+notice the flip. See "The jitter is in the timestamp, not in the display".
 
 ## Where the time actually goes
 
@@ -159,10 +159,58 @@ drifting by tens of microseconds per trial, and then jumps:
 
 Over 598 trials the delay ranged from 14 to 27 ms, with two excursions to 38 ms.
 The jumps are not all whole frames — 3.3, 4.0, 6.5, 10.5 and 16.5 ms all occur —
-so they are not purely a dropped frame either.
+so a dropped frame is not the explanation. The next section is.
 
 **A short pilot will tell you the timing is excellent, and it will be wrong.**
 Measure over the length of a real block.
+
+## The jitter is in the timestamp, not in the display
+
+This is the most useful thing on this page, and it took a five-minute run to
+see. Recording the trigger and the photodiode on one instrument gives three
+event trains, and asking whether each one falls on a whole number of frame
+periods separates them completely:
+
+| train, intervals between consecutive trials | off a whole frame by > 1 ms |
+|---|---|
+| **photons on the panel** | **0 of 597 (0.0 %)** |
+| TTL edge on the wire | ~5 % of trials, up to 6.8 ms |
+| the host's own `ShowTS` timestamp | **82 of 638 (12.9 %)**, up to 6.7 ms |
+
+The panel is exact. Photodiode intervals sit on a whole number of frames with a
+median error of **5 µs** and a worst case of 169 µs, across 553 intervals of
+exactly 30 frames, 37 of 31 and 7 of 32. The implied frame period, 16.6557 ms,
+is **60.0395 Hz** against the 60.0400 Hz SDL reports for the panel — agreement
+to 8 ppm, from an instrument that knows nothing about the display.
+
+What wanders is the moment the software believes the flip happened. And it
+wanders in one direction: across the 594 intervals that were exactly 30 frames,
+the host timestamp was never early (minimum −0.01 ms) and was late by as much as
+**+6.12 ms**. `Update()` returned, `ShowTS` stamped the clock, and the photons
+had already been on their way for several milliseconds.
+
+The trigger inherits that error, because it is fired off the flip's return. So
+the 2.3 ms of trigger-to-stimulus jitter is not the display and not the trigger
+box:
+
+> **The stimulus appears on an exact frame boundary every time. The TTL that is
+> supposed to mark it is occasionally several milliseconds late.**
+
+Two things follow, and they point in opposite directions from the usual advice:
+
+- **Do not treat `ShowTS`'s return as a photon timestamp.** It is right to
+  within microseconds most of the time and several milliseconds wrong about one
+  trial in eight, with no indication of which.
+- **The error is bounded and reconstructible.** Because the photons are on an
+  exact grid, the true onsets of a whole block can be recovered by fitting that
+  grid to the flip timestamps, which is not possible for genuinely random noise.
+
+The run that produced these numbers was at **normal scheduling priority**. A
+one-sided, several-millisecond lateness in returning from a vsync wait is what
+preemption looks like, so this is the first thing to re-measure under
+`chrt -f 50` — see [Setting priority under Linux](SettingPriorityUnderLinux.md).
+Until that measurement exists, treat the cause as identified and the cure as
+untested.
 
 ## Discard the first trials — they are genuinely different
 
@@ -234,21 +282,27 @@ the trigger-to-stimulus delay on the hardware tested has **sd 2.3 ms across a
 five-minute block**, on a mean of about 21 ms that is panel-specific. Two
 independent instruments agree on that figure.
 
-Its shape matters more than the number. Consecutive trials differ by a median of
-0.06 ms, so within a plateau the timing is excellent; the variance comes from
-occasional jumps of 3 to 16 ms, 82 of them in 597 trials.
+Where that 2.3 ms lives matters more than its size. The panel puts the stimulus
+on an exact frame boundary on every one of 598 trials; the software is late to
+notice on about one trial in eight, by up to 6 ms. The jitter is in the
+timestamp, not in the photons.
 
 **Whether this is good enough depends on the paradigm.** For ERP components with
-latencies of tens of milliseconds and averaging over many trials, 2.3 ms of
-onset jitter is a modest smear. For anything resolving fine temporal structure —
-early auditory components, phase measures, single-trial latency — it is not, and
-no software change will fix it, because the jumps are in the display pipeline
-and not in the experiment code.
+latencies of tens of milliseconds, averaged over many trials, 2.3 ms of onset
+jitter is a modest smear. For anything resolving fine temporal structure — early
+auditory components, phase measures, single-trial latency — it is not.
 
-The three ways to lose it are all in this page and all avoidable: sleeping for
-the ITI costs a factor of twelve in spread, firing the trigger from a goroutine
-costs a factor of forty in the host term, and keeping the warm-up trials costs a
-factor of three in sd. None of them announce themselves in the data.
+But unlike a genuinely noisy display, this one is fixable in principle, and
+there are two independent routes. The measured cause is a preemptible vsync
+wait, so **real-time priority is the first thing to try** and has not yet been
+measured. Failing that, the frame grid is exact enough to reconstruct the true
+onsets after the fact.
+
+The three ways to make it worse are all in this page and all avoidable: sleeping
+for the ITI costs a factor of twelve in spread, firing the trigger from a
+goroutine costs a factor of forty in the host term, and keeping the warm-up
+trials costs a factor of three in sd. None of them announce themselves in the
+data.
 
 The robust answer for both cases is the same one used in MEG labs generally:
 **record a photodiode alongside the TTL** and use the photodiode as the onset in
