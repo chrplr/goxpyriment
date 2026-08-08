@@ -99,6 +99,9 @@ func main() {
 	fPatch := flag.Int("patch", 240, "side of the white patch, in pixels")
 	fFrames := flag.Int("frames", 2, "frames the patch stays on")
 	fISI := flag.Duration("isi", 500*time.Millisecond, "blank interval between trials")
+	fISIFrames := flag.Int("isi-frames", 0,
+		"if >0, blank by flipping this many frames instead of sleeping -- keeps the\n"+
+			"display in steady-state flipping, so the stimulus flip stays vsync-locked")
 	fCal := flag.Bool("calibrate", false, "emit TTL pulses only, for the LED zero point")
 
 	exp := control.NewExperimentFromFlags("Photodiode Latency Test", control.Black, control.White, 32)
@@ -160,10 +163,26 @@ func main() {
 		}
 
 		// Blank for the ISI, so the diode sees a clean black-to-white step.
-		if err := exp.Screen.ClearAndUpdate(); err != nil {
-			return err
+		//
+		// Two ways to wait, and they are not equivalent. Sleeping leaves the
+		// display idle, and the first flip after an idle period need not be
+		// vsync-locked: with no frames queued there is nothing to block on, so
+		// present can return at an arbitrary phase and the light then waits for
+		// the next scanout. That puts up to a frame of spread on the onset.
+		// Flipping through the ISI keeps the pipeline in steady state, which is
+		// the condition test_vsync_blocking measures. -isi-frames selects it.
+		if *fISIFrames > 0 {
+			for f := 0; f < *fISIFrames; f++ {
+				if err := exp.Screen.ClearAndUpdate(); err != nil {
+					return err
+				}
+			}
+		} else {
+			if err := exp.Screen.ClearAndUpdate(); err != nil {
+				return err
+			}
+			time.Sleep(*fISI)
 		}
-		time.Sleep(*fISI)
 
 		// The measurement. ShowTS presents and timestamps the flip; the TTL goes
 		// up on the very next statement, on this thread, with nothing between.

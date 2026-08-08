@@ -86,6 +86,39 @@ Pixel response is the other one. An LCD takes milliseconds to go from black to
 white, and where the threshold falls on that curve sets the answer. Report the
 threshold, and prefer the instrument that lets you choose it after the fact.
 
+## First measurements
+
+Linux 7.0 / Wayland, 3840x2160 at 60 Hz (16.667 ms), `SCHED_FIFO` 50,
+DLP-IO8 on AD3 CH1, a 9 V photodiode on CH2 through a 10x probe, patch 900 px at
+screen centre, n=18 paired edges per condition. Thresholds are the midpoint of
+each channel's own p5..p95, so neither depends on a constant.
+
+| ISI style | min | median | max | spread |
+|---|---|---|---|---|
+| `-isi 250ms` (display idle between trials) | 15.4 | **23.0** | 31.3 | **15.8 ms** |
+| `-isi-frames 15` (steady-state flipping) | 30.9 | **31.9** | 38.4 | **7.5 ms** |
+
+Two things fall out, and neither is about the DLP.
+
+**How you wait between trials changes the onset latency by about 9 ms.** Flipping
+through the ISI keeps the pipeline in steady state and halves the jitter, but it
+also builds a compositor queue, so the frame goes out a frame or so later. Sleeping
+leaves the display idle: the first flip afterwards has nothing to block on, can
+return at an arbitrary phase, and the light then waits for the next scanout —
+lower latency, but up to a frame of spread. Neither is wrong; they are different
+trade-offs, and an experiment should pick one deliberately and report it.
+
+**Everything on the host side is negligible against this.** The ShowTS-to-TTL gap
+ran at a median of 17-20 us and the DLP's own write-to-edge latency is tens of
+microseconds. Both are three orders of magnitude below the 15-38 ms the display
+pipeline costs. The corrections are real and the arithmetic above still applies,
+but they will not change a conclusion at this scale.
+
+The residual 7.5 ms of spread in the frame-locked condition is not explained here.
+It could be the LCD's own rise varying, the diode's position relative to scanout,
+or compositor scheduling; n=18 on one display and one compositor is not enough to
+separate them, and no attempt is made to.
+
 ## Zero point (`-calibrate`)
 
 Draws nothing and emits TTL pulses. Wire an LED and its resistor to the same TTL
@@ -107,7 +140,8 @@ asymmetry is negligible rather than assume it.
 | `-diode` | `center` | `top`, `center`, `bottom`, or `x,y` in px from centre |
 | `-patch N` | 240 | side of the white patch, in px |
 | `-frames N` | 2 | frames the patch stays on |
-| `-isi D` | 500ms | blank interval between trials |
+| `-isi D` | 500ms | blank interval between trials (sleep) |
+| `-isi-frames N` | 0 | if >0, blank by flipping N frames instead of sleeping |
 | `-calibrate` | off | LED zero-point mode |
 
 Plus the usual `-w` (windowed), `-d N` (display), `-s ID` (subject), and
