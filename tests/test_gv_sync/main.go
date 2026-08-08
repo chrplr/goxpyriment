@@ -85,6 +85,7 @@ func fileExists(p string) bool {
 
 func main() {
 	flag.Parse()
+	checkTriggerPin()
 
 	if *fWarmup >= *fCycles {
 		log.Fatalf("-warmup %d discards all %d cycles; lower it or raise -cycles", *fWarmup, *fCycles)
@@ -187,7 +188,7 @@ func run(exp *control.Experiment, trig triggers.OutputTTLDevice) error {
 			// -trigger-ms, which would otherwise stall this callback and delay
 			// the next frame. Only one fires at a time (they are a full cycle
 			// apart), so the device is never driven concurrently.
-			go triggers.FireTrigger(trig, *fTriggerPin, time.Duration(*fTriggerMs)*time.Millisecond)
+			go triggers.FireTrigger(trig, triggerLine(), time.Duration(*fTriggerMs)*time.Millisecond)
 
 			// Software-side lag: flip timestamp to the moment we dispatched the
 			// trigger. This is a lower bound on the true electrical delay and
@@ -255,4 +256,23 @@ func run(exp *control.Experiment, trig triggers.OutputTTLDevice) error {
 	fmt.Printf("  3. Any cycle whose onset drifts by ≥ one frame (%.2f ms) indicates a dropped frame.\n",
 		float64(time.Second)/refresh/1e6)
 	return nil
+}
+
+// triggerLine converts the -trigger-pin flag to the line index the
+// OutputTTLDevice API expects.
+//
+// The flag is a pin number as printed on the DLP-IO8 terminal block, 1-8; the
+// API takes a 0-indexed line, so line 0 drives pin 1. Passing the flag straight
+// through -- which this test did -- fired the NEIGHBOURING pin: the default
+// -trigger-pin 1 drove pin 2, and -trigger-pin 8 was out of range and did
+// nothing at all. Verified on hardware with an Analog Discovery on pin 1: no
+// signal at the default, a clean 5.05 V square wave at -trigger-pin 0.
+func triggerLine() int { return *fTriggerPin - 1 }
+
+// checkTriggerPin rejects a pin outside the terminal block before a run starts.
+func checkTriggerPin() {
+	if *fTriggerPin < 1 || *fTriggerPin > 8 {
+		log.Fatalf("-trigger-pin %d is out of range: the DLP-IO8 terminal block "+
+			"is numbered 1 to 8", *fTriggerPin)
+	}
 }

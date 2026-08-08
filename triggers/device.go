@@ -26,6 +26,7 @@ package triggers
 import (
 	"context"
 	"fmt"
+	"log"
 	"time"
 )
 
@@ -88,9 +89,20 @@ type InputTTLDevice interface {
 // The pulse duration is controlled by precisionSleep, which busy-spins the
 // last 500 µs to eliminate OS scheduling overshoot from time.Sleep alone.
 func FireTrigger(d OutputTTLDevice, line int, dur time.Duration) {
-	_ = d.SetHigh(line)
+	// Report a failure rather than discarding it. Silently doing nothing is the
+	// worst behaviour available here: a trigger that never fires looks exactly
+	// like a trigger the recording equipment missed, and the run is only found
+	// to be worthless afterwards. An out-of-range line -- which is what passing
+	// a 1-8 pin number to this 0-7 parameter produces at pin 8 -- used to fail
+	// exactly that way.
+	if err := d.SetHigh(line); err != nil {
+		log.Printf("triggers.FireTrigger: raising line %d: %v", line, err)
+		return
+	}
 	precisionSleep(dur)
-	_ = d.SetLow(line)
+	if err := d.SetLow(line); err != nil {
+		log.Printf("triggers.FireTrigger: lowering line %d: %v", line, err)
+	}
 }
 
 // precisionSleep sleeps for approximately dur with sub-millisecond accuracy.

@@ -84,6 +84,7 @@ func sleepUntil(t time.Time) {
 
 func main() {
 	flag.Parse()
+	checkTriggerPin()
 
 	trig, portName := setupTrigger()
 	if _, isNull := trig.(triggers.NullOutputTTLDevice); isNull {
@@ -113,7 +114,7 @@ func main() {
 		ch := make(chan os.Signal, 1)
 		signal.Notify(ch, os.Interrupt, syscall.SIGTERM)
 		<-ch
-		_ = trig.SetLow(*fTriggerPin)
+		_ = trig.SetLow(triggerLine())
 		if exp.Data != nil {
 			exp.Data.WriteEndTime()
 			if err := exp.Data.Save(); err == nil {
@@ -156,7 +157,7 @@ func main() {
 			targetRise := start.Add(time.Duration(cycle) * period)
 			sleepUntil(targetRise)
 			tRise := time.Now()
-			if err := trig.SetHigh(*fTriggerPin); err != nil {
+			if err := trig.SetHigh(triggerLine()); err != nil {
 				return err
 			}
 			jRise := tRise.Sub(targetRise).Seconds() * 1000
@@ -170,7 +171,7 @@ func main() {
 			targetFall := targetRise.Add(highDur)
 			sleepUntil(targetFall)
 			tFall := time.Now()
-			if err := trig.SetLow(*fTriggerPin); err != nil {
+			if err := trig.SetLow(triggerLine()); err != nil {
 				return err
 			}
 			jFall := tFall.Sub(targetFall).Seconds() * 1000
@@ -191,12 +192,31 @@ func main() {
 			}
 		}
 
-		_ = trig.SetLow(*fTriggerPin)
+		_ = trig.SetLow(triggerLine())
 		timingstats.PrintStats("Rising-edge jitter (ms from target)", timingstats.ComputeStats(riseJitter, 0), 0)
 		timingstats.PrintStats("Falling-edge jitter (ms from target)", timingstats.ComputeStats(fallJitter, 0), 0)
 		return control.EndLoop
 	})
 	if err != nil && !control.IsEndLoop(err) {
 		log.Fatalf("test error: %v", err)
+	}
+}
+
+// triggerLine converts the -trigger-pin flag to the line index the
+// OutputTTLDevice API expects.
+//
+// The flag is a pin number as printed on the DLP-IO8 terminal block, 1-8; the
+// API takes a 0-indexed line, so line 0 drives pin 1. Passing the flag straight
+// through -- which this test did -- fired the NEIGHBOURING pin: the default
+// -trigger-pin 1 drove pin 2, and -trigger-pin 8 was out of range and did
+// nothing at all. Verified on hardware with an Analog Discovery on pin 1: no
+// signal at the default, a clean 5.05 V square wave at -trigger-pin 0.
+func triggerLine() int { return *fTriggerPin - 1 }
+
+// checkTriggerPin rejects a pin outside the terminal block before a run starts.
+func checkTriggerPin() {
+	if *fTriggerPin < 1 || *fTriggerPin > 8 {
+		log.Fatalf("-trigger-pin %d is out of range: the DLP-IO8 terminal block "+
+			"is numbered 1 to 8", *fTriggerPin)
 	}
 }
