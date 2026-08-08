@@ -1,0 +1,484 @@
+<title>The compositor is the jitter</title>
+<style>
+  :root {
+    --ground:#fcfcfb; --plate:#fcfcfb; --ink:#12110f; --ink2:#4e4d49; --muted:#8a8985;
+    --rule:#e4e2dd; --rule-soft:#eeece8; --band:#f4f2ee;
+    --blue:#2a78d6; --amber:#d9541f; --violet:#6d43b6; --good:#2f7d4f;
+    --plate-ring:#e4e2dd;
+    --serif:"Iowan Old Style",Charter,"Bitstream Charter","Source Serif 4",Georgia,serif;
+    --mono:ui-monospace,"SF Mono","Cascadia Mono","Roboto Mono",Menlo,Consolas,monospace;
+    --measure:66ch; --plate-w:1120px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground:#171614; --ink:#eceae5; --ink2:#b0aca3; --muted:#7d7970;
+      --rule:#302e2a; --rule-soft:#262421; --band:#201f1c;
+      --blue:#71a9ee; --amber:#f0865a; --violet:#a98ae0; --good:#63b98a;
+      --plate-ring:#35322d;
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground:#171614; --ink:#eceae5; --ink2:#b0aca3; --muted:#7d7970;
+    --rule:#302e2a; --rule-soft:#262421; --band:#201f1c;
+    --blue:#71a9ee; --amber:#f0865a; --violet:#a98ae0; --good:#63b98a;
+    --plate-ring:#35322d;
+  }
+
+  body{background:var(--ground);color:var(--ink);font-family:var(--serif);
+       font-size:18px;line-height:1.62;-webkit-font-smoothing:antialiased;}
+  .wrap{max-width:var(--plate-w);margin:0 auto;padding:0 28px 120px;}
+  .col{max-width:var(--measure);margin-inline:auto;}
+  p{margin:0 0 1.05em;}
+  a{color:var(--blue);text-underline-offset:2px;}
+  strong{font-weight:700;}
+  em{font-style:italic;}
+
+  .eyebrow{font-family:var(--mono);font-size:11.5px;letter-spacing:.14em;
+           text-transform:uppercase;color:var(--muted);margin:0 0 14px;}
+
+  header{padding:72px 0 0;}
+  h1{font-size:clamp(34px,5.2vw,54px);line-height:1.06;margin:0 0 20px;
+     font-weight:700;letter-spacing:-.018em;text-wrap:balance;}
+  .standfirst{font-size:21px;line-height:1.5;color:var(--ink2);margin:0 0 34px;text-wrap:pretty;}
+  .byline{font-family:var(--mono);font-size:12.5px;color:var(--muted);
+          line-height:1.85;border-top:1px solid var(--rule);padding-top:16px;}
+  .byline b{color:var(--ink2);font-weight:400;}
+
+  h2{font-size:27px;line-height:1.2;margin:64px 0 16px;font-weight:700;
+     letter-spacing:-.012em;text-wrap:balance;}
+  h3{font-size:19px;margin:38px 0 10px;font-weight:700;}
+
+  /* ---- the headline readout ---- */
+  .readout{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;
+           gap:clamp(16px,3vw,40px);margin:44px 0 12px;padding:32px clamp(18px,3vw,36px);
+           border:1px solid var(--rule);border-radius:2px;background:var(--band);}
+  .ro-cell .lab{font-family:var(--mono);font-size:11px;letter-spacing:.12em;
+                text-transform:uppercase;color:var(--muted);margin-bottom:10px;}
+  .ro-cell .num{font-family:var(--mono);font-variant-numeric:tabular-nums;
+                font-size:clamp(30px,6vw,50px);line-height:1;letter-spacing:-.03em;}
+  .ro-cell .num .u{font-size:.44em;letter-spacing:0;color:var(--ink2);margin-left:.28em;}
+  .ro-cell .sub{font-family:var(--mono);font-size:12px;color:var(--ink2);margin-top:10px;}
+  .ro-a .num{color:var(--amber);} .ro-b .num{color:var(--violet);}
+  .ro-mid{text-align:center;font-family:var(--mono);}
+  .ro-mid .x{font-size:clamp(22px,4vw,34px);font-weight:700;letter-spacing:-.02em;}
+  .ro-mid .arrow{font-size:15px;color:var(--muted);margin-bottom:6px;}
+  @media (max-width:620px){
+    .readout{grid-template-columns:1fr;text-align:left;gap:22px;}
+    .ro-mid{text-align:left;}
+  }
+  .cap{font-family:var(--mono);font-size:12.5px;line-height:1.65;color:var(--muted);
+       margin:12px 0 0;}
+
+  /* ---- to-scale range strip ---- */
+  .scale{margin:26px 0 0;}
+  .scale svg{display:block;width:100%;height:auto;}
+
+  /* ---- plates ---- */
+  figure{margin:52px 0 0;}
+  .plate{background:var(--plate);border:1px solid var(--plate-ring);border-radius:2px;
+         padding:10px;overflow-x:auto;}
+  .plate img{display:block;width:100%;height:auto;min-width:560px;}
+  figcaption{font-family:var(--mono);font-size:12.5px;line-height:1.65;
+             color:var(--muted);margin-top:12px;}
+  figcaption b{color:var(--ink2);font-weight:400;}
+  .duo{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  @media (max-width:820px){.duo{grid-template-columns:1fr;}}
+
+  /* ---- tables ---- */
+  .tw{overflow-x:auto;margin:26px 0 0;}
+  table{border-collapse:collapse;width:100%;font-family:var(--mono);
+        font-size:13px;font-variant-numeric:tabular-nums;min-width:600px;}
+  caption{caption-side:top;text-align:left;font-family:var(--mono);font-size:11.5px;
+          letter-spacing:.12em;text-transform:uppercase;color:var(--muted);padding-bottom:12px;}
+  th,td{padding:9px 14px 9px 0;text-align:right;border-bottom:1px solid var(--rule-soft);}
+  th:first-child,td:first-child{text-align:left;padding-right:22px;}
+  thead th{color:var(--muted);font-weight:400;font-size:11px;letter-spacing:.09em;
+           text-transform:uppercase;border-bottom:1px solid var(--rule);vertical-align:bottom;}
+  tbody tr:last-child td{border-bottom:1px solid var(--rule);}
+  td.win{color:var(--violet);font-weight:700;}
+  td.lose{color:var(--amber);}
+  .flat{color:var(--good);}
+  tr.hl td{background:var(--band);}
+  .tag{font-family:var(--mono);font-size:11px;letter-spacing:.08em;color:var(--muted);}
+
+  /* ---- experiment log ---- */
+  .runs{list-style:none;padding:0;margin:26px 0 0;display:flex;flex-direction:column;gap:0;}
+  .runs li{display:grid;grid-template-columns:auto 1fr;gap:20px;padding:20px 0;
+           border-bottom:1px solid var(--rule-soft);}
+  .runs li:first-child{border-top:1px solid var(--rule);}
+  .runs .id{font-family:var(--mono);font-size:26px;line-height:1;color:var(--muted);
+            font-weight:700;letter-spacing:-.02em;}
+  .runs .h{font-weight:700;margin:0 0 4px;font-size:17px;}
+  .runs .b{margin:0;font-size:16.5px;line-height:1.55;color:var(--ink2);}
+  .verdict{font-family:var(--mono);font-size:11.5px;letter-spacing:.08em;
+           text-transform:uppercase;margin-top:8px;display:inline-block;}
+  .v-no{color:var(--amber);} .v-yes{color:var(--violet);} .v-part{color:var(--ink2);}
+
+  .callout{border-left:2px solid var(--blue);padding:2px 0 2px 20px;margin:30px 0;
+           color:var(--ink2);}
+  .callout p:last-child{margin-bottom:0;}
+  .callout .big{color:var(--ink);font-size:19px;font-weight:700;line-height:1.42;}
+
+  code{font-family:var(--mono);font-size:.86em;background:var(--band);
+       padding:1px 5px;border-radius:2px;}
+  pre{font-family:var(--mono);font-size:13px;line-height:1.6;background:var(--band);
+      border:1px solid var(--rule-soft);border-radius:2px;padding:16px 18px;
+      overflow-x:auto;margin:22px 0;}
+  pre code{background:none;padding:0;font-size:inherit;}
+
+  hr{border:0;border-top:1px solid var(--rule);margin:64px 0 0;}
+  footer{margin-top:22px;font-family:var(--mono);font-size:12px;line-height:1.8;color:var(--muted);}
+  :focus-visible{outline:2px solid var(--blue);outline-offset:3px;}
+</style>
+
+<div class="wrap">
+
+<header class="col">
+  <p class="eyebrow">Display timing · goxpyriment</p>
+  <h1>The compositor is the jitter</h1>
+  <p class="standfirst">Four five-minute runs of the same binary on the same
+  machine. Real-time scheduling bought a factor of 1.8. Fixing the trigger code
+  bought nothing. Leaving the desktop entirely bought a factor of twelve.</p>
+  <p class="byline">
+    <b>Measured</b> 8 August 2026 · built-in 2560×1600 panel at 60.0400 Hz · Mesa, Intel Arc (MTL)<br>
+    <b>Instruments</b> Analog Discovery 3 at 200 kS/s, TTL and photodiode in one acquisition · Black Box ToolKit v3 on the same trigger line<br>
+    <b>Protocol</b> 12 frames on, 18 off, ~590 trials per run, after Bridges et al. (2020)
+  </p>
+</header>
+
+<div class="col">
+  <div class="readout">
+    <div class="ro-cell ro-a">
+      <div class="lab">Wayland session</div>
+      <div class="num">1.34<span class="u">ms</span></div>
+      <div class="sub">sd · spread 18.8–36.7 ms</div>
+    </div>
+    <div class="ro-mid">
+      <div class="arrow">becomes</div>
+      <div class="x">12× better</div>
+    </div>
+    <div class="ro-cell ro-b">
+      <div class="lab">KMS/DRM bare console</div>
+      <div class="num">0.11<span class="u">ms</span></div>
+      <div class="sub">sd · spread 18.58–19.13 ms</div>
+    </div>
+  </div>
+  <p class="cap">Trigger-to-photon interval, standard deviation across a five-minute
+  block. Same executable, same panel, same night — only the display stack differs.</p>
+
+  <div class="scale" role="img" aria-label="To scale: the Wayland session spans 17.9 milliseconds; the bare console spans 0.55 milliseconds.">
+    <svg viewBox="0 0 1000 132" xmlns="http://www.w3.org/2000/svg">
+      <!-- axis 14..40 ms mapped to x 70..975 -->
+      <g font-family="ui-monospace,monospace" font-size="12" fill="currentColor" opacity=".5">
+        <text x="70" y="126">14</text><text x="244" y="126">20</text>
+        <text x="418" y="126">26</text><text x="592" y="126">32</text>
+        <text x="766" y="126">38</text><text x="880" y="126">ms after trigger</text>
+      </g>
+      <g stroke="currentColor" opacity=".22">
+        <line x1="70" y1="104" x2="975" y2="104"/>
+        <line x1="70" y1="98" x2="70" y2="110"/><line x1="244" y1="98" x2="244" y2="110"/>
+        <line x1="418" y1="98" x2="418" y2="110"/><line x1="592" y1="98" x2="592" y2="110"/>
+        <line x1="766" y1="98" x2="766" y2="110"/>
+      </g>
+      <!-- Wayland 18.83 .. 36.74  -> 70 + (v-14)*29 -->
+      <rect x="210" y="22" width="519" height="20" rx="2" fill="var(--amber)" opacity=".85"/>
+      <text x="210" y="16" font-family="ui-monospace,monospace" font-size="12.5" fill="var(--amber)">Wayland · 17.9 ms wide</text>
+      <!-- console 18.58 .. 19.13 -->
+      <rect x="203" y="62" width="16" height="20" rx="2" fill="var(--violet)"/>
+      <text x="231" y="77" font-family="ui-monospace,monospace" font-size="12.5" fill="var(--violet)">bare console · 0.55 ms wide</text>
+    </svg>
+  </div>
+  <p class="cap">The same two runs, drawn to scale on one axis. Every one of 591
+  console trials falls inside that narrow block.</p>
+</div>
+
+<div class="col">
+  <h2>What is being measured</h2>
+  <p>In EEG and MEG the TTL trigger <em>is</em> the timestamp. A constant delay
+  between the trigger and the screen is harmless — subtract it. Variation in that
+  delay is not recoverable, because nothing in the recording says which trial was
+  late. So the quantity that matters is the trial-to-trial spread of the interval
+  from the trigger pulse to the pixels actually changing.</p>
+
+  <p>Both signals go into a single acquisition on one instrument, so the
+  instrument's clock cancels and never has to be reconciled with the host's. A
+  second, entirely independent instrument recorded every run at the same time; it
+  agreed to three significant figures on every condition.</p>
+</div>
+
+<div class="col">
+  <h2>Four runs, three hypotheses</h2>
+  <p>Each run changed exactly one thing. Two of the three predictions were wrong,
+  which is the useful part — it rules out explanations that sound right.</p>
+</div>
+
+<div class="col">
+  <ol class="runs">
+    <li>
+      <span class="id">A</span>
+      <div>
+        <p class="h">Baseline — Wayland, normal priority</p>
+        <p class="b">The starting point, and the configuration most people
+        actually run. sd 2.34 ms, with the delay wandering between 14 and 39 ms
+        across the block.</p>
+      </div>
+    </li>
+    <li>
+      <span class="id">B</span>
+      <div>
+        <p class="h">Real-time scheduling</p>
+        <p class="b">The late flips looked like preemption, so the same run under
+        <code>chrt -f 50</code>. sd 2.34 → 1.32 ms, with the mean unchanged: the
+        signature of removing a delay that only happened sometimes.</p>
+        <span class="verdict v-yes">Confirmed · 1.8×</span>
+      </div>
+    </li>
+    <li>
+      <span class="id">C</span>
+      <div>
+        <p class="h">Synchronous trigger instead of a goroutine</p>
+        <p class="b">The test harness fires its trigger on a separate goroutine;
+        every package in the published comparison writes it inline. Predicted to
+        be worth about a millisecond. It was worth nothing — 1.344 against 1.320,
+        in the wrong direction. The run logs its own flip-to-trigger gap, which
+        settles it directly: median 11 µs, worst case 38 µs.</p>
+        <span class="verdict v-no">Refuted · the trigger path was never the problem</span>
+      </div>
+    </li>
+    <li>
+      <span class="id">D</span>
+      <div>
+        <p class="h">No display server at all</p>
+        <p class="b">A bare Linux virtual console, <code>SDL_VIDEODRIVER=kmsdrm</code>,
+        nothing between the program and the hardware. sd 1.344 → 0.113 ms, and the
+        mechanism disappears rather than shrinking: not one flip in 640 lands more
+        than 1 ms off the frame grid, where a Wayland session misses on one trial
+        in fifteen.</p>
+        <span class="verdict v-part">Confirmed for the jitter · refuted for the lag</span>
+      </div>
+    </li>
+  </ol>
+</div>
+
+<figure>
+  <div class="plate">
+    <img src="data:image/png;base64,__SEQ__" alt="Four stacked panels of trigger-to-light delay against trial number over five minutes. The first three panels, all Wayland sessions, show a wandering sawtooth between roughly 14 and 39 milliseconds. The fourth panel, a bare KMS/DRM console, is a flat line at 18.9 milliseconds.">
+  </div>
+  <figcaption><b>Figure 1.</b> Every trial of all four runs, on one shared vertical
+  scale. The first three panels are Wayland sessions and wander; the fourth is the
+  same executable in a bare console and is a straight line. The marginal histogram
+  on each row shares that row's axis.</figcaption>
+</figure>
+
+<figure>
+  <div class="duo">
+    <div class="plate">
+      <img src="data:image/png;base64,__WAY__" alt="590 photodiode traces from a Wayland session, aligned on the TTL edge, fanning out across about 18 milliseconds.">
+    </div>
+    <div class="plate">
+      <img src="data:image/png;base64,__KMS__" alt="591 photodiode traces from a bare console, aligned on the TTL edge, superimposed so closely they appear to be a single curve.">
+    </div>
+  </div>
+  <figcaption><b>Figure 2.</b> The individual photodiode traces behind those two
+  numbers, each cut at its own trigger edge. Left: 590 trials under Wayland. Right:
+  591 trials in the console, overlapping so exactly that they read as one curve.</figcaption>
+</figure>
+
+<div class="col">
+  <h2>The display was never the problem</h2>
+  <p>Asking of each event train whether consecutive trials are separated by a whole
+  number of frame periods separates the three layers completely, and the answer is
+  the same in every run.</p>
+</div>
+
+<div class="tw">
+  <table>
+    <caption>Intervals more than 1 ms off a whole frame period</caption>
+    <thead>
+      <tr><th>Event train</th><th>A · normal</th><th>B · FIFO 50</th><th>C · synchronous</th><th>D · console</th></tr>
+    </thead>
+    <tbody>
+      <tr class="hl"><td>Photons on the panel</td><td class="flat">0.00 %</td><td class="flat">0.00 %</td><td class="flat">0.00 %</td><td class="flat">0.00 %</td></tr>
+      <tr><td>TTL edge on the wire</td><td class="lose">13.07 %</td><td>6.28 %</td><td>7.13 %</td><td class="win">0.00 %</td></tr>
+      <tr><td><code>ShowTS</code> host timestamp</td><td class="lose">12.85 %</td><td>6.43 %</td><td>—</td><td class="win">0 of 640</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="col">
+  <p class="cap" style="margin-top:14px">Photodiode intervals sit on a whole number of
+  frames with a median error of 6 µs and a worst case of 169 µs, across 1779 trials
+  and four runs, without a single exception. The implied frame period, 16.6557 ms —
+  60.0395 Hz — matches the 60.0400 Hz the driver reports, to 8 parts per million,
+  from an instrument that knows nothing about the display.</p>
+
+  <div class="callout">
+    <p class="big">The panel puts every stimulus on an exact frame boundary. The
+    trigger meant to mark it is sometimes milliseconds late.</p>
+    <p>The trigger inherits that error because it is fired off the flip's return.
+    Which is why the trigger code was never worth optimising: the host-side path
+    from flip to TTL is under 40 µs in every run.</p>
+  </div>
+</div>
+
+<div class="col">
+  <h2>The one thing the console did not fix</h2>
+  <p>The prediction going in was that removing the compositor would remove one
+  frame of buffering, so the <em>mean</em> would drop by about 16.7 ms as well as
+  the scatter. It didn't. The mean fell only 2.8 ms, from 21.75 to 18.91.</p>
+
+  <p>So goxpyriment still emits its trigger roughly one frame before the photons,
+  with or without a compositor, and that frame is not the compositor's doing —
+  what the compositor added was the <em>variance</em> around it. The residual is
+  what you would expect if <code>Update()</code> returns when the page flip is
+  queued at one vblank while the content becomes visible at the next: 16.66 ms
+  plus about 2 ms of scanout down to the patch accounts for 18.9 almost exactly.</p>
+
+  <p>For EEG and MEG that distinction is the whole point. A constant 19 ms is
+  subtracted in analysis and costs nothing. The 1.3 ms of scatter around it could
+  not be.</p>
+</div>
+
+<div class="col">
+  <h2>Against the published comparison</h2>
+  <p>Bridges et al. (2020) measured this same quantity — trigger pulse to pixels
+  changing — across six packages and three operating systems, on a 60 Hz panel,
+  with a Black Box ToolKit. Their table is reproduced here with these runs
+  inserted, using the like-for-like instrument.</p>
+</div>
+
+<div class="tw">
+  <table>
+    <caption>Visual onset variability · inter-trial sd</caption>
+    <thead><tr><th>Configuration</th><th>Var (ms)</th></tr></thead>
+    <tbody>
+      <tr class="hl"><td><b>goxpyriment — KMS/DRM console</b> <span class="tag">AD3: 0.113</span></td><td class="win">0.17</td></tr>
+      <tr><td>PsychToolBox Ubuntu · E-Prime Win10</td><td>0.18</td></tr>
+      <tr><td>PsychToolBox Win10 · Expyriment Win10</td><td>0.19</td></tr>
+      <tr><td>PsychoPy Ubuntu · Presentation Win10</td><td>0.34</td></tr>
+      <tr><td>PsychoPy Win10</td><td>0.35</td></tr>
+      <tr><td>PsychToolBox macOS</td><td>0.41</td></tr>
+      <tr><td>OpenSesame Ubuntu</td><td>0.50</td></tr>
+      <tr><td>PsychoPy macOS</td><td>0.55</td></tr>
+      <tr><td>OpenSesame Win10 · Expyriment Ubuntu</td><td>0.72 / 0.73</td></tr>
+      <tr><td>OpenSesame macOS</td><td>0.79</td></tr>
+      <tr class="hl"><td><b>goxpyriment — Wayland</b> (B, C)</td><td class="lose">1.32 / 1.34</td></tr>
+      <tr class="hl"><td><b>goxpyriment — Wayland, normal priority</b> (A)</td><td class="lose">2.34</td></tr>
+      <tr><td>Expyriment macOS</td><td>4.82</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="col">
+  <p class="cap" style="margin-top:14px">The 0.17 ms figure is at the toolkit's 250 µs
+  quantisation floor — it is reporting its own resolution. The 1 µs instrument says
+  0.113 ms. Several of the published 0.18–0.19 values are presumably at that same
+  floor.</p>
+
+  <div class="callout">
+    <p class="big">On a bare console this sits at the top of that table. Under
+    Wayland it is worse than thirteen of the fourteen entries. Same binary, same
+    machine, same night.</p>
+    <p>Which is worth remembering when reading anyone's row in it, including the
+    published ones. That column describes a display stack at least as much as it
+    describes a package.</p>
+  </div>
+</div>
+
+<div class="col">
+  <h2>Why an uncalibrated sensor does not undermine this</h2>
+  <p>The toolkit's optical threshold was left at its default and never calibrated
+  against this panel, which is why it reads 21.3 ms where the 10 % crossing on the
+  other instrument reads 18.9. Sweeping the onset level across the panel's entire
+  rise shows exactly what that can and cannot affect.</p>
+</div>
+
+<div class="tw">
+  <table>
+    <caption>Onset level swept across the panel's full rise</caption>
+    <thead><tr><th>Level</th><th>Wayland · mean</th><th>Wayland · sd</th><th>Console · mean</th><th>Console · sd</th></tr></thead>
+    <tbody>
+      <tr><td>5 %</td><td>21.14</td><td>1.344</td><td>18.31</td><td>0.116</td></tr>
+      <tr><td>10 %</td><td>21.75</td><td>1.344</td><td>18.91</td><td>0.113</td></tr>
+      <tr><td>50 %</td><td>24.70</td><td>1.344</td><td>21.86</td><td>0.102</td></tr>
+      <tr><td>90 %</td><td>27.22</td><td>1.345</td><td>24.38</td><td>0.094</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="col">
+  <p class="cap" style="margin-top:14px">A 6 ms sweep of the threshold moves the mean by
+  6 ms and the sd by at most 0.02 ms.</p>
+  <p>So every precision figure here is insensitive to where either sensor's
+  threshold sits, and every lag figure is not — quote a lag only with its level
+  attached. The lag conclusion survives regardless: even at 5 %, the earliest
+  defensible level, the console gives 18.31 ms against PsychToolBox Ubuntu's 4.53,
+  and no threshold choice closes 14 ms on a panel whose entire rise is 6 ms.</p>
+</div>
+
+<div class="col">
+  <h2>What to do with this</h2>
+  <p><strong>If the timing has to be tight, do not run the experiment inside a
+  desktop session.</strong> On this hardware that is worth twelve times more than
+  every software change measured here put together, and it costs one boot into a
+  virtual console. Real-time priority is worth a further 1.8× and is one flag.</p>
+
+  <p>Whatever you run, log the flip timestamp on every trial and put it in the data
+  file, and record the scheduling policy and the video driver alongside it. Two
+  runs that differ in those and say so are comparable; two that differ and don't
+  are not.</p>
+
+  <p>And measure your own rig. Everything here is one machine and one panel; the
+  paper's own authors decline to generalise across machines, and so should this.</p>
+
+  <h3>A caveat on the advice: not every package can take it</h3>
+  <p>Running with no display server at all is available here because SDL3 has a
+  KMS/DRM backend that talks to the hardware directly. That is not a general
+  property of experiment software.</p>
+
+  <p>PsychoPy renders through pyglet, and on Linux pyglet offers exactly two
+  paths: <code>xlib</code>, or a <code>headless</code> mode built on
+  <code>EGL_PLATFORM_DEVICE_EXT</code> — an offscreen device context that renders
+  into a buffer nobody ever scans out. There is no DRM or GBM anywhere in it.
+  Notably there is no Wayland backend either, so PsychoPy under a Wayland session
+  is going through XWayland. It therefore cannot be run the way column D was run;
+  the nearest equivalent is a bare X server with no window manager. The same is
+  true of the GLFW backend. <span class="tag">pyglet 1.5.27, checked in place; the
+  Psychtoolbox and GLFW claims are reasoned from their architecture, not measured
+  here.</span></p>
+
+  <h3>Not yet tested</h3>
+  <p>Xorg — the configuration the published comparison actually ran, and the one
+  most labs still have. It sits somewhere between these two extremes and nothing
+  here says where. Ubuntu 26.04 no longer ships an X11 desktop session, so that
+  needs a bare <code>xinit</code> run or a different machine.</p>
+</div>
+
+<div class="col">
+  <h2>Reproducing it</h2>
+  <pre><code># from a bare virtual console, no display server running
+export SDL_VIDEODRIVER=kmsdrm
+chrt -f 50 ./test_photodiode_latency -s 1 -no-prompt \
+     -trials 640 -line 0 -diode all -patch 400 \
+     -frames 12 -isi-frames 18
+
+# capture both channels on one instrument, then extract the onsets
+./ad3-capture.py --channels 1,2 --seconds 300 --rate 2e5 \
+     --range 5,50 --offset 2.5,25 --attenuation 1,10 \
+     --save-raw --out run.npz
+./extract-onsets.py run.npz onsets.npz
+./plot-onset-sequence.py --out seq.png --title "..." "run=onsets.npz"</code></pre>
+</div>
+
+<hr>
+<footer class="col">
+  Analysis tools in <code>dlp-io8-g/measurements/</code>; write-ups in
+  <code>goxpyriment/docs/TriggerJitterForEEGandMEG.md</code> and
+  <code>docs/TimingMegastudyComparison.md</code>; raw captures retained in full,
+  60 million samples per run, zero lost or corrupted.<br>
+  Reference: Bridges D, Pitiot A, MacAskill MR, Peirce JW (2020).
+  <em>The timing mega-study: comparing a range of experiment generators, both
+  lab-based and online.</em> PeerJ 8:e9414.
+</footer>
+
+</div>
