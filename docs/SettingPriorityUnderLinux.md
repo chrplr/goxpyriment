@@ -172,6 +172,54 @@ per second by default) is a backstop, not a licence: it stops a runaway task
 locking the machine completely, but a machine at 95 % real-time occupancy is not
 usable.
 
+---
+
+### ⚠️ The throttle also wrecks the timing you asked for
+
+That backstop is not only a protection against you — it is a hazard to the very
+thing real-time priority was requested for. Once a `SCHED_FIFO` thread reaches
+100 % duty, the kernel stops it for the remaining 50 ms of the second, and that
+suspension lands wherever it lands: in the middle of a pulse, a frame, or a
+response window.
+
+Measured on a 22-core Linux 7.0 host, with a pinned `SCHED_FIFO 50` thread
+spinning continuously:
+
+| host state | stalls | each | when they landed |
+|---|---|---|---|
+| idle | **0 in 20 s** | — | — |
+| under `stress-ng --cpu 20` | **24 in 25 s** | 51.0 ms | 0.999, 2.000, 3.001, 4.002 s … |
+
+One per second, to the millisecond — the throttle period exactly. **Load is a
+necessary condition**, which is the worst way for a fault to behave: on an idle
+runqueue the kernel borrows unused real-time bandwidth from the other CPUs and
+the limit is never reached. So it does not happen on the quiet machine you
+develop on, and does happen on the loaded one you run participants on. A pulse
+train that spun through its inter-trial gaps at `chrt -f 50` lost up to
+**49.63 ms** on 23 of 1000 trials this way — about ten times the 4.75 ms
+worst-case spread that real-time priority was bought to remove in the first
+place.
+
+**The rule that avoids it: sleep, and spin only the last millisecond or two.**
+A wait that sleeps most of its duration never approaches the limit, and the
+short spin at the end recovers the precision `time.Sleep` cannot give on its
+own. goxpyriment's frame pacing works this way (`apparatus.paceToFrame`), which
+takes a 60 Hz present loop from ~100 % duty to ~10 % with no loss of landing
+accuracy. If you write your own wait, write it the same way — a bare
+`for time.Now().Before(deadline) {}` over a whole trial is the shape that gets
+throttled.
+
+If you genuinely need a thread at 100 % duty — a spin-wait on a panel fast
+enough that there is nothing left worth sleeping — the limit can be lifted:
+
+```bash
+sudo sysctl kernel.sched_rt_runtime_us=-1        # until reboot
+```
+
+That removes the backstop along with the throttle, so a runaway real-time loop
+will then hold a CPU with nothing left to take it back. Reasonable on a
+dedicated stimulus machine; not on a laptop you also read mail on.
+
 > **Note on the grant itself:** goxpyriment only uses `rtprio`. The `nice -20`
 > and `memlock unlimited` lines in Step 2 are there because they are commonly
 > wanted alongside it and cost nothing, not because anything here requires them.
