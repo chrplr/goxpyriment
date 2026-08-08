@@ -204,6 +204,34 @@ own pixels are reached at the same moment regardless.
 The practical upshot is unchanged: patch size is not a lever on edge sharpness.
 Make it large enough that the diode sits comfortably inside, and stop there.
 
+### The same, on a second panel
+
+The 6.5 ms above is one monitor, so it was repeated on the laptop's internal
+display. Same host, same diode, same probe, same 60 Hz:
+
+| | Dell DP-5, 3840x2160 | laptop eDP-1, 2560x1600 |
+|---|---|---|
+| nominal frame | 16.667 ms | 16.656 ms |
+| step amplitude at the diode | 7.44 V | 7.07 V |
+| **10-90% rise** | **6500 us** | **5571 us** |
+| onset, TTL to 10% | ~10-18 ms | 38.0 ms |
+
+**The slow rise is not one bad monitor.** Two unrelated LCDs, one external and
+one built into a laptop, differ by 14% on a quantity spanning milliseconds. A
+multi-millisecond black-to-white transition looks like a property of the panel
+technology rather than of this particular Dell, which makes it the general case
+to design around rather than a local nuisance.
+
+**The latency is not transferable at all.** The onset differs by more than a
+frame between the two, so the delay from ShowTS to light has to be measured on
+the display an experiment will actually use. Two caveats on that comparison: the
+Dell figure is poorly determined, since those runs used the sleep-based ISI whose
+~16 ms of phase jitter with n=12 leaves the median wandering by several
+milliseconds, and the diode was not at an identical height on the two panels, so
+part of the difference is scanout position rather than pipeline depth. The rise
+does not suffer from either, being a difference measured within each trial --
+which is why its spread is 35 us across 12 trials on the laptop.
+
 **What this means for the measurement.** A 6.5 ms rise is a floor on how sharply
 a visual onset can be defined on this monitor, and it is the dominant remaining
 uncertainty: where the threshold sits on that ramp moves the answer by
