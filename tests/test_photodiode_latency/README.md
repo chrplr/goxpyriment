@@ -186,21 +186,23 @@ Twenty-four times slower, at essentially the same amplitude. Since the diode
 reaches the same voltage either way, it is not the diode being starved of light:
 **the 6.5 ms is the panel's own black-to-white pixel transition.**
 
-It is not scanout across the patch either, which was the first guess. Scanout
-would make the rise proportional to the patch's height -- 6.2 ms across 800 px
-against 0.8 ms across 100 px on a 2160-line panel. Measured across four sizes it
-does not move at all:
+A photodiode covers a few pixels, not the patch. So the rise it reports is the
+temporal response of *those* pixels, with no spatial averaging over the rest of
+the square -- which makes 6.5 ms a clean measurement of the transition at one
+point, rather than a blur of when different parts of the patch lit up.
 
-| patch | scanout across it would be | measured 10-90% rise |
-|---|---|---|
-| 800 px | 6173 us | 6578 us |
-| 400 px | 3086 us | 6514 us |
-| 200 px | 1543 us | 6621 us |
-| 100 px | 772 us | 6440 us |
+Patch height was measured across 800, 400, 200 and 100 px and the rise did not
+move: 6578, 6514, 6621, 6440 us. That is a useful negative control -- it
+confirms the diode is well inside the patch at every size and that nothing about
+the geometry leaks into the number -- but it is not evidence about scanout, and
+an earlier version of this file wrongly presented it as such. Sweeping scanout
+across the patch could only lengthen the rise for a sensor that integrated the
+whole square, and this one does not. The patch's top edge also sits 8 px from
+the screen edge at every size, since the inset is `patch/2 + 8`, so the diode's
+own pixels are reached at the same moment regardless.
 
-So patch size is not a lever on edge sharpness here, and there is no reason to
-keep the patch small for timing -- make it large enough that the diode sits
-comfortably inside it.
+The practical upshot is unchanged: patch size is not a lever on edge sharpness.
+Make it large enough that the diode sits comfortably inside, and stop there.
 
 **What this means for the measurement.** A 6.5 ms rise is a floor on how sharply
 a visual onset can be defined on this monitor, and it is the dominant remaining
