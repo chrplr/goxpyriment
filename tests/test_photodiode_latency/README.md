@@ -148,6 +148,38 @@ real runs.
 Worth doing on a BBTK. Worth doing on an AD3 too, once, to confirm the
 asymmetry is negligible rather than assume it.
 
+### Measured, n=34, 1 MS/s, 9 V photodiode behind a 10x probe
+
+| threshold | TTL rise -> light | spread |
+|---|---|---|
+| 10% | **17.9 us** | 9.8 us |
+| 20% | 45.0 us | 15.3 us |
+| 50% | **133.7 us** | 11.9 us |
+| 80% | 243.1 us | 13.5 us |
+| 90% | 290.8 us | 15.1 us |
+
+**The DLP's own latency cancels out of this.** The LED is driven from the same
+TTL line the instrument watches, so the write-to-edge delay is common to both
+signals and subtracts away. What is left is the photodiode's rise plus whatever
+asymmetry the instrument has between its two inputs.
+
+Those two are not separable here, but the smaller bounds the pair: **the AD3's
+channel asymmetry is at most 17.9 us**, and since both channels are the same ADC
+it is presumably far less than that, with the rest being the diode. The 10% to
+90% span, **273 us**, is the photodiode module's rise time and nothing else --
+worth knowing on its own, since it is the resolution floor of any optical
+measurement made with it.
+
+Against the 20 ms the display pipeline costs, a 134 us correction at the 50%
+level is 0.7%. Small, but now measured rather than assumed.
+
+**Do not transfer this number to the screen measurement unchanged.** A
+photodiode's rise depends on how much light reaches it, and an LED at close
+range is far brighter than a white patch on an LCD. The dimmer source will rise
+more slowly, so the correction there is larger than 134 us and has to be
+characterised at the brightness actually used -- by saving raw samples
+(`--save-raw`) during a screen run and reading the 10-90% off the waveform.
+
 ## Flags
 
 | flag | default | meaning |
