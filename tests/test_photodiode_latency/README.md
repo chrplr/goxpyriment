@@ -33,10 +33,13 @@ go run ./tests/test_photodiode_latency -calibrate           # LED zero point
   nearly a whole frame, 16.7 ms, which is larger than everything else this test
   measures put together.
 
-  Note `+y is up`: `Screen.CenterToSDL` computes `centreY - y`. And positions are
-  in the renderer's **logical** space, which is not the panel's pixel count —
-  3840x2160 of hardware presented at 2304x1296 here. The program prints the
-  space and every patch centre at startup; check them against what you see.
+  Note `+y is up`: `Screen.CenterToSDL` computes `centreY - y`. And positions
+  are in the renderer's **logical** space, which is not always the panel's pixel
+  count: a 3840x2160 display at 125% desktop scaling presents as 2304x1296, and
+  a patch placed by pixel count would land off-screen. The program reads the
+  space at startup rather than assuming it, and prints it with every patch
+  centre — check those against what you actually see on the panel, because a
+  wrong position is silent otherwise.
 
 ## Which instrument
 
