@@ -173,12 +173,43 @@ measurement made with it.
 Against the 20 ms the display pipeline costs, a 134 us correction at the 50%
 level is 0.7%. Small, but now measured rather than assumed.
 
-**Do not transfer this number to the screen measurement unchanged.** A
-photodiode's rise depends on how much light reaches it, and an LED at close
-range is far brighter than a white patch on an LCD. The dimmer source will rise
-more slowly, so the correction there is larger than 134 us and has to be
-characterised at the brightness actually used -- by saving raw samples
-(`--save-raw`) during a screen run and reading the 10-90% off the waveform.
+**Do not transfer this number to the screen measurement unchanged**, and the
+reason turned out not to be the one expected. Measured against the screen patch
+instead of the LED, same diode and same probe:
+
+| source | step amplitude | 10-90% rise |
+|---|---|---|
+| LED at close range | 8.0 V | **273 us** |
+| white patch on the panel | 7.4 V | **6500 us** |
+
+Twenty-four times slower, at essentially the same amplitude. Since the diode
+reaches the same voltage either way, it is not the diode being starved of light:
+**the 6.5 ms is the panel's own black-to-white pixel transition.**
+
+It is not scanout across the patch either, which was the first guess. Scanout
+would make the rise proportional to the patch's height -- 6.2 ms across 800 px
+against 0.8 ms across 100 px on a 2160-line panel. Measured across four sizes it
+does not move at all:
+
+| patch | scanout across it would be | measured 10-90% rise |
+|---|---|---|
+| 800 px | 6173 us | 6578 us |
+| 400 px | 3086 us | 6514 us |
+| 200 px | 1543 us | 6621 us |
+| 100 px | 772 us | 6440 us |
+
+So patch size is not a lever on edge sharpness here, and there is no reason to
+keep the patch small for timing -- make it large enough that the diode sits
+comfortably inside it.
+
+**What this means for the measurement.** A 6.5 ms rise is a floor on how sharply
+a visual onset can be defined on this monitor, and it is the dominant remaining
+uncertainty: where the threshold sits on that ramp moves the answer by
+milliseconds, which is why this test reports the level it used. It also swamps
+every correction discussed above -- the 134 us zero point, the 17 us
+ShowTS-to-TTL gap, the tens of microseconds of DLP latency. On a panel like this
+one, quoting a visual onset to better than a millisecond is not meaningful
+without saying which point on the rise is meant.
 
 ## Flags
 
