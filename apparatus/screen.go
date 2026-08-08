@@ -332,8 +332,9 @@ func (s *Screen) ClearAndUpdate() error {
 // Update presents the rendered buffer and does not return until the frame
 // boundary, so every Update occupies exactly one display frame.
 //
-// On desktop this maps to SDL_RenderPresent followed by a busy-wait to the
-// expected frame boundary (see paceToFrame). The wait exists because
+// On desktop this maps to SDL_RenderPresent followed by a wait to the
+// expected frame boundary — slept, with the last 2 ms spun (see paceToFrame,
+// which explains why it is not spun outright). The wait exists because
 // SDL_RenderPresent cannot be trusted to block until the retrace: under
 // triple/mailbox buffering it queues the frame and returns immediately.
 // That is not an exotic configuration — measured on Intel i915 + Wayland with
