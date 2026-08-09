@@ -101,8 +101,14 @@ paper/*-SAVE-ERROR
 examples/picture_naming/sub-*.wav
 
 # --- Not for a public repository --------------------------------------------
-# Third-party PDF (Bridges et al. 2020, the timing mega-study) and notes on it.
-paper/megastudy/
+# The third-party PDF (Bridges et al. 2020, the timing mega-study) — not ours to
+# redistribute. Narrowed from the whole directory so that
+# paper/megastudy/megastudy_timing_tests.md, which maps their protocol onto the
+# Timing-Tests flags, can be tracked and kept in step with the code.
+paper/megastudy/*.pdf
+# considerations.md stays out: it is working commentary on the paper's own
+# review, not documentation of the framework.
+paper/megastudy/considerations.md
 
 # --- LaTeX float files (endfloat package) -----------------------------------
 paper/*.fff
