@@ -515,9 +515,20 @@ func runAV(exp *control.Experiment, trig triggers.OutputTTLDevice) error {
 
 	withSound := !*fNoSound
 	withTTL := !*fNoTTL
+	// Refuse to run rather than quietly dropping the TTL. This used to print
+	// "no DLP-IO8-G found" — naming one device regardless of -trigger-device,
+	// so a GPIO chip that failed to open reported a missing serial box — and
+	// then carried on to a successful exit with an empty TTL channel. Under
+	// BBTK_CAPTURE that silently spends a capture window on an untriggered
+	// trace, and the loss is only discovered when the events file is read.
+	//
+	// -no-ttl is how a visual-only run is requested, so there is no need to
+	// infer one from a hardware failure.
 	if _, isNull := trig.(triggers.NullOutputTTLDevice); isNull && withTTL {
-		fmt.Println("av: no DLP-IO8-G found — running without triggers")
-		withTTL = false
+		log.Fatalf("av: -trigger-device %s could not be opened, and the TTL is part of "+
+			"this measurement.\n"+
+			"    Fix the device (see the warning above), or pass -no-ttl for a "+
+			"visual-only run.", *fTrigDevice)
 	}
 
 	modalities := "visual"

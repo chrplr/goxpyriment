@@ -28,6 +28,7 @@
 #   EXCLUSIVE_FS      auto | on | off          (default: auto)
 #   TRIGGER_DEVICE    dlpio8 | parallel | gpio (default: dlpio8)
 #   TRIGGER_PIN       output pin 1-8           (default: 1)
+#   TRIGGER_MS        TTL pulse width, ms      (default: 200)
 #   PARALLEL_PORT     LPT device path          (default: first accessible one)
 #   GPIO_CHIP         chip device path         (default: /dev/gpiochip0)
 #   GPIO_PINS         8 pins, comma-separated  (default: 17,27,22,5,6,13,19,26)
@@ -200,6 +201,14 @@ TRIGGER_PIN="${TRIGGER_PIN:-1}"
 PARALLEL_PORT="${PARALLEL_PORT:-}"   # empty = first accessible /dev/parportN
 GPIO_CHIP="${GPIO_CHIP:-/dev/gpiochip0}"
 GPIO_PINS="${GPIO_PINS:-17,27,22,5,6,13,19,26}"
+# 200 ms, matching the TTL pulse Bridges et al. (2020) sent alongside the
+# stimulus — the same reason FRAMES_ON/TONE_HZ carry their values rather than
+# the binary's. Timing-Tests itself defaults to 5 ms, and this script used to
+# leave it there, so every session recorded before 2026-08-09 carries a 5 ms
+# pulse. Only the leading edge is used to measure onset, but the width decides
+# whether a recorder registers the pulse at all: a threshold-and-debounce input
+# that latches a static level can still miss a 5 ms one.
+TRIGGER_MS="${TRIGGER_MS:-200}"
 
 # An array, unlike the string $DISPLAY_ARGS above, so the expansion below can be
 # quoted: the steps that use it sit inside a `step … && run_recorded …` chain,
@@ -219,6 +228,28 @@ case "$TRIGGER_DEVICE" in
 	                        -gpio-chip "$GPIO_CHIP" -gpio-pins "$GPIO_PINS") ;;
 	*)        echo "error: TRIGGER_DEVICE must be dlpio8, parallel or gpio (got '$TRIGGER_DEVICE')" >&2; exit 1 ;;
 esac
+
+case "$TRIGGER_MS" in
+	'' | *[!0-9]*) echo "error: TRIGGER_MS must be a positive integer (got '$TRIGGER_MS')" >&2; exit 1 ;;
+esac
+[ "$TRIGGER_MS" -gt 0 ] || { echo "error: TRIGGER_MS must be greater than zero" >&2; exit 1; }
+
+# A pulse that outlasts its own cycle merges into the next one, leaving the line
+# permanently high and the TTL channel uncountable — the trace then has no trial
+# boundaries at all. That is a whole capture wasted, so refuse it here rather
+# than after the fact. It bites when the cycle is shortened (FRAMES_ON=1,
+# FRAMES_OFF=2 is 50 ms at 60 Hz, a quarter of the default pulse).
+CYCLE_MS=$(awk -v on="$FRAMES_ON" -v off="$FRAMES_OFF" -v hz="$REFRESH_HZ" \
+	'BEGIN { printf "%.1f", (on+off)*1000/hz }')
+if awk -v t="$TRIGGER_MS" -v c="$CYCLE_MS" 'BEGIN { exit !(t >= c) }'; then
+	echo "error: TRIGGER_MS=$TRIGGER_MS ms does not fit in a ${CYCLE_MS} ms cycle" >&2
+	echo "       (${FRAMES_ON}+${FRAMES_OFF} frames at ${REFRESH_HZ} Hz); consecutive pulses" >&2
+	echo "       would merge and the TTL channel could not be counted." >&2
+	echo "       Lower TRIGGER_MS, or lengthen the cycle." >&2
+	exit 1
+fi
+
+TRIGGER_ARGS+=(-trigger-ms "$TRIGGER_MS")
 
 # Overridable so the session plumbing (capture handshake, output paths) can be
 # exercised without opening a fullscreen window on someone's display.
@@ -380,14 +411,14 @@ fi
 echo "         fullscreen mode: $EXCLUSIVE_FS  (recorded as sys fullscreen_mode)"
 case "$TRIGGER_DEVICE" in
 	gpio)
-		echo "Trigger: gpio $GPIO_CHIP pins=$GPIO_PINS, -trigger-pin $TRIGGER_PIN"
+		echo "Trigger: gpio $GPIO_CHIP pins=$GPIO_PINS, -trigger-pin $TRIGGER_PIN, ${TRIGGER_MS} ms pulse"
 		echo "         (3.3 V lines — confirm the recorder triggers at 3.3 V on a short run)"
 		;;
 	parallel)
-		echo "Trigger: parallel ${PARALLEL_PORT:-(first accessible /dev/parportN)}, -trigger-pin $TRIGGER_PIN"
+		echo "Trigger: parallel ${PARALLEL_PORT:-(first accessible /dev/parportN)}, -trigger-pin $TRIGGER_PIN, ${TRIGGER_MS} ms pulse"
 		;;
 	*)
-		echo "Trigger: dlpio8 (USB serial), -trigger-pin $TRIGGER_PIN"
+		echo "Trigger: dlpio8 (USB serial), -trigger-pin $TRIGGER_PIN, ${TRIGGER_MS} ms pulse"
 		;;
 esac
 if [ "$SQUARE_PX" -eq 0 ]; then
