@@ -27,12 +27,20 @@ import (
 // So:
 //
 //	GPIO_V2_GET_LINE_IOCTL        = _IOWR(0xB4, 0x07, 592) = 0xC250B407
-//	GPIO_V2_LINE_GET_VALUES_IOCTL = _IOWR(0xB4, 0x0F,  16) = 0xC010B40F
-//	GPIO_V2_LINE_SET_VALUES_IOCTL = _IOWR(0xB4, 0x0E,  16) = 0xC010B40E
+//	GPIO_V2_LINE_GET_VALUES_IOCTL = _IOWR(0xB4, 0x0E,  16) = 0xC010B40E
+//	GPIO_V2_LINE_SET_VALUES_IOCTL = _IOWR(0xB4, 0x0F,  16) = 0xC010B40F
+//
+// GET is 0x0E and SET is 0x0F, per include/uapi/linux/gpio.h. These two were
+// swapped here until 2026-08-09, so every SetHigh/SetLow issued GET_VALUES
+// instead: a read of the line, which succeeds, returns no error, and leaves the
+// pin untouched. GPIO output therefore never worked, and failed silently — the
+// caller saw a nil error and no signal on the wire. Verified against the header
+// on a Raspberry Pi 4 (pinctrl-bcm2711) after a BBTK saw nothing on BCM 17 that
+// `pinctrl 17 op dh` drove correctly.
 const (
 	gpioV2GetLineIoctl  uintptr = 0xC250B407
-	gpioV2LineGetValues uintptr = 0xC010B40F
-	gpioV2LineSetValues uintptr = 0xC010B40E
+	gpioV2LineGetValues uintptr = 0xC010B40E
+	gpioV2LineSetValues uintptr = 0xC010B40F
 
 	// gpio_v2_line_flag bits (from enum gpio_v2_line_flag).
 	gpioV2LineFlagInput  = uint64(1 << 2) // _BITULL(2)
@@ -178,9 +186,18 @@ func (t *LinuxGPIOTrigger) close() error {
 }
 
 // gpioWriteOutputs writes mask to the 8 output lines atomically.
+//
+// The descriptor is checked rather than handed to ioctl unconditionally: after
+// close() it is -1, and the kernel then reports a bare EBADF ("bad file
+// descriptor") that says nothing about which handle died or why. A trigger
+// fired from a goroutine can outlive the Close that ends a run, so this is
+// reachable in normal use.
 func (t *LinuxGPIOTrigger) gpioWriteOutputs(mask byte) error {
 	t.handle.mu.Lock()
 	defer t.handle.mu.Unlock()
+	if t.handle.outFd <= 0 {
+		return fmt.Errorf("linuxgpio: output handle is closed or was never opened")
+	}
 	return gpioSetByte(t.handle.outFd, mask)
 }
 
@@ -188,6 +205,9 @@ func (t *LinuxGPIOTrigger) gpioWriteOutputs(mask byte) error {
 func (t *LinuxGPIOTrigger) gpioReadInputs() (byte, error) {
 	t.handle.mu.Lock()
 	defer t.handle.mu.Unlock()
+	if t.handle.inFd <= 0 {
+		return 0, fmt.Errorf("linuxgpio: input handle is closed or was never opened")
+	}
 	return gpioGetByte(t.handle.inFd)
 }
 
@@ -220,6 +240,12 @@ func gpioRequestLines(chipFd int, pins []int, output bool, consumer string) (int
 	_, _, errno := syscall.Syscall(syscall.SYS_IOCTL, uintptr(chipFd), gpioV2GetLineIoctl, uintptr(unsafe.Pointer(&req)))
 	if errno != 0 {
 		return 0, fmt.Errorf("GPIO_V2_GET_LINE: %w", errno)
+	}
+	// A zero or negative fd means the kernel accepted the ioctl without handing
+	// back a usable handle. Catching it here names the problem; passing it on
+	// turns every later write into an unexplained EBADF instead.
+	if req.fd <= 0 {
+		return 0, fmt.Errorf("GPIO_V2_GET_LINE returned no usable descriptor (fd=%d)", req.fd)
 	}
 	return int(req.fd), nil
 }
