@@ -261,7 +261,7 @@ halves the step, at the cost of underrun risk.
 
 ### Choosing a TTL output device
 
-`-trigger-device` selects among three back-ends. They are **not**
+`-trigger-device` selects among five back-ends. They are **not**
 interchangeable. The trigger is fired immediately after the flip returns, so
 whatever the write costs falls between the flip and the TTL edge — and it shows
 up in the trial-to-trial *spread* of that interval, not as a constant offset you
@@ -272,20 +272,31 @@ could subtract afterwards.
 | `dlpio8` (default) | USB serial (FTDI) | 5 V | `-port` |
 | `parallel` | `ioctl` on ppdev | 5 V | `-parallel-port` |
 | `gpio` | `ioctl` on a GPIO chip | **3.3 V** | `-gpio-chip`, `-gpio-pins` |
+| `ft232h` | USB bulk transfer (MPSSE via usbfs) | **3.3 V** | — (first device found) |
+| `labjackt4` | Modbus TCP over the network | **3.3 V** | `-labjack-host` (required) |
 
 `parallel` and `gpio` are both a local `ioctl` and carry none of the USB frame
 scheduling that governs the DLP-IO8's output latency (see the DLP-IO8 section
 below — the FTDI latency timer does *not* fix that). Prefer `parallel` on a
 desktop that still has an LPT port, and `gpio` on a single-board computer.
+`ft232h` and `labjackt4` are for a rig that has neither: both put a link back
+between the flip and the edge — USB for the FT232H, an Ethernet round trip for
+the T4 — so they are a fallback, not an improvement on the two `ioctl` paths.
+
+How much each costs here has **not been measured**; the ordering above is what
+the transport implies, not a result. The TTL channel of the recording is the
+only thing that settles it for a given machine.
 
 ```bash
 Timing-Tests -test av -trigger-device parallel                     # LPT, auto-detect
 Timing-Tests -test av -trigger-device parallel -parallel-port /dev/parport1
 Timing-Tests -test av -trigger-device gpio                         # /dev/gpiochip0, default pins
 Timing-Tests -test av -trigger-device gpio -gpio-chip /dev/gpiochip4 -trigger-pin 2
+Timing-Tests -test av -trigger-device ft232h                       # first FT232H on the bus
+Timing-Tests -test av -trigger-device labjackt4 -labjack-host 192.168.1.100
 ```
 
-**`-trigger-pin` is 1–8 on all three, but it names a different thing on each.**
+**`-trigger-pin` is 1–8 on all five, but it names a different thing on each.**
 Read what the program prints at start-up and probe *that* pin:
 
 - **dlpio8** — the number printed on the terminal block.
@@ -293,15 +304,24 @@ Read what the program prints at start-up and probe *that* pin:
   DB25 pins 2–9). Ground is any of DB25 pins 18–25.
 - **gpio** — a *position in `-gpio-pins`*, not a line number. With the default
   list `17,27,22,5,6,13,19,26`, pin 1 is **BCM 17**.
+- **ft232h** — a D-bus line counted from 0: pin 1 is **AD0**, pin 8 is AD7. The
+  C-bus (AC0–AC7) is the input side and is not driven here.
+- **labjackt4** — a position in DIO4–DIO11: pin 1 is **DIO4**, the screw
+  terminal marked **FIO4**; pin 8 is DIO11 = EIO3 on the DB15. DIO0–DIO3 are the
+  analog inputs AIN0–AIN3 and cannot be driven, which is why the group starts at
+  DIO4.
 
 Prerequisites on Linux: `parallel` needs `sudo modprobe ppdev` and membership of
-the `lp` group; `gpio` needs kernel ≥ 5.10 and membership of the `gpio` group.
-Both need a re-login after `usermod`. Verify the wiring with
-`tests/test_parallel_port` or `tests/test_linuxgpio` before spending a long
-capture.
+the `lp` group; `gpio` needs kernel ≥ 5.10 and membership of the `gpio` group;
+`ft232h` is Linux-only and needs `ftdi_sio` unloaded (`sudo rmmod ftdi_sio`)
+plus rw access to `/dev/bus/usb/BBB/DDD` (udev rule or the `plugdev` group);
+`labjackt4` needs the T4 reachable on TCP port 502.
+`usermod` changes need a re-login. Verify the wiring with
+`tests/test_parallel_port`, `tests/test_linuxgpio`, `tests/test_ft232h` or
+`tests/test_labjackt4` before spending a long capture.
 
 Whichever device is used is written into the results header as `trigger=…`,
-because the three do not yield the same onset-vs-TTL figure. A session that does
+because they do not yield the same onset-vs-TTL figure. A session that does
 not record it cannot be compared with one that does.
 
 > **A device that fails to open does not stop the run.** It logs a warning,

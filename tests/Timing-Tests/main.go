@@ -41,8 +41,12 @@
 // Common flags:
 //
 //	-test string      Sub-test to run (default "av")
+//	-trigger-device   TTL output device: dlpio8 | parallel | gpio | ft232h |
+//	                  labjackt4 (default "dlpio8")
 //	-port string      Serial port for DLP-IO8-G (default: auto-detect)
-//	-trigger-pin int  Output pin on DLP-IO8-G (default 1)
+//	-labjack-host     LabJack T4 address, e.g. 192.168.1.100 (required for
+//	                  -trigger-device labjackt4; there is nothing to auto-detect)
+//	-trigger-pin int  Output pin, 1-8, on whichever device was selected (default 1)
 //	-trigger-ms int   Trigger pulse duration in ms (default 5)
 //	-cycles int       Number of cycles (default 120)
 //	-warmup int       Leading cycles discarded from statistics (default 10)
@@ -114,12 +118,13 @@ import (
 
 var (
 	fTest        = flag.String("test", "av", "Sub-test: av | vrr | rt | check | display | latency")
-	fTrigDevice  = flag.String("trigger-device", "dlpio8", "TTL output device: dlpio8 (USB serial) | parallel (LPT port via ppdev) |\n\tgpio (Linux GPIO character device).\n\tdlpio8 crosses a USB link, which adds latency and jitter between the flip and\n\tthe TTL edge; parallel and gpio are both a local ioctl and do not. Prefer\n\tparallel on a desktop with an LPT port, gpio on a single-board computer\n\t(Raspberry Pi, Rock Pi, …). Recorded as 'trigger' in the results header.")
+	fTrigDevice  = flag.String("trigger-device", "dlpio8", "TTL output device: dlpio8 (USB serial) | parallel (LPT port via ppdev) |\n\tgpio (Linux GPIO character device) | ft232h (Adafruit FT232H over USB) |\n\tlabjackt4 (LabJack T4 over Modbus TCP).\n\tThey are not interchangeable: parallel and gpio write through a local ioctl,\n\tdlpio8 and ft232h cross a USB link, and labjackt4 crosses the network — each\n\tstep adds latency and jitter between the flip and the TTL edge. Prefer\n\tparallel on a desktop with an LPT port, gpio on a single-board computer\n\t(Raspberry Pi, Rock Pi, …). Recorded as 'trigger' in the results header.")
 	fPort        = flag.String("port", "", "Serial port for DLP-IO8-G (empty = auto-detect) [trigger-device=dlpio8]")
+	fLJHost      = flag.String("labjack-host", "", "LabJack T4 address, e.g. 192.168.1.100 or 192.168.1.100:502 (required)\n\t[trigger-device=labjackt4]. -trigger-pin selects the line: pin 1 is DIO4 =\n\tscrew terminal FIO4, pin 8 is DIO11 = EIO3 on the DB15.")
 	fParPort     = flag.String("parallel-port", "", "Parallel port device, e.g. /dev/parport0 (empty = first accessible one)\n\t[trigger-device=parallel]. -trigger-pin selects the data line: pin 1 is D0,\n\twhich is DB25 pin 2.")
 	fGPIOChip    = flag.String("gpio-chip", "/dev/gpiochip0", "GPIO chip device path [trigger-device=gpio]")
 	fGPIOPins    = flag.String("gpio-pins", "17,27,22,5,6,13,19,26", "The 8 GPIO output pins, comma-separated, chip-relative (BCM numbering on a\n\tRaspberry Pi) [trigger-device=gpio]. -trigger-pin selects among them: pin 1 is\n\tthe first in this list.")
-	fTriggerPin  = flag.Int("trigger-pin", 1, "Output pin (1–8). On dlpio8 this is the number on the terminal block;\n\ton gpio it is the position in -gpio-pins, NOT the BCM number.")
+	fTriggerPin  = flag.Int("trigger-pin", 1, "Output pin (1–8). On dlpio8 this is the number on the terminal block;\n\ton gpio it is the position in -gpio-pins, NOT the BCM number; on ft232h it is\n\tthe D-bus line, pin 1 = AD0; on labjackt4 it is the position in DIO4–DIO11,\n\tpin 1 = DIO4 = FIO4.")
 	fTriggerMs   = flag.Int("trigger-ms", 5, "Trigger pulse duration (ms)")
 	fCycles      = flag.Int("cycles", 120, "Number of cycles [av / rt]")
 	fLevelA      = flag.Int("level-a", 0, "Dark luminance 0–255 (surround) [av / vrr]")
@@ -327,10 +332,11 @@ func fillGray(exp *control.Experiment, paint paintFunc, level byte) (tBefore, tA
 //
 // It returns the device and a one-line description of what was actually opened.
 // The description is written to the results header rather than merely printed:
-// the two devices do not produce the same trigger→luminance figure — a DLP-IO8
-// write crosses a USB serial link, a GPIO write is an ioctl on a local chip —
-// so which one fired is part of the measurement, not a detail of the session.
-// An empty description means no device was opened.
+// the devices do not produce the same trigger→luminance figure — a GPIO write is
+// an ioctl on a local chip, a DLP-IO8 or FT232H write crosses a USB link, a
+// LabJack T4 write crosses the network — so which one fired is part of the
+// measurement, not a detail of the session. An empty description means no device
+// was opened.
 func setupTrigger() (triggers.OutputTTLDevice, string) {
 	switch *fTrigDevice {
 	case "dlpio8":
@@ -339,11 +345,21 @@ func setupTrigger() (triggers.OutputTTLDevice, string) {
 		return setupParallel()
 	case "gpio":
 		return setupGPIO()
+	case "ft232h":
+		return setupFT232H()
+	case "labjackt4":
+		return setupLabJackT4()
 	default:
-		log.Fatalf("-trigger-device %q: choose dlpio8, parallel or gpio", *fTrigDevice)
+		log.Fatalf("-trigger-device %q: %s", *fTrigDevice, trigDeviceChoices)
 		return nil, "" // unreachable; log.Fatalf exits
 	}
 }
+
+// trigDeviceChoices is the one message listing the accepted -trigger-device
+// names. It is shared by setupTrigger and checkTriggerFlags: they used to carry
+// separate copies, so adding a device to one and not the other would accept a
+// name at startup and then reject it after the window had opened.
+const trigDeviceChoices = "choose dlpio8, parallel, gpio, ft232h or labjackt4"
 
 func setupDLPIO8() (triggers.OutputTTLDevice, string) {
 	var trig triggers.OutputTTLDevice
@@ -441,6 +457,81 @@ func setupGPIO() (triggers.OutputTTLDevice, string) {
 	fmt.Printf("        TTL input triggers at 3.3 V before committing to a long capture.\n")
 	return dev, fmt.Sprintf("gpio chip=%s pin=%d line=%d pins=%v",
 		*fGPIOChip, *fTriggerPin, bcm, pins)
+}
+
+func setupFT232H() (triggers.OutputTTLDevice, string) {
+	// NewFT232H rather than AutoDetectFT232H: the latter turns a failure into a
+	// NullOutputTTLDevice and keeps the reason to itself, and the reason here is
+	// usually actionable (ftdi_sio holding the interface, or no rw access).
+	dev, err := triggers.NewFT232H()
+	if err != nil {
+		// Same policy as the other devices: warn and continue, so the visual
+		// measurement is still obtained. The `av` test refuses to start without
+		// a working device unless -no-ttl was given.
+		log.Printf("warning: FT232H: %v — triggers disabled", err)
+		log.Printf("         (Linux only; the ftdi_sio module must not hold the device,")
+		log.Printf("          and /dev/bus/usb/... must be readable and writable:")
+		log.Printf("          sudo rmmod ftdi_sio, then a udev rule or the plugdev group)")
+		return triggers.NullOutputTTLDevice{}, ""
+	}
+
+	// Print the AD line, not just the pin index: AD0 is what the probe clips
+	// onto, and the board silkscreen numbers the D-bus from 0 while
+	// -trigger-pin counts from 1.
+	line := triggerLine()
+	fmt.Printf("FT232H opened, outputs AD0–AD7\n")
+	fmt.Printf("  trigger pin %d = AD%d, pulse %d ms\n", *fTriggerPin, line, *fTriggerMs)
+	fmt.Printf("  NOTE: these lines swing 0–3.3 V, not 5 V. Check that your recorder's\n")
+	fmt.Printf("        TTL input triggers at 3.3 V before committing to a long capture.\n")
+	return dev, fmt.Sprintf("ft232h pin=%d line=AD%d", *fTriggerPin, line)
+}
+
+func setupLabJackT4() (triggers.OutputTTLDevice, string) {
+	// The output group is left at the driver's default, DIO4–DIO11: the T4's
+	// DIO0–DIO3 are the analog inputs AIN0–AIN3 and cannot be driven, and moving
+	// the base up would collide with the input group at DIO12. So there is
+	// nothing to configure here beyond the address.
+	dev, err := triggers.NewLabJackT4(*fLJHost)
+	if err != nil {
+		log.Printf("warning: LabJack T4 at %s: %v — triggers disabled", *fLJHost, err)
+		log.Printf("         (the T4 must be reachable on Modbus TCP port 502; check with")
+		log.Printf("          go run ./tests/test_labjackt4 -host %s -hold)", *fLJHost)
+		return triggers.NullOutputTTLDevice{}, ""
+	}
+
+	dio := t4OutputBase + triggerLine()
+	fmt.Printf("LabJack T4 at %s opened, outputs DIO4–DIO11 (FIO4–FIO7 + EIO0–EIO3)\n", *fLJHost)
+	fmt.Printf("  trigger pin %d = DIO%d = %s, pulse %d ms\n",
+		*fTriggerPin, dio, t4TerminalName(dio), *fTriggerMs)
+	fmt.Printf("  NOTE: these lines swing 0–3.3 V, not 5 V, and every write crosses the\n")
+	fmt.Printf("        network — expect more flip→TTL latency and jitter than from a\n")
+	fmt.Printf("        parallel port or a GPIO chip. Read the TTL channel of the\n")
+	fmt.Printf("        recording, not the console, for the figure that matters.\n")
+	return dev, fmt.Sprintf("labjackt4 host=%s pin=%d dio=%d terminal=%s",
+		*fLJHost, *fTriggerPin, dio, t4TerminalName(dio))
+}
+
+// t4OutputBase is the DIO number of the T4 output line 0 — the driver's default
+// (triggers.WithT4OutputBase is left unset), repeated here only so the printed
+// pin can be resolved to a screw terminal.
+const t4OutputBase = 4
+
+// t4TerminalName maps a T4 DIO number to the label printed on the hardware.
+// The DIO numbering is contiguous but the terminals are not: DIO4 is FIO4 on the
+// screw block while DIO8 is EIO0 on the DB15, so the number in the API is not
+// the number to look for on the device.
+func t4TerminalName(dio int) string {
+	switch {
+	case dio >= 0 && dio <= 3:
+		return fmt.Sprintf("AIN%d (analog only)", dio)
+	case dio <= 7:
+		return fmt.Sprintf("FIO%d", dio)
+	case dio <= 15:
+		return fmt.Sprintf("EIO%d", dio-8)
+	case dio <= 19:
+		return fmt.Sprintf("CIO%d", dio-16)
+	}
+	return fmt.Sprintf("DIO%d", dio)
 }
 
 // parsePins parses a comma-separated list of exactly 8 GPIO pin numbers.
@@ -1082,7 +1173,12 @@ func runVRR(exp *control.Experiment, trig triggers.OutputTTLDevice) error {
 				if !isNull {
 					go func() {
 						time.Sleep(trigDur)
-						_ = trig.SetLow(*fTriggerPin)
+						// triggerLine(), not *fTriggerPin: the SetHigh above
+						// uses the 0-indexed line, so passing the 1-indexed pin
+						// here dropped the NEIGHBOURING line and left the
+						// triggered one HIGH for the rest of the sweep — one
+						// edge at the first onset and nothing after it.
+						_ = trig.SetLow(triggerLine())
 					}()
 				}
 
@@ -1355,16 +1451,24 @@ func triggerLine() int { return *fTriggerPin - 1 }
 // anything but a black screen and a log line.
 func checkTriggerFlags() {
 	if *fTriggerPin < 1 || *fTriggerPin > 8 {
-		log.Fatalf("-trigger-pin %d is out of range: both devices expose 8 lines, "+
+		log.Fatalf("-trigger-pin %d is out of range: every device exposes 8 lines, "+
 			"numbered 1 to 8", *fTriggerPin)
 	}
 	switch *fTrigDevice {
-	case "dlpio8", "parallel":
+	case "dlpio8", "parallel", "ft232h":
 	case "gpio":
 		if _, err := parsePins(*fGPIOPins); err != nil {
 			log.Fatalf("-gpio-pins %q: %v", *fGPIOPins, err)
 		}
+	case "labjackt4":
+		// The T4 is reached over the network and has nothing to auto-detect, so
+		// an omitted address is a certain failure — catch it here rather than
+		// from setupTrigger, which runs after the window has opened.
+		if *fLJHost == "" {
+			log.Fatalf("-trigger-device labjackt4 needs -labjack-host, e.g. " +
+				"-labjack-host 192.168.1.100")
+		}
 	default:
-		log.Fatalf("-trigger-device %q: choose dlpio8, parallel or gpio", *fTrigDevice)
+		log.Fatalf("-trigger-device %q: %s", *fTrigDevice, trigDeviceChoices)
 	}
 }

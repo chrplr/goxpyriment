@@ -27,12 +27,14 @@
 #   FRAMES_OFF        dark frames per cycle    (default: 18)
 #   DISPLAY_IDX       monitor index for -d     (default: unset = primary)
 #   EXCLUSIVE_FS      auto | on | off          (default: auto)
-#   TRIGGER_DEVICE    dlpio8 | parallel | gpio (default: dlpio8)
+#   TRIGGER_DEVICE    dlpio8 | parallel | gpio | ft232h | labjackt4
+#                                              (default: dlpio8)
 #   TRIGGER_PIN       output pin 1-8           (default: 1)
 #   TRIGGER_MS        TTL pulse width, ms      (default: 200)
 #   PARALLEL_PORT     LPT device path          (default: first accessible one)
 #   GPIO_CHIP         chip device path         (default: /dev/gpiochip0)
 #   GPIO_PINS         8 pins, comma-separated  (default: 17,27,22,5,6,13,19,26)
+#   LABJACK_HOST      T4 address               (required for TRIGGER_DEVICE=labjackt4)
 #
 # Both TRIGGER_DEVICE=parallel and =gpio write via a local ioctl instead of the
 # default's USB serial link, which keeps the link's latency out of the measured
@@ -40,6 +42,12 @@
 # a Raspberry Pi or similar. Wiring and the 3.3 V caveat are described beside
 # those variables below. Verify the pins first with `go run ./tests/test_linuxgpio`
 # or `go run ./tests/test_parallel_port`.
+#
+# TRIGGER_DEVICE=ft232h (Adafruit FT232H, USB) and =labjackt4 (LabJack T4, over
+# the network) exist for rigs that have neither an LPT port nor a GPIO header;
+# both put a link back between the flip and the TTL edge, so prefer parallel or
+# gpio where the hardware allows. Verify with `go run ./tests/test_ft232h` or
+# `go run ./tests/test_labjackt4`.
 #
 # DISPLAY_IDX is the index printed by `./Timing-Tests -sysinfo`, NOT an X11/
 # Wayland output name. Index 0 is always the primary, which on a laptop is
@@ -201,21 +209,31 @@ fi
 #   TRIGGER_DEVICE=gpio       the GPIO header of a single-board computer
 #                             (Raspberry Pi, Rock Pi, …). 3.3 V, see below.
 #
-# Timing-Tests records which device fired in the results header, because the
-# three do not yield the same number.
+# Two more exist for rigs with neither, and neither avoids a link:
 #
-# TRIGGER_PIN is 1-8 on all three, but it names something different on each:
+#   TRIGGER_DEVICE=ft232h     an Adafruit FT232H breakout over USB. 3.3 V.
+#   TRIGGER_DEVICE=labjackt4  a LabJack T4 over Modbus TCP — the write crosses
+#                             the network. 3.3 V. Needs LABJACK_HOST.
+#
+# Timing-Tests records which device fired in the results header, because they do
+# not yield the same number.
+#
+# TRIGGER_PIN is 1-8 on all five, but it names something different on each:
 # a DLP-IO8 terminal-block number; a parallel data line (pin 1 = D0 = DB25 pin
-# 2, ground on DB25 18-25); or a position in GPIO_PINS (pin 1 = BCM 17 on the
-# defaults). Timing-Tests prints the connector pin it resolves to — probe that.
+# 2, ground on DB25 18-25); a position in GPIO_PINS (pin 1 = BCM 17 on the
+# defaults); an FT232H D-bus line (pin 1 = AD0); or a position in the T4's
+# DIO4-DIO11 (pin 1 = DIO4 = screw terminal FIO4). Timing-Tests prints the
+# connector pin it resolves to — probe that.
 #
-# Pi GPIO swings 0-3.3 V, not 5 V. Verify the recorder triggers at 3.3 V on a
-# short run before committing to a long capture. Parallel and DLP-IO8 are 5 V.
+# Pi GPIO swings 0-3.3 V, not 5 V, as do the FT232H and the T4. Verify the
+# recorder triggers at 3.3 V on a short run before committing to a long capture.
+# Parallel and DLP-IO8 are 5 V.
 TRIGGER_DEVICE="${TRIGGER_DEVICE:-dlpio8}"
 TRIGGER_PIN="${TRIGGER_PIN:-1}"
 PARALLEL_PORT="${PARALLEL_PORT:-}"   # empty = first accessible /dev/parportN
 GPIO_CHIP="${GPIO_CHIP:-/dev/gpiochip0}"
 GPIO_PINS="${GPIO_PINS:-17,27,22,5,6,13,19,26}"
+LABJACK_HOST="${LABJACK_HOST:-}"     # no auto-detect: the T4 is reached by address
 # 200 ms, matching the TTL pulse Bridges et al. (2020) sent alongside the
 # stimulus — the same reason FRAMES_ON/TONE_HZ carry their values rather than
 # the binary's. Timing-Tests itself defaults to 5 ms, and this script used to
@@ -241,7 +259,19 @@ case "$TRIGGER_DEVICE" in
 	          ;;
 	gpio)     TRIGGER_ARGS=(-trigger-device gpio -trigger-pin "$TRIGGER_PIN"
 	                        -gpio-chip "$GPIO_CHIP" -gpio-pins "$GPIO_PINS") ;;
-	*)        echo "error: TRIGGER_DEVICE must be dlpio8, parallel or gpio (got '$TRIGGER_DEVICE')" >&2; exit 1 ;;
+	ft232h)   TRIGGER_ARGS=(-trigger-device ft232h -trigger-pin "$TRIGGER_PIN") ;;
+	labjackt4)
+	          # Refuse here rather than let Timing-Tests refuse: this script runs
+	          # several steps in sequence, and the address is missing for all of
+	          # them, so failing at the first is the whole session wasted.
+	          if [ -z "$LABJACK_HOST" ]; then
+	          	echo "error: TRIGGER_DEVICE=labjackt4 needs LABJACK_HOST (e.g. LABJACK_HOST=192.168.1.100)" >&2
+	          	exit 1
+	          fi
+	          TRIGGER_ARGS=(-trigger-device labjackt4 -trigger-pin "$TRIGGER_PIN"
+	                        -labjack-host "$LABJACK_HOST")
+	          ;;
+	*)        echo "error: TRIGGER_DEVICE must be dlpio8, parallel, gpio, ft232h or labjackt4 (got '$TRIGGER_DEVICE')" >&2; exit 1 ;;
 esac
 
 case "$TRIGGER_MS" in
@@ -465,6 +495,14 @@ case "$TRIGGER_DEVICE" in
 		;;
 	parallel)
 		echo "Trigger: parallel ${PARALLEL_PORT:-(first accessible /dev/parportN)}, -trigger-pin $TRIGGER_PIN, ${TRIGGER_MS} ms pulse"
+		;;
+	ft232h)
+		echo "Trigger: ft232h (USB, MPSSE), -trigger-pin $TRIGGER_PIN = AD$((TRIGGER_PIN - 1)), ${TRIGGER_MS} ms pulse"
+		echo "         (3.3 V lines — confirm the recorder triggers at 3.3 V on a short run)"
+		;;
+	labjackt4)
+		echo "Trigger: labjackt4 $LABJACK_HOST (Modbus TCP), -trigger-pin $TRIGGER_PIN = DIO$((TRIGGER_PIN + 3)), ${TRIGGER_MS} ms pulse"
+		echo "         (3.3 V lines, and the write crosses the network — confirm both on a short run)"
 		;;
 	*)
 		echo "Trigger: dlpio8 (USB serial), -trigger-pin $TRIGGER_PIN, ${TRIGGER_MS} ms pulse"
