@@ -18,10 +18,11 @@
 //
 // Flags:
 //
-//	-w <px>    bar width in pixels  (default 4)
-//	-v <px/s>  speed in pixels/sec  (default 800)
-//	-d         windowed developer mode
-//	-s <id>    subject ID
+//	-bar-width <px>  bar width in pixels  (default 4)
+//	-v <px/s>        speed in pixels/sec  (default 800)
+//	-w               windowed mode (1024×768 instead of fullscreen)
+//	-d <n>           display index where the window opens (-1 = primary)
+//	-s <id>          subject ID
 package main
 
 import (
@@ -91,7 +92,11 @@ func vertBar(screen *apparatus.Screen, cx, w float32, color sdl.Color) {
 // ── Entry point ───────────────────────────────────────────────────────────────
 
 func main() {
-	barWidthFlag := flag.Float64("w", 4, "bar width in pixels")
+	// Not -w: that name belongs to the framework's windowed-mode flag, which
+	// NewExperimentFromFlags registers below on the same flag.CommandLine.
+	// Defining it here too panicked the program at startup ("flag redefined: w")
+	// before it could draw anything.
+	barWidthFlag := flag.Float64("bar-width", 4, "bar width in pixels")
 	speedFlag := flag.Float64("v", 800, "speed in pixels per second")
 
 	exp := control.NewExperimentFromFlags("Tearing Test", control.Black, control.White, hudFontSize)

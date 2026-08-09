@@ -5,7 +5,7 @@ checks whose results are analysed by hand to verify performance, rather than
 full experiments. (Programs that merely demonstrate a feature are **demos** and
 live in [`../examples/`](../examples/) with a `demo_` prefix.)
 
-- **Timing & display** — `Timing-Tests`, `tearing_test`, `test_av_sync`, `test_vsync_blocking`, `set_fullscreen`, `test_fullscreen`.
+- **Timing & display** — `Timing-Tests`, `test_tearing`, `test_av_sync`, `test_vsync_blocking`, `set_fullscreen`, `test_fullscreen`.
 - **Hardware triggers / I/O** — `test_parallel_port`, `test_ft232h`, `test_labjackt4`, `test_linuxgpio`.
 - **Display / TTL sync** — `GvFiles`, `test_stream_trigger` (photodiode + oscilloscope checks).
 

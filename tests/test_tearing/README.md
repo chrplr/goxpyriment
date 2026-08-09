@@ -4,19 +4,24 @@ Displays a full-height vertical white bar sweeping horizontally across a black s
 
 ## Usage
 
+Name the package, not `main.go` — naming the file compiles only that file:
+
 ```bash
-go run main.go              # fullscreen, default parameters
-go run main.go -w           # windowed mode (1024×768)
-go run main.go -w 8 -v 1200 # 8 px wide bar at 1200 px/s
+go run .                          # fullscreen, default parameters
+go run . -w                       # windowed mode (1024×768)
+go run . -bar-width 8 -v 1200     # 8 px wide bar at 1200 px/s
 ```
 
 | Flag | Default | Meaning |
 |------|---------|---------|
-| `-w` | 4 | Bar width in pixels |
+| `-bar-width` | 4 | Bar width in pixels |
 | `-v` | 800 | Speed in pixels per second |
 | `-w` | — | Windowed mode (1024×768 window instead of fullscreen) |
 | `-d N` | -1 | Display ID: monitor index where window/fullscreen opens (-1 = primary) |
 | `-s` | — | Subject ID |
+
+`-w` is the framework's windowed-mode flag on every example and test; bar width
+is `-bar-width` because of it.
 
 Runtime keys: **↑/↓** adjust speed · **←/→** adjust width · **ESC/Q** quit.
 

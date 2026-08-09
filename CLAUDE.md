@@ -140,7 +140,7 @@ The distinction is **what you do with the output**, and it maps to the two folde
 - **`examples/`** holds two `meta.yaml` categories:
   - **`experiment`** — a real paradigm that records behavioural data (e.g. `Stroop_task`, `parity_decision`).
   - **`demo`** — a short program that demonstrates the use of a feature/function; nothing is measured (illusions, minimal templates, single-widget showcases). **Demo directories are prefixed `demo_`** (e.g. `demo_hello_world`, `demo_menu`, `demo_stream_images`) so they stand out when browsing `examples/`.
-- **`tests/`** holds only **`test`** — programs whose *results are analysed to check performance*, typically timing or hardware: timing/display (`Timing-Tests`, `tearing_test`, `test_av_sync`, `test_vsync_blocking`, `set_fullscreen`) and hardware triggers (`test_parallel_port`, `test_ft232h`, `test_labjackt4`, `test_linuxgpio`, plus `GvFiles`/`test_stream_trigger` for photodiode/TTL sync). These are run and inspected by hand, not via `go test`. **Naming convention: prefix with `test_`** and use underscores.
+- **`tests/`** holds only **`test`** — programs whose *results are analysed to check performance*, typically timing or hardware: timing/display (`Timing-Tests`, `test_tearing`, `test_av_sync`, `test_vsync_blocking`, `set_fullscreen`) and hardware triggers (`test_parallel_port`, `test_ft232h`, `test_labjackt4`, `test_linuxgpio`, plus `GvFiles`/`test_stream_trigger` for photodiode/TTL sync). These are run and inspected by hand, not via `go test`. **Naming convention: prefix with `test_`** and use underscores.
 
 Rule of thumb: *demonstrates how to use a function* → `demo` in `examples/`; *measures whether something performs* → `test` in `tests/`.
 

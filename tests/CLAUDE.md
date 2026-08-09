@@ -8,7 +8,7 @@ belongs here when its **results are analysed to gauge performance** — typicall
 or hardware behaviour. They are built and run against real hardware/displays and
 inspected visually. They fall into two groups:
 
-- **Timing / display** — `Timing-Tests`, `tearing_test`, `test_av_sync`,
+- **Timing / display** — `Timing-Tests`, `test_tearing`, `test_av_sync`,
   `test_vsync_blocking`, `set_fullscreen`, `test_fullscreen` …
 - **Hardware** — `test_parallel_port`, `test_ft232h`, `test_labjackt4`,
   `test_linuxgpio`, plus `GvFiles` and `test_stream_trigger` (photodiode / TTL

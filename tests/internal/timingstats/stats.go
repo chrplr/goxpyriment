@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0 (see LICENSE.txt).
 
 // Package timingstats provides frame-interval statistics helpers shared by
-// tearing_test and Timing-Tests.
+// test_tearing and Timing-Tests.
 package timingstats
 
 import (
