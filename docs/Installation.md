@@ -148,15 +148,9 @@ start trusting its timing.
 The procedure is in [Setting priority under
 Linux](SettingPriorityUnderLinux.md): create a group, add a file to
 `/etc/security/limits.d/`, add yourself to the group, then **log out and log
-back in** — the limits are read at login, so a new terminal is not enough.
+back in**.
 
-Two things that catch people out:
-
-- Add a *new file* under `/etc/security/limits.d/`, rather than editing
-  `/etc/security/limits.conf`. The latter is package-managed and can be
-  replaced on upgrade, silently taking your setting with it.
-- If your editor cannot write to `/etc` it may fail without saying so.
-  Check the file afterwards with
+ Check the file afterwards with
   `grep rtprio /etc/security/limits.d/*.conf`, and check the grant is live
   with `ulimit -r` after logging back in — it should print your chosen
   priority, not `0`.

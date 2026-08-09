@@ -147,30 +147,7 @@ Log the flip timestamp on every trial and put it in the data file.
 
 ## Measure over a realistic run length, not a pilot
 
-This is the trap that caught the author of this page, twice.
-
-Trial to trial the delay is extremely stable: the median step between
-consecutive trials is **0.06 ms**. Sample thirteen trials and the sd comes out
-at 0.38 ms, which looks superb. Sample 598 — five minutes, a realistic block —
-and it is **2.34 ms**, six times worse.
-
-Nothing changed except the observation window. The delay sits on a plateau,
-drifting by tens of microseconds per trial, and then jumps:
-
-| trial-to-trial step | value |
-|---|---|
-| median | 0.06 ms |
-| p95 | 3.01 ms |
-| max | 16.47 ms (one frame) |
-| steps > 1 ms | 82 of 597 |
-| steps > 3 ms | 30 of 597 |
-
-Over 598 trials the delay ranged from 14 to 27 ms, with two excursions to 38 ms.
-The jumps are not all whole frames — 3.3, 4.0, 6.5, 10.5 and 16.5 ms all occur —
-so a dropped frame is not the explanation. The next section is.
-
-**A short pilot will tell you the timing is excellent, and it will be wrong.**
-Measure over the length of a real block.
+**A short pilot can tell you the timing is excellent, and it will be wrong.**:  Measure over the length of a real block (5~10min).
 
 ## The jitter is in the timestamp, not in the display
 
