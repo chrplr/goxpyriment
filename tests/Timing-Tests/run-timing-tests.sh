@@ -14,7 +14,7 @@
 #   ./run-timing-tests.sh -l              # list step names and exit
 #
 # Environment overrides:
-#   SDL_AUDIODRIVER   audio backend            (default: alsa)
+#   SDL_AUDIODRIVER   audio backend            (default: unset = SDL picks)
 #   AUDIO_BUFFSIZE    hardware buffer, frames  (default: 512)
 #   REFRESH_HZ        expected refresh rate    (default: 60)
 #   OUTDIR            session directory        (default: reports-<hostname>)
@@ -77,9 +77,23 @@ set -u
 # crashed would look like it succeeded and leave a truncated report behind.
 set -o pipefail
 
-# SDL reads these from the *environment*, so they must be exported — a plain
+# SDL reads this from the *environment*, so it must be exported — a plain
 # assignment never reaches the binary.
-export SDL_AUDIODRIVER="${SDL_AUDIODRIVER:-alsa}"
+#
+# Left UNSET by default, so SDL probes and picks a backend that works on this
+# machine. This used to force alsa, which suited the reference desktop but on a
+# Raspberry Pi running PipeWire produced no sound at all: the device opened, the
+# tones went nowhere, no error was reported and the run exited normally
+# (diagnosed 2026-08-09). Silence that reports success is the worst failure mode
+# available to an audio measurement, and hard-coding one machine's backend is
+# the wrong default for a harness whose purpose is comparing machines.
+#
+# Comparability does not depend on pinning it here: the driver SDL actually
+# chose is written into every results file as `sys audio_driver:`. Set
+# SDL_AUDIODRIVER (alsa, pipewire, pulseaudio, …) to pin it deliberately.
+if [ -n "${SDL_AUDIODRIVER:-}" ]; then
+	export SDL_AUDIODRIVER
+fi
 # 512 frames (11.6 ms at 44100 Hz) rather than 256: at 256 the ALSA path
 # underran repeatedly on the reference rig, and a dropped buffer corrupts tone
 # onsets far more than the coarser quantisation does. This sets the floor on
@@ -402,7 +416,8 @@ fi
 mkdir -p "$OUTDIR"
 echo "Host:    $HOST"
 echo "Session: $OUTDIR/  (reports, data files and any BBTK captures)"
-echo "Audio:   SDL_AUDIODRIVER=$SDL_AUDIODRIVER  buffer=$AUDIO_BUFFSIZE frames  tone=${TONE_HZ} Hz"
+echo "Audio:   SDL_AUDIODRIVER=${SDL_AUDIODRIVER:-<unset — SDL picks>}  buffer=$AUDIO_BUFFSIZE frames  tone=${TONE_HZ} Hz"
+echo "         (the backend actually opened is recorded as 'sys audio_driver')"
 if [ -n "$DISPLAY_IDX" ]; then
 	echo "Display: -d $DISPLAY_IDX  (check it against ./Timing-Tests -sysinfo)"
 else
