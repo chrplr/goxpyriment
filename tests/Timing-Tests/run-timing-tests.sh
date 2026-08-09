@@ -14,6 +14,7 @@
 #   ./run-timing-tests.sh -l              # list step names and exit
 #
 # Environment overrides:
+#   BIN               binary to run            (default: build ./Timing-Tests)
 #   SDL_AUDIODRIVER   audio backend            (default: unset = SDL picks)
 #   AUDIO_BUFFSIZE    hardware buffer, frames  (default: 512)
 #   REFRESH_HZ        expected refresh rate    (default: 60)
@@ -266,8 +267,19 @@ fi
 TRIGGER_ARGS+=(-trigger-ms "$TRIGGER_MS")
 
 # Overridable so the session plumbing (capture handshake, output paths) can be
-# exercised without opening a fullscreen window on someone's display.
-BIN="${BIN:-./Timing-Tests}"
+# exercised without opening a fullscreen window on someone's display. Supplying
+# BIN also suppresses the build below — the caller is then responsible for what
+# it points at.
+#
+# The default is resolved against the script's own directory rather than the
+# working directory, so it names the same binary however the script is invoked.
+SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)
+if [ -n "${BIN:-}" ]; then
+	BIN_PREBUILT=1
+else
+	BIN="$SCRIPT_DIR/Timing-Tests"
+	BIN_PREBUILT=0
+fi
 HOST=$(hostname -s 2>/dev/null || hostname)
 # Everything a session produces goes here, under the directory the script was
 # launched from: console reports, the .csv/-info.txt data files (via -outdir),
@@ -283,6 +295,28 @@ STEPS="sysinfo check display display-gc av av-gc av-visual latency"
 if [ "${1:-}" = "-l" ]; then
 	echo "Steps: $STEPS"
 	exit 0
+fi
+
+# Build the binary this session is about to run.
+#
+# $BIN is NOT what build-all.sh or `make tests` produce — those write to
+# _build/ and never touch this directory. A binary left here by an earlier
+# `go build .` is therefore invisible to both, and survives a git pull intact:
+# on 2026-08-09 a long debugging session went into a GPIO fault that had already
+# been fixed in the tree, because this script kept running the binary from
+# before the fix while a freshly built test program worked correctly.
+#
+# Rebuilding costs nothing when nothing changed (Go caches), and it removes the
+# only way this harness can report measurements from code that is not the code
+# in the working tree. CGO_ENABLED=0 matches build-all.sh and the Makefile.
+if [ "$BIN_PREBUILT" = "0" ]; then
+	echo "Building $BIN ..."
+	if ! ( cd "$SCRIPT_DIR" && CGO_ENABLED=0 go build -o "$BIN" . ); then
+		echo "error: failed to build Timing-Tests" >&2
+		echo "       Fix the build before measuring — a session is worth nothing" >&2
+		echo "       if it did not come from the code you think it did." >&2
+		exit 1
+	fi
 fi
 
 SELECTED="$*"
