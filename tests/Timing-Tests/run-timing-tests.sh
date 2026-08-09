@@ -18,12 +18,26 @@
 #   AUDIO_BUFFSIZE    hardware buffer, frames  (default: 512)
 #   REFRESH_HZ        expected refresh rate    (default: 60)
 #   OUTDIR            session directory        (default: reports-<hostname>)
+#   TONE_HZ           tone frequency, Hz       (default: 440)
 #   SQUARE_PX         stimulus square side, px (default: 0 = ¼ of render height)
-#   CYCLES            cycles per av step       (default: 1000)
+#   CYCLES            cycles per av step       (default: 1010 = 1000 + warm-up)
+#   WARMUP            leading cycles discarded (default: 10)
 #   FRAMES_ON         bright frames per cycle  (default: 12)
 #   FRAMES_OFF        dark frames per cycle    (default: 18)
 #   DISPLAY_IDX       monitor index for -d     (default: unset = primary)
 #   EXCLUSIVE_FS      auto | on | off          (default: auto)
+#   TRIGGER_DEVICE    dlpio8 | parallel | gpio (default: dlpio8)
+#   TRIGGER_PIN       output pin 1-8           (default: 1)
+#   PARALLEL_PORT     LPT device path          (default: first accessible one)
+#   GPIO_CHIP         chip device path         (default: /dev/gpiochip0)
+#   GPIO_PINS         8 pins, comma-separated  (default: 17,27,22,5,6,13,19,26)
+#
+# Both TRIGGER_DEVICE=parallel and =gpio write via a local ioctl instead of the
+# default's USB serial link, which keeps the link's latency out of the measured
+# stimulus-onset-vs-TTL figure — parallel on a desktop with an LPT port, gpio on
+# a Raspberry Pi or similar. Wiring and the 3.3 V caveat are described beside
+# those variables below. Verify the pins first with `go run ./tests/test_linuxgpio`
+# or `go run ./tests/test_parallel_port`.
 #
 # DISPLAY_IDX is the index printed by `./Timing-Tests -sysinfo`, NOT an X11/
 # Wayland output name. Index 0 is always the primary, which on a laptop is
@@ -71,12 +85,28 @@ export SDL_AUDIODRIVER="${SDL_AUDIODRIVER:-alsa}"
 # audio-onset precision, so it is recorded in each run's -info.txt.
 AUDIO_BUFFSIZE="${AUDIO_BUFFSIZE:-512}"
 REFRESH_HZ="${REFRESH_HZ:-60}"
+# 440 Hz, the tone Bridges et al. (2020) used, so the audio row of a session can
+# be placed beside their Table 2. Timing-Tests defaults to 1000 Hz and this
+# script used to leave it there, which is why every session recorded before
+# 2026-08-09 carries a 1 kHz tone rather than their 440 Hz. Frequency does not
+# affect onset timing, but it does affect where a microphone or line-out
+# threshold is crossed, so the two are not interchangeable in a comparison.
+TONE_HZ="${TONE_HZ:-440}"
 # Stimulus geometry and length. SQUARE_PX must be large enough that each square's
 # centre clears the bezel, or a photodiode cannot sit where the separation figure
 # assumes it does; CYCLES is worth lowering for a quick placement check before
 # committing to a full pass.
 SQUARE_PX="${SQUARE_PX:-0}"   # 0 = Timing-Tests picks ¼ of the render height
-CYCLES="${CYCLES:-1000}"
+# 1010, not 1000: WARMUP cycles are discarded from the statistics, so 1000 asked
+# for only 990 analysed trials. Bridges et al. report 1000. The warm-up cycles
+# are still PRESENTED — they flash and fire the TTL — so this also lengthens the
+# capture window, which av_seconds below accounts for.
+#
+# WARMUP is passed explicitly rather than left to the binary's default, so the
+# "CYCLES − WARMUP = 1000 analysed" arithmetic is a property of this script and
+# cannot drift if that default changes.
+CYCLES="${CYCLES:-1010}"
+WARMUP="${WARMUP:-10}"
 
 # Cycle composition. The defaults (12 on / 18 off = 200/300 ms at 60 Hz) are what
 # every recorded session so far used, so leave them alone unless the point of the
@@ -113,6 +143,19 @@ for _v in CYCLES FRAMES_ON FRAMES_OFF; do
 done
 unset _v _n
 
+# WARMUP is checked apart from the loop above because zero is a legitimate value
+# here — it means "analyse every cycle" — whereas zero cycles or zero frames is
+# not. The upper bound is the one that matters: Timing-Tests rejects a warm-up
+# that discards every cycle, and catching it here saves opening a fullscreen
+# window (and, with BBTK_CAPTURE=1, spending a capture window) to be told so.
+case "$WARMUP" in
+	'' | *[!0-9]*) echo "error: WARMUP must be a non-negative integer (got '$WARMUP')" >&2; exit 1 ;;
+esac
+if [ "$WARMUP" -ge "$CYCLES" ]; then
+	echo "error: WARMUP=$WARMUP discards all $CYCLES cycles; lower it or raise CYCLES" >&2
+	exit 1
+fi
+
 # Display and presentation mode. Both are passed to EVERY step that opens a
 # window, so a session cannot end up with half its steps on one monitor and half
 # on another — which is exactly what happened on 2026-07-29, invisibly, because
@@ -130,6 +173,52 @@ DISPLAY_ARGS="-exclusive-fullscreen $EXCLUSIVE_FS"
 if [ -n "$DISPLAY_IDX" ]; then
 	DISPLAY_ARGS="$DISPLAY_ARGS -d $DISPLAY_IDX"
 fi
+
+# TTL output device. The default dlpio8 reaches the box over USB serial, which
+# puts the link's latency and jitter between the flip and the TTL edge — inside
+# the stimulus-onset-vs-TTL figure, not cancelling out of it. Both alternatives
+# are a local ioctl and avoid that:
+#
+#   TRIGGER_DEVICE=parallel   an LPT port via ppdev — the pick on a desktop that
+#                             still has one. 5 V logic, so it drives a BBTK or
+#                             EEG input directly.
+#   TRIGGER_DEVICE=gpio       the GPIO header of a single-board computer
+#                             (Raspberry Pi, Rock Pi, …). 3.3 V, see below.
+#
+# Timing-Tests records which device fired in the results header, because the
+# three do not yield the same number.
+#
+# TRIGGER_PIN is 1-8 on all three, but it names something different on each:
+# a DLP-IO8 terminal-block number; a parallel data line (pin 1 = D0 = DB25 pin
+# 2, ground on DB25 18-25); or a position in GPIO_PINS (pin 1 = BCM 17 on the
+# defaults). Timing-Tests prints the connector pin it resolves to — probe that.
+#
+# Pi GPIO swings 0-3.3 V, not 5 V. Verify the recorder triggers at 3.3 V on a
+# short run before committing to a long capture. Parallel and DLP-IO8 are 5 V.
+TRIGGER_DEVICE="${TRIGGER_DEVICE:-dlpio8}"
+TRIGGER_PIN="${TRIGGER_PIN:-1}"
+PARALLEL_PORT="${PARALLEL_PORT:-}"   # empty = first accessible /dev/parportN
+GPIO_CHIP="${GPIO_CHIP:-/dev/gpiochip0}"
+GPIO_PINS="${GPIO_PINS:-17,27,22,5,6,13,19,26}"
+
+# An array, unlike the string $DISPLAY_ARGS above, so the expansion below can be
+# quoted: the steps that use it sit inside a `step … && run_recorded …` chain,
+# where a `# shellcheck disable=SC2086` directive cannot be placed (it would fall
+# mid-command). "${TRIGGER_ARGS[@]}" needs no suppression and cannot word-split a
+# path containing a space.
+case "$TRIGGER_DEVICE" in
+	dlpio8)   TRIGGER_ARGS=(-trigger-device dlpio8 -trigger-pin "$TRIGGER_PIN") ;;
+	parallel) TRIGGER_ARGS=(-trigger-device parallel -trigger-pin "$TRIGGER_PIN")
+	          # Only pass -parallel-port when set: empty would be a literal
+	          # empty argument, not the "auto-detect" the binary means by it.
+	          if [ -n "$PARALLEL_PORT" ]; then
+	          	TRIGGER_ARGS+=(-parallel-port "$PARALLEL_PORT")
+	          fi
+	          ;;
+	gpio)     TRIGGER_ARGS=(-trigger-device gpio -trigger-pin "$TRIGGER_PIN"
+	                        -gpio-chip "$GPIO_CHIP" -gpio-pins "$GPIO_PINS") ;;
+	*)        echo "error: TRIGGER_DEVICE must be dlpio8, parallel or gpio (got '$TRIGGER_DEVICE')" >&2; exit 1 ;;
+esac
 
 # Overridable so the session plumbing (capture handshake, output paths) can be
 # exercised without opening a fullscreen window on someone's display.
@@ -282,18 +371,31 @@ fi
 mkdir -p "$OUTDIR"
 echo "Host:    $HOST"
 echo "Session: $OUTDIR/  (reports, data files and any BBTK captures)"
-echo "Audio:   SDL_AUDIODRIVER=$SDL_AUDIODRIVER  buffer=$AUDIO_BUFFSIZE frames"
+echo "Audio:   SDL_AUDIODRIVER=$SDL_AUDIODRIVER  buffer=$AUDIO_BUFFSIZE frames  tone=${TONE_HZ} Hz"
 if [ -n "$DISPLAY_IDX" ]; then
 	echo "Display: -d $DISPLAY_IDX  (check it against ./Timing-Tests -sysinfo)"
 else
 	echo "Display: primary (set DISPLAY_IDX to target another monitor)"
 fi
 echo "         fullscreen mode: $EXCLUSIVE_FS  (recorded as sys fullscreen_mode)"
+case "$TRIGGER_DEVICE" in
+	gpio)
+		echo "Trigger: gpio $GPIO_CHIP pins=$GPIO_PINS, -trigger-pin $TRIGGER_PIN"
+		echo "         (3.3 V lines — confirm the recorder triggers at 3.3 V on a short run)"
+		;;
+	parallel)
+		echo "Trigger: parallel ${PARALLEL_PORT:-(first accessible /dev/parportN)}, -trigger-pin $TRIGGER_PIN"
+		;;
+	*)
+		echo "Trigger: dlpio8 (USB serial), -trigger-pin $TRIGGER_PIN"
+		;;
+esac
 if [ "$SQUARE_PX" -eq 0 ]; then
 	echo "Stim:    squares sized to ¼ of the render height, $CYCLES cycles per av step"
 else
 	echo "Stim:    ${SQUARE_PX} px squares, $CYCLES cycles per av step"
 fi
+echo "         ($CYCLES presented, first $WARMUP discarded as warm-up: $((CYCLES - WARMUP)) analysed)"
 # Print the cycle in frames AND milliseconds: the frame counts are what the flags
 # carry, but the millisecond figures are what a reader of the report needs, and
 # they depend on REFRESH_HZ.
@@ -360,14 +462,16 @@ step latency "audio pipeline latency" &&
 step av "visual+audio+TTL, GC SUSPENDED (${AV_SECONDS} s)" &&
 	run_recorded av-gc-off "$AV_SECONDS" \
 		-test av -audio-frames "$AUDIO_BUFFSIZE" -hz "$REFRESH_HZ" \
+		-freq-hz "$TONE_HZ" "${TRIGGER_ARGS[@]}" \
 		-frames-on "$FRAMES_ON" -frames-off "$FRAMES_OFF" \
-		-cycles "$CYCLES" -square-px "$SQUARE_PX"
+		-cycles "$CYCLES" -warmup "$WARMUP" -square-px "$SQUARE_PX"
 
 step av-gc "visual+audio+TTL, GC RUNNING (${AV_SECONDS} s)" &&
 	run_recorded av-gc-on "$AV_SECONDS" \
 		-test av -audio-frames "$AUDIO_BUFFSIZE" -hz "$REFRESH_HZ" \
+		-freq-hz "$TONE_HZ" "${TRIGGER_ARGS[@]}" \
 		-frames-on "$FRAMES_ON" -frames-off "$FRAMES_OFF" \
-		-cycles "$CYCLES" -square-px "$SQUARE_PX" -gc
+		-cycles "$CYCLES" -warmup "$WARMUP" -square-px "$SQUARE_PX" -gc
 
 # ── Photodiode only: visual path in isolation, no audio device, no trigger.
 #                    Isolates the display when the combined run looks wrong.
@@ -375,7 +479,7 @@ step av-visual "visual only, no audio, no TTL (${AV_SECONDS} s)" &&
 	run_recorded av-visual "$AV_SECONDS" \
 		-test av -no-sound -no-ttl \
 		-frames-on "$FRAMES_ON" -frames-off "$FRAMES_OFF" \
-		-cycles "$CYCLES" -square-px "$SQUARE_PX"
+		-cycles "$CYCLES" -warmup "$WARMUP" -square-px "$SQUARE_PX"
 
 # ── Response timing. COMMENTED OUT until the BBTK response actuator
 #            arrives (expected ~mid-August 2026).

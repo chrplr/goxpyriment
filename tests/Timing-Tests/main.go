@@ -97,6 +97,8 @@ import (
 	"os"
 	"os/signal"
 	"runtime/debug"
+	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
@@ -112,8 +114,12 @@ import (
 
 var (
 	fTest        = flag.String("test", "av", "Sub-test: av | vrr | rt | check | display | latency")
-	fPort        = flag.String("port", "", "Serial port for DLP-IO8-G (empty = auto-detect)")
-	fTriggerPin  = flag.Int("trigger-pin", 1, "DLP-IO8-G output pin (1–8)")
+	fTrigDevice  = flag.String("trigger-device", "dlpio8", "TTL output device: dlpio8 (USB serial) | parallel (LPT port via ppdev) |\n\tgpio (Linux GPIO character device).\n\tdlpio8 crosses a USB link, which adds latency and jitter between the flip and\n\tthe TTL edge; parallel and gpio are both a local ioctl and do not. Prefer\n\tparallel on a desktop with an LPT port, gpio on a single-board computer\n\t(Raspberry Pi, Rock Pi, …). Recorded as 'trigger' in the results header.")
+	fPort        = flag.String("port", "", "Serial port for DLP-IO8-G (empty = auto-detect) [trigger-device=dlpio8]")
+	fParPort     = flag.String("parallel-port", "", "Parallel port device, e.g. /dev/parport0 (empty = first accessible one)\n\t[trigger-device=parallel]. -trigger-pin selects the data line: pin 1 is D0,\n\twhich is DB25 pin 2.")
+	fGPIOChip    = flag.String("gpio-chip", "/dev/gpiochip0", "GPIO chip device path [trigger-device=gpio]")
+	fGPIOPins    = flag.String("gpio-pins", "17,27,22,5,6,13,19,26", "The 8 GPIO output pins, comma-separated, chip-relative (BCM numbering on a\n\tRaspberry Pi) [trigger-device=gpio]. -trigger-pin selects among them: pin 1 is\n\tthe first in this list.")
+	fTriggerPin  = flag.Int("trigger-pin", 1, "Output pin (1–8). On dlpio8 this is the number on the terminal block;\n\ton gpio it is the position in -gpio-pins, NOT the BCM number.")
 	fTriggerMs   = flag.Int("trigger-ms", 5, "Trigger pulse duration (ms)")
 	fCycles      = flag.Int("cycles", 120, "Number of cycles [av / rt]")
 	fLevelA      = flag.Int("level-a", 0, "Dark luminance 0–255 (surround) [av / vrr]")
@@ -317,7 +323,29 @@ func fillGray(exp *control.Experiment, paint paintFunc, level byte) (tBefore, tA
 
 // ── Trigger setup ──────────────────────────────────────────────────────────────
 
+// setupTrigger opens the TTL output device named by -trigger-device.
+//
+// It returns the device and a one-line description of what was actually opened.
+// The description is written to the results header rather than merely printed:
+// the two devices do not produce the same trigger→luminance figure — a DLP-IO8
+// write crosses a USB serial link, a GPIO write is an ioctl on a local chip —
+// so which one fired is part of the measurement, not a detail of the session.
+// An empty description means no device was opened.
 func setupTrigger() (triggers.OutputTTLDevice, string) {
+	switch *fTrigDevice {
+	case "dlpio8":
+		return setupDLPIO8()
+	case "parallel":
+		return setupParallel()
+	case "gpio":
+		return setupGPIO()
+	default:
+		log.Fatalf("-trigger-device %q: choose dlpio8, parallel or gpio", *fTrigDevice)
+		return nil, "" // unreachable; log.Fatalf exits
+	}
+}
+
+func setupDLPIO8() (triggers.OutputTTLDevice, string) {
 	var trig triggers.OutputTTLDevice
 	var portName string
 	var err error
@@ -336,11 +364,110 @@ func setupTrigger() (triggers.OutputTTLDevice, string) {
 			log.Printf("warning: DLP-IO8 auto-detect: %v — triggers disabled", err)
 		}
 	}
-	if portName != "" {
-		fmt.Printf("DLP-IO8-G found on %s (trigger pin %d, pulse %d ms)\n",
-			portName, *fTriggerPin, *fTriggerMs)
+	if portName == "" {
+		return trig, ""
 	}
-	return trig, portName
+	fmt.Printf("DLP-IO8-G found on %s (trigger pin %d, pulse %d ms)\n",
+		portName, *fTriggerPin, *fTriggerMs)
+	return trig, fmt.Sprintf("dlpio8 port=%s pin=%d", portName, *fTriggerPin)
+}
+
+func setupParallel() (triggers.OutputTTLDevice, string) {
+	device := *fParPort
+	if device == "" {
+		ports := triggers.AvailableParallelPorts()
+		if len(ports) == 0 {
+			log.Printf("warning: no accessible parallel port found — triggers disabled")
+			log.Printf("         (needs Linux with the ppdev module loaded, and rw access:")
+			log.Printf("          sudo modprobe ppdev; sudo usermod -aG lp $USER, then log in again)")
+			return triggers.NullOutputTTLDevice{}, ""
+		}
+		// Report the choice rather than making it silently: a machine with two
+		// LPT ports would otherwise fire whichever enumerated first, and the
+		// trace gives no clue which one that was.
+		device = ports[0]
+		if len(ports) > 1 {
+			fmt.Printf("parallel: %d ports accessible %v — using the first; pass -parallel-port to choose\n",
+				len(ports), ports)
+		}
+	}
+
+	p := triggers.NewParallelPort(device)
+	if err := p.Open(); err != nil {
+		log.Printf("warning: parallel port %s: %v — triggers disabled", device, err)
+		return triggers.NullOutputTTLDevice{}, ""
+	}
+
+	// D0-D7 are DB25 pins 2-9, so the connector pin is the line index + 2.
+	// Print it: the data-line number is what the API takes, but the DB25 pin is
+	// what the probe clips onto, and confusing the two is a silent miswiring.
+	line := triggerLine()
+	fmt.Printf("Parallel port %s opened (trigger pin %d = D%d = DB25 pin %d, pulse %d ms)\n",
+		device, *fTriggerPin, line, line+2, *fTriggerMs)
+	fmt.Printf("  ground is any of DB25 pins 18-25.\n")
+	return p, fmt.Sprintf("parallel device=%s pin=%d line=D%d db25=%d",
+		device, *fTriggerPin, line, line+2)
+}
+
+func setupGPIO() (triggers.OutputTTLDevice, string) {
+	pins, err := parsePins(*fGPIOPins)
+	if err != nil {
+		log.Fatalf("-gpio-pins %q: %v", *fGPIOPins, err)
+	}
+
+	dev, err := triggers.NewLinuxGPIOTrigger(
+		triggers.WithGPIOChip(*fGPIOChip),
+		triggers.WithGPIOOutputPins(pins),
+	)
+	if err != nil {
+		// Matches the DLP-IO8 path: warn and continue without triggers rather
+		// than exiting, so the visual measurement of a run is still obtained.
+		// Watch for it — a run that loses its TTL still exits zero, and with
+		// BBTK_CAPTURE=1 that spends a capture window on an untriggered trace.
+		log.Printf("warning: GPIO on %s: %v — triggers disabled", *fGPIOChip, err)
+		log.Printf("         (needs Linux, kernel >= 5.10, and rw access to the chip:")
+		log.Printf("          sudo usermod -aG gpio $USER, then log in again)")
+		return triggers.NullOutputTTLDevice{}, ""
+	}
+
+	// Print the pin actually driven, not just its index. -trigger-pin is a
+	// position in -gpio-pins, so on the defaults -trigger-pin 1 is BCM 17 — a
+	// number nowhere in the command line, and the one to put the probe on.
+	bcm := pins[triggerLine()]
+	fmt.Printf("GPIO %s opened, output pins %v\n", *fGPIOChip, pins)
+	fmt.Printf("  trigger pin %d = chip line %d (BCM %d on a Raspberry Pi), pulse %d ms\n",
+		*fTriggerPin, bcm, bcm, *fTriggerMs)
+	fmt.Printf("  NOTE: these lines swing 0–3.3 V, not 5 V. Check that your recorder's\n")
+	fmt.Printf("        TTL input triggers at 3.3 V before committing to a long capture.\n")
+	return dev, fmt.Sprintf("gpio chip=%s pin=%d line=%d pins=%v",
+		*fGPIOChip, *fTriggerPin, bcm, pins)
+}
+
+// parsePins parses a comma-separated list of exactly 8 GPIO pin numbers.
+func parsePins(s string) ([8]int, error) {
+	parts := strings.Split(s, ",")
+	if len(parts) != 8 {
+		return [8]int{}, fmt.Errorf("expected 8 comma-separated pin numbers, got %d", len(parts))
+	}
+	var pins [8]int
+	seen := make(map[int]int, 8)
+	for i, p := range parts {
+		n, err := strconv.Atoi(strings.TrimSpace(p))
+		if err != nil {
+			return [8]int{}, fmt.Errorf("pin %d: %w", i+1, err)
+		}
+		if n < 0 {
+			return [8]int{}, fmt.Errorf("pin %d: %d is negative", i+1, n)
+		}
+		// A duplicate would make two -trigger-pin values drive the same line,
+		// which is invisible in the trace and would be read as a wiring fault.
+		if first, dup := seen[n]; dup {
+			return [8]int{}, fmt.Errorf("pin %d repeats line %d, already given as pin %d", i+1, n, first)
+		}
+		seen[n] = i + 1
+		pins[i] = n
+	}
+	return pins, nil
 }
 
 // printStatsVsMean reports a series against its own measured mean rather than a
@@ -1082,7 +1209,7 @@ func main() {
 	// audio device inside NewExperimentFromFlags. flag.Parse() is idempotent;
 	// NewExperimentFromFlags will call it again harmlessly.
 	flag.Parse()
-	checkTriggerPin()
+	checkTriggerFlags()
 	if *fSysInfo {
 		sysinfo.Collect().Print()
 		// SDL's own view, which sysinfo cannot supply: the display indices -d
@@ -1152,8 +1279,14 @@ func main() {
 		exp.Data.WriteComment("gc=" + gcLabel())
 	}
 
-	trig, _ := setupTrigger()
+	trig, trigDesc := setupTrigger()
 	defer trig.Close()
+	if exp.Data != nil {
+		if trigDesc == "" {
+			trigDesc = "none"
+		}
+		exp.Data.WriteComment("trigger=" + trigDesc)
+	}
 
 	var runErr error
 	switch *fTest {
@@ -1204,10 +1337,23 @@ func main() {
 // signal at the default, a clean 5.05 V square wave at -trigger-pin 0.
 func triggerLine() int { return *fTriggerPin - 1 }
 
-// checkTriggerPin rejects a pin outside the terminal block before a run starts.
-func checkTriggerPin() {
+// checkTriggerFlags rejects an unusable trigger configuration before a run
+// starts — that is, before Initialize opens a fullscreen window and, under
+// BBTK_CAPTURE, before a capture window has been spent. Every check here is one
+// that would otherwise surface from setupTrigger, which runs too late to be
+// anything but a black screen and a log line.
+func checkTriggerFlags() {
 	if *fTriggerPin < 1 || *fTriggerPin > 8 {
-		log.Fatalf("-trigger-pin %d is out of range: the DLP-IO8 terminal block "+
-			"is numbered 1 to 8", *fTriggerPin)
+		log.Fatalf("-trigger-pin %d is out of range: both devices expose 8 lines, "+
+			"numbered 1 to 8", *fTriggerPin)
+	}
+	switch *fTrigDevice {
+	case "dlpio8", "parallel":
+	case "gpio":
+		if _, err := parsePins(*fGPIOPins); err != nil {
+			log.Fatalf("-gpio-pins %q: %v", *fGPIOPins, err)
+		}
+	default:
+		log.Fatalf("-trigger-device %q: choose dlpio8, parallel or gpio", *fTrigDevice)
 	}
 }

@@ -244,8 +244,12 @@ these tests (TTL→photodiode, scan-out, AV sync) stands as recorded.
 | `-vrr-max-ms` | 20 | Longest duration the `vrr` sweep targets, in 1 ms steps |
 | `-vrr-reps` | 5 | Repetitions per duration step (`vrr`) |
 | `-warmup` | 10 | Leading cycles discarded from statistics |
-| `-port` | auto | Serial port for the DLP-IO8-G |
-| `-trigger-pin` | 1 | DLP-IO8-G output pin (1–8) |
+| `-trigger-device` | `dlpio8` | TTL output: `dlpio8` (USB serial) \| `parallel` (LPT via ppdev) \| `gpio` (Linux GPIO chip) |
+| `-port` | auto | Serial port for the DLP-IO8-G (`-trigger-device dlpio8`) |
+| `-parallel-port` | auto | LPT device, e.g. `/dev/parport0` (`-trigger-device parallel`) |
+| `-gpio-chip` | `/dev/gpiochip0` | GPIO chip device (`-trigger-device gpio`) |
+| `-gpio-pins` | `17,27,22,5,6,13,19,26` | The 8 GPIO output lines, chip-relative — BCM numbers on a Pi (`-trigger-device gpio`) |
+| `-trigger-pin` | 1 | Output pin (1–8) — see the note below on what it names |
 | `-trigger-ms` | 5 | Trigger pulse duration, ms |
 | `-d` | -1 | Display index (-1 = primary) |
 | `-w` | false | Windowed mode — debugging only, never for measurement |
@@ -292,12 +296,46 @@ Lower it only after confirming the underruns are gone.
 | Test | Needs |
 |---|---|
 | `check`, `display`, `latency` | Nothing |
-| `av` | Photodiode + DLP-IO8-G (either alone still works — use `-no-sound` / `-no-ttl`) |
+| `av` | Photodiode + a TTL output device (either alone still works — use `-no-sound` / `-no-ttl`) |
 | `vrr` | Photodiode; a VRR-capable display to see any benefit |
 | `rt` | Keyboard or USB response box |
 
 A Black Box ToolKit, an oscilloscope, or any multi-channel recorder works for the
 photodiode and TTL channels.
+
+### Choosing a TTL output device
+
+`-trigger-device` selects among three. They are not interchangeable: the trigger
+is fired right after the flip returns, so whatever the write costs lands between
+the flip and the TTL edge, and in the trial-to-trial *spread* of that interval
+rather than as a constant offset that would cancel.
+
+| Device | Path to the pin | Logic | Use when |
+|---|---|---|---|
+| `dlpio8` | USB serial (FTDI) | 5 V | It is the box you have. Set the FTDI latency timer to 1 ms first — see the DLP-IO8 section of [`docs/TimingTests.md`](../../docs/TimingTests.md) |
+| `parallel` | `ioctl` on ppdev | 5 V | The machine still has an LPT port — the lowest-latency option on a desktop |
+| `gpio` | `ioctl` on a GPIO chip | **3.3 V** | Raspberry Pi, Rock Pi, or any SBC with a GPIO header |
+
+`-trigger-pin` is 1–8 for all three but names something different in each, so
+check what the program prints and probe *that* pin:
+
+- **dlpio8** — the number printed on the terminal block.
+- **parallel** — a data line: pin 1 is D0, which is **DB25 pin 2** (D0–D7 are
+  DB25 pins 2–9). Ground is any of DB25 pins 18–25.
+- **gpio** — a *position in `-gpio-pins`*, not a BCM number: with the default
+  list, pin 1 is **BCM 17**.
+
+Prerequisites on Linux: `parallel` needs the `ppdev` module (`sudo modprobe
+ppdev`) and membership of the `lp` group; `gpio` needs kernel ≥ 5.10 and
+membership of the `gpio` group. Both require a re-login after `usermod`. Verify
+the wiring with [`../test_parallel_port`](../test_parallel_port) or
+[`../test_linuxgpio`](../test_linuxgpio) before a long capture.
+
+**3.3 V is not TTL.** Confirm your recorder actually triggers on the GPIO swing
+with a short run before committing to a 1000-cycle capture.
+
+Whichever is used is written to the results header as `trigger=…`, since the
+three do not produce the same onset-vs-TTL figure.
 
 ---
 

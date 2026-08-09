@@ -214,7 +214,8 @@ This is the one that matters. Every cycle presents all three modalities at once:
   frames, then dark for `-frames-off` frames
 - **Audio** — a tone lasting `frames-on × frame-period`, synchronised to the
   visual onset or offset from it by `-soa-ms`
-- **TTL** — a `-trigger-ms` pulse at the visual onset
+- **TTL** — a `-trigger-ms` pulse at the visual onset, on the device chosen by
+  `-trigger-device` (see below)
 
 ```bash
 # 200 ms on, 300 ms off at 60 Hz, 100 cycles — the defaults
@@ -257,6 +258,57 @@ numbers, and say which cycles you used.
 44100 Hz, tone onsets land on 5.8 ms steps. This appears as a lattice in the
 inter-onset intervals and is not jitter — it is the buffer. Halving the buffer
 halves the step, at the cost of underrun risk.
+
+### Choosing a TTL output device
+
+`-trigger-device` selects among three back-ends. They are **not**
+interchangeable. The trigger is fired immediately after the flip returns, so
+whatever the write costs falls between the flip and the TTL edge — and it shows
+up in the trial-to-trial *spread* of that interval, not as a constant offset you
+could subtract afterwards.
+
+| `-trigger-device` | Path to the pin | Logic | Extra flags |
+|---|---|---|---|
+| `dlpio8` (default) | USB serial (FTDI) | 5 V | `-port` |
+| `parallel` | `ioctl` on ppdev | 5 V | `-parallel-port` |
+| `gpio` | `ioctl` on a GPIO chip | **3.3 V** | `-gpio-chip`, `-gpio-pins` |
+
+`parallel` and `gpio` are both a local `ioctl` and carry none of the USB frame
+scheduling that governs the DLP-IO8's output latency (see the DLP-IO8 section
+below — the FTDI latency timer does *not* fix that). Prefer `parallel` on a
+desktop that still has an LPT port, and `gpio` on a single-board computer.
+
+```bash
+Timing-Tests -test av -trigger-device parallel                     # LPT, auto-detect
+Timing-Tests -test av -trigger-device parallel -parallel-port /dev/parport1
+Timing-Tests -test av -trigger-device gpio                         # /dev/gpiochip0, default pins
+Timing-Tests -test av -trigger-device gpio -gpio-chip /dev/gpiochip4 -trigger-pin 2
+```
+
+**`-trigger-pin` is 1–8 on all three, but it names a different thing on each.**
+Read what the program prints at start-up and probe *that* pin:
+
+- **dlpio8** — the number printed on the terminal block.
+- **parallel** — a data line: pin 1 is D0, which is **DB25 pin 2** (D0–D7 are
+  DB25 pins 2–9). Ground is any of DB25 pins 18–25.
+- **gpio** — a *position in `-gpio-pins`*, not a line number. With the default
+  list `17,27,22,5,6,13,19,26`, pin 1 is **BCM 17**.
+
+Prerequisites on Linux: `parallel` needs `sudo modprobe ppdev` and membership of
+the `lp` group; `gpio` needs kernel ≥ 5.10 and membership of the `gpio` group.
+Both need a re-login after `usermod`. Verify the wiring with
+`tests/test_parallel_port` or `tests/test_linuxgpio` before spending a long
+capture.
+
+Whichever device is used is written into the results header as `trigger=…`,
+because the three do not yield the same onset-vs-TTL figure. A session that does
+not record it cannot be compared with one that does.
+
+> **A device that fails to open does not stop the run.** It logs a warning,
+> disables triggers, and continues — so the visual measurement is still
+> obtained. The trap is that the run then exits *successfully* with no TTL in
+> the trace. Under `BBTK_CAPTURE=1` that spends a capture window on a recording
+> with an empty TTL channel. Watch the start-up lines.
 
 ### Recording it automatically
 
@@ -461,6 +513,11 @@ the window actually opened on.
   device — see the DLP-IO8 section below. Note it does *not* reduce the latency
   of *sending* a trigger; that is USB frame scheduling, which the timer does not
   touch.
+- **Send triggers off the USB bus if you can.** Since the timer above cannot
+  help with output, the fix is a different device:
+  `-trigger-device parallel` on a machine with an LPT port, or
+  `-trigger-device gpio` on a single-board computer. Both write via one `ioctl`.
+  See [Choosing a TTL output device](#choosing-a-ttl-output-device).
 
 **Windows**
 
@@ -499,10 +556,151 @@ use that everywhere — including in your actual experiment.
 
 ---
 
+## Walkthrough: a Raspberry Pi, GPIO triggers, and BBTK capture
+
+A full `run-timing-tests.sh` session on a Raspberry Pi, driving the TTL from the
+GPIO header instead of a USB trigger box and recording it on a Black Box
+ToolKit. The GPIO path matters here: it removes the USB link from between the
+flip and the TTL edge, so what remains in the onset-vs-TTL spread is the Pi's
+display path rather than a serial transaction.
+
+> **None of the steps below have been run on a Pi by the author of this
+> section.** The procedure follows from the flags and the wiring; the numbers it
+> produces are what the session is *for*. Treat any figure quoted from another
+> machine in this document as inapplicable until you have measured this one.
+
+### 1. Find the GPIO chip that owns the 40-pin header
+
+Do not assume `/dev/gpiochip0`. Which chip carries the header varies by Pi model
+and kernel — on some combinations the header is *not* chip 0, and an unrelated
+chip is. Ask the system:
+
+```bash
+sudo apt install gpiod        # once
+gpiodetect                    # lists chips, line counts, and labels
+gpioinfo | less               # per-line names; the header lines are named GPIOnn
+```
+
+Pick the chip whose lines are the header's, and pass it as `GPIO_CHIP`. Getting
+this wrong is not merely inert — another chip's lines may drive real board
+hardware.
+
+### 2. Grant access and verify the wiring
+
+```bash
+sudo usermod -aG gpio $USER   # then log out and back in
+go run ./tests/test_linuxgpio -chip /dev/gpiochip0 -out 17,27,22,5,6,13,19,26
+```
+
+Confirm on a scope or logic analyser that the pin you intend to use actually
+toggles **before** going any further. `test_linuxgpio` exists precisely so that
+a wiring fault is found here rather than in a 1000-cycle capture.
+
+### 3. Wire the TTL and the photodiode
+
+- **TTL** — the header pin for the line you chose, into a BBTK TTL input. With
+  the default `GPIO_PINS`, `TRIGGER_PIN=1` is **BCM 17** (physical pin 11).
+  Ground to any header ground pin. `Timing-Tests` prints the BCM number it
+  resolved to at start-up — probe that one, not the flag value.
+- **Photodiode** — on the **top-left** stimulus square, at the square's centre.
+  The panel scans top-to-bottom, so the bottom squares light nearly a frame
+  later; a second diode on a bottom square measures that gradient.
+
+> **3.3 V is not TTL.** Pi GPIO swings 0–3.3 V. Whether a given BBTK input
+> latches at 3.3 V is a property of that unit — check it with a 20-cycle run and
+> confirm `N(TTLin1)` equals the cycle count before committing to 1000 cycles.
+> If it does not latch, a 3.3 V→5 V level shifter on the trigger line is the
+> fix; do not feed 5 V back into a Pi input.
+
+### 4. Get off the desktop
+
+This is worth more than any flag in this document. On the reference hardware the
+compositor accounted for essentially all of the measured jitter. Run from a bare
+console with no desktop session:
+
+```bash
+sudo systemctl set-default multi-user.target && sudo reboot   # revert with graphical.target
+```
+
+Then, in the console, use the KMS/DRM video driver:
+
+```bash
+export SDL_VIDEODRIVER=kmsdrm
+```
+
+Confirm the refresh rate the Pi is actually driving before trusting any duration
+— `-frames-on 12` is 200 ms only at 60 Hz:
+
+```bash
+./Timing-Tests -test display -duration-s 30
+```
+
+### 5. Run the session
+
+```bash
+cd tests/Timing-Tests
+go build .
+
+TRIGGER_DEVICE=gpio \
+GPIO_CHIP=/dev/gpiochip0 \
+GPIO_PINS=17,27,22,5,6,13,19,26 \
+TRIGGER_PIN=1 \
+REFRESH_HZ=60 \
+BBTK_CAPTURE=1 \
+BBTK_CAPTURE_BIN=~/00_git/bbtkv3/_build/bbtk-capture \
+    ./run-timing-tests.sh
+```
+
+Check the banner before answering the first prompt — it echoes the trigger
+device, chip and pins, the tone frequency, and the presented/analysed cycle
+split. If it says `dlpio8`, the environment variable did not take.
+
+Set `BBTK_PORT` if the capture tool cannot find the box on its own. Budget
+11–40 s of device setup per recorded step, and remember every `av` step is
+~8½ minutes of stimulus at the defaults.
+
+To pilot the wiring cheaply first, shorten the run rather than skipping it:
+
+```bash
+CYCLES=30 WARMUP=5 TRIGGER_DEVICE=gpio ./run-timing-tests.sh av
+```
+
+### 6. Check the capture before believing it
+
+On the resulting `-events.csv`:
+
+- **`N(TTLin1)` should equal the number of cycles presented** (`CYCLES`,
+  including the warm-up ones — they fire the TTL too). Fewer means the 3.3 V
+  swing is not latching, not that triggers were dropped.
+- **`N(Opto1)` should equal `N(TTLin1)`.** A shortfall is photodiode placement
+  or threshold, not timing.
+- **Opto duration ≈ 200 ms** at the defaults. Note that BBTK smoothing adds
+  roughly 20 ms to raw durations — read `CorrectedDuration`, and do not
+  interpret the raw figure as panel behaviour.
+- **The results header should read `trigger=gpio chip=… line=17 …`.** If it says
+  `trigger=none`, the chip failed to open and the run continued without
+  triggers; the capture's TTL channel is empty and the step must be re-run.
+
+### 7. What the Pi will not fix
+
+A previous Pi session measured a TTL→Opto lag of **38.5 ms**, against the 4–7 ms
+range Bridges et al. (2020) report across packages. A local GPIO write removes
+the USB serial link from that figure, but not the Pi's HDMI/display path, which
+is the more likely explanation for a lag of that size. Expect the GPIO change to
+tighten the *spread*; do not expect it to close the *lag*. Distinguishing the
+two requires the raster-position and display-path measurements, not a different
+trigger.
+
+---
+
 ## Related tests
 
 - `tests/test_gv_sync` — `.gv` video playback: does `PlayGvFunc` put a frame on
   screen when it says it does?
+- `tests/test_linuxgpio` — GPIO character-device output/input, used to verify
+  header wiring before a session.
+- `tests/test_parallel_port` — LPT data lines via ppdev, the equivalent check for
+  a parallel-port trigger.
 - `tests/test_dlpio8` — square-wave output for characterising the trigger box
   itself against an oscilloscope.
 - `tests/test_clear_only_frames` — regression test for the compositor presentation
@@ -590,9 +788,45 @@ the USB path or the device. See [Setting priority under
 Linux](SettingPriorityUnderLinux.md); that is the fix, and it is a different
 mechanism from the latency timer above.
 
-## Parallel port alternative
+## Parallel port and GPIO alternatives
 
-If you have a parallel port (LPT) at `/dev/parport0`, use
-`triggers.NewParallelPort("/dev/parport0")` in your experiment code. The
-`Send(byte)` method sets all 8 data lines simultaneously. On Linux you need
-`sudo modprobe ppdev` and membership in the `lp` group.
+Both avoid the USB path entirely: a write is one `ioctl`, not a USB serial
+transaction subject to frame scheduling. On hardware that offers either, this is
+the cheapest available improvement to onset-vs-TTL precision.
+
+**In the timing tests**, select them with `-trigger-device` (see [Choosing a TTL
+output device](#choosing-a-ttl-output-device)):
+
+```bash
+Timing-Tests -test av -trigger-device parallel
+Timing-Tests -test av -trigger-device gpio -gpio-chip /dev/gpiochip0
+```
+
+or, for a whole session, `TRIGGER_DEVICE=parallel` / `TRIGGER_DEVICE=gpio` with
+`run-timing-tests.sh`.
+
+**In your own experiment code:**
+
+```go
+// Parallel port (LPT), 5 V. Needs `sudo modprobe ppdev` and the `lp` group.
+p := triggers.NewParallelPort("/dev/parport0")
+if err := p.Open(); err != nil { log.Fatal(err) }
+defer p.Close()
+p.Send(0x01)                      // all 8 data lines at once, D0 = DB25 pin 2
+
+// GPIO character device (Raspberry Pi, Rock Pi, …), 3.3 V. Needs kernel >= 5.10
+// and the `gpio` group. Check which chip owns the header with `gpiodetect`.
+g, err := triggers.NewLinuxGPIOTrigger(
+    triggers.WithGPIOChip("/dev/gpiochip0"),
+    triggers.WithGPIOOutputPins([8]int{17, 27, 22, 5, 6, 13, 19, 26}),
+)
+if err != nil { log.Fatal(err) }
+defer g.Close()
+g.Pulse(0, 5*time.Millisecond)    // line 0 = the first pin in the array = BCM 17
+```
+
+`Send(mask)` sets all 8 lines simultaneously on both — unlike the DLP-IO8, where
+a multi-bit code is written one byte per line and takes ~610 µs to settle.
+
+Note the voltage difference: parallel is 5 V, GPIO is 3.3 V. Confirm your
+acquisition system latches at 3.3 V before relying on the GPIO path.
