@@ -71,6 +71,52 @@ func (s *Screen) present() error {
 // follows — the frame boundary is one frame duration after that, not after the
 // present that just happened. The caller must sample it before presenting,
 // because present() overwrites lastFlipNS with its own timestamp.
+//
+// # What the schedule is anchored to, and why it matters
+//
+// Each call decides which of two clocks the NEXT frame's target derives from,
+// and the two branches below are that choice:
+//
+//   - present returned at or after the target — the driver blocked on the
+//     retrace itself, so its return carries the display's own cadence and is
+//     the better anchor. lastFlipNS is left exactly as present() stamped it and
+//     the chain re-anchors to the hardware every frame. On a driver that always
+//     blocks this is the only branch ever taken and pacing costs one clock read.
+//   - present returned early (triple/mailbox buffering) — there is no hardware
+//     instant to anchor to, so the target itself becomes the anchor: the
+//     schedule advances by exactly frameDur per frame, independent of when the
+//     spin happened to exit.
+//
+// Anchoring the paced branch on the SCHEDULED boundary rather than on the spin
+// exit is what stops the chain from ratcheting. The spin exits at target + ε,
+// where ε is one iteration of the clock-read loop; assigning that back to
+// lastFlipNS folded ε into the next target, and since ε >= 0 always, the
+// schedule slid one-signed and never averaged out.
+//
+// Measured on a Raspberry Pi 4 (V3D, kmsdrm, 60.0000 Hz nominal) on 2026-08-09
+// with a BBTK v3, photodiode against a GPIO TTL fired at the flip, 1010 cycles
+// of 30 frames over 505 s: the TTL edge slid monotonically from 20.5 ms to
+// 6.9 ms ahead of the photodiode onset. Both channels were individually regular
+// (residuals about a straight line < 0.5 ms); their periods simply differed by
+// 14.4 us per 30-frame cycle. The loop's own flip timestamps reported
+// 500.014 ms against 30 x frameDur = 499.99998 ms — an excess of 14.0 us per
+// cycle, 0.467 us per frame, which is the ε above. The framework's idea of when
+// the frame appeared was 14 ms adrift from the actual photons by the end of an
+// 8-minute run, and growing; that error reaches experiment code through FlipTS,
+// so it lands directly in any reaction time measured from an onset.
+//
+// The same session on an Intel/Mesa laptop at the console showed no drift at
+// all (TTL 499.7104 ms vs photodiode 499.7096 ms per cycle) despite an
+// identical 0.438 us/frame ε, because there present blocks: its nominal
+// 60.04 Hz frame is SHORTER than the panel's real one, the target was always
+// already in the past, and every frame re-anchored. That contrast is what
+// identified the mechanism.
+//
+// What remains after this is a residual proportional to how wrong the nominal
+// refresh rate is: the paced branch now runs at exactly frameDur, so any gap
+// between that and the panel's true frame still shows up as a one-signed slide,
+// just without ε on top. Seeding frameDur from CalibrateRefresh rather than from
+// the display mode would close that too, and is not done here.
 func (s *Screen) paceToFrame(prevFlipNS uint64) {
 	// Cache the nominal frame duration on first use: it is fixed for the
 	// session, and re-querying the SDL display mode every frame is avoidable
@@ -83,21 +129,42 @@ func (s *Screen) paceToFrame(prevFlipNS uint64) {
 	}
 	target := prevFlipNS + uint64(s.frameDur.Nanoseconds())
 	now := sdl.TicksNS()
+	if now >= target {
+		// The driver blocked past the boundary on its own. Leave present()'s
+		// stamp in place — it is the moment SDL_RenderPresent returned, which
+		// is both the better anchor for the next frame and what FlipTS
+		// documents itself as returning. This branch also absorbs a stall: a
+		// target left far in the past is simply abandoned rather than chased.
+		s.blockedFrames++
+		return
+	}
+	wait := target - now
 	// Sleep off the bulk only when there is enough of the wait left for that to
 	// be safe: the tail still has to cover the sleep's overshoot, and a sleep
 	// shorter than minSleepNS is not worth the risk of taking one. Below that
 	// threshold — which is every frame on a panel faster than about 330 Hz —
 	// this is a pure spin, exactly as it was before.
-	if now < target && target-now > spinTailNS+minSleepNS {
+	if target-now > spinTailNS+minSleepNS {
 		time.Sleep(time.Duration(target - now - spinTailNS))
 		now = sdl.TicksNS()
 	}
 	for now < target {
 		now = sdl.TicksNS()
 	}
-	// The flip is deemed to land at the end of the spin, which is what the
-	// next frame paces against.
-	s.lastFlipNS = now
+	// The scheduled boundary, NOT the spin exit (now): see the ratcheting note
+	// above. The residual truncation in frameDur — FrameDuration converts a
+	// float64 to a Duration, losing under a nanosecond per frame — does still
+	// accumulate here, at 0.04 ppm. That is 20 us over the 8-minute run that
+	// exposed the 14.5 ms drift.
+	s.lastFlipNS = target
+	// Tally how early the present came back, not how long the wait took to
+	// serve: wait was measured before sleeping, so it is a property of the
+	// driver rather than of this function's own overshoot.
+	s.pacedFrames++
+	s.pacedWaitNS += wait
+	if wait > s.pacedWaitMaxNS {
+		s.pacedWaitMaxNS = wait
+	}
 }
 
 // spinTailNS is how much of the pacing wait is spun rather than slept.

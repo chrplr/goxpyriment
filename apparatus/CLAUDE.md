@@ -243,6 +243,37 @@ Pacing is skipped when VSync is off (`pacingEnabled`), since a caller who
 disabled VSync wants frames as fast as the GPU produces them. `SetVSync`
 refreshes that cached state.
 
+### What the flip timestamp is anchored to
+
+`lastFlipNS` — the value `FlipTS` returns — is **not** always the instant
+`SDL_RenderPresent` returned. `paceToFrame` picks the anchor per frame:
+
+| driver behaviour | `FlipTS` returns | next target derives from |
+|---|---|---|
+| present blocked to the retrace | the present return (present()'s own stamp) | the hardware, re-anchored every frame |
+| present returned early | the **scheduled** frame boundary | the previous target, +`frameDur` |
+
+The paced branch must anchor on the scheduled boundary, not on the spin exit.
+The spin exits at `target + ε` (one clock-read iteration); feeding that back
+made the schedule ratchet, and since ε ≥ 0 the slide is one-signed and never
+averages out. Measured on a Pi 4 (V3D/kmsdrm) with a BBTK photodiode against a
+GPIO TTL: 0.467 µs/frame of ε put the framework's flip timestamps **14 ms adrift
+from the actual photons over an 8-minute run**, growing linearly, while an
+Intel/Mesa laptop at the console showed no drift at all because there present
+blocks and every frame re-anchors. Details and figures in `paceToFrame`'s
+comment.
+
+Residual after that fix is `|true refresh − nominal refresh|`, since the paced
+branch advances by exactly `frameDur` (taken from the display mode). Seeding
+`frameDur` from `CalibrateRefresh` would close it; not done.
+
+`Screen.PacingStats()` reports which branch the presents took — `Blocked`,
+`Paced`, and the wait time across the paced ones — with `ResetPacingStats()` to
+exclude warm-up. Re-exported as `control.PacingStats`. `tests/Timing-Tests -test
+display` prints it, which is the only place the distinction surfaces without a
+photodiode: the frame-interval statistics look the same either way, because
+pacing is what makes them look the same.
+
 **Pacing enforces a minimum frame time, not a maximum.** It cannot recover a
 frame the compositor dropped. `CalibrateRefresh` is how you tell the two apart:
 it presents directly, bypassing the spin, so its median interval is the unaided

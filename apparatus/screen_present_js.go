@@ -28,8 +28,19 @@ func (s *Screen) present() error {
 	return nil
 }
 
-// paceToFrame is a no-op in the browser: present already parks until the
-// next animation frame, and a busy-wait would never yield to the event loop
+// paceToFrame has no waiting to do in the browser: present already parks until
+// the next animation frame, and a busy-wait would never yield to the event loop
 // (wedging the tab). The desktop implementation lives in
 // screen_present_notjs.go.
-func (s *Screen) paceToFrame(prevFlipNS uint64) {}
+//
+// It still counts the frame as Blocked, which is what RAF makes it: the present
+// returned on the display's own cadence, and lastFlipNS carries that instant
+// rather than a schedule. So PacingStats reads the same way here as on a
+// desktop driver that blocks — and a browser that ever stopped blocking would
+// show up in it.
+func (s *Screen) paceToFrame(prevFlipNS uint64) {
+	if prevFlipNS == 0 {
+		return // first flip of the session, to match the desktop tally
+	}
+	s.blockedFrames++
+}

@@ -72,6 +72,67 @@ type Screen struct {
 	frameDur     time.Duration // cached nominal frame duration used by Update's pacing (0 = not yet computed)
 	vsyncCached  int           // cached renderer VSync state; pacing is off when 0
 	vsyncKnown   bool          // whether vsyncCached has been filled in
+
+	// Pacing branch tallies, maintained by paceToFrame. See PacingStats.
+	blockedFrames  uint64
+	pacedFrames    uint64
+	pacedWaitNS    uint64
+	pacedWaitMaxNS uint64
+}
+
+// PacingStats reports which of paceToFrame's two anchors the presents in a run
+// used — that is, whether the driver blocked to the retrace on its own or
+// Update had to hold the frame itself.
+//
+// This distinction is otherwise invisible from inside a program, and it decides
+// how much a flip timestamp can be trusted: a Blocked present is stamped with
+// the hardware's own instant, whereas a Paced one is stamped with the schedule,
+// which can only be as accurate as the nominal refresh rate. A machine that
+// paces every frame is one where the timestamps drift against the panel by
+// however wrong that nominal rate is. Finding that on a Raspberry Pi 4 took a
+// photodiode (see paceToFrame); these counters are so it does not have to
+// again.
+//
+// WaitTotal/WaitMax cover the Paced frames only, and are what separate a
+// borderline case from a real one: a present returning a few microseconds early
+// is jitter around the boundary and harmless, while one returning most of a
+// frame early is genuine triple/mailbox buffering.
+//
+// Neither counter advances for presents made with VSync off (Update skips
+// pacing entirely then), nor for the first present of the session, which has no
+// previous flip to pace against. So Blocked+Paced is at most one less than the
+// number of presents, and can be far less if VSync was toggled.
+type PacingStats struct {
+	Blocked   uint64        // presents that returned at or after the frame boundary
+	Paced     uint64        // presents that returned early and were held to it
+	WaitTotal time.Duration // total time spent waiting, across Paced frames
+	WaitMax   time.Duration // longest single wait
+}
+
+// WaitMean is the average wait over the paced frames, or 0 if there were none.
+func (p PacingStats) WaitMean() time.Duration {
+	if p.Paced == 0 {
+		return 0
+	}
+	return p.WaitTotal / time.Duration(p.Paced)
+}
+
+// PacingStats returns the tallies accumulated since the screen was created or
+// ResetPacingStats was last called.
+func (s *Screen) PacingStats() PacingStats {
+	return PacingStats{
+		Blocked:   s.blockedFrames,
+		Paced:     s.pacedFrames,
+		WaitTotal: time.Duration(s.pacedWaitNS),
+		WaitMax:   time.Duration(s.pacedWaitMaxNS),
+	}
+}
+
+// ResetPacingStats zeroes the tallies, so a measurement can exclude warm-up
+// frames and cover exactly the frames it reports on.
+func (s *Screen) ResetPacingStats() {
+	s.blockedFrames, s.pacedFrames = 0, 0
+	s.pacedWaitNS, s.pacedWaitMaxNS = 0, 0
 }
 
 // CenterToSDL converts center‑based coordinates to SDL top‑left based
@@ -407,9 +468,13 @@ func (s *Screen) FlipTS() (uint64, error) {
 		return 0, fmt.Errorf("apparatus.Screen.FlipTS: %w", err)
 	}
 	// Update already stamped this flip — present() records the time it
-	// returned, and paceToFrame refreshes it to the frame boundary it waited
-	// for. Reading the clock again here would be a third sdl.TicksNS() call
-	// per flip for a value already in hand, a few nanoseconds later.
+	// returned, which paceToFrame keeps whenever the driver blocked to the
+	// retrace on its own, and replaces with the scheduled frame boundary when
+	// it did not (see paceToFrame: on a non-blocking driver there is no
+	// hardware instant to report, and the spin exit is the wrong thing to
+	// return because its error accumulates). Reading the clock again here would
+	// be a third sdl.TicksNS() call per flip for a value already in hand, a few
+	// nanoseconds later.
 	return s.lastFlipNS, nil
 }
 

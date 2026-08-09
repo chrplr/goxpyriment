@@ -864,6 +864,13 @@ func runJitter(exp *control.Experiment) error {
 		frame := 0
 
 		for time.Now().Before(deadline) {
+			// Zero the pacing tallies at the warm-up boundary so they cover
+			// exactly the frames the interval statistics below are computed
+			// from, and not the first flips of the session.
+			if frame == *fWarmup {
+				exp.Screen.ResetPacingStats()
+			}
+
 			tB, tA := fillGray(exp, paint, level)
 
 			var intervalMs float64
@@ -895,8 +902,63 @@ func runJitter(exp *control.Experiment) error {
 		fmt.Printf("\nEstimated refresh rate: %.3f Hz  (pass -hz %.2f to av so the tone matches a frame)\n",
 			estimatedHz, estimatedHz)
 		timingstats.PrintStats("Frame intervals", s, s.Mean)
+		printPacingStats(exp.Screen.PacingStats(), exp.Screen.FrameDuration())
 		return control.EndLoop
 	})
+}
+
+// printPacingStats reports which anchor the presents in this run used — whether
+// SDL_RenderPresent blocked to the retrace on its own, or Update had to hold
+// each frame to the boundary itself (apparatus.paceToFrame).
+//
+// This is here because the frame-interval statistics above cannot tell the two
+// apart: pacing makes a non-blocking driver produce intervals just as regular as
+// a blocking one, and on the software side that is the whole point. The
+// difference only shows physically. A paced machine stamps its onsets with the
+// schedule rather than with a hardware instant, so those timestamps slide
+// against the panel at whatever the nominal refresh rate is wrong by — measured
+// at 14 ms over 8 minutes on a Raspberry Pi 4, and only visible because a
+// photodiode was watching. Printing the branch counts turns that into a number
+// this test reports on its own.
+//
+// "Estimated refresh rate" above answers a related but different question: it
+// comes from the paced intervals, so it reports the cadence the loop achieved,
+// not whether the driver imposed it. CalibrateRefresh is the one that bypasses
+// pacing.
+func printPacingStats(p control.PacingStats, frameDur time.Duration) {
+	total := p.Blocked + p.Paced
+	fmt.Printf("\n── Frame pacing ───────────────────────────────\n")
+	if total == 0 {
+		fmt.Printf("  no paced presents (VSync off, or too few frames)\n")
+		return
+	}
+	pacedPct := 100 * float64(p.Paced) / float64(total)
+	fmt.Printf("  presents: %d\n", total)
+	fmt.Printf("  blocked : %d (%.1f %%)  — SDL_RenderPresent returned at or after the frame boundary\n",
+		p.Blocked, 100-pacedPct)
+	fmt.Printf("  paced   : %d (%.1f %%)  — returned early; Update held the frame\n",
+		p.Paced, pacedPct)
+	if p.Paced > 0 {
+		fmt.Printf("  wait    : mean %.3f ms  max %.3f ms   (frame = %.3f ms)\n",
+			float64(p.WaitMean())/float64(time.Millisecond),
+			float64(p.WaitMax)/float64(time.Millisecond),
+			float64(frameDur)/float64(time.Millisecond))
+	}
+	switch {
+	case p.Paced == 0:
+		fmt.Printf("  verdict : the driver blocks. Flip timestamps carry the display's own\n")
+		fmt.Printf("            instant, and cannot drift against the panel.\n")
+	case pacedPct < 5:
+		fmt.Printf("  verdict : the driver blocks, with occasional jitter around the boundary.\n")
+		fmt.Printf("            Compare the mean wait against the frame: a few hundred µs is\n")
+		fmt.Printf("            jitter, most of a frame is buffering that happened to be rare.\n")
+	default:
+		fmt.Printf("  verdict : the driver does NOT block — Update is pacing the loop. Onsets\n")
+		fmt.Printf("            are stamped with the schedule, so they drift against the panel\n")
+		fmt.Printf("            by however wrong the nominal refresh rate is. Check the\n")
+		fmt.Printf("            estimated rate above against the nominal one, and read any\n")
+		fmt.Printf("            photodiode onset on this machine as relative, not absolute.\n")
+	}
 }
 
 // sleepUntil sleeps until the given absolute time, with sub-millisecond
@@ -917,8 +979,9 @@ func sleepUntil(t time.Time) {
 //
 // Each trial: a white flash appears for one frame; the participant presses any
 // key as fast as possible. RT is computed as event.Timestamp − onset_ns, where
-// onset_ns is the SDL nanosecond tick captured by Screen.FlipTS() immediately
-// after SDL_RenderPresent returns.
+// onset_ns is the SDL nanosecond tick returned by Screen.FlipTS() — the moment
+// SDL_RenderPresent returned when the driver blocks to the retrace, and the
+// scheduled frame boundary when it does not (see apparatus.paceToFrame).
 //
 // Because both timestamps come from the same SDL nanosecond clock (SDL_GetTicksNS),
 // RT reflects the interval between actual display output and the hardware

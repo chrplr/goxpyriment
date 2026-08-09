@@ -18,6 +18,46 @@ a presentation bug that left a panel showing stale frames for seconds at a time.
 **Judge timing from a photodiode and TTL recording.** Treat the console output as
 a cross-check on the software side only.
 
+The `display` test's **Frame pacing** block is the one part of the console output
+that says how far to trust the rest of it — see below.
+
+---
+
+## Frame pacing: how much a software timestamp is worth here
+
+`-test display` ends with a block like this:
+
+```
+── Frame pacing ───────────────────────────────
+  presents: 466
+  blocked : 22 (4.7 %)  — SDL_RenderPresent returned at or after the frame boundary
+  paced   : 444 (95.3 %)  — returned early; Update held the frame
+  wait    : mean 1.593 ms  max 9.121 ms   (frame = 16.656 ms)
+```
+
+`Update` presents and then holds to the expected frame boundary, because
+`SDL_RenderPresent` cannot be trusted to block until the retrace. These counts say
+which of those two things actually happened, per frame:
+
+- **blocked** — the driver returned on the display's own cadence. The flip
+  timestamp is then a hardware instant, and cannot drift against the panel.
+- **paced** — the driver returned early and `Update` waited. The flip timestamp is
+  then *the schedule*, which is only as accurate as the nominal refresh rate.
+
+A mostly-paced machine is not broken — the frames still land on the panel one per
+refresh, and the intervals above will look immaculate either way. That is exactly
+the problem: **pacing makes a non-blocking driver produce software statistics
+indistinguishable from a blocking one.** What it cannot do is keep the schedule
+and the panel in step forever. On a Raspberry Pi 4 (V3D/kmsdrm) the two drifted
+apart by 14 ms over an 8-minute run, growing linearly, which a photodiode found
+and no console number did.
+
+Read the `wait` line before drawing conclusions from the percentage: a few hundred
+microseconds is jitter around the boundary, while most of a frame is genuine
+triple/mailbox buffering. If a run is largely paced, compare the estimated refresh
+rate against the nominal one — the gap between them *is* the drift rate — and
+treat onsets measured on that machine as relative rather than absolute.
+
 ---
 
 ## Recommended workflow
@@ -25,7 +65,7 @@ a cross-check on the software side only.
 ```
 No hardware needed
   1. check    — can this machine display and make noise at all?
-  2. display  — true refresh rate and frame-interval stability
+  2. display  — true refresh rate, frame-interval stability, frame pacing
   3. latency  — audio pipeline delay
 
 Photodiode and/or trigger box
