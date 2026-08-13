@@ -34,7 +34,7 @@ The Go side talks to the Emscripten side through `go-sdl3`'s js bindings
 | go-sdl3 fork with the js/wasm target | [`github.com/chrplr/go-sdl3-wasm`](https://github.com/chrplr/go-sdl3-wasm), branch **`wasm-render-fixes`** (local clone: `~/00_git/go-sdl3-wasm`). The module path is unchanged (`github.com/Zyko0/go-sdl3`), and goxpyriment's `go.mod` has a `replace` pointing at a pinned pseudo-version of the fork; `vendor/` is kept in sync with `GOWORK=off go mod vendor` |
 | Prebuilt `sdl.js` / `sdl.wasm` + bundler | `cmd/wasmsdl` in the fork — embeds the blobs and an `index.html`, and builds/serves a complete browser bundle. Rebuild recipe: `.docker/emscripten-build/Dockerfile` in the fork |
 | goxpyriment js platform code | `control/platform_js.go` (URL-parameter flags, no dialog, audio device open), `apparatus/screen_newscreen_js.go` (canvas window), `apparatus/screen_present_js.go` (RAF-synced flips), `results/output_file_wasm.go` (CSV → browser download) — all build tag `js` |
-| Export-list generator | `cmd/gen-wasm-exports` — scans go-sdl3's js bindings + goxpyriment's own calls, emits `wasm/exported_functions.json` for `emcc -sEXPORTED_FUNCTIONS=@…`, and **lists the go-sdl3 calls whose js bindings are still panic-stubs** (the remaining-work list) |
+| Export-list generator | `cmd/gen-wasm-exports` — scans go-sdl3's js bindings + goxpyriment's own calls **as compiled for `GOOS=js`** (files excluded by build constraints, and `triggers/`, are not counted), emits `wasm/exported_functions.json` for `emcc -sEXPORTED_FUNCTIONS=@…`, and **lists the go-sdl3 calls whose js bindings are still panic-stubs** (the remaining-work list) |
 
 ### The go-sdl3 replace — what dependents need to know
 

@@ -15,7 +15,9 @@
 //     function/method name to the i<Name> variables it uses (this resolves
 //     renamed methods, e.g. Go Window.Size -> C SDL_GetWindowSize);
 //  3. the goxpyriment source tree, to collect the set of call names actually
-//     used.
+//     used — restricted to the files that a GOOS=js GOARCH=wasm build actually
+//     compiles, so that desktop-only code does not contribute symbols or, worse,
+//     get reported as a browser portability gap it cannot be.
 //
 // It emits wasm/exported_functions.json (a JSON array usable directly as
 // emcc -sEXPORTED_FUNCTIONS=@wasm/exported_functions.json) plus a summary.
@@ -31,6 +33,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"go/ast"
+	"go/build"
 	"go/parser"
 	"go/token"
 	"io/fs"
@@ -93,7 +96,16 @@ func main() {
 	}
 
 	// (3) Collect call names used across the goxpyriment tree.
+	// Scan as the browser build sees the tree. Without this, a call made only
+	// from a *_notjs.go file counts as "used by goxpyriment": renderer.SetVSync
+	// is called once, in apparatus/screen_newscreen_notjs.go, and was reported
+	// as a browser gap although no browser build ever compiles that line.
+	jsCtx := build.Default
+	jsCtx.GOOS = "js"
+	jsCtx.GOARCH = "wasm"
+
 	used := map[string]bool{}
+	var skipped int
 	err := filepath.WalkDir(".", func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -102,12 +114,33 @@ func main() {
 			switch d.Name() {
 			case "vendor", ".git", "site", "_build":
 				return fs.SkipDir
+			// triggers/ drives serial ports and parallel ports; it carries no
+			// build constraints and is instead excluded on the command line by
+			// .github/workflows/go-build.yml, so it has to be excluded here by
+			// name to match. If it ever grows a //go:build line, delete this.
+			case "triggers":
+				return fs.SkipDir
 			}
 			return nil
 		}
-		if strings.HasSuffix(path, ".go") && !strings.HasSuffix(path, "_test.go") {
-			collectCallNames(path, used)
+		if !strings.HasSuffix(path, ".go") || strings.HasSuffix(path, "_test.go") {
+			return nil
 		}
+		dir, base := filepath.Split(path)
+		if dir == "" {
+			dir = "."
+		}
+		switch match, err := jsCtx.MatchFile(dir, base); {
+		case err != nil:
+			// Unreadable or unparsable: keep it rather than silently lose the
+			// symbols it might contribute. Over-exporting is harmless; a
+			// missing export is a run-time "is not a function".
+			fmt.Fprintf(os.Stderr, "warning: build constraints for %s: %v (keeping it)\n", path, err)
+		case !match:
+			skipped++
+			return nil
+		}
+		collectCallNames(path, used)
 		return nil
 	})
 	if err != nil {
@@ -151,6 +184,8 @@ func main() {
 	fmt.Fprintf(os.Stderr,
 		"gen-wasm-exports: %d go-sdl3 API names mapped, %d matched in goxpyriment, %d C symbols → %s\n",
 		len(symbolsForName), matched, len(symbols), outputPath)
+	fmt.Fprintf(os.Stderr,
+		"gen-wasm-exports: %d source files skipped as not part of a js/wasm build\n", skipped)
 	if len(gapList) > 0 {
 		fmt.Fprintf(os.Stderr,
 			"gen-wasm-exports: %d go-sdl3 calls used by goxpyriment have stubbed js bindings (will panic in the browser):\n",
