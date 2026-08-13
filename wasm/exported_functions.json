@@ -93,6 +93,7 @@
   "_SDL_SetRenderDrawColor",
   "_SDL_SetRenderLogicalPresentation",
   "_SDL_SetRenderTarget",
+  "_SDL_SetRenderVSync",
   "_SDL_SetSurfaceAlphaMod",
   "_SDL_SetSurfaceBlendMode",
   "_SDL_SetTextureAlphaMod",

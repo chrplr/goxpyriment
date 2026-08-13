@@ -20,4 +20,4 @@ require (
 	github.com/robroyd/dds v0.0.0-20221227152439-75471f84d293 // indirect
 )
 
-replace github.com/Zyko0/go-sdl3 => github.com/chrplr/go-sdl3-wasm v0.1.2-0.20260813115242-6a6dbc480f5a
+replace github.com/Zyko0/go-sdl3 => github.com/chrplr/go-sdl3-wasm v0.1.2-0.20260813145917-61b320c6007d

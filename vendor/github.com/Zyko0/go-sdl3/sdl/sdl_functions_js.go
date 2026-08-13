@@ -15952,18 +15952,16 @@ func initialize() {
 	}
 
 	iSetRenderVSync = func(renderer *Renderer, vsync int32) bool {
-		panic("not implemented on js")
-		internal.StackSave()
-		defer internal.StackRestore()
 		_renderer, ok := internal.GetJSPointer(renderer)
 		if !ok {
-			_renderer = internal.StackAlloc(int(unsafe.Sizeof(*renderer)))
+			panic("nil renderer")
 		}
-		_vsync := int32(vsync)
+		// Both arguments go in; nothing comes back but the bool, so there is no
+		// stack frame to allocate here, unlike the GetRenderVSync binding below.
 		ret := js.Global().Get("Module").Call(
 			"_SDL_SetRenderVSync",
 			_renderer,
-			_vsync,
+			vsync,
 		)
 
 		return internal.GetBool(ret)
