@@ -15014,31 +15014,27 @@ func initialize() {
 	}
 
 	iRenderCoordinatesFromWindow = func(renderer *Renderer, window_x float32, window_y float32, x *float32, y *float32) bool {
-		panic("not implemented on js")
 		internal.StackSave()
 		defer internal.StackRestore()
 		_renderer, ok := internal.GetJSPointer(renderer)
 		if !ok {
-			_renderer = internal.StackAlloc(int(unsafe.Sizeof(*renderer)))
+			panic("nil renderer")
 		}
-		_window_x := int32(window_x)
-		_window_y := int32(window_y)
-		_x, ok := internal.GetJSPointer(x)
-		if !ok {
-			_x = internal.StackAlloc(int(unsafe.Sizeof(*x)))
-		}
-		_y, ok := internal.GetJSPointer(y)
-		if !ok {
-			_y = internal.StackAlloc(int(unsafe.Sizeof(*y)))
-		}
+		// window_x/window_y are C floats: pass them through as JS numbers
+		// rather than the generator's int32 truncation. x/y are out-params,
+		// so they need stack slots that are read back after the call.
+		_x := internal.StackAlloc(int(unsafe.Sizeof(float32(0))))
+		_y := internal.StackAlloc(int(unsafe.Sizeof(float32(0))))
 		ret := js.Global().Get("Module").Call(
 			"_SDL_RenderCoordinatesFromWindow",
 			_renderer,
-			_window_x,
-			_window_y,
+			window_x,
+			window_y,
 			_x,
 			_y,
 		)
+		*x = float32(internal.GetValue(_x, "float").Float())
+		*y = float32(internal.GetValue(_y, "float").Float())
 
 		return internal.GetBool(ret)
 	}
@@ -15425,22 +15421,22 @@ func initialize() {
 	}
 
 	iGetRenderDrawBlendMode = func(renderer *Renderer, blendMode *BlendMode) bool {
-		panic("not implemented on js")
 		internal.StackSave()
 		defer internal.StackRestore()
 		_renderer, ok := internal.GetJSPointer(renderer)
 		if !ok {
-			_renderer = internal.StackAlloc(int(unsafe.Sizeof(*renderer)))
+			panic("nil renderer")
 		}
-		_blendMode, ok := internal.GetJSPointer(blendMode)
-		if !ok {
-			_blendMode = internal.StackAlloc(int(unsafe.Sizeof(*blendMode)))
-		}
+		// blendMode is an out-param: it needs a stack slot that is read back
+		// after the call, like the neighbouring GetRenderDrawColor binding.
+		// SDL_BlendMode is a 32-bit enum.
+		_blendMode := internal.StackAlloc(int(unsafe.Sizeof(BlendMode(0))))
 		ret := js.Global().Get("Module").Call(
 			"_SDL_GetRenderDrawBlendMode",
 			_renderer,
 			_blendMode,
 		)
+		*blendMode = BlendMode(internal.GetValue(_blendMode, "i32").Int())
 
 		return internal.GetBool(ret)
 	}

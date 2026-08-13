@@ -10,6 +10,7 @@ require (
 	github.com/goburrow/modbus v0.1.0
 	github.com/pierrec/lz4/v4 v4.1.26
 	go.bug.st/serial v1.6.4
+	golang.org/x/sys v0.41.0
 )
 
 require (
@@ -17,7 +18,6 @@ require (
 	github.com/creack/goselect v0.1.3 // indirect
 	github.com/goburrow/serial v0.1.0 // indirect
 	github.com/robroyd/dds v0.0.0-20221227152439-75471f84d293 // indirect
-	golang.org/x/sys v0.41.0 // indirect
 )
 
-replace github.com/Zyko0/go-sdl3 => github.com/chrplr/go-sdl3-wasm v0.1.2-0.20260713102825-87a9041ee8c3
+replace github.com/Zyko0/go-sdl3 => github.com/chrplr/go-sdl3-wasm v0.1.2-0.20260813115242-6a6dbc480f5a
