@@ -651,11 +651,16 @@ func runAV(exp *control.Experiment, trig triggers.OutputTTLDevice) error {
 		"test=av level-a=%d level-b=%d square-px=%d frames-on=%d frames-off=%d cycles=%d warmup=%d hz=%.3f sound=%v ttl=%v soa-ms=%.1f freq-hz=%.0f",
 		*fLevelA, *fLevelB, *fSquarePx, framesOn, framesOff, *fCycles, *fWarmup, *fHz,
 		withSound, withTTL, *fSoaMs, *fFreqHz))
+	// onset_source records, per cycle, whether t_visual_after_ms came from a
+	// measured vblank or from the pacing schedule. The two arms of a Phase 2
+	// comparison are otherwise indistinguishable in the data, and mixing them up
+	// would silently average a drifting run with a stable one.
 	exp.AddDataVariableNames([]string{
 		"cycle",
 		"t_visual_before_ms", "t_visual_after_ms",
 		"bright_duration_ms", "period_ms",
 		"t_audio_queued_ms", "soa_intended_ms", "soa_actual_ms",
+		"onset_source",
 	})
 
 	var tone *stimuli.Tone
@@ -688,12 +693,38 @@ func runAV(exp *control.Experiment, trig triggers.OutputTTLDevice) error {
 		}
 		bright, dark := gray(byte(*fLevelB)), gray(byte(*fLevelA))
 
-		// fire pulses the trigger on its own goroutine: FireTrigger holds the
-		// line high for -trigger-ms, which would otherwise stall the frame loop.
+		// fire raises the trigger synchronously and lowers it from a goroutine.
+		//
+		// The RISING edge is the event marker, and it is the only one whose
+		// timing matters — so it happens on this thread, on the statement after
+		// the flip, with nothing in between. Measured at SCHED_FIFO 50 that gap
+		// is p50 34 µs / max 37 µs, against +0.73 ms with about 1 ms of spread
+		// for a goroutine at normal priority under load.
+		//
+		// The whole pulse used to go through FireTrigger on a goroutine, because
+		// FireTrigger holds the line high for -trigger-ms and that would stall
+		// the frame loop for 200 ms. Splitting the edges keeps the loop unblocked
+		// without paying goroutine wake-up jitter on the edge being measured:
+		// the FALLING edge carries no information here, so it can drift freely.
+		//
+		// This matters for Phase 2 — dispatch jitter on the rising edge would
+		// otherwise sit on top of the flip-to-photon interval being measured, and
+		// it is of the same order as the effect.
+		pulse := time.Duration(*fTriggerMs) * time.Millisecond
 		fire := func() {
-			if withTTL {
-				go triggers.FireTrigger(trig, triggerLine(), time.Duration(*fTriggerMs)*time.Millisecond)
+			if !withTTL {
+				return
 			}
+			if err := trig.SetHigh(triggerLine()); err != nil {
+				log.Printf("trigger: SetHigh failed: %v", err)
+				return
+			}
+			go func() {
+				time.Sleep(pulse)
+				if err := trig.SetLow(triggerLine()); err != nil {
+					log.Printf("trigger: SetLow failed: %v", err)
+				}
+			}()
 		}
 
 		// showFrame paints one frame and presents it. PumpEvents runs every
@@ -813,7 +844,8 @@ func runAV(exp *control.Experiment, trig triggers.OutputTTLDevice) error {
 				fmt.Sprintf("%.3f", tVisB), fmt.Sprintf("%.3f", tVisA),
 				fmt.Sprintf("%.3f", brightMs), fmt.Sprintf("%.3f", periodMs),
 				fmt.Sprintf("%.3f", tAudioQ),
-				fmt.Sprintf("%.1f", *fSoaMs), fmt.Sprintf("%.3f", tAudioQ-tVisA))
+				fmt.Sprintf("%.1f", *fSoaMs), fmt.Sprintf("%.3f", tAudioQ-tVisA),
+				exp.Screen.OnsetSource().String())
 
 			if exp.PollEvents(nil).QuitRequested {
 				aborted = true

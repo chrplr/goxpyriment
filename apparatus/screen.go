@@ -21,6 +21,8 @@ package apparatus
 
 import (
 	"fmt"
+	"log"
+	"os"
 	"sort"
 	"time"
 
@@ -540,6 +542,18 @@ func (s *Screen) ensureVblank() {
 		return
 	}
 	s.vblChecked = true
+	// GOXPY_VBLANK=off forces the pre-vblank behaviour: the schedule anchors on
+	// itself and FlipTS reports it.
+	//
+	// This exists so the two can be compared on ONE machine in ONE thermal
+	// state, interleaved. Without it the only available baseline is a capture
+	// from August on a different panel and a different code state, and the panel
+	// rate here moves 23 ppm over six minutes while warming — larger than the
+	// effect being measured. An A/B that cannot be interleaved is not an A/B.
+	if os.Getenv("GOXPY_VBLANK") == "off" {
+		log.Printf("vblank: disabled by GOXPY_VBLANK=off — onsets will be estimated from the pacing schedule")
+		return
+	}
 	if t := vblank.AutoDetect(); t.Precision() == vblank.HardwareVerified {
 		s.vbl = t
 	} else {
@@ -559,6 +573,12 @@ func (s *Screen) OnsetSource() vblank.Source { return s.onsetSrc }
 func (s *Screen) VblankBackend() string {
 	s.ensureVblank()
 	if s.vbl == nil {
+		// Distinguish "this machine has none" from "you switched it off": a run
+		// in the OFF arm of a comparison must not look like a machine that
+		// simply lacks the hardware.
+		if os.Getenv("GOXPY_VBLANK") == "off" {
+			return "disabled by GOXPY_VBLANK=off"
+		}
 		return ""
 	}
 	return s.vbl.Description()
