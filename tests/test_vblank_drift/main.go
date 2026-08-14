@@ -115,6 +115,12 @@ func measure(exp *control.Experiment) error {
 	patch := stimuli.NewRectangle(0, 0, 200, 200, control.White)
 	defer func() { _ = patch.Unload() }()
 
+	// Save the raw per-frame pairs, not just the summary. The summary is printed
+	// to stdout and nowhere else, so on a machine someone else is running it on,
+	// the numbers exist only until the terminal scrolls. The per-frame rows let
+	// the fit be redone — and disagreed with — afterwards.
+	exp.AddDataVariableNames([]string{"frame", "flip_ms", "vblank_ms", "phase_ms"})
+
 	samples := make([]sample, 0, *fFrames)
 	missing := 0
 	screen.ResetPacingStats()
@@ -139,6 +145,10 @@ func measure(exp *control.Experiment) error {
 			continue
 		}
 		samples = append(samples, sample{flipNS: ts, vblankNS: vts})
+		exp.Data.Add(i,
+			fmt.Sprintf("%.6f", float64(ts)/1e6),
+			fmt.Sprintf("%.6f", float64(vts)/1e6),
+			fmt.Sprintf("%.6f", float64(ts-vts)/1e6))
 	}
 	ps := screen.PacingStats()
 
@@ -149,11 +159,11 @@ func measure(exp *control.Experiment) error {
 		return fmt.Errorf("only %d usable samples (%d flips had no vblank): too few to fit", len(samples), missing)
 	}
 
-	report(samples, missing, nominalMs, ps)
+	report(exp, samples, missing, nominalMs, ps)
 	return control.EndLoop
 }
 
-func report(s []sample, missing int, nominalMs float64, ps control.PacingStats) {
+func report(exp *control.Experiment, s []sample, missing int, nominalMs float64, ps control.PacingStats) {
 	n := len(s)
 
 	// Recover which vblank each sample landed on. The ioctl returns the most
@@ -200,6 +210,8 @@ func report(s []sample, missing int, nominalMs float64, ps control.PacingStats) 
 		return
 	}
 	fmt.Printf("  %-22s   a clean grid: the stamps are usable as a display reference.\n", "")
+	exp.Data.WriteComment(fmt.Sprintf("vblank samples=%d missing=%d steps=%s grid_resid_ms=%.4f",
+		n, missing, fmtSteps(steps), gridSD))
 
 	fmt.Printf("\n── Panel grid (kernel vblank timestamps) ─────────────────\n")
 	fmt.Printf("  %-22s : %.5f ms = %.4f Hz\n", "TRUE frame", panelMs, 1000/panelMs)
@@ -245,6 +257,12 @@ func report(s []sample, missing int, nominalMs float64, ps control.PacingStats) 
 
 	driftPerFrame, _ := leastSquares(idx[lo:hi+1], phase[lo:hi+1])
 	driftPPM := driftPerFrame / panelMs * 1e6
+	exp.Data.WriteComment(fmt.Sprintf("panel true_frame_ms=%.5f true_hz=%.4f nominal_hz=%.4f nominal_err_ppm=%+.1f",
+		panelMs, 1000/panelMs, 1000/nominalMs, (nominalMs-panelMs)/panelMs*1e6))
+	exp.Data.WriteComment(fmt.Sprintf("drift us_per_frame=%+.4f ppm=%+.2f fitted_over=%d_of_%d_frames",
+		driftPerFrame*1000, driftPPM, segLen, n))
+	exp.Data.WriteComment(fmt.Sprintf("pacing blocked=%d paced=%d wait_mean_ms=%.3f wait_max_ms=%.3f",
+		ps.Blocked, ps.Paced, float64(ps.WaitMean().Nanoseconds())/1e6, float64(ps.WaitMax.Nanoseconds())/1e6))
 	fmt.Printf("  %-22s : %+.4f us/frame = %+.2f ppm\n", "DRIFT", driftPerFrame*1000, driftPPM)
 	fmt.Printf("  %-22s : %+.3f ms/min, %+.2f ms over an 8-min block\n", "",
 		driftPerFrame*60000/panelMs, driftPerFrame*480000/panelMs)
