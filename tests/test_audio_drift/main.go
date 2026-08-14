@@ -237,7 +237,7 @@ func main() {
 		fmt.Printf("\nper-sample data written to %s\n", *fCSV)
 	}
 
-	report(samples, devFrames, devRate, stoppedEarly)
+	report(exp, samples, devFrames, devRate, stoppedEarly)
 }
 
 // run plays the sound and collects paired clock readings until the stream
@@ -341,7 +341,7 @@ func run(exp *control.Experiment, snd *stimuli.Sound, totalFrames int64) ([]samp
 }
 
 // report prints the overall fit and the per-segment breakdown.
-func report(samples []sample, devFrames, devRate int, stoppedEarly bool) {
+func report(exp *control.Experiment, samples []sample, devFrames, devRate int, stoppedEarly bool) {
 	used := make([]sample, 0, len(samples))
 	var nWarmup, nCooldown, nDrained, nWide int
 	for _, s := range samples {
@@ -387,6 +387,24 @@ func report(samples []sample, devFrames, devRate int, stoppedEarly bool) {
 	fmt.Printf("accumulated drift: %+.1f ms over the fitted %.1f s\n",
 		fit.slope1*span*1000, span)
 	fmt.Printf("  extrapolated   : %+.1f ms per 10 minutes\n", fit.slope1*600*1000)
+
+	// The whole point of this test is the ppm figure, and until now it existed
+	// only on stdout. The per-sample rows go in too, so the fit can be redone
+	// rather than taken on trust; -csv remains for anyone who wants them
+	// separately.
+	exp.Data.WriteComment(fmt.Sprintf(
+		"audiodrift ppm=%+.4f ppm_se=%.4f ci95_lo=%+.4f ci95_hi=%+.4f span_s=%.2f drift_ms=%+.3f per10min_ms=%+.3f",
+		fit.ppm, fit.ppmSE, fit.ppm-1.96*fit.ppmSE, fit.ppm+1.96*fit.ppmSE,
+		span, fit.slope1*span*1000, fit.slope1*600*1000))
+	exp.Data.WriteComment(fmt.Sprintf(
+		"audiodrift samples_used=%d of=%d warmup=%d cooldown=%d drained=%d wide_bracket=%d dev_rate=%d dev_frames=%d stopped_early=%t",
+		len(used), len(samples), nWarmup, nCooldown, nDrained, nWide, devRate, devFrames, stoppedEarly))
+	exp.AddDataVariableNames([]string{"sample", "t_system_s", "t_audio_s", "frames", "queued_bytes", "bracket_ns"})
+	for i, sm := range samples {
+		exp.Data.Add(i,
+			fmt.Sprintf("%.9f", sm.tSystem), fmt.Sprintf("%.9f", sm.tAudio),
+			sm.frames, sm.queued, sm.bracket)
+	}
 	// The residual distribution, not the slope, is what says whether the fit
 	// may be believed. A clean run is symmetric about zero and bounded by
 	// roughly the callback period; anything with a long tail means some samples

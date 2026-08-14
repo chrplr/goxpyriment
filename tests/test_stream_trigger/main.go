@@ -25,13 +25,16 @@ import (
 
 func main() {
 	// NewExperiment (not …FromFlags) so no data file is opened — this test writes
-	// no behavioural data, it only validates the onset hooks. A window is created
+	// no behavioural data, it only validates the onset hooks (whose per-element
+	// outcomes it does record). A window is created
 	// so the stream can catch ESC / window-close.
 	exp := control.NewExperiment("Stream Trigger Test", 1024, 768, false, control.Black, control.White, 48)
 	if err := exp.Initialize(); err != nil {
 		log.Fatal(err)
 	}
 	defer exp.End()
+
+	exp.AddDataVariableNames([]string{"stream", "element", "outcome", "hook_onset_ns", "log_onset_ns", "delta_ns"})
 
 	// A no-op TTL device stands in for real hardware. In a real setup swap it for
 	// triggers.NewParallelPort(...), NewDLPIO8, NewLabJackT4, NewFT232H, etc. — all
@@ -69,7 +72,7 @@ func main() {
 	case err != nil:
 		log.Fatalf("visual stream failed: %v", err)
 	}
-	pass = checkHook("visual", logs, marks) && pass
+	pass = checkHook(exp, "visual", logs, marks) && pass
 
 	// ------------------------------------------------------------------- audio
 	freqs := []float64{330, 392, 440, 523}
@@ -97,7 +100,7 @@ func main() {
 	case err != nil:
 		log.Fatalf("audio stream failed: %v", err)
 	}
-	pass = checkHook("audio", aLogs, amarks) && pass
+	pass = checkHook(exp, "audio", aLogs, amarks) && pass
 
 	fmt.Println()
 	if pass {
@@ -105,11 +108,15 @@ func main() {
 	} else {
 		fmt.Println("FAIL: see mismatches above")
 	}
+	exp.Data.WriteComment(fmt.Sprintf("streamtrigger verdict=%s", map[bool]string{true: "PASS", false: "FAIL"}[pass]))
 }
 
 // checkHook verifies the hook fired exactly once per logged element and that the
 // onsetNS it received equals the authoritative TimingLog.OnsetNS.
-func checkHook(label string, logs []stimuli.TimingLog, marks map[int]uint64) bool {
+// The per-element outcomes go into the data file as well as to stdout: a
+// pass/fail printed to a terminal on someone else's machine is a result that
+// does not survive the scrollback.
+func checkHook(exp *control.Experiment, label string, logs []stimuli.TimingLog, marks map[int]uint64) bool {
 	ok := true
 	if len(marks) != len(logs) {
 		fmt.Printf("  [%s] FAIL: hook fired %d times for %d elements\n", label, len(marks), len(logs))
@@ -120,13 +127,16 @@ func checkHook(label string, logs []stimuli.TimingLog, marks map[int]uint64) boo
 		switch {
 		case !fired:
 			fmt.Printf("  [%s] element %d: FAIL — hook never fired\n", label, tl.Index)
+			exp.Data.Add(label, tl.Index, "FAIL_NOT_FIRED", 0, tl.OnsetNS, 0)
 			ok = false
 		case got != tl.OnsetNS:
 			fmt.Printf("  [%s] element %d: FAIL — hook onsetNS %d != TimingLog.OnsetNS %d (Δ %d ns)\n",
 				label, tl.Index, got, tl.OnsetNS, int64(got)-int64(tl.OnsetNS))
+			exp.Data.Add(label, tl.Index, "FAIL_MISMATCH", got, tl.OnsetNS, int64(got)-int64(tl.OnsetNS))
 			ok = false
 		default:
 			fmt.Printf("  [%s] element %d: ok — trigger and log agree at onsetNS %d\n", label, tl.Index, got)
+			exp.Data.Add(label, tl.Index, "ok", got, tl.OnsetNS, 0)
 		}
 	}
 	return ok

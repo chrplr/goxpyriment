@@ -241,5 +241,9 @@ func animLoop(exp *control.Experiment, initBarWidth, initSpeed float32) error {
 	fmt.Printf("\nEstimated refresh rate: %.3f Hz\n", estimatedHz)
 	timingstats.PrintStats("Frame intervals", s, s.Mean)
 
+	exp.AddDataVariableNames([]string{"frame", "interval_ms"})
+	exp.Data.WriteComment(fmt.Sprintf("tearing estimated_hz=%.4f", estimatedHz))
+	timingstats.Save(exp.Data, "tearing frame_intervals", s, s.Mean)
+
 	return control.EndLoop
 }

@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"math"
 	"sort"
+
+	"github.com/chrplr/goxpyriment/results"
 )
 
 // Stats holds summary statistics for a slice of frame-interval measurements.
@@ -74,6 +76,25 @@ func PrintStats(label string, s Stats, targetMs float64) {
 	fmt.Printf("  >0.5 ms : %d (%.1f %%)\n", s.Late05, 100*float64(s.Late05)/float64(s.N))
 	fmt.Printf("  >1.0 ms : %d (%.1f %%)\n", s.Late1, 100*float64(s.Late1)/float64(s.N))
 	PrintHistogram(s.Vals)
+}
+
+// Save writes a Stats summary into a data file, as one comment line, and the
+// raw values as one row each under the given column name.
+//
+// It exists because PrintStats writes to stdout and nowhere else. A test whose
+// results scroll past in a terminal is a test whose results are gone the moment
+// someone runs it on a machine you are not sitting at — and several tests here
+// were doing exactly that, leaving a 0-byte CSV beside a full -info.txt.
+//
+// Declare the columns with AddDataVariableNames before calling this; it writes
+// rows, not the header.
+func Save(df *results.DataFile, label string, s Stats, targetMs float64) {
+	df.WriteComment(fmt.Sprintf(
+		"%s n=%d target_ms=%.4f mean_ms=%.4f sd_ms=%.4f min_ms=%.4f max_ms=%.4f p5_ms=%.4f p95_ms=%.4f late0.5=%d late1.0=%d",
+		label, s.N, targetMs, s.Mean, s.SD, s.MinV, s.MaxV, s.P5, s.P95, s.Late05, s.Late1))
+	for i, v := range s.Vals {
+		df.Add(i, fmt.Sprintf("%.6f", v))
+	}
 }
 
 // PrintHistogram prints a 10-bin ASCII histogram of vals to stdout.

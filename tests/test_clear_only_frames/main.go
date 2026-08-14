@@ -136,10 +136,17 @@ func main() {
 		log.Fatalf("test error: %v", err)
 	}
 
+	// The verdict here is what the SCREEN did, which only a human can supply, so
+	// the mode and the settings are recorded to give that judgement something to
+	// attach to. The periods go in as supporting evidence, still not a pass/fail.
+	exp.Data.WriteComment(fmt.Sprintf("clearonly mode=%s guarded=%t cycles=%d frames_on=%d frames_off=%d level_bright=%d level_dark=%d",
+		mode, *fGuarded, *fCycles, *fFramesOn, *fFramesOff, *fLevelB, *fLevelA))
 	if len(periods) > 0 {
 		s := timingstats.ComputeStats(periods, 0)
 		s = timingstats.ComputeStats(periods, s.Mean)
 		timingstats.PrintStats("Cycle period (app-side — NOT a pass/fail signal)", s, s.Mean)
+		exp.AddDataVariableNames([]string{"cycle", "period_ms"})
+		timingstats.Save(exp.Data, "clearonly cycle_period (app-side — NOT a pass/fail signal)", s, s.Mean)
 	}
 	fmt.Println("\nPASS = the screen showed a clean square wave throughout.")
 	fmt.Println("FAIL = frozen frames lasting seconds, or flicker unrelated to the pattern.")
