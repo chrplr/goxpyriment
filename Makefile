@@ -1,4 +1,4 @@
-.PHONY: all examples update-examples-gallery readme tests pdfs docs serve deploy clean help
+.PHONY: all examples update-examples-gallery readme tests timing-drift pdfs docs serve deploy clean help
 
 # Discover every directory holding a main.go directly under examples/ or
 # tests/. We use make's built-in $(wildcard)/$(patsubst) rather than `find`
@@ -26,6 +26,7 @@ help:
 	@echo "  share-NAME     Export one example as a standalone module to _build/share/NAME/"
 	@echo "  gv-convert     Build the video -> .gv converter to _build/gv-convert"
 	@echo "  gv-getinfo     Build the .gv file inspector to _build/gv-getinfo"
+	@echo "  timing-drift   Build the flip-vs-photodiode drift analyser to _build/timing-drift"
 	@echo "  tests     Build test binaries"
 	@echo "  wasm-NAME        Build a browser (WASM) bundle of an example to _build/wasm/NAME/"
 	@echo "  wasm-NAME-serve  Build + serve a browser bundle at http://localhost:8080/?s=1"
@@ -68,6 +69,13 @@ gv-getinfo:
 	@mkdir -p _build
 	@CGO_ENABLED=0 go build -o _build/gv-getinfo ./cmd/gv-getinfo
 	@echo "Built _build/gv-getinfo"
+
+# Build the timing analyser: joins an instrument's event log to a Timing-Tests
+# run CSV and reports whether the flip timestamp drifts against the photons.
+timing-drift:
+	@mkdir -p _build
+	@CGO_ENABLED=0 go build -o _build/timing-drift ./cmd/timing-drift
+	@echo "Built _build/timing-drift"
 
 # Regenerate README.md from docs/index.md (single source of truth for the
 # landing page). Rewrites relative links to reach files through docs/.

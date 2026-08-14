@@ -444,6 +444,46 @@ mean.
 
 The hardware rows are the ones worth quoting in a methods section.
 
+**But an SD alone cannot grade a TTL→photodiode series**, and the row above is
+the one most likely to mislead. A delay that slides steadily across a run has an
+SD like any other, and a large one — yet nothing about it is jitter, it cannot be
+averaged away, and every within-channel statistic in the BBTK report looks
+perfect while it happens. Measured on a Raspberry Pi 4: SD 4.07 ms, of which
+**99.8 % was a monotonic 13.9 ms ramp** and 0.18 ms was real scatter. Run
+`timing-drift` (below) before reading this row.
+
+---
+
+## `timing-drift` — is the flip timestamp tracking the panel?
+
+The two `av` output files each look fine on their own; the failure only exists
+*between* them. This tool joins them and reports the slope first:
+
+```bash
+make timing-drift
+./_build/timing-drift bbtk-av-001-events.csv Timing-Tests_sub-000_date-…csv
+```
+
+It prints, for TTL→light and then for flip-timestamp→light:
+
+- the **slope**, in µs/cycle and ppm — the number that matters;
+- the **de-trended SD**, the real trial-to-trial scatter once the ramp is gone;
+- how much of the variance the ramp accounts for;
+- one-frame jumps, and the panel's **true frame period** fitted from the photon
+  train, scored against both rates the framework recorded.
+
+The host and the instrument run off different crystals — tens of ppm apart before
+anything interesting has happened — so the tool fits that clock ratio out of the
+trigger-versus-flip relation rather than assuming it away. Events are paired by
+nearest neighbour within half a cycle, not by index, because a single spurious
+detection shifts every later pair by a whole cycle and turns the series into a
+constant near minus one period.
+
+Read the verdict line. `DRIFT DOMINATES` means the flip timestamps and the panel
+are on different clocks and no absolute onset from that run can be trusted;
+`NO DRIFT, but … scatter` means the timestamps track the panel and the spread is
+genuine.
+
 ---
 
 ## Loading data in Python
