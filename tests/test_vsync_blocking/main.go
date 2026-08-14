@@ -37,6 +37,7 @@ import (
 	"github.com/Zyko0/go-sdl3/sdl"
 	"github.com/chrplr/goxpyriment/control"
 	"github.com/chrplr/goxpyriment/stimuli"
+	"github.com/chrplr/goxpyriment/tests/internal/report"
 )
 
 const nFrames = 120
@@ -182,6 +183,13 @@ func main() {
 			ps.Blocked, ps.Paced, pacedPct,
 			float64(ps.WaitMean().Nanoseconds())/1e6, float64(ps.WaitMax.Nanoseconds())/1e6)
 		log.Printf("verdict: %s", verdict)
+
+		// resultText is already the whole report — the same string shown on
+		// screen — so the file gets exactly what the operator read, rather than
+		// a second rendering of the same numbers that could drift from it.
+		out := &report.Tee{}
+		out.Printf("%s\n", resultText)
+		out.Flush(exp.Data, "vsync blocking report")
 
 		tb := stimuli.NewTextBox(resultText, 900, control.Origin(), control.White)
 		if err := exp.Show(tb); err != nil {
