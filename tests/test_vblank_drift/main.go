@@ -196,12 +196,25 @@ func analyse(exp *control.Experiment, s []sample, missing int, nominalMs float64
 		flMs[i] = float64(s[i].flipNS) / 1e6
 		idx[i] = float64(i)
 	}
-	panelMs, panelIntercept := leastSquares(seq, vbMs)
-	gridResid := make([]float64, n)
-	for i := range vbMs {
-		gridResid[i] = vbMs[i] - (panelIntercept + panelMs*seq[i])
+	// Fit the grid with a quadratic, so a rate that changes during the run is
+	// measured rather than left in the residual (see quadFit).
+	panelMs, c2, quadResid := quadFit(seq, vbMs)
+	if quadResid == nil { // too few samples for a quadratic; fall back
+		var intercept float64
+		panelMs, intercept = leastSquares(seq, vbMs)
+		quadResid = make([]float64, n)
+		for i := range vbMs {
+			quadResid[i] = vbMs[i] - (intercept + panelMs*seq[i])
+		}
 	}
-	gridSD := sd(gridResid)
+	gridSD := sd(quadResid)
+	// c2 is half the change in period per frame; express it as the fractional
+	// rate change per minute, which is what a person can compare against the
+	// drift figures below.
+	ratePPMPerMin := 0.0
+	if panelMs > 0 {
+		ratePPMPerMin = (2 * c2 / panelMs) * (60000 / panelMs) * 1e6
+	}
 
 	out.Printf("\n── Vblank source ─────────────────────────────────────────\n")
 	out.Printf("  %-22s : %d used, %d flips with no vblank\n", "samples", n, missing)
@@ -220,14 +233,20 @@ func analyse(exp *control.Experiment, s []sample, missing int, nominalMs float64
 		gridGoodMs  = 0.010 // amdgpu 0.0008, i915 0.003 — comfortably inside
 		gridNoisyMs = 0.200 // V3D 0.0737 lands here: usable, but not comparable
 	)
-	out.Printf("  %-22s : %.4f ms\n", "residual about grid", gridSD)
+	out.Printf("  %-22s : %+.2f ppm/min\n", "panel rate changing", ratePPMPerMin)
+	if math.Abs(ratePPMPerMin) > 2 {
+		out.Printf("  %-22s   The display's rate is MOVING, most likely thermal. Measured on a\n", "")
+		out.Printf("  %-22s   Pi 4 warming under load: 23 ppm over six minutes, monotonic. No\n", "")
+		out.Printf("  %-22s   fixed refresh constant can track this — only reading the vblanks.\n", "")
+	}
+	out.Printf("  %-22s : %.4f ms (after removing that)\n", "residual about grid", gridSD)
 	switch {
 	case gridSD > gridNoisyMs:
 		out.Printf("  %-22s   THE SOURCE IS NOT SOUND. The kernel's stamps do not fall on a\n", "")
 		out.Printf("  %-22s   regular grid, so nothing below can be trusted. Panel self-refresh\n", "")
 		out.Printf("  %-22s   stopping the CRTC will do this; try kmsdrm, or a photodiode.\n", "")
-		exp.Data.WriteComment(fmt.Sprintf("vblank samples=%d missing=%d steps=%s grid_resid_ms=%.4f grade=UNSOUND",
-			n, missing, fmtSteps(steps), gridSD))
+		exp.Data.WriteComment(fmt.Sprintf("vblank samples=%d missing=%d steps=%s grid_resid_ms=%.4f rate_ppm_per_min=%+.2f grade=UNSOUND",
+			n, missing, fmtSteps(steps), gridSD, ratePPMPerMin))
 		return
 	case gridSD > gridGoodMs:
 		out.Printf("  %-22s   NOISY (%.0fx a well-behaved driver, which gives under %.3f ms).\n", "", gridSD/gridGoodMs, gridGoodMs)
@@ -237,8 +256,8 @@ func analyse(exp *control.Experiment, s []sample, missing int, nominalMs float64
 	default:
 		out.Printf("  %-22s   a clean grid: the stamps are usable as a display reference.\n", "")
 	}
-	exp.Data.WriteComment(fmt.Sprintf("vblank samples=%d missing=%d steps=%s grid_resid_ms=%.4f",
-		n, missing, fmtSteps(steps), gridSD))
+	exp.Data.WriteComment(fmt.Sprintf("vblank samples=%d missing=%d steps=%s grid_resid_ms=%.4f rate_ppm_per_min=%+.2f",
+		n, missing, fmtSteps(steps), gridSD, ratePPMPerMin))
 
 	out.Printf("\n── Panel grid (kernel vblank timestamps) ─────────────────\n")
 	out.Printf("  %-22s : %.5f ms = %.4f Hz\n", "TRUE frame", panelMs, 1000/panelMs)
@@ -312,6 +331,14 @@ func analyse(exp *control.Experiment, s []sample, missing int, nominalMs float64
 		driftPerFrame*1000, driftPPM, drift95PPM)
 	out.Printf("  %-22s : %+.3f ms/min, %+.2f ms over an 8-min block\n", "",
 		driftPerFrame*60000/panelMs, driftPerFrame*480000/panelMs)
+	// The gap between the measured drift and the nominal-vs-true error is a
+	// reproducible quantity in its own right — 5.13 +- 0.5 ppm across five Pi 4
+	// runs — and nothing here explains it yet. Surfacing it invites the question
+	// rather than burying it in two numbers the reader has to subtract.
+	nominalErrPPM := (nominalMs - panelMs) / panelMs * 1e6
+	out.Printf("  %-22s : %+.2f ppm (drift minus nominal-vs-TRUE)\n", "unexplained gap", driftPPM-nominalErrPPM)
+	exp.Data.WriteComment(fmt.Sprintf("drift gap_vs_nominal_ppm=%+.2f", driftPPM-nominalErrPPM))
+
 	if math.Abs(driftPPM) < drift95PPM {
 		out.Printf("  %-22s   NOT RESOLVED — the drift is inside its own confidence interval.\n", "")
 		out.Printf("  %-22s   Run longer, or on a driver with less noise in its vblank stamps.\n", "")
@@ -329,11 +356,12 @@ func analyse(exp *control.Experiment, s []sample, missing int, nominalMs float64
 	// check (tens of µs against a 0.4-frame threshold), so nothing else here
 	// would show them.
 	//
-	// This is not hypothetical: an AMD run with 1 blocked frame in 1800 matched
-	// its predicted drift to 0.03 ppm, while a Pi 4 run with 24 blocked frames
-	// came in 8 ppm below prediction. Lag-1 autocorrelation of the residuals
-	// separates the two cases — white residuals mean a clean line, strongly
-	// positive ones mean structure the slope is averaging over.
+	// Do NOT read the blocked count as the explanation for any gap between the
+	// drift and the nominal-vs-true figure. That hypothesis was tested against
+	// five back-to-back Pi 4 runs and failed: the gap held at 5.13 +- 0.5 ppm
+	// while the blocked count ranged from 26 to 59. It is reproducible and
+	// currently unexplained — frameDur's nanosecond truncation accounts for only
+	// 0.06 ppm of it — so it is reported as an observation, not a diagnosis.
 	fitResid := make([]float64, 0, segLen)
 	for i := lo; i <= hi; i++ {
 		fitResid = append(fitResid, phase[i]-(phase[lo]+driftPerFrame*float64(i-lo)))
@@ -342,11 +370,6 @@ func analyse(exp *control.Experiment, s []sample, missing int, nominalMs float64
 	residAC1 := autocorr1(fitResid)
 	out.Printf("  %-22s : SD %.4f ms, lag-1 autocorr %+.3f\n", "fit residual", residSD, residAC1)
 	switch {
-	case residAC1 > 0.8 && ps.Blocked > 2:
-		out.Printf("  %-22s   STRUCTURED, not noise, and %d presents took the blocked branch.\n", "", ps.Blocked)
-		out.Printf("  %-22s   Those re-anchor the schedule to hardware, so the slope above is a\n", "")
-		out.Printf("  %-22s   LOWER BOUND on the schedule's rate error. Compare it with the\n", "")
-		out.Printf("  %-22s   nominal-vs-TRUE figure above: a gap is this, not measurement noise.\n", "")
 	case residAC1 > 0.8:
 		out.Printf("  %-22s   STRUCTURED, not noise. Something is modulating the phase on a\n", "")
 		out.Printf("  %-22s   timescale longer than a frame; the slope is an average over it.\n", "")
@@ -453,6 +476,83 @@ func leastSquares(x, y []float64) (slope, intercept float64) {
 	}
 	slope = sxy / sxx
 	return slope, my - slope*mx
+}
+
+// quadFit fits y = c0 + c1*u + c2*u^2 with u = x - mean(x), and returns the
+// slope at the centre of the run, the quadratic coefficient, and the residuals.
+//
+// A straight line is the wrong model for a display whose rate is changing. On a
+// Raspberry Pi 4 warming up under load the panel period moved 23 ppm over six
+// minutes, and fitting that with a line left 16.5 µs of "scatter" that was
+// nothing of the kind — it was curvature. Grading a driver on that number
+// called V3D ninety times noisier than amdgpu when, once the machine had
+// settled, it was within a factor of two of i915.
+//
+// So the curvature is now a result rather than a residual: c2 gives the rate of
+// change, and what is left after removing it is the driver's actual timestamp
+// noise.
+func quadFit(x, y []float64) (slopeAtCentre, c2 float64, resid []float64) {
+	n := len(x)
+	if n < 4 {
+		return 0, 0, nil
+	}
+	xbar := mean(x)
+	u := make([]float64, n)
+	for i := range x {
+		u[i] = x[i] - xbar
+	}
+	var s2, s3, s4, t0, t1, t2 float64
+	for i := range u {
+		uu := u[i] * u[i]
+		s2 += uu
+		s3 += uu * u[i]
+		s4 += uu * uu
+		t0 += y[i]
+		t1 += u[i] * y[i]
+		t2 += uu * y[i]
+	}
+	// Normal equations, with sum(u) == 0 by construction.
+	c0, c1, cc, ok := solve3(
+		float64(n), 0, s2, t0,
+		0, s2, s3, t1,
+		s2, s3, s4, t2)
+	if !ok {
+		return 0, 0, nil
+	}
+	resid = make([]float64, n)
+	for i := range u {
+		resid[i] = y[i] - (c0 + c1*u[i] + cc*u[i]*u[i])
+	}
+	return c1, cc, resid
+}
+
+// solve3 solves a 3x3 linear system by Gaussian elimination with partial
+// pivoting. Written out rather than pulled in from a library because the tests
+// module should not grow a numerics dependency for nine coefficients.
+func solve3(a11, a12, a13, b1, a21, a22, a23, b2, a31, a32, a33, b3 float64) (x1, x2, x3 float64, ok bool) {
+	m := [3][4]float64{{a11, a12, a13, b1}, {a21, a22, a23, b2}, {a31, a32, a33, b3}}
+	for col := 0; col < 3; col++ {
+		piv := col
+		for r := col + 1; r < 3; r++ {
+			if math.Abs(m[r][col]) > math.Abs(m[piv][col]) {
+				piv = r
+			}
+		}
+		if math.Abs(m[piv][col]) < 1e-12 {
+			return 0, 0, 0, false
+		}
+		m[col], m[piv] = m[piv], m[col]
+		for r := 0; r < 3; r++ {
+			if r == col {
+				continue
+			}
+			f := m[r][col] / m[col][col]
+			for c := col; c < 4; c++ {
+				m[r][c] -= f * m[col][c]
+			}
+		}
+	}
+	return m[0][3] / m[0][0], m[1][3] / m[1][1], m[2][3] / m[2][2], true
 }
 
 // slopeStdErr returns the standard error of a fitted slope, inflated for
