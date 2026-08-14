@@ -55,6 +55,7 @@ import (
 	"math"
 	"os"
 	"sort"
+	"strings"
 
 	"github.com/chrplr/goxpyriment/control"
 	"github.com/chrplr/goxpyriment/media/present"
@@ -163,7 +164,37 @@ func measure(exp *control.Experiment) error {
 	return control.EndLoop
 }
 
+// tee prints to stdout and keeps a copy, so the report a person reads is the
+// same text that lands in the file.
+//
+// Rewriting the report into compact key=value comments was the first attempt,
+// and it saved every number while losing the thing that makes them usable: the
+// labels, the units, the source-soundness check and the verdict. Someone
+// running this on a machine you cannot see should be able to send you the file
+// rather than a screenshot of a terminal.
+type tee struct{ lines []string }
+
+func (t *tee) printf(format string, a ...any) {
+	line := fmt.Sprintf(format, a...)
+	fmt.Print(line)
+	t.lines = append(t.lines, line)
+}
+
+// flush writes the captured report into the data file's companion info file,
+// one comment line per output line.
+func (t *tee) flush(exp *control.Experiment) {
+	exp.Data.WriteComment("--- vblank drift report ---")
+	for _, chunk := range t.lines {
+		for _, line := range strings.Split(strings.TrimRight(chunk, "\n"), "\n") {
+			exp.Data.WriteComment(line)
+		}
+	}
+}
+
 func report(exp *control.Experiment, s []sample, missing int, nominalMs float64, ps control.PacingStats) {
+	out := &tee{}
+	defer out.flush(exp)
+
 	n := len(s)
 
 	// Recover which vblank each sample landed on. The ioctl returns the most
@@ -199,23 +230,23 @@ func report(exp *control.Experiment, s []sample, missing int, nominalMs float64,
 	}
 	gridSD := sd(gridResid)
 
-	fmt.Printf("\n── Vblank source ─────────────────────────────────────────\n")
-	fmt.Printf("  %-22s : %d used, %d flips with no vblank\n", "samples", n, missing)
-	fmt.Printf("  %-22s : %s\n", "sequence steps", fmtSteps(steps))
-	fmt.Printf("  %-22s : %.4f ms\n", "residual about grid", gridSD)
+	out.printf("\n── Vblank source ─────────────────────────────────────────\n")
+	out.printf("  %-22s : %d used, %d flips with no vblank\n", "samples", n, missing)
+	out.printf("  %-22s : %s\n", "sequence steps", fmtSteps(steps))
+	out.printf("  %-22s : %.4f ms\n", "residual about grid", gridSD)
 	if gridSD > 0.5*nominalMs {
-		fmt.Printf("  %-22s   THE SOURCE IS NOT SOUND. The kernel's stamps do not fall on a\n", "")
-		fmt.Printf("  %-22s   regular grid, so nothing below can be trusted. Panel self-refresh\n", "")
-		fmt.Printf("  %-22s   stopping the CRTC will do this; try kmsdrm, or a photodiode.\n", "")
+		out.printf("  %-22s   THE SOURCE IS NOT SOUND. The kernel's stamps do not fall on a\n", "")
+		out.printf("  %-22s   regular grid, so nothing below can be trusted. Panel self-refresh\n", "")
+		out.printf("  %-22s   stopping the CRTC will do this; try kmsdrm, or a photodiode.\n", "")
 		return
 	}
-	fmt.Printf("  %-22s   a clean grid: the stamps are usable as a display reference.\n", "")
+	out.printf("  %-22s   a clean grid: the stamps are usable as a display reference.\n", "")
 	exp.Data.WriteComment(fmt.Sprintf("vblank samples=%d missing=%d steps=%s grid_resid_ms=%.4f",
 		n, missing, fmtSteps(steps), gridSD))
 
-	fmt.Printf("\n── Panel grid (kernel vblank timestamps) ─────────────────\n")
-	fmt.Printf("  %-22s : %.5f ms = %.4f Hz\n", "TRUE frame", panelMs, 1000/panelMs)
-	fmt.Printf("  %-22s : %.5f ms = %.4f Hz -> %+.1f ppm\n", "nominal (display mode)",
+	out.printf("\n── Panel grid (kernel vblank timestamps) ─────────────────\n")
+	out.printf("  %-22s : %.5f ms = %.4f Hz\n", "TRUE frame", panelMs, 1000/panelMs)
+	out.printf("  %-22s : %.5f ms = %.4f Hz -> %+.1f ppm\n", "nominal (display mode)",
 		nominalMs, 1000/nominalMs, (nominalMs-panelMs)/panelMs*1e6)
 
 	// The measurement is the PHASE: how far into the frame the flip timestamp
@@ -241,17 +272,17 @@ func report(exp *control.Experiment, s []sample, missing int, nominalMs float64,
 	lo, hi := longestCleanRun(phase, seq, panelMs)
 	segLen := hi - lo + 1
 
-	fmt.Printf("\n── Flip timestamps vs the panel ──────────────────────────\n")
+	out.printf("\n── Flip timestamps vs the panel ──────────────────────────\n")
 	sortedPhase := append([]float64(nil), phase...)
 	sort.Float64s(sortedPhase)
-	fmt.Printf("  %-22s : median %.3f ms, range %.3f–%.3f (frame = %.3f)\n", "phase (flip - vblank)",
+	out.printf("  %-22s : median %.3f ms, range %.3f–%.3f (frame = %.3f)\n", "phase (flip - vblank)",
 		sortedPhase[n/2], sortedPhase[0], sortedPhase[n-1], panelMs)
-	fmt.Printf("  %-22s : %d of %d frames\n", "longest clean stretch", segLen, n)
+	out.printf("  %-22s : %d of %d frames\n", "longest clean stretch", segLen, n)
 
 	if segLen < 60 {
-		fmt.Printf("  %-22s   TOO FRAGMENTED TO FIT. Frames are being dropped often enough\n", "")
-		fmt.Printf("  %-22s   that no clean stretch survives. Fix the drops first — try\n", "")
-		fmt.Printf("  %-22s   fullscreen, or a session without a compositor.\n", "")
+		out.printf("  %-22s   TOO FRAGMENTED TO FIT. Frames are being dropped often enough\n", "")
+		out.printf("  %-22s   that no clean stretch survives. Fix the drops first — try\n", "")
+		out.printf("  %-22s   fullscreen, or a session without a compositor.\n", "")
 		return
 	}
 
@@ -263,21 +294,21 @@ func report(exp *control.Experiment, s []sample, missing int, nominalMs float64,
 		driftPerFrame*1000, driftPPM, segLen, n))
 	exp.Data.WriteComment(fmt.Sprintf("pacing blocked=%d paced=%d wait_mean_ms=%.3f wait_max_ms=%.3f",
 		ps.Blocked, ps.Paced, float64(ps.WaitMean().Nanoseconds())/1e6, float64(ps.WaitMax.Nanoseconds())/1e6))
-	fmt.Printf("  %-22s : %+.4f us/frame = %+.2f ppm\n", "DRIFT", driftPerFrame*1000, driftPPM)
-	fmt.Printf("  %-22s : %+.3f ms/min, %+.2f ms over an 8-min block\n", "",
+	out.printf("  %-22s : %+.4f us/frame = %+.2f ppm\n", "DRIFT", driftPerFrame*1000, driftPPM)
+	out.printf("  %-22s : %+.3f ms/min, %+.2f ms over an 8-min block\n", "",
 		driftPerFrame*60000/panelMs, driftPerFrame*480000/panelMs)
 
-	fmt.Printf("\n── Pacing branches ───────────────────────────────────────\n")
+	out.printf("\n── Pacing branches ───────────────────────────────────────\n")
 	total := ps.Blocked + ps.Paced
 	pacedPct := 0.0
 	if total > 0 {
 		pacedPct = 100 * float64(ps.Paced) / float64(total)
 	}
-	fmt.Printf("  %-22s : %d blocked / %d paced (%.1f %% paced)\n", "branches", ps.Blocked, ps.Paced, pacedPct)
-	fmt.Printf("  %-22s : mean %.3f ms, max %.3f ms\n", "early-return wait",
+	out.printf("  %-22s : %d blocked / %d paced (%.1f %% paced)\n", "branches", ps.Blocked, ps.Paced, pacedPct)
+	out.printf("  %-22s : mean %.3f ms, max %.3f ms\n", "early-return wait",
 		float64(ps.WaitMean().Nanoseconds())/1e6, float64(ps.WaitMax.Nanoseconds())/1e6)
 
-	fmt.Printf("\n  %-22s : %s\n", "VERDICT", verdict(driftPPM, driftPerFrame, pacedPct))
+	out.printf("\n  %-22s : %s\n", "VERDICT", verdict(driftPPM, driftPerFrame, pacedPct))
 }
 
 // verdict reads the drift against what an 8-minute block can tolerate. 1 ppm is
