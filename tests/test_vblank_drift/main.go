@@ -231,8 +231,9 @@ func analyse(exp *control.Experiment, s []sample, missing int, nominalMs float64
 		return
 	case gridSD > gridGoodMs:
 		out.Printf("  %-22s   NOISY (%.0fx a well-behaved driver, which gives under %.3f ms).\n", "", gridSD/gridGoodMs, gridGoodMs)
-		out.Printf("  %-22s   The slope below still fits to well under a ppm at this n, but\n", "")
-		out.Printf("  %-22s   treat this driver's stamps as less trustworthy than amdgpu/i915.\n", "")
+		out.Printf("  %-22s   Read the confidence interval on the drift below before quoting it:\n", "")
+		out.Printf("  %-22s   this scatter is autocorrelated, so it widens that interval far more\n", "")
+		out.Printf("  %-22s   than the sample count alone suggests.\n", "")
 	default:
 		out.Printf("  %-22s   a clean grid: the stamps are usable as a display reference.\n", "")
 	}
@@ -289,9 +290,33 @@ func analyse(exp *control.Experiment, s []sample, missing int, nominalMs float64
 		driftPerFrame*1000, driftPPM, segLen, n))
 	exp.Data.WriteComment(fmt.Sprintf("pacing blocked=%d paced=%d wait_mean_ms=%.3f wait_max_ms=%.3f",
 		ps.Blocked, ps.Paced, float64(ps.WaitMean().Nanoseconds())/1e6, float64(ps.WaitMax.Nanoseconds())/1e6))
-	out.Printf("  %-22s : %+.4f us/frame = %+.2f ppm\n", "DRIFT", driftPerFrame*1000, driftPPM)
+
+	// Uncertainty on the slope, corrected for autocorrelated residuals.
+	//
+	// The textbook standard error assumes independent residuals. These are not:
+	// on a V3D/kmsdrm run the lag-1 autocorrelation is 0.98, which makes the
+	// naive figure about ten times too optimistic — it claimed "well under a
+	// ppm" on a machine whose answer moved 26 ppm between two runs thirteen
+	// minutes apart. Quoting a precision the data does not support is the same
+	// error this whole test exists to catch, so the correction is applied here
+	// rather than left to the reader.
+	//
+	// The AR(1) variance inflation factor (1+rho)/(1-rho) is the standard
+	// first-order correction. It is a lower bound when the residual is closer to
+	// a random walk than to AR(1), so treat the interval as optimistic even
+	// after this.
+	seSlope := slopeStdErr(idx[lo:hi+1], phase[lo:hi+1], driftPerFrame)
+	drift95PPM := 1.96 * seSlope / panelMs * 1e6
+
+	out.Printf("  %-22s : %+.4f us/frame = %+.2f ppm  (95%% CI +-%.2f)\n", "DRIFT",
+		driftPerFrame*1000, driftPPM, drift95PPM)
 	out.Printf("  %-22s : %+.3f ms/min, %+.2f ms over an 8-min block\n", "",
 		driftPerFrame*60000/panelMs, driftPerFrame*480000/panelMs)
+	if math.Abs(driftPPM) < drift95PPM {
+		out.Printf("  %-22s   NOT RESOLVED — the drift is inside its own confidence interval.\n", "")
+		out.Printf("  %-22s   Run longer, or on a driver with less noise in its vblank stamps.\n", "")
+	}
+	exp.Data.WriteComment(fmt.Sprintf("drift ci95_ppm=%.2f", drift95PPM))
 
 	// Is the phase actually a straight line? A slope alone cannot say.
 	//
@@ -428,6 +453,44 @@ func leastSquares(x, y []float64) (slope, intercept float64) {
 	}
 	slope = sxy / sxx
 	return slope, my - slope*mx
+}
+
+// slopeStdErr returns the standard error of a fitted slope, inflated for
+// autocorrelation in the residuals.
+//
+// With independent residuals the error is sd/sqrt(Sxx). Real phase residuals are
+// nothing like independent — a slow wander in the driver's vblank stamps makes
+// consecutive ones almost equal — and ignoring that understates the uncertainty
+// by roughly sqrt((1+rho)/(1-rho)), which at rho = 0.98 is a factor of ten.
+//
+// rho is clamped below 1 because the factor diverges there, and a diverging
+// error bar is less useful than a large one.
+func slopeStdErr(x, y []float64, slope float64) float64 {
+	n := len(x)
+	if n < 3 {
+		return math.Inf(1)
+	}
+	resid := make([]float64, n)
+	for i := range x {
+		resid[i] = y[i] - (y[0] + slope*(x[i]-x[0]))
+	}
+	mx := mean(x)
+	var sxx float64
+	for _, v := range x {
+		sxx += (v - mx) * (v - mx)
+	}
+	if sxx == 0 {
+		return math.Inf(1)
+	}
+	naive := sd(resid) / math.Sqrt(sxx)
+	rho := autocorr1(resid)
+	if rho < 0 {
+		rho = 0
+	}
+	if rho > 0.995 {
+		rho = 0.995
+	}
+	return naive * math.Sqrt((1+rho)/(1-rho))
 }
 
 // autocorr1 is the lag-1 autocorrelation of v: ~0 for white noise, near 1 for a
