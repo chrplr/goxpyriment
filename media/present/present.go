@@ -1,33 +1,28 @@
 // Copyright (2026) Christophe Pallier <christophe@pallier.org>
 // Licensed under the Apache License, Version 2.0 (see LICENSE.txt).
 
-// Package present provides PresentTimer backends that report
-// hardware-verified vsync timestamps for an apparatus.Screen.
+// Package present adapts the vblank clock to MovieManager's presentation model.
 //
-// A Timer answers, for a given Present-return time (FlipTS), what the
-// OS-measured first-pixel-visible time was for the frame whose pixels
-// were just queued. Three implementations ship today:
+// The backends used to live here. They now live in the leaf package
+// github.com/chrplr/goxpyriment/vblank, because apparatus.Screen needs them and
+// this package imports apparatus — the dependency ran the wrong way for the one
+// caller that needs it most. Nothing was lost in the move: the backends never
+// used the *apparatus.Screen they were handed.
 //
-//   - vsync-estimated fallback: returns FlipTS itself, no OS integration
-//     (precision: ~one display scanout period, ~16 ms at 60 Hz).
-//   - macOS CVDisplayLink (cvdisplaylink_darwin.go): publishes per-vsync
-//     timestamps from the CoreVideo display link, accurate to whatever
-//     macOS measures from the display controller.
-//   - Linux DRM (drm_linux.go): queries DRM_IOCTL_WAIT_VBLANK after each
-//     Present, accurate to whatever the kernel stamps the vblank IRQ
-//     with.
+// What stays here is what is specific to presenting movies rather than to
+// reading a vblank clock: the LookAhead source, which describes a callback that
+// fires from the decode loop BEFORE the frame is presented and therefore carries
+// no vsync timestamp at all. That distinction is meaningless to a vblank clock
+// and would be a semantic leak in the leaf package, so the two vocabularies are
+// kept apart and translated at this seam.
 //
-// All three implementations are pure Go (no cgo). The macOS backend
-// uses purego to load CoreVideo and libSystem; the Linux backend uses
-// the syscall package for the DRM ioctl. Stage 5 of media/Plan.md.
-//
-// Use AutoDetect to pick the best Timer for the current platform; it
-// falls back to vsync-estimated if the platform-specific backend can't
-// initialise (missing display, permission denied, etc.).
+// The public API is unchanged. Use AutoDetect to pick the best Timer; it never
+// returns nil.
 package present
 
 import (
 	"github.com/chrplr/goxpyriment/apparatus"
+	"github.com/chrplr/goxpyriment/vblank"
 )
 
 // OnsetSource indicates the precision class of an Onset timestamp.
@@ -65,6 +60,21 @@ func (s OnsetSource) String() string {
 	}
 }
 
+// fromVblank maps a vblank.Source onto the richer OnsetSource.
+//
+// The two enumerations agree numerically today, but the mapping is written out
+// rather than cast: LookAhead exists only on this side, so the sets are not the
+// same shape and a cast would silently do the wrong thing the moment either one
+// gains a member.
+func fromVblank(s vblank.Source) OnsetSource {
+	switch s {
+	case vblank.HardwareVerified:
+		return HardwareVerified
+	default:
+		return VsyncEstimated
+	}
+}
+
 // Timer reports the OS-measured display-refresh time most likely to
 // correspond to a given Present(). Implementations are safe for
 // concurrent use; backends that publish vsync timestamps from a
@@ -98,36 +108,36 @@ type Timer interface {
 	Description() string
 }
 
-// fallback is the always-available Timer that simply returns FlipTS
-// itself with VsyncEstimated source.
-type fallback struct{}
+// adapter presents a vblank.Timer through this package's Timer interface.
+type adapter struct{ t vblank.Timer }
+
+func (a adapter) RecordFlip(flipTS uint64) { a.t.RecordFlip(flipTS) }
+
+func (a adapter) OnsetForFlip(flipTS uint64) (uint64, OnsetSource, bool) {
+	ts, src, ok := a.t.OnsetForFlip(flipTS)
+	return ts, fromVblank(src), ok
+}
+
+func (a adapter) Precision() OnsetSource { return fromVblank(a.t.Precision()) }
+func (a adapter) Close() error           { return a.t.Close() }
+func (a adapter) Description() string    { return a.t.Description() }
 
 // NewFallback returns the no-OS-integration Timer. Precision:
 // VsyncEstimated (~vsync-period). Always available, never errors.
-func NewFallback() Timer { return fallback{} }
+func NewFallback() Timer { return adapter{vblank.NewFallback()} }
 
-func (fallback) RecordFlip(uint64) {}
-
-func (fallback) OnsetForFlip(flipTS uint64) (uint64, OnsetSource, bool) {
-	return flipTS, VsyncEstimated, true
-}
-
-func (fallback) Precision() OnsetSource { return VsyncEstimated }
-func (fallback) Close() error           { return nil }
-func (fallback) Description() string {
-	return "vsync-estimated (post-Present FlipTS, no OS integration)"
-}
-
-// AutoDetect picks the best available Timer for the current platform
-// and screen. Falls back to NewFallback() if no platform-specific
-// backend is available or if its initialisation fails.
+// AutoDetect picks the best available Timer for the current platform.
+// Falls back to NewFallback() if no platform-specific backend is
+// available or if its initialisation fails.
 //
 // On macOS: tries CVDisplayLink via CoreVideo (purego).
-// On Linux:  tries DRM_IOCTL_WAIT_VBLANK on /dev/dri/cardX.
+// On Linux:  tries DRM_IOCTL_WAIT_VBLANK, searching every /dev/dri/cardN
+// and every CRTC.
 // Elsewhere: returns NewFallback().
+//
+// The screen argument is retained for API compatibility and is unused: no
+// backend ever needed it.
 //
 // The return value is never nil. Failures are logged via the standard
 // log package and surfaced through the returned Timer's Description.
-func AutoDetect(screen *apparatus.Screen) Timer {
-	return autoDetect(screen)
-}
+func AutoDetect(_ *apparatus.Screen) Timer { return adapter{vblank.AutoDetect()} }

@@ -57,9 +57,9 @@ import (
 	"sort"
 
 	"github.com/chrplr/goxpyriment/control"
-	"github.com/chrplr/goxpyriment/media/present"
 	"github.com/chrplr/goxpyriment/stimuli"
 	"github.com/chrplr/goxpyriment/tests/internal/report"
+	"github.com/chrplr/goxpyriment/vblank"
 )
 
 var (
@@ -88,11 +88,11 @@ func main() {
 func measure(exp *control.Experiment) error {
 	screen := exp.Screen
 
-	timer := present.AutoDetect(screen)
+	timer := vblank.AutoDetect()
 	defer timer.Close()
 
 	fmt.Printf("vblank backend: %s\n", timer.Description())
-	if timer.Precision() != present.HardwareVerified {
+	if timer.Precision() != vblank.HardwareVerified {
 		// Refusing is the whole point. The fallback timer returns the flip
 		// timestamp as the onset, so every number below would come out exactly
 		// zero — a clean bill of health from a measurement that never happened.

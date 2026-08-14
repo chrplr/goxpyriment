@@ -3,7 +3,7 @@
 
 //go:build darwin
 
-package present
+package vblank
 
 import "testing"
 

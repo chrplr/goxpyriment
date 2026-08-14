@@ -3,16 +3,14 @@
 
 //go:build darwin
 
-package present
+package vblank
 
 import (
 	"log"
-
-	"github.com/chrplr/goxpyriment/apparatus"
 )
 
-func autoDetect(screen *apparatus.Screen) Timer {
-	backend, err := newCVDisplayLinkBackend(screen)
+func autoDetect() Timer {
+	backend, err := newCVDisplayLinkBackend()
 	if err != nil {
 		log.Printf("present: macOS CVDisplayLink unavailable (%v); falling back to vsync-estimated", err)
 		return NewFallback()

@@ -22,7 +22,7 @@
 //   https://www.kernel.org/doc/html/latest/gpu/drm-uapi.html
 //   include/uapi/drm/drm.h (struct drm_wait_vblank)
 
-package present
+package vblank
 
 import (
 	"fmt"
@@ -33,8 +33,6 @@ import (
 	"unsafe"
 
 	"github.com/Zyko0/go-sdl3/sdl"
-
-	"github.com/chrplr/goxpyriment/apparatus"
 )
 
 const (
@@ -115,7 +113,7 @@ func requestType(crtc uint32) uint32 {
 	return drmVblankRelative | ((crtc << drmVblankHighCrtcShift) & drmVblankHighCrtcMask)
 }
 
-func newDRMBackend(_ *apparatus.Screen) (Timer, error) {
+func newDRMBackend() (Timer, error) {
 	// Search every card node AND every CRTC, rather than assuming the first
 	// node that opens is the one with a display on CRTC 0.
 	//
@@ -225,7 +223,7 @@ func (b *drmBackend) RecordFlip(flipTS uint64) {
 	b.mu.Unlock()
 }
 
-func (b *drmBackend) OnsetForFlip(flipTS uint64) (uint64, OnsetSource, bool) {
+func (b *drmBackend) OnsetForFlip(flipTS uint64) (uint64, Source, bool) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	for _, p := range b.pairs {
@@ -233,10 +231,10 @@ func (b *drmBackend) OnsetForFlip(flipTS uint64) (uint64, OnsetSource, bool) {
 			return p.vsyncTS, HardwareVerified, true
 		}
 	}
-	return 0, VsyncEstimated, false
+	return 0, Estimated, false
 }
 
-func (b *drmBackend) Precision() OnsetSource { return HardwareVerified }
+func (b *drmBackend) Precision() Source { return HardwareVerified }
 
 func (b *drmBackend) Description() string {
 	return fmt.Sprintf("Linux DRM vblank (%s crtc %d, DRM_IOCTL_WAIT_VBLANK, hardware-verified)", b.path, b.crtc)

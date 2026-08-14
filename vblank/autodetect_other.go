@@ -3,11 +3,9 @@
 
 //go:build !darwin && !linux
 
-package present
+package vblank
 
-import "github.com/chrplr/goxpyriment/apparatus"
-
-func autoDetect(_ *apparatus.Screen) Timer {
+func autoDetect() Timer {
 	// No platform-specific backend implemented for this OS yet.
 	// Stage 5 of media/Plan.md targets macOS and Linux first; Windows
 	// (DXGI GetFrameStatistics) is a future addition.

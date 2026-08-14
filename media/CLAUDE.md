@@ -59,6 +59,15 @@ body, so all movies on a frame are advanced from one clock reading.
 The `media/present` subpackage auto-detects the best presentation
 timer for the platform:
 
+> **The backends moved.** They live in the leaf package `vblank/` (repo root),
+> because `apparatus.Screen` needs them and `media/present` imports `apparatus` —
+> the dependency ran the wrong way for the caller that needs it most. Nothing was
+> lost: the backends never used the `*apparatus.Screen` they were handed.
+> `media/present` is now a thin adapter that keeps this package's `Timer` and
+> `OnsetSource` unchanged, translating `vblank.Source` at the seam. `LookAhead`
+> stays here — it describes a callback that fires *before* presentation and
+> carries no vsync timestamp, which is meaningless to a vblank clock.
+
 - **macOS**: `CVDisplayLink` via purego (CoreVideo + libSystem). The OS
   callback publishes per-vsync timestamps from a background thread.
   `Onset.Source: HardwareVerified`.

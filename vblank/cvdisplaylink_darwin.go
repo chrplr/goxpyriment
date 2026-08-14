@@ -30,7 +30,7 @@
 // vsync, so the matching inOutputTime is the one for the vsync we
 // just exited Present on.
 
-package present
+package vblank
 
 import (
 	"fmt"
@@ -41,8 +41,6 @@ import (
 
 	"github.com/Zyko0/go-sdl3/sdl"
 	"github.com/ebitengine/purego"
-
-	"github.com/chrplr/goxpyriment/apparatus"
 )
 
 // vsyncRingSize is the number of recent vsync timestamps we keep. With
@@ -178,7 +176,7 @@ var (
 	activeBackend atomic.Pointer[cvBackend]
 )
 
-func newCVDisplayLinkBackend(_ *apparatus.Screen) (Timer, error) {
+func newCVDisplayLinkBackend() (Timer, error) {
 	if err := loadCVAPI(); err != nil {
 		return nil, err
 	}
@@ -291,7 +289,7 @@ func (b *cvBackend) RecordFlip(uint64) {
 	// no synchronous query is needed here.
 }
 
-func (b *cvBackend) OnsetForFlip(flipTS uint64) (uint64, OnsetSource, bool) {
+func (b *cvBackend) OnsetForFlip(flipTS uint64) (uint64, Source, bool) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	var best uint64
@@ -304,12 +302,12 @@ func (b *cvBackend) OnsetForFlip(flipTS uint64) (uint64, OnsetSource, bool) {
 		}
 	}
 	if best == 0 {
-		return 0, VsyncEstimated, false
+		return 0, Estimated, false
 	}
 	return best, HardwareVerified, true
 }
 
-func (b *cvBackend) Precision() OnsetSource { return HardwareVerified }
+func (b *cvBackend) Precision() Source { return HardwareVerified }
 
 func (b *cvBackend) Description() string {
 	return "macOS CVDisplayLink (CoreVideo, hardware-verified)"

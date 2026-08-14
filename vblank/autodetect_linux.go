@@ -3,16 +3,14 @@
 
 //go:build linux
 
-package present
+package vblank
 
 import (
 	"log"
-
-	"github.com/chrplr/goxpyriment/apparatus"
 )
 
-func autoDetect(screen *apparatus.Screen) Timer {
-	backend, err := newDRMBackend(screen)
+func autoDetect() Timer {
+	backend, err := newDRMBackend()
 	if err != nil {
 		log.Printf("present: Linux DRM vblank unavailable (%v); falling back to vsync-estimated", err)
 		return NewFallback()

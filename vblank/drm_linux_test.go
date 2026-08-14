@@ -3,7 +3,7 @@
 
 //go:build linux
 
-package present
+package vblank
 
 import (
 	"testing"
