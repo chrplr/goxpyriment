@@ -1,0 +1,55 @@
+# --EXPERIMENT INFO
+# e mainfile: Timing-Tests
+# e cmdline: /home/cp983411/00_git/goxpyriment/tests/Timing-Tests/Timing-Tests -test display -duration-s 300 -exclusive-fullscreen auto -outdir report-dell-precision-5490-laptop-kmsdrm
+# e start_time: 20260809-182511
+# e hostname: is158520
+# e username: cp983411
+# e os: linux/amd64
+# e framework: goxpyriment (devel) --- see http://chrplr.github.io/goxpyriment
+# e framework_author: Christophe Pallier <christophe@pallier.org>
+# --SUBJECT INFO
+# s id: 0
+# #
+# --SYSTEM INFO
+# sys sdl_version: 3.4.0
+# sys video_driver: kmsdrm
+# sys renderer: opengl
+# sys gl_renderer: Mesa Intel(R) Arc(tm) Graphics (MTL)
+# sys physical_resolution: 2560x1600 px
+# sys logical_resolution: 2560x1600 px
+# sys fullscreen: true
+# sys fullscreen_mode: desktop
+# sys vsync: 1
+# sys refresh_nominal_hz: 60.0400
+# sys refresh_measured_hz: 59.9966
+# sys audio_driver: pipewire
+# sys audio_format: SDL_AUDIO_S16LE
+# sys audio_sample_rate_hz: 44100
+# sys audio_channels: 2
+# sys audio_buffer_frames: 1024
+# sys sched_policy: SCHED_OTHER
+# sys sched_realtime: false
+# sys sched_nice: 0
+# sys sched_realtime_available: 50
+# --DISPLAY INFO
+# d id: 1
+# d name: eDP-1
+# d native_resolution: 2560x1600
+# d pixel_density: 1.00
+# d content_scale: 1.00
+# d refresh_rate_hz: 60.0400
+# d bits_per_pixel: 32
+# d bits_per_channel: 8
+# d pixel_format: SDL_PIXELFORMAT_ARGB8888
+# d bounds: 0,0 2560x1600
+# gc=suspended
+# trigger=dlpio8 port=/dev/serial/by-id/usb-DLP_Design_DLP-IO8_12345678-if00-port0 pin=1
+# test=display duration-s=300.0 warmup=10
+# stim square-px: 400
+# stim render-area: 2560x1600
+# stim square-centres-x: 200,1280,2360
+# stim square-centres-y: 200,800,1400
+# stim top-bottom-separation-px: 1200
+# stim top-bottom-separation-frac: 0.7500
+# e end_time: 20260809-182523.475
+# e duration: 00:00:12.425

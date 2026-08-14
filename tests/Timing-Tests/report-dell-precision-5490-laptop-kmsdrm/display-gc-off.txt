@@ -1,0 +1,40 @@
+ERROR: Failed to get evdev touchscreen name
+ERROR: Failed to get evdev touchscreen name
+ERROR: Failed to get evdev touchscreen name
+ERROR: Failed to get evdev touchscreen name
+audio: 44100 Hz  2 ch  1024 sample frames (~23.2 ms latency)
+gc: suspended during timing-critical loops
+DLP-IO8-G found on /dev/serial/by-id/usb-DLP_Design_DLP-IO8_12345678-if00-port0 (trigger pin 1, pulse 5 ms)
+display: 300.0 s of frames  warmup=10  (ESC to stop early)
+stimulus: five 400 px squares (auto: ¼ of render height) (corners + centre) on a 2560x1600 render area
+  centres:  x = 200 / 1280 / 2360    y = 200 / 800 / 1400
+  top↔bottom separation: 1200 px = 0.7500 of screen height
+  place each photodiode at its square's CENTRE — the separation assumes it
+
+Estimated refresh rate: 60.037 Hz  (pass -hz 60.04 to av so the tone matches a frame)
+
+── Frame intervals ───────────────────────────────
+  n       : 677
+  target  : 16.656 ms
+  mean    : 16.656 ms
+  SD      : 0.008 ms
+  min/max : 16.653 / 16.774 ms
+  p5/p95  : 16.655 / 16.656 ms
+  >0.5 ms : 0 (0.0 %)
+  >1.0 ms : 0 (0.0 %)
+  histogram (10 bins):
+  [ 16.653,  16.666) ms :   669  ****************************************
+  [ 16.666,  16.678) ms :     0  
+  [ 16.678,  16.690) ms :     2  
+  [ 16.690,  16.702) ms :     2  
+  [ 16.702,  16.714) ms :     1  
+  [ 16.714,  16.726) ms :     0  
+  [ 16.726,  16.738) ms :     0  
+  [ 16.738,  16.750) ms :     0  
+  [ 16.750,  16.762) ms :     1  
+  [ 16.762,  16.774) ms :     2  
+
+Aborted with Esc — this run is incomplete and reports failure.
+2026/08/09 18:25:23 Results saved in report-dell-precision-5490-laptop-kmsdrm/Timing-Tests_sub-000_date-20260809-182511.csv (info: report-dell-precision-5490-laptop-kmsdrm/Timing-Tests_sub-000_date-20260809-182511-info.txt)
+
+!! display-gc-off FAILED (exit 1) — report-dell-precision-5490-laptop-kmsdrm/display-gc-off.txt is incomplete

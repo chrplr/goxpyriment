@@ -1,0 +1,21 @@
+Trying to open /dev/serial/by-id/usb-BBTK_BBTK_BBTK_V3_BBTKBBTKV3-if00-port0 at 115200 bps...
+ok!
+Trying to connect to BBTK...
+ok!
+bbtkv3 is alive
+Setting smoothing mask (-s 1,1,0,0,1,1)...
+{Mic1:true Mic2:true Opto4:false Opto3:false Opto2:true Opto1:true}
+Getting thresholds...
+{Mic1:63 Mic2:63 Sounder1:63 Sounder2:63 Opto1:63 Opto2:63 Opto3:63 Opto4:63}
+Clearing Timing data... Ok
+Capturing events (with DSCM) for 522 seconds... 
+BBTK-CAPTURE-READY duration=522
+started: [/home/cp983411/00_git/goxpyriment/tests/Timing-Tests/Timing-Tests -test av -audio-frames 512 -hz 60 -freq-hz 440 -trigger-device dlpio8 -trigger-pin 1 -trigger-ms 200 -frames-on 12 -frames-off 18 -cycles 1010 -warmup 10 -square-px 0 -exclusive-fullscreen auto -outdir report-dell-precision-5490-laptop]
+2026/08/09 18:17:19 Results saved in report-dell-precision-5490-laptop/Timing-Tests_sub-000_date-20260809-180853.csv (info: report-dell-precision-5490-laptop/Timing-Tests_sub-000_date-20260809-180853-info.txt)
+
+Downloading data...ok!
+Raw Data saved to report-dell-precision-5490-laptop/bbtk-av-gc-off-001.dat
+DSC Events saved to report-dell-precision-5490-laptop/bbtk-av-gc-off-001-dscevents.csv
+Events saved to report-dell-precision-5490-laptop/bbtk-av-gc-off-001-events.csv
+  Duration is as recorded; DurationCorrected removes the 20.0 ms
+  smoothing tail on {Mic1:true Mic2:true Opto4:false Opto3:false Opto2:true Opto1:true}

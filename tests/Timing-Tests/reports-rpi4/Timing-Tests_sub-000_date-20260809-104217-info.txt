@@ -1,0 +1,55 @@
+# --EXPERIMENT INFO
+# e mainfile: Timing-Tests
+# e cmdline: /home/chrplr/00_git/goxpyriment/tests/Timing-Tests/Timing-Tests -test av -audio-frames 512 -hz 60 -freq-hz 440 -trigger-device gpio -trigger-pin 1 -gpio-chip /dev/gpiochip0 -gpio-pins 17,27,22,5,6,13,19,26 -trigger-ms 200 -frames-on 12 -frames-off 18 -cycles 1010 -warmup 10 -square-px 0 -exclusive-fullscreen auto -outdir reports-rpi4
+# e start_time: 20260809-104217
+# e hostname: omv-pi4
+# e username: chrplr
+# e os: linux/arm64
+# e framework: goxpyriment (devel) --- see http://chrplr.github.io/goxpyriment
+# e framework_author: Christophe Pallier <christophe@pallier.org>
+# --SUBJECT INFO
+# s id: 0
+# #
+# --SYSTEM INFO
+# sys sdl_version: 3.4.0
+# sys video_driver: kmsdrm
+# sys renderer: opengl
+# sys gl_renderer: V3D 4.2.14.0
+# sys physical_resolution: 1920x1080 px
+# sys logical_resolution: 1920x1080 px
+# sys fullscreen: true
+# sys fullscreen_mode: desktop
+# sys vsync: 1
+# sys refresh_nominal_hz: 60.0000
+# sys refresh_measured_hz: 60.0043
+# sys audio_driver: pipewire
+# sys audio_format: SDL_AUDIO_S16LE
+# sys audio_sample_rate_hz: 48000
+# sys audio_channels: 2
+# sys audio_buffer_frames: 512
+# sys sched_policy: SCHED_OTHER
+# sys sched_realtime: false
+# sys sched_nice: 0
+# sys sched_realtime_available: 0
+# --DISPLAY INFO
+# d id: 1
+# d name: HDMI-A-1
+# d native_resolution: 1920x1080
+# d pixel_density: 1.00
+# d content_scale: 1.00
+# d refresh_rate_hz: 60.0000
+# d bits_per_pixel: 32
+# d bits_per_channel: 8
+# d pixel_format: SDL_PIXELFORMAT_ARGB8888
+# d bounds: 0,0 1920x1080
+# gc=suspended
+# trigger=gpio chip=/dev/gpiochip0 pin=1 line=17 pins=[17 27 22 5 6 13 19 26]
+# test=av level-a=0 level-b=255 square-px=0 frames-on=12 frames-off=18 cycles=1010 warmup=10 hz=60.000 sound=true ttl=true soa-ms=0.0 freq-hz=440
+# stim square-px: 270
+# stim render-area: 1920x1080
+# stim square-centres-x: 135,960,1785
+# stim square-centres-y: 135,540,945
+# stim top-bottom-separation-px: 810
+# stim top-bottom-separation-frac: 0.7500
+# e end_time: 20260809-105043.610
+# e duration: 00:08:25.991

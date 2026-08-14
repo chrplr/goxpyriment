@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Events Statistics Report</title>
+<style>
+  body { font-family: sans-serif; max-width: 1100px; margin: 2em auto; color: #222; }
+  h1 { border-bottom: 2px solid #444; padding-bottom: 0.3em; }
+  h2 { border-bottom: 1px solid #aaa; margin-top: 2em; }
+  table { border-collapse: collapse; margin: 1em 0; font-size: 0.9em; }
+  th, td { border: 1px solid #ccc; padding: 0.35em 0.7em; text-align: right; }
+  th { background: #f0f0f0; text-align: center; }
+  td:first-child, th:first-child { text-align: left; }
+  img { max-width: 100%; margin: 0.5em 0 1.5em; display: block; }
+  blockquote { background: #fff8e1; border-left: 4px solid #f5a623; margin: 0.5em 0; padding: 0.4em 0.8em; }
+</style>
+</head>
+<body>
+<h1>Events Statistics Report</h1>
+<h2>Duration Statistics (ms)</h2>
+<table>
+<tr><th>Type</th><th>N</th><th>Min</th><th>P5</th><th>P25</th><th>P50</th><th>P75</th><th>P95</th><th>Max</th><th>Range</th><th>P95-P05</th><th>Mean</th><th>SD</th></tr>
+<tr><td>Opto1</td><td>1010</td><td>223.8</td><td>224.0</td><td>224.0</td><td>224.2</td><td>224.2</td><td>224.5</td><td>241.2</td><td>17.5</td><td>0.5</td><td>224.6</td><td>2.60</td></tr>
+<tr><td>TTLin1</td><td>1010</td><td>200.0</td><td>200.0</td><td>200.2</td><td>200.2</td><td>200.5</td><td>200.5</td><td>200.8</td><td>0.8</td><td>0.5</td><td>200.3</td><td>0.15</td></tr>
+<tr><td>Mic1</td><td>1010</td><td>224.5</td><td>224.8</td><td>225.0</td><td>225.2</td><td>225.5</td><td>225.8</td><td>247.0</td><td>22.5</td><td>1.0</td><td>225.8</td><td>3.19</td></tr>
+</table>
+<h3>Duration Histograms</h3>
+<blockquote><strong>Warning:</strong> 2 outlier(s) excluded from Opto1 (&gt; 50.000 ms from median)</blockquote>
+<img src="bbtk-av-gc-off-001_dur_Opto1.png" alt="Duration – Opto1">
+<img src="bbtk-av-gc-off-001_dur_TTLin1.png" alt="Duration – TTLin1">
+<img src="bbtk-av-gc-off-001_dur_Mic1.png" alt="Duration – Mic1">
+<h2>Inter-Onset Interval / Jitter Statistics (ms)</h2>
+<table>
+<tr><th>Type</th><th>N</th><th>Min</th><th>P5</th><th>P25</th><th>P50</th><th>P75</th><th>P95</th><th>Max</th><th>Range</th><th>P95-P05</th><th>Mean</th><th>SD</th></tr>
+<tr><td>Opto1</td><td>1009</td><td>499.2</td><td>499.5</td><td>499.5</td><td>499.8</td><td>499.8</td><td>500.0</td><td>516.5</td><td>17.2</td><td>0.5</td><td>500.2</td><td>2.82</td></tr>
+<tr><td>TTLin1</td><td>1009</td><td>499.2</td><td>499.5</td><td>499.8</td><td>499.8</td><td>499.8</td><td>500.5</td><td>516.5</td><td>17.2</td><td>1.0</td><td>500.2</td><td>2.64</td></tr>
+<tr><td>Mic1</td><td>1009</td><td>487.5</td><td>487.8</td><td>499.2</td><td>499.2</td><td>499.2</td><td>511.0</td><td>534.0</td><td>46.5</td><td>23.2</td><td>500.2</td><td>6.71</td></tr>
+</table>
+<h3>Jitter Histograms</h3>
+<blockquote><strong>Warning:</strong> 2 outlier(s) excluded from Opto1 (&gt; 50.000 ms from median)</blockquote>
+<img src="bbtk-av-gc-off-001_jitter_Opto1.png" alt="Jitter (IOI) – Opto1">
+<img src="bbtk-av-gc-off-001_jitter_TTLin1.png" alt="Jitter (IOI) – TTLin1">
+<img src="bbtk-av-gc-off-001_jitter_Mic1.png" alt="Jitter (IOI) – Mic1">
+<h2>Paired-Event Onset Differences relative to TTLin1 (ms)</h2>
+<h3>Tables</h3>
+<table>
+<tr><th>Type</th><th>N</th><th>Min</th><th>P5</th><th>P25</th><th>P50</th><th>P75</th><th>P95</th><th>Max</th><th>Range</th><th>P95-P05</th><th>Mean</th><th>SD</th></tr>
+<tr><td>TTLin1→Opto1</td><td>1010</td><td>24.0</td><td>24.2</td><td>24.5</td><td>24.8</td><td>24.8</td><td>25.5</td><td>41.2</td><td>17.2</td><td>1.2</td><td>24.8</td><td>1.11</td></tr>
+</table>
+<table>
+<tr><th>Type</th><th>N</th><th>Min</th><th>P5</th><th>P25</th><th>P50</th><th>P75</th><th>P95</th><th>Max</th><th>Range</th><th>P95-P05</th><th>Mean</th><th>SD</th></tr>
+<tr><td>TTLin1→Mic1</td><td>1010</td><td>77.5</td><td>80.8</td><td>85.2</td><td>88.6</td><td>92.0</td><td>96.0</td><td>99.5</td><td>22.0</td><td>15.2</td><td>88.6</td><td>4.61</td></tr>
+</table>
+<h3>Paired-Event Histograms</h3>
+<img src="bbtk-av-gc-off-001_diff_TTLin1_to_Opto1.png" alt="Onset Diff – TTLin1→Opto1">
+<img src="bbtk-av-gc-off-001_diff_TTLin1_to_Mic1.png" alt="Onset Diff – TTLin1→Mic1">
+<h2>Timeline Plots</h2>
+<img src="bbtk-av-gc-off-001_timeline_dur_Opto1.png" alt="Duration over time – Opto1">
+<img src="bbtk-av-gc-off-001_timeline_soa_Opto1.png" alt="SOA over time – Opto1">
+<img src="bbtk-av-gc-off-001_timeline_dur_TTLin1.png" alt="Duration over time – TTLin1">
+<img src="bbtk-av-gc-off-001_timeline_soa_TTLin1.png" alt="SOA over time – TTLin1">
+<img src="bbtk-av-gc-off-001_timeline_dur_Mic1.png" alt="Duration over time – Mic1">
+<img src="bbtk-av-gc-off-001_timeline_soa_Mic1.png" alt="SOA over time – Mic1">
+</body>
+</html>

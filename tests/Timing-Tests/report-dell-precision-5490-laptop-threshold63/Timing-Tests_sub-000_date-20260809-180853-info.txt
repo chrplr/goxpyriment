@@ -1,0 +1,55 @@
+# --EXPERIMENT INFO
+# e mainfile: Timing-Tests
+# e cmdline: /home/cp983411/00_git/goxpyriment/tests/Timing-Tests/Timing-Tests -test av -audio-frames 512 -hz 60 -freq-hz 440 -trigger-device dlpio8 -trigger-pin 1 -trigger-ms 200 -frames-on 12 -frames-off 18 -cycles 1010 -warmup 10 -square-px 0 -exclusive-fullscreen auto -outdir report-dell-precision-5490-laptop
+# e start_time: 20260809-180853
+# e hostname: is158520
+# e username: cp983411
+# e os: linux/amd64
+# e framework: goxpyriment (devel) --- see http://chrplr.github.io/goxpyriment
+# e framework_author: Christophe Pallier <christophe@pallier.org>
+# --SUBJECT INFO
+# s id: 0
+# #
+# --SYSTEM INFO
+# sys sdl_version: 3.4.0
+# sys video_driver: wayland
+# sys renderer: opengl
+# sys gl_renderer: Mesa Intel(R) Arc(tm) Graphics (MTL)
+# sys physical_resolution: 2560x1600 px
+# sys logical_resolution: 1536x960 px
+# sys fullscreen: true
+# sys fullscreen_mode: desktop
+# sys vsync: 1
+# sys refresh_nominal_hz: 60.0400
+# sys refresh_measured_hz: 60.0720
+# sys audio_driver: pipewire
+# sys audio_format: SDL_AUDIO_S16LE
+# sys audio_sample_rate_hz: 44100
+# sys audio_channels: 2
+# sys audio_buffer_frames: 512
+# sys sched_policy: SCHED_OTHER
+# sys sched_realtime: false
+# sys sched_nice: 0
+# sys sched_realtime_available: 50
+# --DISPLAY INFO
+# d id: 3
+# d name: Built-in display
+# d native_resolution: 1536x960
+# d pixel_density: 1.67
+# d content_scale: 1.00
+# d refresh_rate_hz: 60.0400
+# d bits_per_pixel: 32
+# d bits_per_channel: 8
+# d pixel_format: SDL_PIXELFORMAT_XRGB8888
+# d bounds: 0,0 1536x960
+# gc=suspended
+# trigger=dlpio8 port=/dev/serial/by-id/usb-DLP_Design_DLP-IO8_12345678-if00-port0 pin=1
+# test=av level-a=0 level-b=255 square-px=0 frames-on=12 frames-off=18 cycles=1010 warmup=10 hz=60.000 sound=true ttl=true soa-ms=0.0 freq-hz=440
+# stim square-px: 240
+# stim render-area: 1536x960
+# stim square-centres-x: 120,768,1416
+# stim square-centres-y: 120,480,840
+# stim top-bottom-separation-px: 720
+# stim top-bottom-separation-frac: 0.7500
+# e end_time: 20260809-181719.390
+# e duration: 00:08:26.188

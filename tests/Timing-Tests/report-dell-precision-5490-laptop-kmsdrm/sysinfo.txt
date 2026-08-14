@@ -1,0 +1,18 @@
+Machine:    product: Precision 5490  System: Dell Inc.  Type: laptop
+System:     Host: is158520  Kernel: 7.0.0-29-generic x86_64  Uptime: 32m
+            OS: Ubuntu 26.04 LTS  Shell: bash 5.3.9
+CPU:        Model: Intel(R) Core(TM) Ultra 7 165H  Info: 16 cores / 22 threads  Speed: 1076 MHz (min: 400 / max: 4700)
+Memory:     RAM: total: 30.04 GiB  used: 2.12 GiB (7.0%)  Swap: total: 8.00 GiB  used: 0 KiB (0.0%)
+Graphics:   Card: Intel Corporation Meteor Lake-P [Intel Arc Graphics]  Driver: i915
+            Card: NVIDIA Corporation AD107GLM [RTX 2000 Ada Generation Laptop GPU]  Driver: nvidia
+Audio:      Card: sof-soundwire  Driver: snd_soc_sof_sdw
+            Card: Logitech StreamCam  Driver: snd_usb_audio
+            Server: PipeWire  v: 1.6.2  ALSA: k7.0.0-29-generic
+Sched:      policy: SCHED_OTHER  nice: 0  (real-time available up to 50, not used)
+ERROR: Failed to get evdev touchscreen name
+ERROR: Failed to get evdev touchscreen name
+Displays:   [0] eDP-1                  2560x1600  60.040 Hz  bounds 0,0 2560x1600  [primary]
+            [1] DP-5                   2560x1440  59.950 Hz  bounds 2560,0 2560x1440
+            video driver: kmsdrm   (the [N] above is the -d N value)
+Audio out:  [0] Dummy Output
+            driver: pulseaudio

@@ -1,0 +1,13 @@
+audio: requesting 512 sample frames hardware buffer
+ERROR: Failed to get evdev touchscreen name
+ERROR: Failed to get evdev touchscreen name
+ERROR: Failed to get evdev touchscreen name
+ERROR: Failed to get evdev touchscreen name
+audio: 44100 Hz  2 ch  512 sample frames (~11.6 ms latency)
+gc: suspended during timing-critical loops
+DLP-IO8-G found on /dev/serial/by-id/usb-DLP_Design_DLP-IO8_12345678-if00-port0 (trigger pin 1, pulse 5 ms)
+check: verifying display and audio output — watch for a bright flash, then listen for two sounds
+check: playing buzzer…
+check: playing ping…
+check: done. Did you see the bright flash and hear both sounds? If yes, proceed to the measurement tests.
+2026/08/09 18:25:01 Results saved in report-dell-precision-5490-laptop-kmsdrm/Timing-Tests_sub-000_date-20260809-182456.csv (info: report-dell-precision-5490-laptop-kmsdrm/Timing-Tests_sub-000_date-20260809-182456-info.txt)
