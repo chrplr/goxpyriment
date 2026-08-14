@@ -1,0 +1,3 @@
+category: test
+description: Measures whether Screen.FlipTS drifts against the display, using the kernel's DRM vblank timestamps as a reference instead of a photodiode
+reference: ""

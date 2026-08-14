@@ -432,12 +432,24 @@ rise — into a measured per-trial quantity rather than an assumption.
 # Does this display block on VSYNC, and at what rate?
 go run ./tests/test_vsync_blocking
 
+# Do the flip timestamps drift against the display? (no photodiode needed)
+go run ./tests/test_vblank_drift
+
 # Trigger against a photodiode, one AD3 acquisition, per-trial gap logged
 go run ./tests/test_photodiode_latency -s 1 -isi-frames 18 -diode all
 
 # The same with the established harness
 go run ./tests/Timing-Tests -test av -no-sound
 ```
+
+`tests/test_vblank_drift` is the one to run first, because it needs no hardware
+at all. It compares `FlipTS` against the kernel's own DRM vblank timestamps —
+an independent clock on the display, playing a photodiode's role minus the
+photons — and reports the drift in ppm. It cannot measure the *offset* between
+the flip and the photons (scanout position and panel rise are outside it), but
+it can tell you whether that offset is constant, which is the part no host-side
+statistic can otherwise reach. On a Precision 5490 its refresh estimate agreed
+with a BBTK photodiode to 1.3 ppm.
 
 `tests/test_photodiode_latency` logs the flip timestamp, the trigger timestamp
 and the gap between them for every trial, so the host-side contribution is in
