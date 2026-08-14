@@ -26,6 +26,7 @@ package present
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"syscall"
@@ -44,6 +45,19 @@ const (
 
 	// drm_vblank_seq_type bits.
 	drmVblankRelative uint32 = 0x1
+
+	// The CRTC index goes in bits 1-5 of the type field:
+	//   #define _DRM_VBLANK_HIGH_CRTC_SHIFT 1
+	//   #define _DRM_VBLANK_HIGH_CRTC_MASK  0x0000003e
+	// Leaving them clear asks for CRTC 0, which is not always the one driving
+	// the display.
+	drmVblankHighCrtcShift uint32 = 1
+	drmVblankHighCrtcMask  uint32 = 0x3e
+
+	// How many card nodes and CRTCs to search. Both are small on purpose: the
+	// search runs once at construction and every miss costs one failed ioctl.
+	maxCards = 4
+	maxCrtcs = 4
 
 	// CLOCK_MONOTONIC is the same on every Linux arch; SDL3 also uses
 	// CLOCK_MONOTONIC for SDL_GetTicksNS.
@@ -82,7 +96,9 @@ type drmFlipVsync struct {
 }
 
 type drmBackend struct {
-	fd int
+	fd   int
+	path string // which /dev/dri node answered, for Description
+	crtc uint32 // which CRTC answered; folded into every request
 
 	mu       sync.Mutex
 	pairs    [drmRingSize]drmFlipVsync
@@ -94,33 +110,67 @@ type drmBackend struct {
 	closed atomic.Bool
 }
 
-func newDRMBackend(_ *apparatus.Screen) (Timer, error) {
-	// Try /dev/dri/card0..3. Most desktop systems have card0; some
-	// embedded / multi-GPU boxes have card1+.
-	var (
-		fd  int
-		err error
-	)
-	for i := 0; i < 4; i++ {
-		path := fmt.Sprintf("/dev/dri/card%d", i)
-		fd, err = syscall.Open(path, syscall.O_RDWR|syscall.O_CLOEXEC, 0)
-		if err == nil {
-			break
-		}
-	}
-	if err != nil {
-		return nil, fmt.Errorf("open /dev/dri/cardN: %w", err)
-	}
+// requestType builds the drm_wait_vblank type field for a CRTC index.
+func requestType(crtc uint32) uint32 {
+	return drmVblankRelative | ((crtc << drmVblankHighCrtcShift) & drmVblankHighCrtcMask)
+}
 
-	// Probe the ioctl to confirm we have permission and that the
-	// driver supports vblank queries.
-	probe := drmWaitVblank{Type: drmVblankRelative, Sequence: 0}
-	if _, _, errno := syscall.Syscall(syscall.SYS_IOCTL,
-		uintptr(fd), drmIoctlWaitVblank,
-		uintptr(unsafe.Pointer(&probe))); errno != 0 {
-		_ = syscall.Close(fd)
-		return nil, fmt.Errorf("DRM_IOCTL_WAIT_VBLANK probe: %w", errno)
+func newDRMBackend(_ *apparatus.Screen) (Timer, error) {
+	// Search every card node AND every CRTC, rather than assuming the first
+	// node that opens is the one with a display on CRTC 0.
+	//
+	// Neither assumption holds. A machine can expose a render-only node ahead of
+	// the one driving the panel — asking it for a vblank returns EINVAL, because
+	// the pipe index exceeds its (zero) CRTC count — and the display need not be
+	// on CRTC 0 even on the right node. Both were found the hard way: an
+	// Intel/Mesa laptop where card1 answers and card2 returns ENOTSUP on every
+	// CRTC, and a Radeon Pro W5700 workstation where the first node that opened
+	// returned EINVAL and the backend gave up without trying the next.
+	//
+	// The old code broke out of its loop on the first successful OPEN and then
+	// returned the probe's error, so a single unlucky enumeration order was
+	// enough to lose the vblank clock on a machine that had one.
+	var tried []string
+	for card := 0; card < maxCards; card++ {
+		path := fmt.Sprintf("/dev/dri/card%d", card)
+		fd, err := syscall.Open(path, syscall.O_RDWR|syscall.O_CLOEXEC, 0)
+		if err != nil {
+			tried = append(tried, fmt.Sprintf("%s: open: %v", path, err))
+			continue
+		}
+		crtc, err := probeCRTCs(fd)
+		if err != nil {
+			tried = append(tried, fmt.Sprintf("%s: %v", path, err))
+			_ = syscall.Close(fd)
+			continue
+		}
+		return newBackendOn(fd, path, crtc)
 	}
+	return nil, fmt.Errorf("no DRM node answered DRM_IOCTL_WAIT_VBLANK (%s)", strings.Join(tried, "; "))
+}
+
+// probeCRTCs returns the first CRTC on fd that answers a vblank query.
+//
+// It cannot tell a live CRTC from an idle one — a blanked pipe answers without
+// its sequence advancing — because distinguishing them means waiting, and this
+// runs in a constructor. Callers that care check the sequence themselves;
+// tests/test_vblank_drift reports the grid residual for exactly this reason.
+func probeCRTCs(fd int) (uint32, error) {
+	var errs []string
+	for crtc := uint32(0); crtc < maxCrtcs; crtc++ {
+		probe := drmWaitVblank{Type: requestType(crtc), Sequence: 0}
+		if _, _, errno := syscall.Syscall(syscall.SYS_IOCTL,
+			uintptr(fd), drmIoctlWaitVblank,
+			uintptr(unsafe.Pointer(&probe))); errno != 0 {
+			errs = append(errs, fmt.Sprintf("crtc %d: %v", crtc, errno))
+			continue
+		}
+		return crtc, nil
+	}
+	return 0, fmt.Errorf("no CRTC answered (%s)", strings.Join(errs, ", "))
+}
+
+func newBackendOn(fd int, path string, crtc uint32) (Timer, error) {
 
 	// Capture epoch offset between CLOCK_MONOTONIC and sdl.TicksNS.
 	clockNow, err := monotonicNS()
@@ -132,6 +182,8 @@ func newDRMBackend(_ *apparatus.Screen) (Timer, error) {
 
 	return &drmBackend{
 		fd:            fd,
+		path:          path,
+		crtc:          crtc,
 		epochOffsetNS: int64(clockNow) - int64(sdlNow),
 	}, nil
 }
@@ -152,7 +204,7 @@ func (b *drmBackend) RecordFlip(flipTS uint64) {
 	if b.closed.Load() {
 		return
 	}
-	v := drmWaitVblank{Type: drmVblankRelative, Sequence: 0}
+	v := drmWaitVblank{Type: requestType(b.crtc), Sequence: 0}
 	if _, _, errno := syscall.Syscall(syscall.SYS_IOCTL,
 		uintptr(b.fd), drmIoctlWaitVblank,
 		uintptr(unsafe.Pointer(&v))); errno != 0 {
@@ -187,7 +239,7 @@ func (b *drmBackend) OnsetForFlip(flipTS uint64) (uint64, OnsetSource, bool) {
 func (b *drmBackend) Precision() OnsetSource { return HardwareVerified }
 
 func (b *drmBackend) Description() string {
-	return "Linux DRM vblank (DRM_IOCTL_WAIT_VBLANK, hardware-verified)"
+	return fmt.Sprintf("Linux DRM vblank (%s crtc %d, DRM_IOCTL_WAIT_VBLANK, hardware-verified)", b.path, b.crtc)
 }
 
 func (b *drmBackend) Close() error {

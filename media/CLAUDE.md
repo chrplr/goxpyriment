@@ -63,8 +63,23 @@ timer for the platform:
   callback publishes per-vsync timestamps from a background thread.
   `Onset.Source: HardwareVerified`.
 - **Linux**: `DRM_IOCTL_WAIT_VBLANK` via syscall on
-  `/dev/dri/cardN`. Requires `video` group membership for the open;
+  `/dev/dri/cardN`. Needs read/write on the node — usually `video` group
+  membership, though a local login often grants it through a logind ACL;
   otherwise falls back. `Onset.Source: HardwareVerified`.
+
+  It searches **every card node × CRTC 0–3** and takes the first pair that
+  answers. Neither "first node that opens" nor "CRTC 0" is safe on its own: a
+  render-only node enumerated first returns `EINVAL` (its pipe count is zero),
+  and the display need not be on CRTC 0. Both were found on real hardware — an
+  Intel/Mesa laptop where `card1` answers and `card2` returns `ENOTSUP` on every
+  CRTC, and a Radeon Pro W5700 where the first node to open returned `EINVAL`
+  and the old code gave up rather than trying the next. `Description()` names
+  the pair that won, so a wrong choice is visible in the log.
+
+  The probe cannot tell a live CRTC from a blanked one — an idle pipe answers
+  without its sequence advancing, and distinguishing them means waiting, which a
+  constructor must not do. `tests/test_vblank_drift` checks the sequence and
+  reports the grid residual for that reason; run it if onsets look wrong.
 - **Other / fallback**: post-`Present` `Screen.FlipTS` value.
   `Onset.Source: VsyncEstimated`.
 
