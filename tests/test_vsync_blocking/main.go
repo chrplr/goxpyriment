@@ -56,6 +56,15 @@ func main() {
 		unaidedMs := float64(unaided.Nanoseconds()) / 1e6
 
 		// PACED: the normal Update path every stimulus goes through.
+		//
+		// The pacing tallies are reset here and read below. They are the
+		// verdict, not the medians: pacing exists precisely to make the median
+		// interval come out right, so comparing medians cannot detect a driver
+		// that never blocks. Measured on an Intel/Mesa laptop under Wayland,
+		// the three medians agreed to 3 µs while 99.7 % of presents were in
+		// fact returning a mean 6.5 ms early — this test called that BLOCKING
+		// until it counted the branches instead.
+		exp.Screen.ResetPacingStats()
 		msg := stimuli.NewTextLine("measuring paced frames…", 0, 0, control.White)
 		var paced []float64
 		var prevTS uint64
@@ -85,19 +94,34 @@ func main() {
 			}
 		}
 
+		ps := exp.Screen.PacingStats()
+		totalBranches := ps.Blocked + ps.Paced
+		pacedPct := 0.0
+		if totalBranches > 0 {
+			pacedPct = 100 * float64(ps.Paced) / float64(totalBranches)
+		}
+
 		var verdict, recommendation string
 		switch {
-		case unaidedMs < 0.9*nominalMs:
-			verdict = "NON-BLOCKING — SDL_RenderPresent returns before the retrace."
-			recommendation = "Update's frame pacing is doing real work on this system.\n" +
-				"Without it, stimulus frames would be swallowed before the panel scans them out."
 		case unaidedMs > 1.1*nominalMs:
 			verdict = "DROPPING FRAMES — presents are arriving slower than the display refresh."
 			recommendation = "Pacing cannot fix this: it enforces a minimum frame time, not a maximum.\n" +
 				"Check for a compositor throttling this window (try fullscreen, and keep it focused)."
+		case pacedPct > 50:
+			verdict = fmt.Sprintf("NON-BLOCKING — %.1f %% of presents returned early.", pacedPct)
+			recommendation = "Update's frame pacing is doing real work here; without it, stimulus\n" +
+				"frames would be swallowed before the panel scans them out. But it also\n" +
+				"means FlipTS is reporting the SCHEDULE, not a hardware instant, so onsets\n" +
+				"drift against the panel by however wrong the nominal refresh rate is.\n" +
+				"Treat photodiode onsets on this machine as relative, not absolute."
+		case pacedPct > 5:
+			verdict = fmt.Sprintf("MOSTLY BLOCKING — but %.1f %% of presents returned early.", pacedPct)
+			recommendation = "Most frames carry a hardware timestamp; a minority are stamped with\n" +
+				"the schedule. Worth a photodiode check before quoting absolute onsets."
 		default:
 			verdict = "BLOCKING — the driver honours VSYNC on its own."
-			recommendation = "Update's pacing spin exits immediately here and costs nothing."
+			recommendation = "Update's pacing exits immediately here and costs nothing.\n" +
+				"FlipTS carries the present's own return instant on every frame."
 		}
 
 		id := sdl.GetDisplayForWindow(exp.Screen.Window)
@@ -122,16 +146,24 @@ func main() {
 				"Unaided present      : %6.3f ms  (%.2f Hz)\n"+
 				"Paced (Screen.Update): %6.3f ms  (%.2f Hz)\n"+
 				"Short paced frames   : %d / %d\n"+
+				"Present branches     : %d blocked / %d paced  (%.1f %% paced)\n"+
+				"Early-return wait    : mean %.3f ms  max %.3f ms\n"+
 				"Rates at native size : %s\n\n"+
 				"%s\n\n%s\n\n"+
 				"Press any key to exit.",
 			nFrames, nominalMs, 1000/nominalMs, unaidedMs, 1000/unaidedMs,
-			pacedMs, 1000/pacedMs, shortPaced, len(paced), modeList,
+			pacedMs, 1000/pacedMs, shortPaced, len(paced),
+			ps.Blocked, ps.Paced, pacedPct,
+			float64(ps.WaitMean().Nanoseconds())/1e6, float64(ps.WaitMax.Nanoseconds())/1e6,
+			modeList,
 			verdict, recommendation,
 		)
 
 		log.Printf("nominal %.3f ms | unaided %.3f ms | paced %.3f ms | short %d/%d",
 			nominalMs, unaidedMs, pacedMs, shortPaced, len(paced))
+		log.Printf("branches: %d blocked / %d paced (%.1f %% paced), wait mean %.3f ms max %.3f ms",
+			ps.Blocked, ps.Paced, pacedPct,
+			float64(ps.WaitMean().Nanoseconds())/1e6, float64(ps.WaitMax.Nanoseconds())/1e6)
 		log.Printf("verdict: %s", verdict)
 
 		tb := stimuli.NewTextBox(resultText, 900, control.Origin(), control.White)
