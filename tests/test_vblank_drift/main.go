@@ -206,14 +206,36 @@ func analyse(exp *control.Experiment, s []sample, missing int, nominalMs float64
 	out.Printf("\n── Vblank source ─────────────────────────────────────────\n")
 	out.Printf("  %-22s : %d used, %d flips with no vblank\n", "samples", n, missing)
 	out.Printf("  %-22s : %s\n", "sequence steps", fmtSteps(steps))
+	// Grade the grid against what a good driver actually delivers, not against
+	// half a frame.
+	//
+	// Half a frame was the first threshold and it was useless: it passed a
+	// Raspberry Pi 4 (V3D) at 73.7 µs with the words "a clean grid", when the
+	// same test on amdgpu gives 0.8 µs and on i915 about 3 µs. Ninety times the
+	// scatter of known-good hardware is worth saying out loud — it does not
+	// invalidate the slope, whose standard error stays well under a ppm at this
+	// sample count, but it is the first thing to suspect if the numbers below
+	// disagree with a photodiode.
+	const (
+		gridGoodMs  = 0.010 // amdgpu 0.0008, i915 0.003 — comfortably inside
+		gridNoisyMs = 0.200 // V3D 0.0737 lands here: usable, but not comparable
+	)
 	out.Printf("  %-22s : %.4f ms\n", "residual about grid", gridSD)
-	if gridSD > 0.5*nominalMs {
+	switch {
+	case gridSD > gridNoisyMs:
 		out.Printf("  %-22s   THE SOURCE IS NOT SOUND. The kernel's stamps do not fall on a\n", "")
 		out.Printf("  %-22s   regular grid, so nothing below can be trusted. Panel self-refresh\n", "")
 		out.Printf("  %-22s   stopping the CRTC will do this; try kmsdrm, or a photodiode.\n", "")
+		exp.Data.WriteComment(fmt.Sprintf("vblank samples=%d missing=%d steps=%s grid_resid_ms=%.4f grade=UNSOUND",
+			n, missing, fmtSteps(steps), gridSD))
 		return
+	case gridSD > gridGoodMs:
+		out.Printf("  %-22s   NOISY (%.0fx a well-behaved driver, which gives under %.3f ms).\n", "", gridSD/gridGoodMs, gridGoodMs)
+		out.Printf("  %-22s   The slope below still fits to well under a ppm at this n, but\n", "")
+		out.Printf("  %-22s   treat this driver's stamps as less trustworthy than amdgpu/i915.\n", "")
+	default:
+		out.Printf("  %-22s   a clean grid: the stamps are usable as a display reference.\n", "")
 	}
-	out.Printf("  %-22s   a clean grid: the stamps are usable as a display reference.\n", "")
 	exp.Data.WriteComment(fmt.Sprintf("vblank samples=%d missing=%d steps=%s grid_resid_ms=%.4f",
 		n, missing, fmtSteps(steps), gridSD))
 
@@ -270,6 +292,44 @@ func analyse(exp *control.Experiment, s []sample, missing int, nominalMs float64
 	out.Printf("  %-22s : %+.4f us/frame = %+.2f ppm\n", "DRIFT", driftPerFrame*1000, driftPPM)
 	out.Printf("  %-22s : %+.3f ms/min, %+.2f ms over an 8-min block\n", "",
 		driftPerFrame*60000/panelMs, driftPerFrame*480000/panelMs)
+
+	// Is the phase actually a straight line? A slope alone cannot say.
+	//
+	// The paced branch stamps the flip with the schedule, but the BLOCKED branch
+	// re-anchors to the present's real return, which tracks the hardware. Each
+	// blocked frame therefore claws back part of the accumulated schedule error,
+	// and a run with a scattering of them has a phase that ramps and partially
+	// resets — a sawtooth whose fitted slope understates the schedule's true
+	// rate error. The resets are far too small to trip the boundary-crossing
+	// check (tens of µs against a 0.4-frame threshold), so nothing else here
+	// would show them.
+	//
+	// This is not hypothetical: an AMD run with 1 blocked frame in 1800 matched
+	// its predicted drift to 0.03 ppm, while a Pi 4 run with 24 blocked frames
+	// came in 8 ppm below prediction. Lag-1 autocorrelation of the residuals
+	// separates the two cases — white residuals mean a clean line, strongly
+	// positive ones mean structure the slope is averaging over.
+	fitResid := make([]float64, 0, segLen)
+	for i := lo; i <= hi; i++ {
+		fitResid = append(fitResid, phase[i]-(phase[lo]+driftPerFrame*float64(i-lo)))
+	}
+	residSD := sd(fitResid)
+	residAC1 := autocorr1(fitResid)
+	out.Printf("  %-22s : SD %.4f ms, lag-1 autocorr %+.3f\n", "fit residual", residSD, residAC1)
+	switch {
+	case residAC1 > 0.8 && ps.Blocked > 2:
+		out.Printf("  %-22s   STRUCTURED, not noise, and %d presents took the blocked branch.\n", "", ps.Blocked)
+		out.Printf("  %-22s   Those re-anchor the schedule to hardware, so the slope above is a\n", "")
+		out.Printf("  %-22s   LOWER BOUND on the schedule's rate error. Compare it with the\n", "")
+		out.Printf("  %-22s   nominal-vs-TRUE figure above: a gap is this, not measurement noise.\n", "")
+	case residAC1 > 0.8:
+		out.Printf("  %-22s   STRUCTURED, not noise. Something is modulating the phase on a\n", "")
+		out.Printf("  %-22s   timescale longer than a frame; the slope is an average over it.\n", "")
+	default:
+		out.Printf("  %-22s   residuals look like noise: the phase is a straight line and the\n", "")
+		out.Printf("  %-22s   slope is the whole story.\n", "")
+	}
+	exp.Data.WriteComment(fmt.Sprintf("drift fit_resid_sd_ms=%.4f fit_resid_ac1=%+.3f", residSD, residAC1))
 
 	out.Printf("\n── Pacing branches ───────────────────────────────────────\n")
 	total := ps.Blocked + ps.Paced
@@ -368,6 +428,28 @@ func leastSquares(x, y []float64) (slope, intercept float64) {
 	}
 	slope = sxy / sxx
 	return slope, my - slope*mx
+}
+
+// autocorr1 is the lag-1 autocorrelation of v: ~0 for white noise, near 1 for a
+// slow ramp or sawtooth. It is what separates "the phase is a line plus noise"
+// from "the phase has structure the slope is averaging over".
+func autocorr1(v []float64) float64 {
+	if len(v) < 3 {
+		return 0
+	}
+	m := mean(v)
+	var num, den float64
+	for i := range v {
+		d := v[i] - m
+		den += d * d
+		if i > 0 {
+			num += d * (v[i-1] - m)
+		}
+	}
+	if den == 0 {
+		return 0
+	}
+	return num / den
 }
 
 func mean(v []float64) float64 {
