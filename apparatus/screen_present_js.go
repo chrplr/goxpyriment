@@ -24,7 +24,7 @@ func (s *Screen) present() error {
 		return err
 	}
 	sdl.WaitAnimationFrame()
-	s.lastFlipNS = sdl.TicksNS()
+	s.presentNS = sdl.TicksNS()
 	return nil
 }
 
@@ -39,6 +39,7 @@ func (s *Screen) present() error {
 // desktop driver that blocks — and a browser that ever stopped blocking would
 // show up in it.
 func (s *Screen) paceToFrame(prevFlipNS uint64) {
+	s.heldToTarget = false // present() parked on requestAnimationFrame; nothing held here
 	if prevFlipNS == 0 {
 		return // first flip of the session, to match the desktop tally
 	}

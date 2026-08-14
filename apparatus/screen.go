@@ -26,6 +26,8 @@ import (
 
 	"github.com/Zyko0/go-sdl3/sdl"
 	"github.com/Zyko0/go-sdl3/ttf"
+
+	"github.com/chrplr/goxpyriment/vblank"
 )
 
 // Re-export SDL types for convenience and to avoid direct SDL dependencies in user code.
@@ -68,10 +70,25 @@ type Screen struct {
 	DefaultFont  *ttf.Font
 	CanvasOffset *sdl.FPoint   // If not nil, use this instead of true center
 	LogicalSize  *sdl.FPoint   // If not nil, use this for CenterToSDL
-	lastFlipNS   uint64        // SDL-clock (sdl.TicksNS) time of the previous present; 0 = none yet
 	frameDur     time.Duration // cached nominal frame duration used by Update's pacing (0 = not yet computed)
 	vsyncCached  int           // cached renderer VSync state; pacing is off when 0
 	vsyncKnown   bool          // whether vsyncCached has been filled in
+
+	// Update does three things, and one field used to serve all three: it was
+	// the pacing anchor, the timestamp FlipTS reported, and — on a paced frame —
+	// a value that had never touched hardware. Fusing them is what let a
+	// schedule error leak into every reaction time. They are now separate.
+	presentNS  uint64        // job 1: when SDL_RenderPresent returned. Always measured.
+	anchorNS   uint64        // job 2: what the next frame's deadline is measured from.
+	lastFlipNS uint64        // job 3: what FlipTS reports.
+	onsetSrc   vblank.Source // how lastFlipNS was obtained; written into every data file.
+
+	pacedTargetNS uint64 // the boundary the last hold waited for
+	heldToTarget  bool   // whether the last hold actually waited
+	anchorIsHW    bool   // whether anchorNS is a measured vblank rather than a schedule
+
+	vbl        vblank.Timer // kernel vblank clock, nil when none is available
+	vblChecked bool         // whether the one-time probe for it has run
 
 	// Pacing branch tallies, maintained by paceToFrame. See PacingStats.
 	blockedFrames  uint64
@@ -232,6 +249,7 @@ type SystemInfo struct {
 	AudioFreq      int32   // sample rate in Hz, e.g. 44100 or 48000
 	AudioChannels  int32   // number of audio output channels (1=mono, 2=stereo)
 	AudioFrames    int32   // hardware buffer size in sample frames
+	VblankBackend  string  // kernel vblank clock in use; "" when onsets are estimated
 }
 
 // GatherSystemInfo collects SDL and renderer properties from this Screen.
@@ -276,6 +294,10 @@ func (s *Screen) GatherSystemInfo() SystemInfo {
 		info.LogicalW = int32(s.Width)
 		info.LogicalH = int32(s.Height)
 	}
+	// Whether this run's onsets were measured against the display or estimated
+	// from a schedule is the one fact a reader cannot recover afterwards, so it
+	// goes in the file rather than the log.
+	info.VblankBackend = s.VblankBackend()
 	return info
 }
 
@@ -419,17 +441,127 @@ func (s *Screen) Update() error {
 			return fmt.Errorf("apparatus.Screen.Update: resetting render target: %w", err)
 		}
 	}
-	// Sample the previous flip's time before presenting: present() records its
-	// own timestamp into lastFlipNS, and the boundary to wait for is one frame
-	// after the PREVIOUS flip.
-	prevFlipNS := s.lastFlipNS
+	// The deadline is one frame after the PREVIOUS frame's anchor, so it has to
+	// be sampled before this frame overwrites it.
+	anchor := s.anchorNS
+
+	// 1. Submit.
 	if err := s.present(); err != nil {
 		return err
 	}
+	// 2. Hold to the frame boundary.
 	if s.pacingEnabled() {
-		s.paceToFrame(prevFlipNS)
+		s.paceToFrame(anchor)
 	}
+	// 3. Report. Deliberately last: the vblank read here is the one the frame
+	// was scanned out at, which is a measurement. Reading it before the hold
+	// would return the PREVIOUS frame's vblank, and predicting the next one
+	// would be the synthesised timestamp this whole change exists to remove.
+	s.recordOnset()
 	return nil
+}
+
+// recordOnset decides what FlipTS will report for the frame just presented, and
+// what the next frame's deadline is measured from.
+//
+// Preference order, and why:
+//
+//  1. The kernel's vblank timestamp. Measured, on the display's own clock, and
+//     re-read every frame — so an inaccurate frameDur shifts the phase by a
+//     constant instead of accumulating into a drift. That is the whole point:
+//     the old schedule advanced by a nominal period and walked away from the
+//     panel at whatever rate that period was wrong, 14 ms over eight minutes on
+//     a Raspberry Pi 4.
+//  2. The scheduled boundary, when pacing held the frame but no vblank clock is
+//     available. Still synthesised, and now labelled as such.
+//  3. The present's own return, when nothing held the frame.
+//
+// Case 2 is a deliberate departure from "never report a synthesised time". On a
+// driver that does not block, the schedule is far STEADIER than the present
+// return — 148 µs of spread across 1790 frames on a Radeon Pro W5700, against
+// millisecond-scale jitter for the raw return. Dropping it would trade measured
+// precision for accuracy that cannot be verified without a photodiode anyway.
+// So it stays, and onsetSrc records that it is an estimate.
+func (s *Screen) recordOnset() {
+	if ts, src, ok := s.vblankOnset(); ok {
+		s.lastFlipNS, s.anchorNS, s.onsetSrc = ts, ts, src
+		s.anchorIsHW = src == vblank.HardwareVerified
+		return
+	}
+	s.anchorIsHW = false
+	switch {
+	case s.heldToTarget:
+		s.lastFlipNS, s.anchorNS = s.pacedTargetNS, s.pacedTargetNS
+	default:
+		s.lastFlipNS, s.anchorNS = s.presentNS, s.presentNS
+	}
+	s.onsetSrc = vblank.Estimated
+}
+
+// vblankOnset queries the kernel for the vblank this frame was scanned out at.
+//
+// The backend is probed once, on the first flip rather than at construction, so
+// a screen that is never presented to costs nothing and the probe's log line
+// lands next to the run it describes.
+func (s *Screen) vblankOnset() (uint64, vblank.Source, bool) {
+	s.ensureVblank()
+	if s.vbl == nil {
+		return 0, vblank.Estimated, false
+	}
+	now := sdl.TicksNS()
+	s.vbl.RecordFlip(now)
+	ts, src, ok := s.vbl.OnsetForFlip(now)
+	if !ok {
+		return 0, vblank.Estimated, false
+	}
+	// A vblank no newer than the last one means the display has not advanced
+	// since the previous frame — the frame period is longer than we think, or
+	// the query raced the IRQ. Re-anchoring to a stale stamp would leave the
+	// next deadline already in the past and let the loop free-run for a frame,
+	// so extrapolate instead and say the value is an estimate.
+	if ts <= s.anchorNS {
+		if s.frameDur == 0 {
+			s.frameDur = s.FrameDuration()
+		}
+		return s.anchorNS + uint64(s.frameDur.Nanoseconds()), vblank.Estimated, true
+	}
+	return ts, src, true
+}
+
+// ensureVblank probes for a vblank clock once per screen.
+//
+// Both the first flip and GatherSystemInfo call it, because they can happen in
+// either order: control.Experiment.Initialize gathers system info before the
+// experiment has presented anything, and a lazy probe on first flip alone
+// reported "none (onsets are estimated)" into the data file of a run whose
+// onsets were in fact measured. A wrong provenance line is worse than none.
+func (s *Screen) ensureVblank() {
+	if s.vblChecked {
+		return
+	}
+	s.vblChecked = true
+	if t := vblank.AutoDetect(); t.Precision() == vblank.HardwareVerified {
+		s.vbl = t
+	} else {
+		_ = t.Close() // the fallback would echo back whatever we passed it
+	}
+}
+
+// OnsetSource reports how the timestamp FlipTS last returned was obtained.
+//
+// HardwareVerified means the kernel measured it against the display. Estimated
+// means it came from the pacing schedule or the present's return, and can be
+// wrong by an amount only a photodiode can establish. Written into every data
+// file as sys vblank_source, so no run is ambiguous after the fact.
+func (s *Screen) OnsetSource() vblank.Source { return s.onsetSrc }
+
+// VblankBackend names the vblank clock in use, or "" when there is none.
+func (s *Screen) VblankBackend() string {
+	s.ensureVblank()
+	if s.vbl == nil {
+		return ""
+	}
+	return s.vbl.Description()
 }
 
 // Flip is an alias for Update and presents the backbuffer to the display,
@@ -599,6 +731,10 @@ func (s *Screen) RefreshRate() float32 {
 
 // Destroy cleans up the window and renderer.
 func (s *Screen) Destroy() {
+	if s.vbl != nil {
+		_ = s.vbl.Close()
+		s.vbl = nil
+	}
 	if s.Renderer != nil {
 		s.Renderer.Destroy()
 	}

@@ -35,7 +35,7 @@ func (s *Screen) present() error {
 	if err := s.Renderer.Present(); err != nil {
 		return err
 	}
-	s.lastFlipNS = sdl.TicksNS()
+	s.presentNS = sdl.TicksNS()
 	return nil
 }
 
@@ -146,10 +146,28 @@ func (s *Screen) paceToFrame(prevFlipNS uint64) {
 		s.frameDur = s.FrameDuration()
 	}
 	if prevFlipNS == 0 {
+		s.heldToTarget = false
 		return // first flip of the session: nothing to pace against
 	}
-	target := prevFlipNS + uint64(s.frameDur.Nanoseconds())
+	frame := uint64(s.frameDur.Nanoseconds())
 	now := sdl.TicksNS()
+
+	// A hardware anchor is a MEASURED vblank, and the most recent vblank is up
+	// to a full frame old by the time present returns — so anchor+frameDur is
+	// routinely already past, and treating that as "the driver blocked" stopped
+	// pacing altogether (measured: 1799 blocked / 0 paced, where the same
+	// machine had been pacing 92% of frames). Step forward in whole frames from
+	// the anchor instead, to the first boundary after now. The anchor is re-read
+	// from hardware every frame, so nothing accumulates however wrong frameDur
+	// is; it only has to be good enough to count frames.
+	if s.anchorIsHW && frame > 0 {
+		n := (now-prevFlipNS)/frame + 1
+		target := prevFlipNS + n*frame
+		s.holdUntil(target, target-now)
+		return
+	}
+
+	target := prevFlipNS + frame
 	if now >= target {
 		// The driver blocked past the boundary on its own. Leave present()'s
 		// stamp in place — it is the moment SDL_RenderPresent returned, which
@@ -157,14 +175,18 @@ func (s *Screen) paceToFrame(prevFlipNS uint64) {
 		// documents itself as returning. This branch also absorbs a stall: a
 		// target left far in the past is simply abandoned rather than chased.
 		s.blockedFrames++
+		s.heldToTarget = false
 		return
 	}
-	wait := target - now
-	// Sleep off the bulk only when there is enough of the wait left for that to
-	// be safe: the tail still has to cover the sleep's overshoot, and a sleep
-	// shorter than minSleepNS is not worth the risk of taking one. Below that
-	// threshold — which is every frame on a panel faster than about 330 Hz —
-	// this is a pure spin, exactly as it was before.
+	s.holdUntil(target, target-now)
+}
+
+// holdUntil sleeps and then spins to target, and records the outcome.
+//
+// Only the last spinTailNS is spun; see the note above on the real-time
+// throttle for why the rest is slept.
+func (s *Screen) holdUntil(target, wait uint64) {
+	now := sdl.TicksNS()
 	if target-now > spinTailNS+minSleepNS {
 		time.Sleep(time.Duration(target - now - spinTailNS))
 		now = sdl.TicksNS()
@@ -177,7 +199,7 @@ func (s *Screen) paceToFrame(prevFlipNS uint64) {
 	// float64 to a Duration, losing under a nanosecond per frame — does still
 	// accumulate here, at 0.04 ppm. That is 20 us over the 8-minute run that
 	// exposed the 14.5 ms drift.
-	s.lastFlipNS = target
+	s.pacedTargetNS, s.heldToTarget = target, true
 	// Tally how early the present came back, not how long the wait took to
 	// serve: wait was measured before sleeping, so it is a property of the
 	// driver rather than of this function's own overshoot.
