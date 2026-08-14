@@ -85,6 +85,16 @@ func main() {
 			prevTS = ts
 		}
 		_ = msg.Unload()
+
+		// Save the intervals in the order they happened, before the sort below
+		// reorders them for the median. Everything this test computes otherwise
+		// goes to stdout and nowhere else, which is no use on a machine whose
+		// terminal someone else is watching.
+		exp.AddDataVariableNames([]string{"frame", "paced_interval_ms"})
+		for i, v := range paced {
+			exp.Data.Add(i, fmt.Sprintf("%.6f", v))
+		}
+
 		sort.Float64s(paced)
 		pacedMs := paced[len(paced)/2]
 		shortPaced := 0
@@ -123,6 +133,13 @@ func main() {
 			recommendation = "Update's pacing exits immediately here and costs nothing.\n" +
 				"FlipTS carries the present's own return instant on every frame."
 		}
+
+		exp.Data.WriteComment(fmt.Sprintf("vsync nominal_ms=%.5f unaided_ms=%.5f paced_ms=%.5f short=%d/%d",
+			nominalMs, unaidedMs, pacedMs, shortPaced, len(paced)))
+		exp.Data.WriteComment(fmt.Sprintf("vsync blocked=%d paced=%d paced_pct=%.1f wait_mean_ms=%.3f wait_max_ms=%.3f",
+			ps.Blocked, ps.Paced, pacedPct,
+			float64(ps.WaitMean().Nanoseconds())/1e6, float64(ps.WaitMax.Nanoseconds())/1e6))
+		exp.Data.WriteComment("vsync verdict: " + verdict)
 
 		id := sdl.GetDisplayForWindow(exp.Screen.Window)
 		modeList := ""
