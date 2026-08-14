@@ -115,8 +115,29 @@ func (s *Screen) present() error {
 // What remains after this is a residual proportional to how wrong the nominal
 // refresh rate is: the paced branch now runs at exactly frameDur, so any gap
 // between that and the panel's true frame still shows up as a one-signed slide,
-// just without ε on top. Seeding frameDur from CalibrateRefresh rather than from
-// the display mode would close that too, and is not done here.
+// just without ε on top.
+//
+// Seeding frameDur from CalibrateRefresh instead would make that WORSE, not
+// better. Measured 2026-08-14 against the panel's true frame period, recovered
+// from the photodiode trains in the runs above by regression over 1000 cycles
+// (cmd/timing-drift):
+//
+//	                     Pi 4 (V3D)        Precision 5490 (Intel/Mesa)
+//	true panel rate      60.0000 Hz        60.0385 Hz
+//	nominal display mode 60.0000 Hz        60.0400 Hz   ->  -0.1 /  -25 ppm
+//	CalibrateRefresh(60) 60.0043 Hz        60.0228 Hz   -> -72 / +261 ppm
+//
+// The display mode is the better estimate on both machines, by a factor of
+// ten. CalibrateRefresh takes the median of 59 intervals from a loop that is
+// deliberately unpaced, so on a driver that does not block it measures the
+// loop rather than the panel, and its median is quantised besides. It stays
+// the right tool for the job it documents — telling a non-blocking driver
+// apart from a frame-dropping one — but it is not a rate reference.
+//
+// The rate reference that IS accurate is the kernel's own vblank timestamp:
+// consecutive DRM_IOCTL_WAIT_VBLANK stamps on the 5490 give 60.0384 Hz, which
+// is 1.3 ppm from the photodiode-derived truth. media/present/drm_linux.go
+// already reads them, for the movie player only.
 func (s *Screen) paceToFrame(prevFlipNS uint64) {
 	// Cache the nominal frame duration on first use: it is fixed for the
 	// session, and re-querying the SDL display mode every frame is avoidable

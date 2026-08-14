@@ -264,15 +264,37 @@ blocks and every frame re-anchors. Details and figures in `paceToFrame`'s
 comment.
 
 Residual after that fix is `|true refresh − nominal refresh|`, since the paced
-branch advances by exactly `frameDur` (taken from the display mode). Seeding
-`frameDur` from `CalibrateRefresh` would close it; not done.
+branch advances by exactly `frameDur` (taken from the display mode).
+
+**Do not seed `frameDur` from `CalibrateRefresh` to close it — that makes it
+worse.** Against the panel's true frame period, recovered by regression over the
+photodiode trains of the two runs above (`cmd/timing-drift`, 1000 cycles each):
+
+| | Pi 4 (V3D) | Precision 5490 (Intel/Mesa) |
+|---|---|---|
+| true panel rate | 60.0000 Hz | 60.0385 Hz |
+| nominal display mode | 60.0000 Hz (**−0.1 ppm**) | 60.0400 Hz (**−25 ppm**) |
+| `CalibrateRefresh(60)` | 60.0043 Hz (−72 ppm) | 60.0228 Hz (+261 ppm) |
+
+The display mode wins by a factor of ten on both. `CalibrateRefresh` takes the
+median of 59 intervals from a deliberately unpaced loop, so on a driver that does
+not block it measures the loop, not the panel. It remains the right tool for the
+job it documents below; it is not a rate reference. The kernel's vblank timestamp
+is — consecutive `DRM_IOCTL_WAIT_VBLANK` stamps on the 5490 give 60.0384 Hz,
+**1.3 ppm** from the photodiode truth, and `media/present/drm_linux.go` already
+reads them for the movie player.
 
 `Screen.PacingStats()` reports which branch the presents took — `Blocked`,
 `Paced`, and the wait time across the paced ones — with `ResetPacingStats()` to
 exclude warm-up. Re-exported as `control.PacingStats`. `tests/Timing-Tests -test
-display` prints it, which is the only place the distinction surfaces without a
-photodiode: the frame-interval statistics look the same either way, because
-pacing is what makes them look the same.
+display` and `tests/test_vsync_blocking` both print it.
+
+**The branch counts are the verdict; the frame-interval medians are not.**
+Pacing exists to make the median interval come out right, so it does. Measured
+on the 5490 under Wayland, windowed: nominal 16.656 ms, unaided 16.653 ms, paced
+16.656 ms — three medians agreeing to 3 µs while **99.7 % of presents returned a
+mean 6.5 ms early**. `test_vsync_blocking` reported BLOCKING on that
+configuration until it was changed to count branches instead of compare medians.
 
 **Pacing enforces a minimum frame time, not a maximum.** It cannot recover a
 frame the compositor dropped. `CalibrateRefresh` is how you tell the two apart:
