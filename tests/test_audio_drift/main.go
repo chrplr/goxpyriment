@@ -88,6 +88,7 @@ import (
 	"github.com/chrplr/goxpyriment/control"
 	"github.com/chrplr/goxpyriment/stimuli"
 	"github.com/chrplr/goxpyriment/sysinfo"
+	"github.com/chrplr/goxpyriment/tests/internal/report"
 )
 
 var (
@@ -237,7 +238,7 @@ func main() {
 		fmt.Printf("\nper-sample data written to %s\n", *fCSV)
 	}
 
-	report(exp, samples, devFrames, devRate, stoppedEarly)
+	summarise(exp, samples, devFrames, devRate, stoppedEarly)
 }
 
 // run plays the sound and collects paired clock readings until the stream
@@ -341,7 +342,10 @@ func run(exp *control.Experiment, snd *stimuli.Sound, totalFrames int64) ([]samp
 }
 
 // report prints the overall fit and the per-segment breakdown.
-func report(exp *control.Experiment, samples []sample, devFrames, devRate int, stoppedEarly bool) {
+func summarise(exp *control.Experiment, samples []sample, devFrames, devRate int, stoppedEarly bool) {
+	out := &report.Tee{}
+	defer out.Flush(exp.Data, "audio drift report")
+
 	used := make([]sample, 0, len(samples))
 	var nWarmup, nCooldown, nDrained, nWide int
 	for _, s := range samples {
@@ -359,34 +363,34 @@ func report(exp *control.Experiment, samples []sample, devFrames, devRate int, s
 		}
 	}
 	if len(used) < 3 {
-		fmt.Printf("\nonly %d usable samples after warm-up and bracket rejection — no fit\n", len(used))
+		out.Printf("\nonly %d usable samples after warm-up and bracket rejection — no fit\n", len(used))
 		return
 	}
 
 	fit, ok := regress(used)
 	if !ok {
-		fmt.Printf("\nsystem times do not vary — no fit\n")
+		out.Printf("\nsystem times do not vary — no fit\n")
 		return
 	}
 	span := used[len(used)-1].tSystem - used[0].tSystem
 
-	fmt.Printf("\n─── result ──────────────────────────────────────────────────\n")
-	fmt.Printf("samples          : %d used of %d (%d warm-up, %d cool-down, %d drained, %d wide-bracket)\n",
+	out.Printf("\n─── result ──────────────────────────────────────────────────\n")
+	out.Printf("samples          : %d used of %d (%d warm-up, %d cool-down, %d drained, %d wide-bracket)\n",
 		len(used), len(samples), nWarmup, nCooldown, nDrained, nWide)
 	if nWide > len(samples)/20 {
-		fmt.Printf("  NOTE: over 5%% of readings exceeded the %d µs bracket — this host was\n", *fBracketUs)
-		fmt.Printf("  busy. The fit survives it, but rerun on an idle machine before quoting.\n")
+		out.Printf("  NOTE: over 5%% of readings exceeded the %d µs bracket — this host was\n", *fBracketUs)
+		out.Printf("  busy. The fit survives it, but rerun on an idle machine before quoting.\n")
 	}
-	fmt.Printf("fitted span      : %.1f s\n", span)
+	out.Printf("fitted span      : %.1f s\n", span)
 	if stoppedEarly {
-		fmt.Printf("                   (stopped early — span is shorter than requested)\n")
+		out.Printf("                   (stopped early — span is shorter than requested)\n")
 	}
-	fmt.Printf("\nrate error       : %+.2f ppm   (95%% CI %+.2f … %+.2f)\n",
+	out.Printf("\nrate error       : %+.2f ppm   (95%% CI %+.2f … %+.2f)\n",
 		fit.ppm, fit.ppm-1.96*fit.ppmSE, fit.ppm+1.96*fit.ppmSE)
-	fmt.Printf("  audio clock runs %s than nominal\n", fasterSlower(fit.ppm))
-	fmt.Printf("accumulated drift: %+.1f ms over the fitted %.1f s\n",
+	out.Printf("  audio clock runs %s than nominal\n", fasterSlower(fit.ppm))
+	out.Printf("accumulated drift: %+.1f ms over the fitted %.1f s\n",
 		fit.slope1*span*1000, span)
-	fmt.Printf("  extrapolated   : %+.1f ms per 10 minutes\n", fit.slope1*600*1000)
+	out.Printf("  extrapolated   : %+.1f ms per 10 minutes\n", fit.slope1*600*1000)
 
 	// The whole point of this test is the ppm figure, and until now it existed
 	// only on stdout. The per-sample rows go in too, so the fit can be redone
@@ -416,35 +420,35 @@ func report(exp *control.Experiment, samples []sample, devFrames, devRate int, s
 	quant := func(p float64) float64 { return sorted[int(p*float64(len(sorted)-1))] * 1000 }
 	maxAbs := math.Max(math.Abs(sorted[0]), math.Abs(sorted[len(sorted)-1])) * 1000
 
-	fmt.Printf("\nresiduals (ms)   : SD %.1f, median %+.1f, IQR %+.1f … %+.1f, range %+.1f … %+.1f\n",
+	out.Printf("\nresiduals (ms)   : SD %.1f, median %+.1f, IQR %+.1f … %+.1f, range %+.1f … %+.1f\n",
 		fit.residSD*1000, quant(0.5), quant(0.25), quant(0.75),
 		sorted[0]*1000, sorted[len(sorted)-1]*1000)
-	fmt.Printf("  skew %+.2f, kurtosis %.2f (uniform 1.8, normal 3.0), lag-1 autocorr %+.3f\n",
+	out.Printf("  skew %+.2f, kurtosis %.2f (uniform 1.8, normal 3.0), lag-1 autocorr %+.3f\n",
 		skewness(res), kurtosis(res), autocorr(res, 1))
 	if devFrames > 0 && devRate > 0 {
 		q := float64(devFrames) / float64(devRate) * 1000
-		fmt.Printf("  the queue drains one %.1f ms callback at a time, so quantisation alone\n", q)
-		fmt.Printf("  predicts SD ≈ %.1f ms (period/sqrt(12)) and |residual| ≲ %.1f ms.\n",
+		out.Printf("  the queue drains one %.1f ms callback at a time, so quantisation alone\n", q)
+		out.Printf("  predicts SD ≈ %.1f ms (period/sqrt(12)) and |residual| ≲ %.1f ms.\n",
 			q/math.Sqrt(12), q)
 		if maxAbs > 3*q {
-			fmt.Printf("  WARNING: largest residual is %.0f ms, over 3 callback periods. Some\n", maxAbs)
-			fmt.Printf("  samples are structurally unlike the rest — inspect the CSV tail before\n")
-			fmt.Printf("  believing the slope, and consider raising -cooldown-s.\n")
+			out.Printf("  WARNING: largest residual is %.0f ms, over 3 callback periods. Some\n", maxAbs)
+			out.Printf("  samples are structurally unlike the rest — inspect the CSV tail before\n")
+			out.Printf("  believing the slope, and consider raising -cooldown-s.\n")
 		}
 	}
 	if a := math.Abs(autocorr(res, 1)); a > 0.5 {
-		fmt.Printf("  NOTE: lag-1 autocorrelation is %+.2f. The printed CI assumes independent\n", autocorr(res, 1))
-		fmt.Printf("  residuals and is therefore too narrow here.\n")
+		out.Printf("  NOTE: lag-1 autocorrelation is %+.2f. The printed CI assumes independent\n", autocorr(res, 1))
+		out.Printf("  residuals and is therefore too narrow here.\n")
 	}
-	fmt.Printf("intercept        : %+.1f ms — the audio already buffered ahead at t=0\n",
+	out.Printf("intercept        : %+.1f ms — the audio already buffered ahead at t=0\n",
 		fit.intercept*1000)
-	fmt.Printf("                   (SDL's internal buffering plus the hardware buffer, and\n")
-	fmt.Printf("                   typically far more than one callback period). Constant,\n")
-	fmt.Printf("                   so it biases the slope not at all — and is not a drift\n")
-	fmt.Printf("                   measurement in itself.\n")
+	out.Printf("                   (SDL's internal buffering plus the hardware buffer, and\n")
+	out.Printf("                   typically far more than one callback period). Constant,\n")
+	out.Printf("                   so it biases the slope not at all — and is not a drift\n")
+	out.Printf("                   measurement in itself.\n")
 
-	fmt.Printf("\n─── per segment (%.0f s each) ─────────────────────────────────\n", *fSegmentS)
-	fmt.Printf("  %-18s %6s %10s %10s\n", "window (s)", "n", "ppm", "+/-SE")
+	out.Printf("\n─── per segment (%.0f s each) ─────────────────────────────────\n", *fSegmentS)
+	out.Printf("  %-18s %6s %10s %10s\n", "window (s)", "n", "ppm", "+/-SE")
 	var segPPM, segSE []float64
 	for start := used[0].tSystem; start < used[len(used)-1].tSystem; start += *fSegmentS {
 		end := start + *fSegmentS
@@ -463,7 +467,7 @@ func report(exp *control.Experiment, samples []sample, devFrames, devRate int, s
 		}
 		segPPM = append(segPPM, sf.ppm)
 		segSE = append(segSE, sf.ppmSE)
-		fmt.Printf("  %7.0f – %-8.0f %6d %+10.2f %10.2f\n", start, end, len(seg), sf.ppm, sf.ppmSE)
+		out.Printf("  %7.0f – %-8.0f %6d %+10.2f %10.2f\n", start, end, len(seg), sf.ppm, sf.ppmSE)
 	}
 
 	if len(segPPM) >= 2 {
@@ -476,33 +480,33 @@ func report(exp *control.Experiment, samples []sample, devFrames, devRate int, s
 		// comparing it against the mean ppm (the obvious thing) instead reports
 		// "wandering" for every run that is merely too short.
 		expected := rms(segSE)
-		fmt.Printf("\nsegment ppm      : mean %+.2f, SD %.2f, range %+.2f … %+.2f\n",
+		out.Printf("\nsegment ppm      : mean %+.2f, SD %.2f, range %+.2f … %+.2f\n",
 			mean, sd, minOf(segPPM), maxOf(segPPM))
-		fmt.Printf("  scatter expected from the fits' own noise: %.2f ppm\n", expected)
-		fmt.Printf("\ninterpretation:\n")
+		out.Printf("  scatter expected from the fits' own noise: %.2f ppm\n", expected)
+		out.Printf("\ninterpretation:\n")
 		// Wander and resolution are separate questions and the answers are
 		// independent: segments can agree with each other (no wander) while
 		// none of them individually resolves the effect. Reporting only
 		// "too noisy" when both hold throws away the finding that nothing is
 		// wandering, which is the question this table exists to answer.
 		if sd <= 1.5*expected {
-			fmt.Printf("  Segment scatter (%.1f ppm) is no more than the fits' own noise (%.1f ppm).\n", sd, expected)
-			fmt.Printf("  Consistent with a FIXED clock ratio (crystal tolerance) — no sign of an\n")
-			fmt.Printf("  adaptive resampler chasing a second clock.\n")
+			out.Printf("  Segment scatter (%.1f ppm) is no more than the fits' own noise (%.1f ppm).\n", sd, expected)
+			out.Printf("  Consistent with a FIXED clock ratio (crystal tolerance) — no sign of an\n")
+			out.Printf("  adaptive resampler chasing a second clock.\n")
 		} else {
-			fmt.Printf("  Segment scatter (%.1f ppm) exceeds the fits' own noise (%.1f ppm): the\n", sd, expected)
-			fmt.Printf("  rate is WANDERING, which is what a rate-matching resampler does. Check\n")
-			fmt.Printf("  for a loopback, combined/network sink, Bluetooth, or aggregate device.\n")
+			out.Printf("  Segment scatter (%.1f ppm) exceeds the fits' own noise (%.1f ppm): the\n", sd, expected)
+			out.Printf("  rate is WANDERING, which is what a rate-matching resampler does. Check\n")
+			out.Printf("  for a loopback, combined/network sink, Bluetooth, or aggregate device.\n")
 		}
 		if expected > math.Abs(mean) {
-			fmt.Printf("\n  Individually the segments cannot resolve an offset this small (SE %.1f ppm\n", expected)
-			fmt.Printf("  vs mean %+.2f ppm); the overall fit above, which uses the full span, can.\n", mean)
-			fmt.Printf("  Raise -segment-s for a per-segment verdict of comparable precision.\n")
+			out.Printf("\n  Individually the segments cannot resolve an offset this small (SE %.1f ppm\n", expected)
+			out.Printf("  vs mean %+.2f ppm); the overall fit above, which uses the full span, can.\n", mean)
+			out.Printf("  Raise -segment-s for a per-segment verdict of comparable precision.\n")
 		}
 		if sd < expected/2 {
-			fmt.Printf("\n  The segments agree with each other markedly better than their own SEs\n")
-			fmt.Printf("  predict. Those SEs are inflated by low-frequency wander in the residual,\n")
-			fmt.Printf("  which shifts a segment's points together rather than about its own line.\n")
+			out.Printf("\n  The segments agree with each other markedly better than their own SEs\n")
+			out.Printf("  predict. Those SEs are inflated by low-frequency wander in the residual,\n")
+			out.Printf("  which shifts a segment's points together rather than about its own line.\n")
 		}
 	}
 
@@ -512,11 +516,11 @@ func report(exp *control.Experiment, samples []sample, devFrames, devRate int, s
 	// supported by the data the tool itself collects. Report the number instead
 	// of the assumption.
 	a1 := autocorr(res, 1)
-	fmt.Printf("\ncaveat: the CI assumes independent residuals; the measured lag-1\n")
-	fmt.Printf("autocorrelation is %+.3f. Structure at longer lags can still widen the true\n", a1)
-	fmt.Printf("interval, so repeat the run before quoting a figure — agreement between two\n")
-	fmt.Printf("runs is worth more than either CI.\n")
-	fmt.Printf("─────────────────────────────────────────────────────────────\n")
+	out.Printf("\ncaveat: the CI assumes independent residuals; the measured lag-1\n")
+	out.Printf("autocorrelation is %+.3f. Structure at longer lags can still widen the true\n", a1)
+	out.Printf("interval, so repeat the run before quoting a figure — agreement between two\n")
+	out.Printf("runs is worth more than either CI.\n")
+	out.Printf("─────────────────────────────────────────────────────────────\n")
 }
 
 // fitResult holds an ordinary least-squares fit of audio time on system time.

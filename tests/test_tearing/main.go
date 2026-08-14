@@ -37,6 +37,7 @@ import (
 	"github.com/chrplr/goxpyriment/clock"
 	"github.com/chrplr/goxpyriment/control"
 	"github.com/chrplr/goxpyriment/stimuli"
+	"github.com/chrplr/goxpyriment/tests/internal/report"
 	"github.com/chrplr/goxpyriment/tests/internal/timingstats"
 )
 
@@ -238,8 +239,10 @@ func animLoop(exp *control.Experiment, initBarWidth, initSpeed float32) error {
 		estimatedHz = 1000.0 / s.Mean
 		s = timingstats.ComputeStats(intervals, s.Mean) // recompute late counts against actual mean
 	}
-	fmt.Printf("\nEstimated refresh rate: %.3f Hz\n", estimatedHz)
-	timingstats.PrintStats("Frame intervals", s, s.Mean)
+	out := &report.Tee{}
+	defer out.Flush(exp.Data, "tearing report")
+	out.Printf("\nEstimated refresh rate: %.3f Hz\n", estimatedHz)
+	timingstats.FprintStats(out, "Frame intervals", s, s.Mean)
 
 	exp.AddDataVariableNames([]string{"frame", "interval_ms"})
 	exp.Data.WriteComment(fmt.Sprintf("tearing estimated_hz=%.4f", estimatedHz))

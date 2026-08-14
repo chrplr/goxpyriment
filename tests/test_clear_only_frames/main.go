@@ -47,6 +47,7 @@ import (
 
 	"github.com/chrplr/goxpyriment/clock"
 	"github.com/chrplr/goxpyriment/control"
+	"github.com/chrplr/goxpyriment/tests/internal/report"
 	"github.com/chrplr/goxpyriment/tests/internal/timingstats"
 )
 
@@ -141,13 +142,18 @@ func main() {
 	// attach to. The periods go in as supporting evidence, still not a pass/fail.
 	exp.Data.WriteComment(fmt.Sprintf("clearonly mode=%s guarded=%t cycles=%d frames_on=%d frames_off=%d level_bright=%d level_dark=%d",
 		mode, *fGuarded, *fCycles, *fFramesOn, *fFramesOff, *fLevelB, *fLevelA))
+	out := &report.Tee{}
+	defer out.Flush(exp.Data, "clear-only frames report")
+	out.Printf("clear-only: %s\n", mode)
 	if len(periods) > 0 {
 		s := timingstats.ComputeStats(periods, 0)
 		s = timingstats.ComputeStats(periods, s.Mean)
-		timingstats.PrintStats("Cycle period (app-side — NOT a pass/fail signal)", s, s.Mean)
+		timingstats.FprintStats(out, "Cycle period (app-side — NOT a pass/fail signal)", s, s.Mean)
 		exp.AddDataVariableNames([]string{"cycle", "period_ms"})
 		timingstats.Save(exp.Data, "clearonly cycle_period (app-side — NOT a pass/fail signal)", s, s.Mean)
 	}
-	fmt.Println("\nPASS = the screen showed a clean square wave throughout.")
-	fmt.Println("FAIL = frozen frames lasting seconds, or flicker unrelated to the pattern.")
+	// The verdict is what the screen did, so the file records the criteria
+	// rather than an answer — whoever watched it has to supply that.
+	out.Println("\nPASS = the screen showed a clean square wave throughout.")
+	out.Println("FAIL = frozen frames lasting seconds, or flicker unrelated to the pattern.")
 }

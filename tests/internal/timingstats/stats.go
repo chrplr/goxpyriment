@@ -7,7 +7,9 @@ package timingstats
 
 import (
 	"fmt"
+	"io"
 	"math"
+	"os"
 	"sort"
 
 	"github.com/chrplr/goxpyriment/results"
@@ -66,16 +68,22 @@ func ComputeStats(deltas []float64, targetMs float64) Stats {
 
 // PrintStats prints a summary of s to stdout.
 func PrintStats(label string, s Stats, targetMs float64) {
-	fmt.Printf("\n── %s ───────────────────────────────\n", label)
-	fmt.Printf("  n       : %d\n", s.N)
-	fmt.Printf("  target  : %.3f ms\n", targetMs)
-	fmt.Printf("  mean    : %.3f ms\n", s.Mean)
-	fmt.Printf("  SD      : %.3f ms\n", s.SD)
-	fmt.Printf("  min/max : %.3f / %.3f ms\n", s.MinV, s.MaxV)
-	fmt.Printf("  p5/p95  : %.3f / %.3f ms\n", s.P5, s.P95)
-	fmt.Printf("  >0.5 ms : %d (%.1f %%)\n", s.Late05, 100*float64(s.Late05)/float64(s.N))
-	fmt.Printf("  >1.0 ms : %d (%.1f %%)\n", s.Late1, 100*float64(s.Late1)/float64(s.N))
-	PrintHistogram(s.Vals)
+	FprintStats(os.Stdout, label, s, targetMs)
+}
+
+// FprintStats renders the summary into w. Pass a report.Tee to have the same
+// bytes reach both the terminal and the data file.
+func FprintStats(w io.Writer, label string, s Stats, targetMs float64) {
+	fmt.Fprintf(w, "\n── %s ───────────────────────────────\n", label)
+	fmt.Fprintf(w, "  n       : %d\n", s.N)
+	fmt.Fprintf(w, "  target  : %.3f ms\n", targetMs)
+	fmt.Fprintf(w, "  mean    : %.3f ms\n", s.Mean)
+	fmt.Fprintf(w, "  SD      : %.3f ms\n", s.SD)
+	fmt.Fprintf(w, "  min/max : %.3f / %.3f ms\n", s.MinV, s.MaxV)
+	fmt.Fprintf(w, "  p5/p95  : %.3f / %.3f ms\n", s.P5, s.P95)
+	fmt.Fprintf(w, "  >0.5 ms : %d (%.1f %%)\n", s.Late05, 100*float64(s.Late05)/float64(s.N))
+	fmt.Fprintf(w, "  >1.0 ms : %d (%.1f %%)\n", s.Late1, 100*float64(s.Late1)/float64(s.N))
+	FprintHistogram(w, s.Vals)
 }
 
 // Save writes a Stats summary into a data file, as one comment line, and the
@@ -99,7 +107,10 @@ func Save(df *results.DataFile, label string, s Stats, targetMs float64) {
 
 // PrintHistogram prints a 10-bin ASCII histogram of vals to stdout.
 // Each bar shows the bin range, count, and a proportional bar of '*' characters.
-func PrintHistogram(vals []float64) {
+func PrintHistogram(vals []float64) { FprintHistogram(os.Stdout, vals) }
+
+// FprintHistogram renders the histogram into w.
+func FprintHistogram(w io.Writer, vals []float64) {
 	const nBins = 10
 	const barWidth = 40
 	n := len(vals)
@@ -133,7 +144,7 @@ func PrintHistogram(vals []float64) {
 			maxCount = c
 		}
 	}
-	fmt.Printf("  histogram (%d bins):\n", nBins)
+	fmt.Fprintf(w, "  histogram (%d bins):\n", nBins)
 	for i := 0; i < nBins; i++ {
 		lo := mn + float64(i)*binW
 		hi := lo + binW
@@ -144,6 +155,6 @@ func PrintHistogram(vals []float64) {
 				bar += "*"
 			}
 		}
-		fmt.Printf("  [%7.3f, %7.3f) ms : %5d  %s\n", lo, hi, counts[i], bar)
+		fmt.Fprintf(w, "  [%7.3f, %7.3f) ms : %5d  %s\n", lo, hi, counts[i], bar)
 	}
 }
