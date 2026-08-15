@@ -31,6 +31,8 @@
 #                                              (default: dlpio8)
 #   TRIGGER_PIN       output pin 1-8           (default: 1)
 #   TRIGGER_MS        TTL pulse width, ms      (default: 200)
+#   DLP_PORT          DLP-IO8-G serial port    (default: auto-detect; set it when
+#                                              BBTK_CAPTURE=1 — see the note below)
 #   PARALLEL_PORT     LPT device path          (default: first accessible one)
 #   GPIO_CHIP         chip device path         (default: /dev/gpiochip0)
 #   GPIO_PINS         8 pins, comma-separated  (default: 17,27,22,5,6,13,19,26)
@@ -230,6 +232,7 @@ fi
 # Parallel and DLP-IO8 are 5 V.
 TRIGGER_DEVICE="${TRIGGER_DEVICE:-dlpio8}"
 TRIGGER_PIN="${TRIGGER_PIN:-1}"
+DLP_PORT="${DLP_PORT:-}"             # empty = auto-detect by probing every serial port
 PARALLEL_PORT="${PARALLEL_PORT:-}"   # empty = first accessible /dev/parportN
 GPIO_CHIP="${GPIO_CHIP:-/dev/gpiochip0}"
 GPIO_PINS="${GPIO_PINS:-17,27,22,5,6,13,19,26}"
@@ -249,7 +252,22 @@ TRIGGER_MS="${TRIGGER_MS:-200}"
 # mid-command). "${TRIGGER_ARGS[@]}" needs no suppression and cannot word-split a
 # path containing a space.
 case "$TRIGGER_DEVICE" in
-	dlpio8)   TRIGGER_ARGS=(-trigger-device dlpio8 -trigger-pin "$TRIGGER_PIN") ;;
+	dlpio8)   TRIGGER_ARGS=(-trigger-device dlpio8 -trigger-pin "$TRIGGER_PIN")
+	          # Same "only when set" rule as PARALLEL_PORT below.
+	          #
+	          # Worth setting under BBTK_CAPTURE=1 even though auto-detect works:
+	          # the BBTK is itself a USB serial device, and auto-detect probes
+	          # every candidate port in turn by opening it and writing a byte.
+	          # Linux does not lock tty devices by default, and bbtk-capture has
+	          # the recorder's port open by the time the stimulus starts — so the
+	          # probe can write into the recorder's command stream. The DLP
+	          # answers a ping so the wrong device is never *selected*, but the
+	          # stray byte is sent before that is known. Naming the port skips
+	          # the probing entirely.
+	          if [ -n "$DLP_PORT" ]; then
+	          	TRIGGER_ARGS+=(-port "$DLP_PORT")
+	          fi
+	          ;;
 	parallel) TRIGGER_ARGS=(-trigger-device parallel -trigger-pin "$TRIGGER_PIN")
 	          # Only pass -parallel-port when set: empty would be a literal
 	          # empty argument, not the "auto-detect" the binary means by it.
