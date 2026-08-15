@@ -123,13 +123,33 @@ It reports two independent things: where this run's onset timestamps will come
 from, and whether the machine has a kernel vblank clock at all.
 
 By default `FlipTS` returns a timestamp derived from the pacing schedule.
-`GOXPY_VBLANK=on` instead anchors it on the kernel's vblank stamps — **an
-experimental path, off by default.** Measured with a photodiode on two machines
-and two GPU backends, the vblank path misreported onsets by a whole frame in
-three runs out of four, in bursts lasting tens of seconds, while the schedule-
-derived path drifted less than 0.3 ppm in every run. The suspected cause is the
-backend asking for the most recent vblank rather than for the frame it
-submitted. Do not enable it for data collection.
+`GOXPY_VBLANK=on` instead anchors it on the kernel's vblank stamps — **off by
+default, and there is currently no reason to turn it on.**
+
+Measured with a photodiode against a TTL, 1010 cycles per run, on a Raspberry
+Pi 4 (V3D/kmsdrm) and a Radeon Pro W5700 (radeonsi, X11 exclusive fullscreen):
+
+| arm | flip → photon slope | one-frame errors |
+|---|---|---|
+| pacing schedule (5 runs) | −1.62 … +0.12 ppm | none in any run |
+| kernel vblank (1 run) | +0.48 ppm | none |
+
+The two are indistinguishable and both are flat to well under a ppm, so the
+default is the one with five runs behind it on two machines rather than one.
+
+The case the vblank anchor exists for is a host whose nominal refresh rate is
+badly wrong, where a schedule advancing on it walks away from the panel. Neither
+machine above is that host — the W5700's nominal is 5.9 ppm from true, or 0.2 ms
+over an eight-minute block. If you have a rig where the two disagree by much
+more, this is the switch to try, and `sys vblank_resolution:` in the run's
+`-info.txt` is how to check it behaved.
+
+If you enable it, read that line. It reports how each frame's vblank was
+resolved, and it is not decoration: on the W5700 the flip query beat the vblank
+interrupt on **31.3 % of frames**, and identifying which vblank a frame belongs
+to is the whole job. A wrong answer there is exactly one frame out, which on a
+frame grid still looks like a perfectly regular train — so nothing in the
+timestamps themselves would tell you.
 
 Check this line **before** committing to a photodiode capture rather than
 afterwards in the run's `-info.txt`: a machine with no backend and a run that

@@ -177,36 +177,45 @@ const EnvOptIn = "GOXPY_VBLANK"
 //
 // # Why this is opt-in
 //
-// Anchoring flip timestamps on the kernel's vblank stamps ought to be strictly
-// better than deriving them from the pacing schedule, and it is not — measured,
-// with a photodiode, on two machines and two GPU backends, 1010 cycles per run:
+// Not because it is broken — the defect that made it so is fixed, and measured
+// to be fixed — but because it has nothing left to win.
 //
-//	                  flip -> photon drift      one-frame errors
-//	off  (4 runs)     -0.30, +0.12, -0.03,      none in any run
-//	                  +0.08 ppm
-//	on   (4 runs)     Pi: startup windows of    3 of 4 runs affected
-//	                  58-89 cycles reporting
-//	                  onsets a frame LATE
-//	                  (photons arriving before
-//	                  the reported onset);
-//	                  AMD: one run clean, one
-//	                  with a 13 s burst of
-//	                  +-1 frame errors and a
-//	                  -48 ppm slope
+// Anchoring flip timestamps on the kernel's vblank stamps ought to beat deriving
+// them from the pacing schedule. Measured with a photodiode against a TTL, 1010
+// cycles per run, on a Raspberry Pi 4 (V3D/kmsdrm) and a Radeon Pro W5700
+// (radeonsi, X11 exclusive fullscreen):
 //
-// The failure is intermittent, which is worse than a consistent one: a run that
-// misreports for thirteen seconds four minutes in passes every short check, and
-// the error lands as a one-frame mistake in somebody's reaction times.
+//	arm                      flip -> photon slope        one-frame errors
+//	schedule (5 runs)        -1.62 .. +0.12 ppm          none in any run
+//	vblank, after the fix    +0.48 ppm                   none
 //
-// The suspected mechanism is the backend asking for the MOST RECENT vblank
-// (DRM_VBLANK_RELATIVE, sequence 0) rather than for the frame it submitted: any
-// delay between the present and that read can put the answer on the far side of
-// a vblank boundary. Real-time priority would make that race rarer without
-// making it correct. Fixing it means querying by sequence number, at which point
-// this should be re-measured and the default reconsidered.
+// The two are indistinguishable, and both are flat to well under a ppm. So the
+// default is the one with five runs behind it on two machines rather than one.
 //
-// Until then the switch also serves its original purpose: comparing the two on
-// ONE machine in ONE thermal state, interleaved. A panel's rate moves tens of
-// ppm over the first minutes of a run — larger than the effect being measured —
-// so an A/B that cannot be interleaved is not an A/B.
+// The case this exists for is a host whose nominal refresh is badly wrong, where
+// a schedule advancing on it would walk away from the panel. Neither machine
+// measured here is that host: the W5700's nominal is 5.9 ppm from true, which
+// over an eight-minute block is 0.2 ms. Until such a rig turns up, the switch
+// also serves its original purpose — comparing the two on ONE machine in ONE
+// thermal state, interleaved, because a panel's rate moves tens of ppm over the
+// first minutes of a run and an A/B that cannot be interleaved is not an A/B.
+//
+// # What the defect was, so it is not reintroduced
+//
+// The backend asked for the MOST RECENT vblank and took whatever came back. The
+// caller queries just after holding to the frame boundary, so that read lands
+// within microseconds of the vblank IRQ and can fall on either side of it. When
+// it fell before, the answer was the PREVIOUS frame's vblank — a whole frame
+// out, on a grid where a frame-quantised error still looks perfectly regular.
+//
+// It was not a rare race. Instrumented on the W5700, the query beat the IRQ on
+// 9498 of 30300 frames, 31.3%. Before the fix that produced a 13-second burst of
+// +-1 frame errors four minutes into one run and a -48 ppm slope, while the TTL
+// from the same loop held at +1.5 ppm; on the Pi it made the first 58-89 cycles
+// of a run report onsets AFTER the photons had already been detected.
+//
+// drm_linux.go now resolves every frame against the vblank COUNT, so the same
+// 31.3% resolve to the vblank they belong to (max wait 0.546 ms, no failures).
+// Stats reports those counts, and they are worth reading on any run that enables
+// this: the failure they guard against cannot be seen in the timestamps.
 func Enabled() bool { return os.Getenv(EnvOptIn) == "on" }
