@@ -94,7 +94,8 @@ go build -o Timing-Tests ./tests/Timing-Tests
 ## Recording system information (`-sysinfo`)
 
 Before running anything, capture a snapshot of the machine. `-sysinfo` prints it
-and exits — no window, no SDL:
+and exits — it opens no window, though it does initialise SDL briefly to
+enumerate displays and audio devices:
 
 ```bash
 Timing-Tests -sysinfo
@@ -108,7 +109,32 @@ CPU:        Model: Intel(R) Core(TM) Ultra 7 165H  Info: 16 cores / 22 threads
 Memory:     RAM: total: 30.04 GiB  used: 6.21 GiB (20.7%)
 Graphics:   Card: Intel Corporation Meteor Lake-P [Intel Arc Graphics]  Driver: i915
 Audio:      Server: PipeWire  v: 1.4.7
+Displays:   [0] Built-in display  1920x1200  60.040 Hz  bounds 0,0 1920x1200  [primary]
+            video driver: wayland   (the [N] above is the -d N value)
+Audio out:  [0] Speaker
+            driver: pipewire
+Vblank:     Linux DRM vblank (/dev/dri/card1 crtc 0, DRM_IOCTL_WAIT_VBLANK, hardware-verified)
 ```
+
+### The `Vblank` line is a pre-flight check
+
+It says whether this machine can **measure** a frame's onset or only estimate
+it. Where it reads
+
+```
+Vblank:     vsync-estimated (post-present flip timestamp, no OS integration)
+            NO hardware vblank clock: FlipTS onsets are estimated, not measured
+```
+
+the timestamp `FlipTS` returns comes from the pacing schedule rather than from
+the display, and can walk away from the actual photons at whatever rate the
+nominal refresh differs from the panel's real one — a drift, not a scatter, so
+no host-side statistic will reveal it. Check this **before** committing to a
+photodiode capture, not afterwards in the run's `-info.txt`.
+
+`GOXPY_VBLANK=off` forces the estimated path deliberately, and the line says so
+rather than reporting no hardware; that is how the two arms of an A/B are told
+apart.
 
 Keep it alongside your results:
 

@@ -45,6 +45,8 @@
 // offset is CONSTANT, which is the part no host-side statistic can reach.
 package vblank
 
+import "os"
+
 // Source describes how a timestamp was obtained.
 //
 // The distinction is the point of the package: a caller that cannot tell a
@@ -125,4 +127,25 @@ func (fallback) Description() string {
 // AutoDetect returns the best Timer available on this platform, falling back to
 // NewFallback if no backend initialises. It never returns nil; failures are
 // logged and surface through the returned Timer's Description.
+//
+// It does NOT consult EnvDisable — that switch belongs to the caller, which has
+// to report the difference between "this machine has no vblank clock" and "you
+// switched it off" in its own vocabulary. Check Disabled first.
 func AutoDetect() Timer { return autoDetect() }
+
+// EnvDisable names the environment variable that forces the estimated path.
+//
+// It lives here rather than in each caller so the spelling cannot drift: a probe
+// that reports hardware while the run beside it has the switch on would silently
+// mislabel the arms of an A/B.
+const EnvDisable = "GOXPY_VBLANK"
+
+// Disabled reports whether the vblank clock has been switched off with
+// GOXPY_VBLANK=off.
+//
+// This exists so the two sides of the comparison can be measured on ONE machine
+// in ONE thermal state, interleaved. Without it the only available baseline is a
+// capture from a different panel and a different code state, and a panel's rate
+// moves tens of ppm over the first minutes of a run — larger than the effect
+// being measured. An A/B that cannot be interleaved is not an A/B.
+func Disabled() bool { return os.Getenv(EnvDisable) == "off" }

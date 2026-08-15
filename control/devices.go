@@ -16,6 +16,8 @@ import (
 	"strings"
 
 	"github.com/Zyko0/go-sdl3/sdl"
+
+	"github.com/chrplr/goxpyriment/vblank"
 )
 
 // DevicesString returns a printable inventory of the displays and audio
@@ -39,6 +41,7 @@ func DevicesString() string {
 	var b strings.Builder
 	writeDisplays(&b)
 	writeAudioOutputs(&b)
+	writeVblank(&b)
 	return b.String()
 }
 
@@ -94,6 +97,40 @@ func writeDisplays(b *strings.Builder) {
 	rows = append(rows, fmt.Sprintf("video driver: %s   (the [N] above is the -d N value)",
 		sdl.GetCurrentVideoDriver()))
 	section(b, "Displays", rows)
+}
+
+// writeVblank reports whether this machine can measure a frame's onset, or only
+// estimate it.
+//
+// It is here so the question can be answered BEFORE committing to a capture. The
+// backend otherwise appears only in a run's -info.txt, which means a photodiode
+// session discovers it has no vblank clock after spending the eight minutes —
+// and an A/B whose two arms both ran estimated looks like a null result rather
+// than a machine that never had the hardware.
+//
+// Unlike the rest of this file it needs no SDL: the DRM ioctl and CVDisplayLink
+// go straight to the OS, and no window has to exist. It probes and closes
+// immediately, so nothing is held when the experiment later opens its own.
+func writeVblank(b *strings.Builder) {
+	if vblank.Disabled() {
+		section(b, "Vblank", []string{
+			"disabled by " + vblank.EnvDisable + "=off — onsets will be ESTIMATED",
+		})
+		return
+	}
+
+	t := vblank.AutoDetect()
+	defer t.Close() //nolint:errcheck // a probe's close has nothing to report
+
+	rows := []string{t.Description()}
+	if t.Precision() != vblank.HardwareVerified {
+		// Say what it costs, not just that it happened: an estimated onset can
+		// be wrong by an amount only a photodiode can establish, and it drifts
+		// rather than scattering, so no host-side statistic will show it.
+		rows = append(rows,
+			"NO hardware vblank clock: FlipTS onsets are estimated, not measured")
+	}
+	section(b, "Vblank", rows)
 }
 
 func writeAudioOutputs(b *strings.Builder) {
