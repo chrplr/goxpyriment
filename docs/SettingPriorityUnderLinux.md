@@ -2,10 +2,16 @@ Here are the step-by-step instructions to set up the `goxpyriment` group with th
 
 ---
 
-#If you are here because of EEG or MEG trigger timing, read
+If you are here because of EEG or MEG trigger timing, read
 [Minimising trigger-to-stimulus jitter](TriggerJitterForEEGandMEG.md) as well:
 real-time priority is necessary but nowhere near sufficient, and the dominant
 term is not the one most people expect.
+
+**On another platform?** See [Setting priority under
+Windows](SettingPriorityUnderWindows.md) or [Setting priority under
+macOS](SettingPriorityUnderMacOS.md). Both use a different mechanism, and
+neither has been measured — this page is the only one whose figures come from
+real runs, and most of its *reasoning* transfers even where the commands do not.
 
 ## Step 1: Create the Group
 First, you need to create the group in the system database.
