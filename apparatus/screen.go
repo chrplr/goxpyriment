@@ -541,13 +541,13 @@ func (s *Screen) ensureVblank() {
 		return
 	}
 	s.vblChecked = true
-	// GOXPY_VBLANK=off forces the pre-vblank behaviour: the schedule anchors on
-	// itself and FlipTS reports it. See vblank.Disabled for why the switch
-	// exists.
-	if vblank.Disabled() {
-		log.Printf("vblank: disabled by %s=off — onsets will be estimated from the pacing schedule", vblank.EnvDisable)
+	// Off unless GOXPY_VBLANK=on: the schedule anchors on itself and FlipTS
+	// reports it. See vblank.Enabled for the photodiode measurements that made
+	// this opt-in rather than the default.
+	if !vblank.Enabled() {
 		return
 	}
+	log.Printf("vblank: enabled by %s=on — onsets will be anchored on kernel vblank stamps (opt-in; see vblank.Enabled)", vblank.EnvOptIn)
 	if t := vblank.AutoDetect(); t.Precision() == vblank.HardwareVerified {
 		s.vbl = t
 	} else {
@@ -567,11 +567,11 @@ func (s *Screen) OnsetSource() vblank.Source { return s.onsetSrc }
 func (s *Screen) VblankBackend() string {
 	s.ensureVblank()
 	if s.vbl == nil {
-		// Distinguish "this machine has none" from "you switched it off": a run
-		// in the OFF arm of a comparison must not look like a machine that
-		// simply lacks the hardware.
-		if vblank.Disabled() {
-			return "disabled by " + vblank.EnvDisable + "=off"
+		// Distinguish "this machine has none" from "nobody asked": a run made
+		// without the opt-in must not look like a machine that lacks the
+		// hardware, or the arms of a comparison cannot be told apart afterwards.
+		if !vblank.Enabled() {
+			return "not requested (set " + vblank.EnvOptIn + "=on to anchor onsets on kernel vblanks)"
 		}
 		return ""
 	}

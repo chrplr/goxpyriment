@@ -99,36 +99,43 @@ func writeDisplays(b *strings.Builder) {
 	section(b, "Displays", rows)
 }
 
-// writeVblank reports whether this machine can measure a frame's onset, or only
-// estimate it.
+// writeVblank reports where a frame's onset timestamp will come from, and
+// whether a kernel vblank clock is available should you opt into one.
 //
-// It is here so the question can be answered BEFORE committing to a capture. The
-// backend otherwise appears only in a run's -info.txt, which means a photodiode
-// session discovers it has no vblank clock after spending the eight minutes —
-// and an A/B whose two arms both ran estimated looks like a null result rather
-// than a machine that never had the hardware.
+// It reports both, always, because they are independent: the opt-in can be set
+// on a machine with no backend, and a machine can have a perfectly good backend
+// that no run is using. Answering only one of the two leaves a capture unable to
+// say afterwards which arm it was.
+//
+// It is here so the question can be settled BEFORE committing to a capture —
+// otherwise a photodiode session discovers it has no vblank clock after spending
+// the eight minutes, and an A/B whose two arms ran identically looks like a null
+// result rather than a switch that never took.
 //
 // Unlike the rest of this file it needs no SDL: the DRM ioctl and CVDisplayLink
 // go straight to the OS, and no window has to exist. It probes and closes
 // immediately, so nothing is held when the experiment later opens its own.
 func writeVblank(b *strings.Builder) {
-	if vblank.Disabled() {
-		section(b, "Vblank", []string{
-			"disabled by " + vblank.EnvDisable + "=off — onsets will be ESTIMATED",
-		})
-		return
-	}
-
 	t := vblank.AutoDetect()
 	defer t.Close() //nolint:errcheck // a probe's close has nothing to report
 
-	rows := []string{t.Description()}
-	if t.Precision() != vblank.HardwareVerified {
-		// Say what it costs, not just that it happened: an estimated onset can
-		// be wrong by an amount only a photodiode can establish, and it drifts
-		// rather than scattering, so no host-side statistic will show it.
+	available := t.Precision() == vblank.HardwareVerified
+	var rows []string
+	switch {
+	case vblank.Enabled() && available:
+		rows = append(rows, "IN USE (opt-in): "+t.Description())
+	case vblank.Enabled():
 		rows = append(rows,
-			"NO hardware vblank clock: FlipTS onsets are estimated, not measured")
+			vblank.EnvOptIn+"=on, but no hardware vblank clock on this machine",
+			"onsets will come from the pacing schedule after all")
+	case available:
+		rows = append(rows,
+			"onsets come from the pacing schedule (default)",
+			"available if asked for with "+vblank.EnvOptIn+"=on: "+t.Description())
+	default:
+		rows = append(rows,
+			"onsets come from the pacing schedule (default)",
+			"no hardware vblank clock on this machine")
 	}
 	section(b, "Vblank", rows)
 }

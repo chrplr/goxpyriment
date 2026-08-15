@@ -128,24 +128,52 @@ func (fallback) Description() string {
 // NewFallback if no backend initialises. It never returns nil; failures are
 // logged and surface through the returned Timer's Description.
 //
-// It does NOT consult EnvDisable — that switch belongs to the caller, which has
-// to report the difference between "this machine has no vblank clock" and "you
-// switched it off" in its own vocabulary. Check Disabled first.
+// It does NOT consult EnvOptIn — that switch belongs to the caller, which has to
+// report the difference between "this machine has no vblank clock" and "you did
+// not ask for one" in its own vocabulary. Check Enabled first.
 func AutoDetect() Timer { return autoDetect() }
 
-// EnvDisable names the environment variable that forces the estimated path.
+// EnvOptIn names the environment variable that turns the vblank clock on.
 //
 // It lives here rather than in each caller so the spelling cannot drift: a probe
-// that reports hardware while the run beside it has the switch on would silently
-// mislabel the arms of an A/B.
-const EnvDisable = "GOXPY_VBLANK"
+// that reports hardware while the run beside it has the switch off would
+// silently mislabel the arms of an A/B.
+const EnvOptIn = "GOXPY_VBLANK"
 
-// Disabled reports whether the vblank clock has been switched off with
-// GOXPY_VBLANK=off.
+// Enabled reports whether GOXPY_VBLANK=on asked for the vblank clock.
 //
-// This exists so the two sides of the comparison can be measured on ONE machine
-// in ONE thermal state, interleaved. Without it the only available baseline is a
-// capture from a different panel and a different code state, and a panel's rate
-// moves tens of ppm over the first minutes of a run — larger than the effect
-// being measured. An A/B that cannot be interleaved is not an A/B.
-func Disabled() bool { return os.Getenv(EnvDisable) == "off" }
+// # Why this is opt-in
+//
+// Anchoring flip timestamps on the kernel's vblank stamps ought to be strictly
+// better than deriving them from the pacing schedule, and it is not — measured,
+// with a photodiode, on two machines and two GPU backends, 1010 cycles per run:
+//
+//	                  flip -> photon drift      one-frame errors
+//	off  (4 runs)     -0.30, +0.12, -0.03,      none in any run
+//	                  +0.08 ppm
+//	on   (4 runs)     Pi: startup windows of    3 of 4 runs affected
+//	                  58-89 cycles reporting
+//	                  onsets a frame LATE
+//	                  (photons arriving before
+//	                  the reported onset);
+//	                  AMD: one run clean, one
+//	                  with a 13 s burst of
+//	                  +-1 frame errors and a
+//	                  -48 ppm slope
+//
+// The failure is intermittent, which is worse than a consistent one: a run that
+// misreports for thirteen seconds four minutes in passes every short check, and
+// the error lands as a one-frame mistake in somebody's reaction times.
+//
+// The suspected mechanism is the backend asking for the MOST RECENT vblank
+// (DRM_VBLANK_RELATIVE, sequence 0) rather than for the frame it submitted: any
+// delay between the present and that read can put the answer on the far side of
+// a vblank boundary. Real-time priority would make that race rarer without
+// making it correct. Fixing it means querying by sequence number, at which point
+// this should be re-measured and the default reconsidered.
+//
+// Until then the switch also serves its original purpose: comparing the two on
+// ONE machine in ONE thermal state, interleaved. A panel's rate moves tens of
+// ppm over the first minutes of a run — larger than the effect being measured —
+// so an A/B that cannot be interleaved is not an A/B.
+func Enabled() bool { return os.Getenv(EnvOptIn) == "on" }

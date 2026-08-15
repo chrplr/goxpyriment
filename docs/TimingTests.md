@@ -79,9 +79,9 @@ Photodiode and/or trigger box
   rt       How precise is my reaction-time measurement?
 ```
 
-Two tests that used to live here now have their own directories:
-`tests/test_gv_sync` (`.gv` playback synchronisation) and `tests/test_dlpio8`
-(DLP-IO8-G square-wave characterisation).
+Two related tests live in their own directories: `tests/test_gv_sync` (`.gv`
+playback synchronisation) and `tests/test_dlpio8` (DLP-IO8-G square-wave
+characterisation).
 
 This document assumes you have built the program:
 
@@ -113,28 +113,28 @@ Displays:   [0] Built-in display  1920x1200  60.040 Hz  bounds 0,0 1920x1200  [p
             video driver: wayland   (the [N] above is the -d N value)
 Audio out:  [0] Speaker
             driver: pipewire
-Vblank:     Linux DRM vblank (/dev/dri/card1 crtc 0, DRM_IOCTL_WAIT_VBLANK, hardware-verified)
+Vblank:     onsets come from the pacing schedule (default)
+            available if asked for with GOXPY_VBLANK=on: Linux DRM vblank (/dev/dri/card1 crtc 0, DRM_IOCTL_WAIT_VBLANK, hardware-verified)
 ```
 
-### The `Vblank` line is a pre-flight check
+### The `Vblank` line
 
-It says whether this machine can **measure** a frame's onset or only estimate
-it. Where it reads
+It reports two independent things: where this run's onset timestamps will come
+from, and whether the machine has a kernel vblank clock at all.
 
-```
-Vblank:     vsync-estimated (post-present flip timestamp, no OS integration)
-            NO hardware vblank clock: FlipTS onsets are estimated, not measured
-```
+By default `FlipTS` returns a timestamp derived from the pacing schedule.
+`GOXPY_VBLANK=on` instead anchors it on the kernel's vblank stamps — **an
+experimental path, off by default.** Measured with a photodiode on two machines
+and two GPU backends, the vblank path misreported onsets by a whole frame in
+three runs out of four, in bursts lasting tens of seconds, while the schedule-
+derived path drifted less than 0.3 ppm in every run. The suspected cause is the
+backend asking for the most recent vblank rather than for the frame it
+submitted. Do not enable it for data collection.
 
-the timestamp `FlipTS` returns comes from the pacing schedule rather than from
-the display, and can walk away from the actual photons at whatever rate the
-nominal refresh differs from the panel's real one — a drift, not a scatter, so
-no host-side statistic will reveal it. Check this **before** committing to a
-photodiode capture, not afterwards in the run's `-info.txt`.
-
-`GOXPY_VBLANK=off` forces the estimated path deliberately, and the line says so
-rather than reporting no hardware; that is how the two arms of an A/B are told
-apart.
+Check this line **before** committing to a photodiode capture rather than
+afterwards in the run's `-info.txt`: a machine with no backend and a run that
+never opted in produce identical data, and an A/B whose two arms ran the same way
+looks like a null result rather than a switch that never took.
 
 Keep it alongside your results:
 
@@ -512,10 +512,12 @@ frame-sized step at index *k* of *n* points biases a least-squares slope by
 1000-cycle run at 60 Hz that is 25 µs/cycle — **50 ppm from a single dropped
 frame in eight minutes**, ten times the effect these captures exist to resolve,
 and it does not average away with more cycles because the lever arm grows with
-*n* too. Measured on a 20-cycle Pi capture with one drop: the slope read
-−2265 ppm before this, +2.8 ppm after. The `one-frame jumps` count is still
-printed, and a run with more than a few of them is not a usable capture however
-clean the surviving stretch looks — find the load first.
+*n* too. On a short capture the bias is larger still: 20 cycles with one drop
+puts it above 2000 ppm.
+
+The `one-frame jumps` count is printed separately, and a run with more than a few
+of them is not a usable capture however clean the surviving stretch looks — find
+the load first.
 
 Read the verdict line. `DRIFT DOMINATES` means the flip timestamps and the panel
 are on different clocks and no absolute onset from that run can be trusted;
