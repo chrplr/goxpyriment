@@ -114,7 +114,7 @@ Displays:   [0] Built-in display  1920x1200  60.040 Hz  bounds 0,0 1920x1200  [p
 Audio out:  [0] Speaker
             driver: pipewire
 Vblank:     onsets come from the pacing schedule (default)
-            available if asked for with GOXPY_VBLANK=on: Linux DRM vblank (/dev/dri/card1 crtc 0, DRM_IOCTL_WAIT_VBLANK, hardware-verified)
+            available if asked for with GOXPY_VBLANK=on: Linux DRM vblank (card /dev/dri/card1, crtc 0, DRM_IOCTL_WAIT_VBLANK, hardware-verified)
 ```
 
 ### The `Vblank` line

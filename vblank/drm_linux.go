@@ -236,8 +236,18 @@ func (b *drmBackend) OnsetForFlip(flipTS uint64) (uint64, Source, bool) {
 
 func (b *drmBackend) Precision() Source { return HardwareVerified }
 
+// Description names the node and CRTC that answered, so a wrong choice on a
+// multi-GPU or multi-head machine is visible rather than inferred.
+//
+// The word before the path is load-bearing, however odd that looks. This string
+// is reproduced verbatim in the documentation, and TeX announces every file it
+// opens as "(" immediately followed by a path — so latexmk, which scans the log
+// for that pattern to build its dependency list, took "(/dev/dri/card1" for a
+// file it should checksum. Reading a DRM character device does not fail fast, it
+// blocks, so the PDF build hung indefinitely on the one page quoting this line.
+// Anything non-path-shaped after the parenthesis prevents that.
 func (b *drmBackend) Description() string {
-	return fmt.Sprintf("Linux DRM vblank (%s crtc %d, DRM_IOCTL_WAIT_VBLANK, hardware-verified)", b.path, b.crtc)
+	return fmt.Sprintf("Linux DRM vblank (card %s, crtc %d, DRM_IOCTL_WAIT_VBLANK, hardware-verified)", b.path, b.crtc)
 }
 
 func (b *drmBackend) Close() error {
