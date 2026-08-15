@@ -6,12 +6,63 @@
 // Linux DRM (Direct Rendering Manager) backend for hardware-verified
 // vsync timestamps.
 //
-// After each Present, the manager calls RecordFlip(flipTS); we issue
-// DRM_IOCTL_WAIT_VBLANK with type=DRM_VBLANK_RELATIVE | sequence=0 to
-// query the most recent vblank's count and timestamp. The kernel
-// stamps the vblank timestamp in CLOCK_MONOTONIC (default for DRM
-// drivers); we convert it to SDL ticks by applying a fixed epoch
-// offset captured at backend construction.
+// After each Present, the manager calls RecordFlip(flipTS). The kernel stamps
+// each vblank in CLOCK_MONOTONIC (the default for DRM drivers); we convert to
+// SDL ticks with a fixed epoch offset captured at backend construction.
+//
+// # Which vblank, and why the sequence number decides
+//
+// Asking only for the MOST RECENT vblank (DRM_VBLANK_RELATIVE, sequence 0) is
+// not enough, and the difference is a whole frame. The caller queries just after
+// holding to the frame boundary, so the query lands within microseconds of the
+// vblank IRQ — and whether it lands before or after is a coin flip. Before, and
+// the answer is the PREVIOUS frame's vblank.
+//
+// Measured with a photodiode, that produced onsets a frame late in bursts
+// lasting tens of seconds: on a Raspberry Pi 4 the first 58-89 cycles of a run
+// reported the flip AFTER the photons had already been detected, and on a Radeon
+// Pro W5700 a 13-second window four minutes into a run oscillated between +1 and
+// -1 frame. Three runs in four were affected. A caller cannot detect this: the
+// timestamps look perfectly regular, because a frame-quantised error on a
+// frame-quantised grid is invisible from the host side.
+//
+// So this tracks the vblank COUNT and resolves each frame against it:
+//
+//   - sequence advanced by one since the last frame — the expected case; that
+//     vblank is this frame's, and its timestamp is used as measured.
+//   - sequence has not advanced — the query beat the IRQ. Poll until the count
+//     reaches lastSeq+1 and take THAT vblank's timestamp, giving up after a
+//     short budget rather than accepting the stale one.
+//   - sequence jumped by more than one — frames were missed. The timestamp is
+//     still a real measurement of the current vblank, so it is used, and the gap
+//     is counted rather than smoothed over.
+//
+// Every timestamp this returns is therefore a kernel measurement of a vblank
+// whose sequence number is known. Nothing is extrapolated.
+//
+// # Why polling, and not a blocking wait
+//
+// Asking the kernel to wait for the vblank we want would be the obvious way to
+// do it, and neither form of that request is usable here. Measured on Linux 7.0
+// with i915, on /dev/dri/card1:
+//
+//	relative seq=1               ok, sequence advanced by exactly 1, waited 14.577 ms
+//	absolute seq=current+1       EBUSY
+//	absolute | NEXTONMISS        EINVAL
+//	relative | NEXTONMISS        EINVAL
+//
+// So only the RELATIVE form blocks, and relative means "one more than the count
+// when the ioctl runs" — not "the vblank I named". If the IRQ fires between the
+// query above and that ioctl, it waits for the vblank AFTER the one wanted and
+// returns a full frame later, which stalls the render loop for 16 ms and drops
+// the frame it was trying to time. Trading a one-frame timestamp error for a
+// one-frame stall is not a fix.
+//
+// Polling relative-0 has neither problem: each poll is a cheap ioctl that
+// returns the current count immediately, the loop stops the moment the wanted
+// sequence appears, and the budget is ours rather than the display's. If the
+// vblank does not arrive within it, the frame is reported as an estimate and
+// counted — a known-unknown instead of a wrong number.
 //
 // All cross-language calls use the standard syscall package (no cgo,
 // no purego). DRM is opened on /dev/dri/cardN (first that succeeds);
@@ -41,8 +92,29 @@ const (
 	// Encoding: (3 << 30) | (24 << 16) | ('d' << 8) | 0x3a = 0xC018643A.
 	drmIoctlWaitVblank uintptr = 0xC018643A
 
-	// drm_vblank_seq_type bits.
+	// drm_vblank_seq_type bits. Only the relative form is used, and only with
+	// sequence 0 — a pure, immediate read of the current count and its
+	// timestamp. The header note above records what the other forms did when
+	// tried, so they are not tried again.
 	drmVblankRelative uint32 = 0x1
+
+	// How many times to retry an interrupted query.
+	//
+	// The Go runtime preempts goroutines with signals, so an ioctl here can
+	// return EINTR through no fault of the display. A relative-0 query is a
+	// pure read, so retrying it is free of side effects.
+	drmWaitRetries = 8
+
+	// How long to poll for the vblank a frame is waiting on before giving up
+	// and reporting an estimate.
+	//
+	// It only has to cover the gap between the caller's query and the IRQ, which
+	// is microseconds when the caller has just paced to the frame boundary. 3 ms
+	// is generous for that while staying well inside a frame at any refresh rate
+	// this runs at, so a budget exhaustion means something is actually wrong —
+	// the caller is a whole frame early, or the CRTC has stopped — rather than
+	// the timing being tight.
+	drmSeqPollBudgetNS uint64 = 3_000_000
 
 	// The CRTC index goes in bits 1-5 of the type field:
 	//   #define _DRM_VBLANK_HIGH_CRTC_SHIFT 1
@@ -102,6 +174,13 @@ type drmBackend struct {
 	pairs    [drmRingSize]drmFlipVsync
 	pairsIdx int
 
+	// Vblank count of the frame resolved last, and whether one has been.
+	// Guarded by mu.
+	lastSeq uint32
+	haveSeq bool
+
+	stats Stats // guarded by mu
+
 	// CLOCK_MONOTONIC ns -> SDL ticks: sdl_ticks = clock_ns - epochOffsetNS.
 	epochOffsetNS int64
 
@@ -128,23 +207,38 @@ func newDRMBackend() (Timer, error) {
 	// The old code broke out of its loop on the first successful OPEN and then
 	// returned the probe's error, so a single unlucky enumeration order was
 	// enough to lose the vblank clock on a machine that had one.
+	fd, path, crtc, err := findDRMNode()
+	if err != nil {
+		return nil, err
+	}
+	return newBackendOn(fd, path, crtc)
+}
+
+// findDRMNode returns an open fd on the first card/CRTC pair that answers a
+// vblank query, along with which one it was. The caller owns the fd.
+//
+// Separate from newDRMBackend so it can be used without newBackendOn, which
+// needs SDL loaded to capture the clock epoch — a unit test exercising the ioctl
+// has no SDL and does not need one.
+func findDRMNode() (fd int, path string, crtc uint32, err error) {
 	var tried []string
 	for card := 0; card < maxCards; card++ {
-		path := fmt.Sprintf("/dev/dri/card%d", card)
-		fd, err := syscall.Open(path, syscall.O_RDWR|syscall.O_CLOEXEC, 0)
-		if err != nil {
-			tried = append(tried, fmt.Sprintf("%s: open: %v", path, err))
+		p := fmt.Sprintf("/dev/dri/card%d", card)
+		f, oerr := syscall.Open(p, syscall.O_RDWR|syscall.O_CLOEXEC, 0)
+		if oerr != nil {
+			tried = append(tried, fmt.Sprintf("%s: open: %v", p, oerr))
 			continue
 		}
-		crtc, err := probeCRTCs(fd)
-		if err != nil {
-			tried = append(tried, fmt.Sprintf("%s: %v", path, err))
-			_ = syscall.Close(fd)
+		c, perr := probeCRTCs(f)
+		if perr != nil {
+			tried = append(tried, fmt.Sprintf("%s: %v", p, perr))
+			_ = syscall.Close(f)
 			continue
 		}
-		return newBackendOn(fd, path, crtc)
+		return f, p, c, nil
 	}
-	return nil, fmt.Errorf("no DRM node answered DRM_IOCTL_WAIT_VBLANK (%s)", strings.Join(tried, "; "))
+	return -1, "", 0, fmt.Errorf("no DRM node answered DRM_IOCTL_WAIT_VBLANK (%s)",
+		strings.Join(tried, "; "))
 }
 
 // probeCRTCs returns the first CRTC on fd that answers a vblank query.
@@ -198,29 +292,139 @@ func monotonicNS() (uint64, error) {
 	return uint64(ts[0])*1e9 + uint64(ts[1]), nil
 }
 
+// query issues one DRM_IOCTL_WAIT_VBLANK and returns the sequence and the
+// timestamp converted to SDL ticks.
+//
+// An absolute request blocks until the named vblank; a relative request with
+// sequence 0 returns the most recent one immediately. EINTR is retried because
+// the Go runtime's preemption signals land here, and an absolute request is
+// idempotent under retry.
+func (b *drmBackend) query(typ, seq uint32) (uint32, uint64, error) {
+	for try := 0; try < drmWaitRetries; try++ {
+		v := drmWaitVblank{Type: typ, Sequence: seq}
+		_, _, errno := syscall.Syscall(syscall.SYS_IOCTL,
+			uintptr(b.fd), drmIoctlWaitVblank, uintptr(unsafe.Pointer(&v)))
+		if errno == syscall.EINTR || errno == syscall.EAGAIN {
+			continue
+		}
+		if errno != 0 {
+			return 0, 0, errno
+		}
+		tvalSec := *(*int64)(unsafe.Pointer(&v.Data[0]))
+		tvalUsec := *(*int64)(unsafe.Pointer(&v.Data[8]))
+		clockNS := uint64(tvalSec)*1e9 + uint64(tvalUsec)*1000
+		ticks := uint64(int64(clockNS) - b.epochOffsetNS)
+		if ticks == 0 {
+			ticks = 1 // preserve the "0 = unset" sentinel
+		}
+		return v.Sequence, ticks, nil
+	}
+	return 0, 0, syscall.EINTR
+}
+
+// pollForSequence polls the vblank count until it reaches want, and returns
+// that vblank's timestamp along with how long the wait took.
+//
+// It returns ok=false when the budget runs out, which the caller must report as
+// an estimate rather than substituting a nearby stamp — the entire point of the
+// sequence handling is that a vblank one frame away is a wrong answer, not an
+// approximate one.
+//
+// The poll runs on CLOCK_MONOTONIC rather than SDL ticks so it stays usable
+// without SDL loaded, which is what lets the test exercise it.
+func (b *drmBackend) pollForSequence(want uint32, budgetNS uint64) (seq uint32, ts uint64, waited uint64, ok bool) {
+	start, err := monotonicNS()
+	if err != nil {
+		return 0, 0, 0, false
+	}
+	for {
+		s, t, qerr := b.query(requestType(b.crtc)|drmVblankRelative, 0)
+		now, cerr := monotonicNS()
+		if cerr != nil {
+			return 0, 0, 0, false
+		}
+		if qerr == nil && int32(s-want) >= 0 {
+			return s, t, now - start, true
+		}
+		if now-start >= budgetNS {
+			return 0, 0, now - start, false
+		}
+	}
+}
+
 func (b *drmBackend) RecordFlip(flipTS uint64) {
 	if b.closed.Load() {
 		return
 	}
-	v := drmWaitVblank{Type: requestType(b.crtc), Sequence: 0}
-	if _, _, errno := syscall.Syscall(syscall.SYS_IOCTL,
-		uintptr(b.fd), drmIoctlWaitVblank,
-		uintptr(unsafe.Pointer(&v))); errno != 0 {
-		// Silent: this fires every frame; persistent failure would spam
-		// the log. Closing-and-falling-back can be added if needed.
+
+	seq, ts, err := b.query(requestType(b.crtc)|drmVblankRelative, 0)
+	if err != nil {
+		// Silent: this fires every frame, so a persistent failure would spam
+		// the log. It surfaces as Stats.Failures and as an Estimated onset.
+		b.mu.Lock()
+		b.stats.Failures++
+		b.mu.Unlock()
 		return
 	}
-	tvalSec := *(*int64)(unsafe.Pointer(&v.Data[0]))
-	tvalUsec := *(*int64)(unsafe.Pointer(&v.Data[8]))
-	clockNS := uint64(tvalSec)*1e9 + uint64(tvalUsec)*1000
-	sdlTicks := uint64(int64(clockNS) - b.epochOffsetNS)
-	if sdlTicks == 0 {
-		sdlTicks = 1 // preserve "0 = unset" sentinel
-	}
+
 	b.mu.Lock()
-	b.pairs[b.pairsIdx] = drmFlipVsync{flipTS: flipTS, vsyncTS: sdlTicks}
+	defer b.mu.Unlock()
+
+	switch {
+	case !b.haveSeq:
+		// First frame: nothing to compare against, so take what the display
+		// reports and start counting from there.
+	default:
+		// Signed difference so the uint32 counter's wrap (about two years at
+		// 60 Hz, but free to handle) does not read as an enormous jump.
+		switch delta := int32(seq - b.lastSeq); {
+		case delta <= 0:
+			// The query beat the vblank IRQ. Poll until the count reaches the
+			// vblank this frame is on, instead of accepting the previous one.
+			//
+			// Unlocked across the poll so a concurrent OnsetForFlip is not held
+			// off for milliseconds. Nothing else writes lastSeq — RecordFlip is
+			// called from the render thread only — so it cannot move meanwhile.
+			want := b.lastSeq + 1
+			b.mu.Unlock()
+			gotSeq, gotTS, waited, ok := b.pollForSequence(want, drmSeqPollBudgetNS)
+			b.mu.Lock()
+
+			if !ok {
+				b.stats.Failures++
+				return
+			}
+			seq, ts = gotSeq, gotTS
+			b.stats.WaitedForNext++
+			if waited > b.stats.MaxWaitNS {
+				b.stats.MaxWaitNS = waited
+			}
+			// The poll can overshoot if the display advanced more than one
+			// vblank while we were getting there; that is a dropped frame and is
+			// counted as one rather than hidden by the poll having "succeeded".
+			if extra := int32(gotSeq - want); extra > 0 {
+				b.stats.SequenceGaps += uint64(extra)
+			}
+		case delta > 1:
+			// The display advanced while the caller did not: dropped frames.
+			// The timestamp is still a real measurement of the vblank the frame
+			// went out on, so it is kept; the gap is counted so a run can say
+			// how many there were rather than absorbing them into the numbers.
+			b.stats.SequenceGaps += uint64(delta - 1)
+		}
+	}
+
+	b.lastSeq, b.haveSeq = seq, true
+	b.stats.Frames++
+	b.pairs[b.pairsIdx] = drmFlipVsync{flipTS: flipTS, vsyncTS: ts}
 	b.pairsIdx = (b.pairsIdx + 1) % drmRingSize
-	b.mu.Unlock()
+}
+
+// Stats implements StatsReporter.
+func (b *drmBackend) Stats() Stats {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.stats
 }
 
 func (b *drmBackend) OnsetForFlip(flipTS uint64) (uint64, Source, bool) {

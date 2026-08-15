@@ -106,6 +106,39 @@ type Timer interface {
 	Description() string
 }
 
+// Stats counts how each frame's vblank was resolved.
+//
+// It exists so the sequence handling can be checked from a run's own data rather
+// than trusted. The failure it guards against — accepting the previous frame's
+// vblank because the query beat the IRQ — is invisible in the timestamps
+// themselves, since a one-frame error on a frame grid still looks regular. What
+// is visible is how often the resolution had to wait, and whether the sequence
+// ever advanced by something other than one.
+type Stats struct {
+	// Frames resolved to a measured vblank.
+	Frames uint64
+	// WaitedForNext counts frames where the query beat the vblank IRQ and an
+	// absolute wait was needed. A large fraction is not an error — it means the
+	// caller consistently gets there first — but it is where the old code
+	// silently returned the previous frame instead.
+	WaitedForNext uint64
+	// MaxWaitNS is the longest such wait. It should stay well inside one frame;
+	// approaching a frame period means the query is landing a whole frame early
+	// and the pacing, not this code, is what to look at.
+	MaxWaitNS uint64
+	// SequenceGaps counts frames where the count jumped by more than one, i.e.
+	// the display advanced while the caller did not. These are dropped frames,
+	// reported rather than smoothed.
+	SequenceGaps uint64
+	// Failures counts frames where no measured vblank could be obtained and the
+	// caller had to fall back to an estimate.
+	Failures uint64
+}
+
+// StatsReporter is implemented by backends that can report resolution counts.
+// Callers should type-assert; not every backend keeps them.
+type StatsReporter interface{ Stats() Stats }
+
 // fallback echoes the flip timestamp. It is always available and never errors.
 type fallback struct{}
 

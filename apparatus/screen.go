@@ -515,16 +515,19 @@ func (s *Screen) vblankOnset() (uint64, vblank.Source, bool) {
 	if !ok {
 		return 0, vblank.Estimated, false
 	}
-	// A vblank no newer than the last one means the display has not advanced
-	// since the previous frame — the frame period is longer than we think, or
-	// the query raced the IRQ. Re-anchoring to a stale stamp would leave the
-	// next deadline already in the past and let the loop free-run for a frame,
-	// so extrapolate instead and say the value is an estimate.
+	// A vblank no newer than the last one should now be impossible: the backend
+	// resolves each frame against the vblank COUNT and waits for the one it
+	// needs, so a stale stamp cannot come back. This used to extrapolate here
+	// instead, which is precisely the synthesised timestamp that made onsets
+	// land a frame away from the photons — it fired whenever the query beat the
+	// IRQ, which on some machines was every frame for the first minute.
+	//
+	// Kept as an assertion rather than deleted: if it ever fires again the
+	// sequence handling has regressed, and silently re-anchoring to a stale
+	// stamp would leave the next deadline in the past and let the loop free-run.
+	// Report it as an estimate so no run can mistake it for a measurement.
 	if ts <= s.anchorNS {
-		if s.frameDur == 0 {
-			s.frameDur = s.FrameDuration()
-		}
-		return s.anchorNS + uint64(s.frameDur.Nanoseconds()), vblank.Estimated, true
+		return 0, vblank.Estimated, false
 	}
 	return ts, src, true
 }
@@ -562,6 +565,27 @@ func (s *Screen) ensureVblank() {
 // wrong by an amount only a photodiode can establish. Written into every data
 // file as sys vblank_source, so no run is ambiguous after the fact.
 func (s *Screen) OnsetSource() vblank.Source { return s.onsetSrc }
+
+// VblankStats reports how each frame's vblank was resolved, and whether the
+// backend keeps such counts at all.
+//
+// Worth reading after any run made with the vblank clock enabled: the error it
+// guards against — taking the previous frame's vblank because the query beat the
+// IRQ — cannot be seen in the timestamps, which stay perfectly regular either
+// way. WaitedForNext is how often the resolution had to name the vblank it
+// wanted and wait, and SequenceGaps is how many frames the display advanced
+// without the caller.
+func (s *Screen) VblankStats() (vblank.Stats, bool) {
+	s.ensureVblank()
+	if s.vbl == nil {
+		return vblank.Stats{}, false
+	}
+	r, ok := s.vbl.(vblank.StatsReporter)
+	if !ok {
+		return vblank.Stats{}, false
+	}
+	return r.Stats(), true
+}
 
 // VblankBackend names the vblank clock in use, or "" when there is none.
 func (s *Screen) VblankBackend() string {

@@ -875,6 +875,10 @@ func runAV(exp *control.Experiment, trig triggers.OutputTTLDevice) error {
 		ps := exp.Screen.PacingStats()
 		printPacingStats(ps, exp.Screen.FrameDuration())
 		exp.Data.WriteComment(pacingSummary(ps, exp.Screen.FrameDuration()))
+		if vs := vblankSummary(exp); vs != "" {
+			fmt.Printf("\n%s\n", vs)
+			exp.Data.WriteComment(vs)
+		}
 
 		fmt.Printf("\nav: %d cycles complete (%d discarded as warm-up).\n", *fCycles, *fWarmup)
 		fmt.Println("Software timestamps only — the photodiode/TTL recording is the ground truth.")
@@ -949,6 +953,10 @@ func runJitter(exp *control.Experiment) error {
 		ps := exp.Screen.PacingStats()
 		printPacingStats(ps, exp.Screen.FrameDuration())
 		exp.Data.WriteComment(pacingSummary(ps, exp.Screen.FrameDuration()))
+		if vs := vblankSummary(exp); vs != "" {
+			fmt.Printf("\n%s\n", vs)
+			exp.Data.WriteComment(vs)
+		}
 		return control.EndLoop
 	})
 }
@@ -1005,6 +1013,26 @@ func printPacingStats(p control.PacingStats, frameDur time.Duration) {
 		fmt.Printf("            estimated rate above against the nominal one, and read any\n")
 		fmt.Printf("            photodiode onset on this machine as relative, not absolute.\n")
 	}
+}
+
+// vblankSummary condenses the vblank resolution counts to one line for the info
+// file, or returns "" when the run was not using a vblank clock.
+//
+// Only meaningful with GOXPY_VBLANK=on. It is recorded because the failure it
+// tracks is undetectable afterwards from the data: an onset taken from the wrong
+// vblank is exactly one frame out, and one frame out on a frame grid still looks
+// like a clean regular train.
+func vblankSummary(exp *control.Experiment) string {
+	st, ok := exp.Screen.VblankStats()
+	if !ok || st.Frames == 0 {
+		return ""
+	}
+	return fmt.Sprintf(
+		"sys vblank_resolution: frames=%d waited_for_next=%d (%.1f %%) "+
+			"max_wait=%.3f ms sequence_gaps=%d failures=%d",
+		st.Frames, st.WaitedForNext,
+		100*float64(st.WaitedForNext)/float64(st.Frames),
+		float64(st.MaxWaitNS)/1e6, st.SequenceGaps, st.Failures)
 }
 
 // pacingSummary condenses the same tallies to one line for the info file.
