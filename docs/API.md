@@ -724,7 +724,7 @@ offsetNS, _ := exp.BlankFrames(10)       // 10 frames blank
 exp.Data.Add(onsetNS, offsetNS)
 ```
 
-A previous `Screen.WaitFrames(n)` held frames by re-clearing with the renderer's *current* draw colour rather than redrawing. After any stimulus that set its own colour, that painted the whole screen in the stimulus's colour — a white rectangle on black turned the following frames white. It has been removed; use the calls above.
+There is no "wait for n frames" call that skips the redraw. A hold must redraw its content once per frame: SDL invalidates the backbuffer on every present, so re-clearing with whatever draw colour was last set paints the screen in that colour instead of holding the stimulus. Use the two calls above.
 
 ### Keyboard
 
