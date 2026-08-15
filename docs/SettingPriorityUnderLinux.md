@@ -76,11 +76,11 @@ sudo usermod -aG goxpyriment $USER
 The grant only makes real-time priority *available* — nothing runs at it until
 something asks.
 
-**goxpyriment programs ask for themselves.** Any experiment built with
-`NewExperimentFromFlags` requests priority 50 at startup, so once Steps 1-4 are
-done there is nothing further to do — including when the program is launched by
-clicking its icon, where no command-line prefix is possible. If the grant is not
-in place it says so and continues at normal priority rather than refusing to run:
+**goxpyriment programs ask for themselves.** `Experiment.Initialize()` requests
+priority 50 at startup, so once Steps 1-4 are done there is nothing further to
+do — including when the program is launched by clicking its icon, where no
+command-line prefix is possible. If the grant is not in place it says so and
+continues at normal priority rather than refusing to run:
 
 ```
 real-time scheduling not obtained, continuing at normal priority: real-time
@@ -93,6 +93,18 @@ Two flags control it:
 ./my-experiment -no-realtime               # do not ask at all
 ./my-experiment -realtime-priority 20      # ask for something other than 50
 ```
+
+A program with no flags — one built with `NewExperiment` + `Initialize` rather
+than `NewExperimentFromFlags` — sets the field directly instead:
+
+```go
+exp := control.NewExperiment(...)
+exp.RealTimePriority = 0     // decline; the -no-realtime equivalent
+```
+
+Every run records what it ended up with, as `sys sched_policy` in its
+`-info.txt`. Read it from there rather than assuming: a run at `SCHED_OTHER` and
+one at `SCHED_FIFO` are not comparable, so a study should not mix them.
 
 **For anything else**, or to override, use `chrt`:
 
@@ -150,9 +162,10 @@ they are worth being able to tell apart after the fact.
 
 The **last** is this setup not being in place — go back to Step 2. The **middle**
 is the setup working but the program not having asked: for a goxpyriment program
-that means `-no-realtime` was passed, since otherwise it asks on its own; for
-anything else it means no `chrt` prefix. Without the line in the data you would
-be left comparing timing distributions and guessing which had happened.
+that means `-no-realtime` was passed or `RealTimePriority` was set to 0, since
+otherwise it asks on its own; for anything else it means no `chrt` prefix.
+Without the line in the data you would be left comparing timing distributions and
+guessing which had happened.
 
 ---
 
@@ -172,7 +185,7 @@ on:
   priority, so a spinning goroutine occupies one core rather than all of them.
 - **`chrt -f 50 prog` raises the whole process**, because the policy is set
   before `exec` and every thread inherits it. That is the more dangerous of the
-  two, and the one this warning was originally written about.
+  two, and the one this warning is mostly about.
 
 Either way: keep a terminal with `top` or `htop` open while developing, and use
 `-no-realtime` when stepping through code in a debugger — a breakpoint hit on a

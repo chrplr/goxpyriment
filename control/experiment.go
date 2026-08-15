@@ -114,6 +114,24 @@ type Experiment struct {
 	// Microphone, when non-nil, is the audio recording device opened by
 	// OpenMicrophone. Closed automatically by End().
 	Microphone *apparatus.Microphone
+	// RealTimePriority is the SCHED_FIFO priority Initialize() asks the OS for,
+	// or 0 to not ask at all. NewExperiment sets it to DefaultRealTimePriority.
+	//
+	// It lives on the Experiment rather than inside NewExperimentFromFlags
+	// because the elevation is not a property of how the program was launched.
+	// It used to be requested only on the flag path, so a program built with
+	// NewExperiment + Initialize ran at SCHED_OTHER while an otherwise identical
+	// one built with NewExperimentFromFlags ran at SCHED_FIFO 50 — a difference
+	// worth milliseconds on a loaded host, decided by which constructor the
+	// author happened to pick, and invisible in the source. tests/Timing-Tests,
+	// this project's own timing benchmark, was on the wrong side of it.
+	//
+	// Set it to 0 before Initialize() to decline — the escape hatch that
+	// -no-realtime provides on the flag path, for programs that have no flags.
+	// Under a debugger that matters: a breakpoint hit on a real-time thread can
+	// leave the desktop unresponsive until the process is killed (see
+	// docs/SettingPriorityUnderLinux.md).
+	RealTimePriority int
 
 	sdlLoader interface{ Unload() }
 	imgLoader interface{ Unload() }
@@ -181,8 +199,20 @@ func NewExperiment(name string, width, height int, fullscreen bool, bg, fg sdl.C
 		WindowHeight:    height,
 		Fullscreen:      fullscreen,
 		OutputDirectory: "",
+		// Requested by Initialize, not here: this is a constructor and filling a
+		// struct should not change the calling thread's scheduling policy. See
+		// the field's own comment.
+		RealTimePriority: DefaultRealTimePriority,
 	}
 }
+
+// DefaultRealTimePriority is the SCHED_FIFO priority requested at startup.
+//
+// 50 is the middle of the 1-99 range and matches the rtprio grant the setup in
+// docs/SettingPriorityUnderLinux.md installs. Asking for more than the granted
+// limit fails with the same error as having no grant at all, so the two numbers
+// are kept equal deliberately.
+const DefaultRealTimePriority = 50
 
 // NewExperimentFromFlags creates and initializes an experiment using the
 // standard command-line flags accepted by every goxpyriment program:
@@ -248,29 +278,6 @@ func NewExperimentFromFlags(name string, bg, fg sdl.Color, fontSize float32) *Ex
 	}
 	SetFullscreenPolicy(policy)
 
-	// Ask for real-time scheduling before anything timing-critical starts.
-	//
-	// Attempted by default rather than on request. There is no cost to trying:
-	// if the privilege was never granted this fails and the run continues at
-	// normal priority, exactly as it would have. Making it opt-in would mean the
-	// common case -- launching by clicking the icon, where no chrt prefix is
-	// possible -- silently gets the worse timing, which is the case that most
-	// needs the help.
-	//
-	// Failure is reported and never fatal. An experiment that refused to run
-	// because it could not get real-time priority would be worse than one that
-	// runs slightly less precisely and says so. What it must not do is fail
-	// silently: on a loaded host this is worth milliseconds, and the run's own
-	// system report records what it ended up with (sysinfo.SchedulingInfo).
-	//
-	// This runs on the main goroutine, which init() has locked to its OS thread,
-	// so the elevation lands on the thread the experiment loop will use.
-	if !*noRealtime {
-		if err := sysinfo.RaiseToRealTime(*realtimePrio); err != nil {
-			log.Printf("real-time scheduling not obtained, continuing at normal priority: %v", err)
-		}
-	}
-
 	// Session settings, seeded from the command-line flags.
 	windowedMode := *windowed
 	screenNumber := 0
@@ -321,6 +328,13 @@ func NewExperimentFromFlags(name string, bg, fg sdl.Color, fontSize float32) *Ex
 	exp := NewExperiment(name, width, height, fullscreen, bg, fg, fontSize)
 	exp.SubjectID = subjectID
 	exp.ScreenNumber = screenNumber
+	// The flags now only choose what Initialize asks for; the request itself is
+	// made there, so both constructors take the same path.
+	if *noRealtime {
+		exp.RealTimePriority = 0
+	} else {
+		exp.RealTimePriority = *realtimePrio
+	}
 	if outputDir != "" {
 		exp.SetOutputDirectory(outputDir)
 	}
@@ -692,6 +706,37 @@ func (e *Experiment) SetOutputDirectory(dir string) {
 // It must be called exactly once before using the experiment, and `End`
 // should be deferred immediately after successful initialization.
 func (e *Experiment) Initialize() error {
+	// Ask for real-time scheduling before anything timing-critical starts.
+	//
+	// Attempted by default rather than on request. There is no cost to trying:
+	// if the privilege was never granted this fails and the run continues at
+	// normal priority, exactly as it would have. Making it opt-in would mean the
+	// common case -- launching by clicking the icon, where no chrt prefix is
+	// possible -- silently gets the worse timing, which is the case that most
+	// needs the help.
+	//
+	// Failure is reported and never fatal. An experiment that refused to run
+	// because it could not get real-time priority would be worse than one that
+	// runs slightly less precisely and says so. What it must not do is fail
+	// silently: on a loaded host this is worth milliseconds, and the run's own
+	// system report records what it ended up with (sysinfo.SchedulingInfo).
+	//
+	// It is here, and not in NewExperimentFromFlags where it used to live,
+	// because every program reaches Initialize while only some are built from
+	// flags. RealTimePriority carries the decision so the flag path keeps its
+	// -no-realtime escape hatch and the plain path stops being a second, quieter
+	// policy. On non-Linux this always logs a failure: the elevation is
+	// deliberately Linux-only (sysinfo/realtime_other.go), because Windows
+	// priority classes and Darwin thread policies are not the same guarantee.
+	//
+	// This runs on the main goroutine, which init() has locked to its OS thread,
+	// so the elevation lands on the thread the experiment loop will use.
+	if e.RealTimePriority > 0 {
+		if err := sysinfo.RaiseToRealTime(e.RealTimePriority); err != nil {
+			log.Printf("real-time scheduling not obtained, continuing at normal priority: %v", err)
+		}
+	}
+
 	// Reuse loaders cached by GetParticipantInfo (if it was called first) to
 	// avoid loading a second copy of the SDL dylib on macOS, which triggers
 	// duplicate Objective-C class registrations and a silent crash.

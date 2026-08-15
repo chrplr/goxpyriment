@@ -17,6 +17,13 @@ exp.Run(func() error {
 
 `NewExperimentFromFlags` handles flag parsing (`-w` windowed mode, `-d N` display index, `-s` subject ID), SDL/TTF init, window creation, audio device, font, and data file in one call. Use the lower-level `NewExperiment(...) + Initialize()` only when you need non-standard initialization order.
 
+**Real-time priority is requested by `Initialize()`, so both paths get it.** It
+used to be requested only inside `NewExperimentFromFlags`, which meant the choice
+of constructor silently decided the scheduling policy — `tests/Timing-Tests` uses
+the plain one and ran the whole 2026 campaign at `SCHED_OTHER` as a result. The
+decision now travels on `Experiment.RealTimePriority`; the flags only set it. Set
+it to 0 before `Initialize()` to decline (see `docs/SettingPriorityUnderLinux.md`).
+
 When `-s` is **absent** (e.g. the binary was launched by double-clicking its icon), `NewExperimentFromFlags` opens an automatic setup dialog (subject code + display + fullscreen + results folder) via `GetParticipantInfo` before `Initialize()`. It is skipped when `-s N` is passed, under `-headless`, or if the program already called `GetParticipantInfo` itself (guarded by the package-level `participantInfoCollected`). Cancelling exits via `os.Exit(0)`. Programs that collect custom participant fields still use `GetParticipantInfo` + `NewExperiment` and never reach this path.
 
 **Browser (GOOS=js):** there is no command line, so `platformPrepareFlags` (`platform_js.go`) synthesizes `os.Args` from the page URL's query string before `flag.Parse` — `?s=3&w` behaves like `-s 3 -w`, and experiment-specific flags work too. Unknown query keys are ignored with a console note. The setup dialog never opens (`platformInteractiveSetup` returns false); without `s` the subject ID defaults to 0 like `-headless`. Audio works: `platformInitAudio` opens the default device like desktop (the browser keeps the AudioContext suspended until the first click/keypress, which SDL auto-resumes — the "press SPACE" screen satisfies this); if the device cannot be opened the experiment continues with a silent no-op `AudioManager` instead of crashing. See `docs/WASM.md` for the full browser story.
@@ -42,6 +49,7 @@ When `-s` is **absent** (e.g. the binary was launched by double-clicking its ico
 | `BackgroundColor` | `sdl.Color` | Screen background |
 | `ForegroundColor` | `sdl.Color` | Default text color |
 | `OutputDirectory` | `string` | Where `.csv` files are written |
+| `RealTimePriority` | `int` | SCHED_FIFO priority `Initialize()` requests; `DefaultRealTimePriority` (50), or 0 to decline. `NewExperimentFromFlags` sets it from `-no-realtime` / `-realtime-priority` |
 
 ## Convenience methods
 
