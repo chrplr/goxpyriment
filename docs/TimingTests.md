@@ -522,6 +522,26 @@ are on different clocks and no absolute onset from that run can be trusted;
 `NO DRIFT, but … scatter` means the timestamps track the panel and the spread is
 genuine.
 
+### Read the run's `sys pacing:` line alongside it
+
+`-test av` and `-test display` both record which branch their presents took, in
+the `-info.txt` beside `sys vblank_backend`:
+
+```
+# sys pacing: presents=30000 blocked=29997 paced=3 (0.0 % paced) …
+# sys pacing: presents=30000 blocked=0 paced=30000 (100.0 % paced) wait_mean=16.141 ms …
+```
+
+A drift-free result means two different things in those two cases. **Mostly
+blocked** means `SDL_RenderPresent` returned at the retrace and every frame
+re-anchored to the hardware — the pacing schedule was barely used, so the run
+says little about how accurate that schedule is. **Mostly paced** means the
+schedule *was* what advanced the clock, and a flat result there is evidence
+about the schedule itself.
+
+Without this line the two are indistinguishable after the fact, and a set of
+captures can end up unable to answer the question it was run for.
+
 ---
 
 ## Loading data in Python

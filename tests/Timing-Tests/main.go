@@ -745,6 +745,14 @@ func runAV(exp *control.Experiment, trig triggers.OutputTTLDevice) error {
 		}
 
 		for cycle := 0; cycle < *fCycles; cycle++ {
+			// Zero the pacing tallies at the warm-up boundary so they cover
+			// exactly the cycles the statistics below are computed from, and not
+			// the first flips of the session — which are the ones most likely to
+			// take a different branch while the swapchain settles.
+			if cycle == *fWarmup {
+				exp.Screen.ResetPacingStats()
+			}
+
 			var tVisB, tVisA, tAudioQ float64
 
 			switch {
@@ -864,6 +872,10 @@ func runAV(exp *control.Experiment, trig triggers.OutputTTLDevice) error {
 			printStatsVsMean(fmt.Sprintf("Audio released − visual onset, software side (intended SOA %.1f ms)", *fSoaMs), soaActuals)
 		}
 
+		ps := exp.Screen.PacingStats()
+		printPacingStats(ps, exp.Screen.FrameDuration())
+		exp.Data.WriteComment(pacingSummary(ps, exp.Screen.FrameDuration()))
+
 		fmt.Printf("\nav: %d cycles complete (%d discarded as warm-up).\n", *fCycles, *fWarmup)
 		fmt.Println("Software timestamps only — the photodiode/TTL recording is the ground truth.")
 		return control.EndLoop
@@ -934,7 +946,9 @@ func runJitter(exp *control.Experiment) error {
 		fmt.Printf("\nEstimated refresh rate: %.3f Hz  (pass -hz %.2f to av so the tone matches a frame)\n",
 			estimatedHz, estimatedHz)
 		timingstats.PrintStats("Frame intervals", s, s.Mean)
-		printPacingStats(exp.Screen.PacingStats(), exp.Screen.FrameDuration())
+		ps := exp.Screen.PacingStats()
+		printPacingStats(ps, exp.Screen.FrameDuration())
+		exp.Data.WriteComment(pacingSummary(ps, exp.Screen.FrameDuration()))
 		return control.EndLoop
 	})
 }
@@ -991,6 +1005,33 @@ func printPacingStats(p control.PacingStats, frameDur time.Duration) {
 		fmt.Printf("            estimated rate above against the nominal one, and read any\n")
 		fmt.Printf("            photodiode onset on this machine as relative, not absolute.\n")
 	}
+}
+
+// pacingSummary condenses the same tallies to one line for the info file.
+//
+// The block above goes to stdout, which run-timing-tests.sh already tees into a
+// per-step .txt — but the .txt is not what an analysis reads, and a run launched
+// without the script has none. This line lands beside `sys vblank_backend` in
+// the -info.txt that travels with the CSV, so a capture says on its own which
+// branch produced it.
+//
+// That gap is not hypothetical. Four 1010-cycle photodiode runs on a Pi 4 on
+// 2026-08-15 could not be interpreted without it: whether the baseline arm was
+// drift-free because the pacing schedule is accurate, or because the driver
+// blocked and pacing never engaged, changes what the comparison means, and
+// neither the CSV nor the info file recorded the answer.
+func pacingSummary(p control.PacingStats, frameDur time.Duration) string {
+	total := p.Blocked + p.Paced
+	if total == 0 {
+		return "sys pacing: none (VSync off, or too few frames)"
+	}
+	return fmt.Sprintf(
+		"sys pacing: presents=%d blocked=%d paced=%d (%.1f %% paced) "+
+			"wait_mean=%.3f ms wait_max=%.3f ms frame=%.3f ms",
+		total, p.Blocked, p.Paced, 100*float64(p.Paced)/float64(total),
+		float64(p.WaitMean())/float64(time.Millisecond),
+		float64(p.WaitMax)/float64(time.Millisecond),
+		float64(frameDur)/float64(time.Millisecond))
 }
 
 // sleepUntil sleeps until the given absolute time, with sub-millisecond
