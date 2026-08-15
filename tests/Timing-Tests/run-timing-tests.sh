@@ -543,6 +543,24 @@ if [ "$FRAMES_ON" -le 2 ]; then
 	echo "               typical LCDs — verify N(Opto1) == N(TTLin1) on a short pilot"
 	echo "               before trusting a long capture at this setting."
 fi
+# Say which onset path the run will use, and refuse a value that would silently
+# select the wrong one.
+#
+# The library accepts exactly "on"; anything else — ON, 1, true, yes — reads as
+# unset and gives the default, which is indistinguishable from the experimental
+# arm until the info file is read eight minutes later. An A/B whose two arms both
+# ran the default looks like a null result rather than a switch that never took,
+# so this is checked before the device is touched rather than diagnosed after.
+case "${GOXPY_VBLANK:-}" in
+	'')   echo "Vblank:  onsets from the pacing schedule (default)" ;;
+	on)   echo "Vblank:  onsets anchored on kernel vblank stamps (GOXPY_VBLANK=on — experimental)" ;;
+	*)    echo "error: GOXPY_VBLANK must be 'on' or unset (got '$GOXPY_VBLANK')" >&2
+	      echo "       Any other value is treated as unset by the library, so this run" >&2
+	      echo "       would silently use the default path and be indistinguishable" >&2
+	      echo "       from a baseline arm." >&2
+	      exit 1 ;;
+esac
+
 if [ "$BBTK_CAPTURE" = "1" ]; then
 	echo "BBTK:    recording enabled ($BBTK_CAPTURE_BIN, ${BBTK_MARGIN_S}s margin either side)"
 	if [ -n "${BBTK_PORT:-}" ]; then
