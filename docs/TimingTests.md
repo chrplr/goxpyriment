@@ -505,6 +505,18 @@ nearest neighbour within half a cycle, not by index, because a single spurious
 detection shifts every later pair by a whole cycle and turns the series into a
 constant near minus one period.
 
+**Every slope is fitted over the longest stretch containing no dropped frame**,
+and the `fitted over` line says which cycles those were. This is not tidying: a
+frame-sized step at index *k* of *n* points biases a least-squares slope by
+`6·h·m·k/n³` (with *m* = *n*−*k*), which at the midpoint is `1.5·h/n`. Over a
+1000-cycle run at 60 Hz that is 25 µs/cycle — **50 ppm from a single dropped
+frame in eight minutes**, ten times the effect these captures exist to resolve,
+and it does not average away with more cycles because the lever arm grows with
+*n* too. Measured on a 20-cycle Pi capture with one drop: the slope read
+−2265 ppm before this, +2.8 ppm after. The `one-frame jumps` count is still
+printed, and a run with more than a few of them is not a usable capture however
+clean the surviving stretch looks — find the load first.
+
 Read the verdict line. `DRIFT DOMINATES` means the flip timestamps and the panel
 are on different clocks and no absolute onset from that run can be trusted;
 `NO DRIFT, but … scatter` means the timestamps track the panel and the spread is

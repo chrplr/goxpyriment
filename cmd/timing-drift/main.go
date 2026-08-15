@@ -195,18 +195,55 @@ func run(eventsPath, runPath, ttlName, lightName string, hz float64, warmup int,
 	return nil
 }
 
-// reportSeries prints the statistics that separate a ramp from jitter.
+// longestCleanRun returns the widest half-open range [lo,hi) of d containing no
+// step bigger than 0.4 of a frame — that is, no dropped or added frame.
+//
+// Every slope in this program must be fitted inside such a range, because a
+// single frame-sized step biases a least-squares slope far more than intuition
+// suggests. For a step of height h at index k in n points, the fitted slope is
+// 6*h*m*k/n^3 with m = n-k, which peaks at the midpoint at 1.5*h/n. At 60 Hz
+// over a 1000-cycle run that is 25 us/cycle, or 50 ppm of a 500 ms cycle —
+// TEN TIMES the ~5 ppm effect these captures exist to resolve, from ONE dropped
+// frame in eight minutes. The step is not noise that averages down with more
+// cycles: n grows, but so does the lever arm.
+//
+// Verified against a 20-cycle Pi capture with one drop at cycle 13: predicted
+// 6*16.66*7*13/20^3 = 1.137 ms/cycle, fitted -1.132 ms/cycle. The tool reported
+// that as -2265 ppm of drift on a panel whose real error is single-digit ppm.
+//
+// Ties go to the earliest range, which is arbitrary but stable across runs.
+func longestCleanRun(d []float64, frameMs float64) (lo, hi int) {
+	if frameMs <= 0 || len(d) < 2 {
+		return 0, len(d)
+	}
+	bestLo, bestHi, curLo := 0, 0, 0
+	for i := 1; i <= len(d); i++ {
+		if i == len(d) || math.Abs(d[i]-d[i-1]) > 0.4*frameMs {
+			if i-curLo > bestHi-bestLo {
+				bestLo, bestHi = curLo, i
+			}
+			curLo = i
+		}
+	}
+	return bestLo, bestHi
+}
+
+// reportSeries prints the statistics that separate a ramp from jitter, and
+// returns the index range the slope was fitted over so the caller can fit the
+// period estimates on the same cycles.
 //
 // The raw SD is printed because it is the number everybody quotes, immediately
 // beside the two that decompose it. A series that is 99% ramp and a series that
 // is 99% scatter can share a raw SD to three significant figures and mean
 // completely different things about the apparatus.
-func reportSeries(d, t []float64, cycleMs, frameMs float64) {
+func reportSeries(d, t []float64, cycleMs, frameMs float64) (lo, hi int) {
 	n := len(d)
-	slope, intercept := leastSquares(d) // per cycle index
-	resid := make([]float64, n)
-	for i := range d {
-		resid[i] = d[i] - (intercept + slope*float64(i))
+	lo, hi = longestCleanRun(d, frameMs)
+	seg := d[lo:hi]
+	slope, intercept := leastSquares(seg) // per cycle index within the segment
+	resid := make([]float64, len(seg))
+	for i := range seg {
+		resid[i] = seg[i] - (intercept + slope*float64(i))
 	}
 	rawSD := sd(d)
 	detSD := sd(resid)
@@ -215,27 +252,38 @@ func reportSeries(d, t []float64, cycleMs, frameMs float64) {
 	fmt.Printf("  %-20s : %.3f ms\n", "mean", mean(d))
 	fmt.Printf("  %-20s : %.3f / %.3f ms\n", "min / max", minOf(d), maxOf(d))
 	fmt.Printf("  %-20s : %.4f ms   <- the number usually quoted\n", "raw SD", rawSD)
+	if hi-lo < n {
+		// Never let the fitted span be implicit. A slope quoted over 40% of a
+		// run and a slope quoted over all of it are different measurements, and
+		// the difference is invisible once the number is copied into a table.
+		fmt.Printf("  %-20s : cycles %d..%d (%d of %d) — longest stretch with no dropped frame\n",
+			"fitted over", lo, hi-1, hi-lo, n)
+	}
 	fmt.Printf("  %-20s : %+.3f us/cycle", "slope", slope*1000)
 	if cycleMs > 0 {
 		fmt.Printf(" (%+.2f ppm of the %.3f ms cycle)", slope/cycleMs*1e6, cycleMs)
 	}
 	fmt.Println()
-	if len(t) == n && n > 1 {
-		elapsedMin := (t[n-1] - t[0]) / 60000.0
+	if len(t) == n && hi-lo > 1 {
+		elapsedMin := (t[hi-1] - t[lo]) / 60000.0
 		if elapsedMin > 0 {
-			fmt.Printf("  %-20s : %+.3f ms/min over %.1f min\n", "", slope*float64(n-1)/elapsedMin, elapsedMin)
+			fmt.Printf("  %-20s : %+.3f ms/min over %.1f min\n", "", slope*float64(hi-lo-1)/elapsedMin, elapsedMin)
 		}
 	}
 	fmt.Printf("  %-20s : %.4f ms   <- the real trial-to-trial scatter\n", "de-trended SD", detSD)
-	if rawSD > 0 {
-		frac := 1 - (detSD*detSD)/(rawSD*rawSD)
+	// Decompose the variance INSIDE the fitted span, not against the whole
+	// series: with a frame-sized step excluded from the fit, the full-series SD
+	// is mostly that step, and the ratio would credit the ramp with variance it
+	// never explained (or exceed 100 % outright).
+	if segRawSD := sd(seg); segRawSD > 0 {
+		frac := 1 - (detSD*detSD)/(segRawSD*segRawSD)
 		if frac < 0 {
 			frac = 0
 		}
-		fmt.Printf("  %-20s : %.1f %% of the variance\n", "ramp accounts for", frac*100)
+		fmt.Printf("  %-20s : %.1f %% of the variance within that span\n", "ramp accounts for", frac*100)
 	}
-	total := slope * float64(n-1)
-	fmt.Printf("  %-20s : %+.3f ms over the run", "total drift", total)
+	total := slope * float64(hi-lo-1)
+	fmt.Printf("  %-20s : %+.3f ms over the fitted span", "total drift", total)
 	if frameMs > 0 {
 		fmt.Printf(" (%.2f frame)", math.Abs(total)/frameMs)
 	}
@@ -249,9 +297,18 @@ func reportSeries(d, t []float64, cycleMs, frameMs float64) {
 			}
 		}
 		fmt.Printf("  %-20s : %d\n", "one-frame jumps", jumps)
+		if jumps > 0 {
+			// Say what a drop costs rather than only that it happened: it is
+			// excluded from the fit here, but it is still a frame the
+			// participant did or did not see, and a run full of them is not a
+			// usable capture however clean the surviving stretch looks.
+			fmt.Printf("  %-20s   excluded from the fit above; each is a frame the display\n", "")
+			fmt.Printf("  %-20s   missed. Investigate the load if there are more than a few.\n", "")
+		}
 	}
 
-	fmt.Printf("  %-20s : %s\n", "VERDICT", verdict(slope, detSD, rawSD, cycleMs))
+	fmt.Printf("  %-20s : %s\n", "VERDICT", verdict(slope, detSD, sd(seg), cycleMs))
+	return lo, hi
 }
 
 // verdict names the failure mode rather than passing or failing, because the
@@ -329,7 +386,7 @@ func reportAgainstHost(flips, ttlOn, lightOn []float64, cycleMs, frameMs float64
 		fp[i] = photonHost - fl[i]
 	}
 	fmt.Printf("\n── flip timestamp → photons (host timebase) ──────────────\n")
-	reportSeries(fp, fl, cycleMs, frameMs)
+	lo, hi := reportSeries(fp, fl, cycleMs, frameMs)
 	fmt.Printf("  %-20s   this is the quantity that lands in a reaction time.\n", "")
 
 	// The panel's true period against the one the host ran on.
@@ -340,16 +397,23 @@ func reportAgainstHost(flips, ttlOn, lightOn []float64, cycleMs, frameMs float64
 	// effect being looked for, and enough on its own to invent a drift that is
 	// not there. Fitting a line through a thousand points averages that
 	// quantisation down to well under a ppm.
-	panelSlope, _ := leastSquares(li)
-	hostSlope, _ := leastSquares(fl)
+	//
+	// Fitted over the same dropped-frame-free span as the difference series
+	// above, and for the same reason: a cycle that ran one frame long adds a
+	// step to BOTH onset trains, and a step biases a fitted period exactly as it
+	// biases a fitted slope. On the 20-cycle capture that exposed this, the host
+	// frame came out 16.699 ms against a true 16.661 — a 2265 ppm error from one
+	// dropped frame, on a host whose real error is a few ppm.
+	panelSlope, _ := leastSquares(li[lo:hi])
+	hostSlope, _ := leastSquares(fl[lo:hi])
 	panelMs := panelSlope / b
 	hostMs := hostSlope
 	fmt.Printf("\n── Cycle period: panel vs host ───────────────────────────\n")
-	fmt.Printf("  %-20s : %.5f ms  (fitted over %d cycles)\n", "from photons", panelMs, n)
+	fmt.Printf("  %-20s : %.5f ms  (fitted over %d cycles)\n", "from photons", panelMs, hi-lo)
 	fmt.Printf("  %-20s : %.5f ms\n", "from flip stamps", hostMs)
 	if panelMs > 0 {
 		mism := (hostMs - panelMs) / panelMs * 1e6
-		fmt.Printf("  %-20s : %+.2f ppm  (%+.3f ms over %d cycles)\n", "mismatch", mism, (hostMs-panelMs)*float64(n-1), n)
+		fmt.Printf("  %-20s : %+.2f ppm  (%+.3f ms over %d cycles)\n", "mismatch", mism, (hostMs-panelMs)*float64(hi-lo-1), hi-lo)
 		if frameMs > 0 {
 			fpc := math.Round(panelMs / frameMs)
 			if fpc >= 1 {
