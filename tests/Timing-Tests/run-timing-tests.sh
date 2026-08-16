@@ -334,6 +334,9 @@ HOST=$(hostname -s 2>/dev/null || hostname)
 # and any BBTK captures. Override to keep separate sessions apart.
 OUTDIR="${OUTDIR:-reports-${HOST}}"
 
+# Kept before the default is applied, so "unset" and "deliberately 0" stay
+# distinguishable — see the photodiode-step guard below.
+BBTK_CAPTURE_RAW="${BBTK_CAPTURE-}"
 BBTK_CAPTURE="${BBTK_CAPTURE:-0}"
 BBTK_CAPTURE_BIN="${BBTK_CAPTURE_BIN:-bbtk-capture}"
 BBTK_MARGIN_S="${BBTK_MARGIN_S:-8}"
@@ -552,13 +555,28 @@ fi
 # ran the default looks like a null result rather than a switch that never took,
 # so this is checked before the device is touched rather than diagnosed after.
 case "${GOXPY_VBLANK:-}" in
-	'')   echo "Vblank:  onsets from the pacing schedule (default)" ;;
+	'')   echo "Vblank:  onsets from the present's return, or the pacing schedule on"
+	      echo "         frames where the driver did not block (default) — each run's"
+	      echo "         'sys pacing:' line records which it turned out to be" ;;
 	on)   echo "Vblank:  onsets anchored on kernel vblank stamps (GOXPY_VBLANK=on — experimental)" ;;
 	*)    echo "error: GOXPY_VBLANK must be 'on' or unset (got '$GOXPY_VBLANK')" >&2
 	      echo "       Any other value is treated as unset by the library, so this run" >&2
 	      echo "       would silently use the default path and be indistinguishable" >&2
 	      echo "       from a baseline arm." >&2
 	      exit 1 ;;
+esac
+
+# Reject a value that reads as unset, exactly as GOXPY_VBLANK above does:
+# anything that is not 1 disables recording, so BBTK_CAPTURE=yes or =true would
+# quietly produce a session with no photodiode data and no complaint.
+case "$BBTK_CAPTURE_RAW" in
+'' | 0 | 1) ;;
+*)
+	echo "error: BBTK_CAPTURE must be 0 or 1 (got '$BBTK_CAPTURE_RAW')" >&2
+	echo "       Any other value disables recording, so this session would run" >&2
+	echo "       the photodiode steps with nothing capturing them." >&2
+	exit 1
+	;;
 esac
 
 if [ "$BBTK_CAPTURE" = "1" ]; then
@@ -587,6 +605,33 @@ if [ "$BBTK_CAPTURE" = "1" ]; then
 		exit 1
 	fi
 else
+	# A photodiode step with nothing recording cannot answer the question it
+	# exists for, and the cost of finding out afterwards is the whole session:
+	# av at the default 1010 cycles is ~8.5 minutes per step, and this preamble
+	# has scrolled well out of view by the time the stimulus starts. A Pi 4
+	# session was lost exactly this way on 2026-08-16.
+	#
+	# Unset and explicitly-0 are treated differently, on the same principle as
+	# the GOXPY_VBLANK check above: "software-side only, deliberately" is a
+	# decision worth honouring, "I forgot to export it" is not, and only the
+	# second is worth stopping. Steps that need no photodiode are unaffected.
+	NEEDS_BBTK=""
+	for _s in av av-gc av-visual; do
+		selected "$_s" && NEEDS_BBTK="$NEEDS_BBTK $_s"
+	done
+	if [ -n "$NEEDS_BBTK" ] && [ "$BBTK_CAPTURE_RAW" != "0" ]; then
+		echo "error: these steps record nothing without the BBTK:$NEEDS_BBTK" >&2
+		echo "       They fire a TTL and flash a patch for the photodiode to see," >&2
+		echo "       so with no capture running the session produces software" >&2
+		echo "       timestamps only — which cannot be checked against photons." >&2
+		echo "" >&2
+		echo "       BBTK_CAPTURE=1 ...   record the photodiode steps" >&2
+		echo "       BBTK_CAPTURE=0 ...   run them software-side anyway (deliberate)" >&2
+		echo "" >&2
+		echo "       No photodiode on this machine? Name the steps that need none:" >&2
+		echo "         ./run-timing-tests.sh sysinfo check display display-gc latency" >&2
+		exit 1
+	fi
 	echo "BBTK:    recording disabled (set BBTK_CAPTURE=1 to record the photodiode steps)"
 fi
 
