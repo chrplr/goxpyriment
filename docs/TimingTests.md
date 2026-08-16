@@ -775,6 +775,36 @@ boundaries, so 256 frames at 44100 Hz quantises them to 5.8 ms steps. Use
 `latency` at several sizes to find the smallest that drains stably (low SD), then
 use that everywhere — including in your actual experiment.
 
+### Too small a buffer tears the sound, and only your ears will say so
+
+"Stable" above means more than a low SD in `latency`. A buffer the machine cannot
+keep filled **underruns**, which puts silent gaps in the middle of a tone —
+audible as scratching, and invisible in every number this test prints, because
+the software side hands the tone to the device on time either way.
+
+Measured on a Raspberry Pi 4 (PipeWire, 48 kHz, 1010 tones of 200 ms recorded
+through a BBTK microphone channel) on 2026-08-16:
+
+| `-audio-frames` | buffer | result |
+|---|---|---|
+| 512 | 10.7 ms | **23 % of tones split by a silent gap**, median 22.3 ms, none under 20 ms |
+| 2048 | 42.7 ms | clean, no gaps heard |
+
+The gaps floor at about two buffer periods, which is the signature: a dropout, not
+a microphone threshold effect. **Scheduling priority made no difference** — the
+same 2×2 (`512`/`2048` × `-realtime-priority 50`/`0`) scratched at 512 under both
+policies and was clean at 2048 under both. So a real-time thread starving the
+audio server, the obvious suspect on a four-core host, was not the cause.
+
+Two consequences. First, the software-side SOA statistic cannot see this: in the
+same run it read **0.080 ms ± 0.035** while a quarter of the tones were being torn
+apart downstream. Second, an audio-visual lag measured at an underrunning buffer
+does not transfer to a working one — re-measure after changing `-audio-frames`.
+
+Check for it directly rather than by ear: run `pw-top` over ssh (a fullscreen test
+covers the console) and watch the **ERR** column, which counts underruns at the
+source.
+
 ---
 
 ## Walkthrough: a Raspberry Pi, GPIO triggers, and BBTK capture

@@ -16,7 +16,12 @@
 # Environment overrides:
 #   BIN               binary to run            (default: build ./Timing-Tests)
 #   SDL_AUDIODRIVER   audio backend            (default: unset = SDL picks)
-#   AUDIO_BUFFSIZE    hardware buffer, frames  (default: 512)
+#   AUDIO_BUFFSIZE    hardware buffer, frames  (default: 512; a Pi 4 on PipeWire
+#                                              underruns at 512 — 23 % of tones
+#                                              torn by a ~22 ms silent gap, ears
+#                                              and microphone agreeing, console
+#                                              output clean. Use 2048 there and
+#                                              see docs/TimingTests.md)
 #   REFRESH_HZ        expected refresh rate    (default: 60)
 #   OUTDIR            session directory        (default: reports-<hostname>)
 #   TONE_HZ           tone frequency, Hz       (default: 440)
