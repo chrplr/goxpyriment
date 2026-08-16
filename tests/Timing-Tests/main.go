@@ -651,10 +651,18 @@ func runAV(exp *control.Experiment, trig triggers.OutputTTLDevice) error {
 		"test=av level-a=%d level-b=%d square-px=%d frames-on=%d frames-off=%d cycles=%d warmup=%d hz=%.3f sound=%v ttl=%v soa-ms=%.1f freq-hz=%.0f",
 		*fLevelA, *fLevelB, *fSquarePx, framesOn, framesOff, *fCycles, *fWarmup, *fHz,
 		withSound, withTTL, *fSoaMs, *fFreqHz))
-	// onset_source records, per cycle, whether t_visual_after_ms came from a
-	// measured vblank or from the pacing schedule. The two arms of a Phase 2
-	// comparison are otherwise indistinguishable in the data, and mixing them up
-	// would silently average a drifting run with a stable one.
+	// onset_source records, per cycle, where t_visual_after_ms came from:
+	//
+	//	hardware-verified  a kernel vblank stamp (GOXPY_VBLANK=on)
+	//	present-return     SDL_RenderPresent's own return, on a frame where the
+	//	                   driver blocked to the retrace — a hardware instant
+	//	pacing-schedule    the boundary Update held to, on a frame where it did
+	//	                   not — synthesised, and only as good as the nominal rate
+	//
+	// Runs are otherwise indistinguishable in the data, and mixing them up would
+	// silently average a drifting run with a stable one. The middle value used
+	// to be reported as "vsync-estimated" along with the last, which mislabelled
+	// every row of a capture whose onsets all came from the hardware.
 	exp.AddDataVariableNames([]string{
 		"cycle",
 		"t_visual_before_ms", "t_visual_after_ms",

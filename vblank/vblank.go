@@ -63,6 +63,22 @@ const (
 	// display controller or vblank IRQ is stamped with — typically well under
 	// a millisecond.
 	HardwareVerified
+
+	// PresentReturn means the onset is the instant SDL_RenderPresent returned,
+	// on a frame where the driver blocked to the retrace and therefore handed
+	// back a hardware instant. Not measured by the OS, but not synthesised
+	// either: it is set by the display, re-established every frame, and cannot
+	// accumulate error.
+	//
+	// This is the common case on a well-behaved driver, and it used to be
+	// reported as Estimated — so a Raspberry Pi 4 capture whose every onset came
+	// from the hardware was labelled "vsync-estimated" in all 1000 rows.
+	PresentReturn
+
+	// Scheduled means the driver did not block, so Update held the frame and the
+	// onset is the boundary it held to. This one IS synthesised: it advances at
+	// the nominal frame period and is only as accurate as that period.
+	Scheduled
 )
 
 // String returns a stable form for logs and data files.
@@ -72,6 +88,10 @@ func (s Source) String() string {
 		return "vsync-estimated"
 	case HardwareVerified:
 		return "hardware-verified"
+	case PresentReturn:
+		return "present-return"
+	case Scheduled:
+		return "pacing-schedule"
 	default:
 		return "unknown"
 	}

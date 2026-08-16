@@ -522,7 +522,10 @@ func (s *Screen) Update() error {
 // return — 148 µs of spread across 1790 frames on a Radeon Pro W5700, against
 // millisecond-scale jitter for the raw return. Dropping it would trade measured
 // precision for accuracy that cannot be verified without a photodiode anyway.
-// So it stays, and onsetSrc records that it is an estimate.
+// So it stays, and onsetSrc says so: vblank.Scheduled, distinct from
+// vblank.PresentReturn for case 3, which is not synthesised at all — the driver
+// blocked and its return is the display's own instant. Confirmed by photodiode
+// on a Pi 4, 2026-08-16: 1000 cycles of case 3 tracked the photons to +0.01 ppm.
 func (s *Screen) recordOnset() {
 	if ts, src, ok := s.vblankOnset(); ok {
 		s.lastFlipNS, s.anchorNS, s.onsetSrc = ts, ts, src
@@ -530,13 +533,19 @@ func (s *Screen) recordOnset() {
 		return
 	}
 	s.anchorIsHW = false
+	// The two remaining cases are recorded apart, because they differ in the
+	// only way that matters: one is a synthesised time and the other is not.
+	// Labelling both "vsync-estimated" made a run whose every onset came from
+	// the driver's own return indistinguishable, in the data file, from one
+	// stamped entirely by the schedule.
 	switch {
 	case s.heldToTarget:
 		s.lastFlipNS, s.anchorNS = s.pacedTargetNS, s.pacedTargetNS
+		s.onsetSrc = vblank.Scheduled
 	default:
 		s.lastFlipNS, s.anchorNS = s.presentNS, s.presentNS
+		s.onsetSrc = vblank.PresentReturn
 	}
-	s.onsetSrc = vblank.Estimated
 }
 
 // vblankOnset queries the kernel for the vblank this frame was scanned out at.
