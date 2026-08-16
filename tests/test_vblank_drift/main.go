@@ -146,10 +146,18 @@ func measure(exp *control.Experiment) error {
 			continue
 		}
 		samples = append(samples, sample{flipNS: ts, vblankNS: vts})
+		// Convert BEFORE subtracting. Both stamps are uint64, and the flip
+		// routinely precedes the vblank it is resolved against — the onset is
+		// the vblank the frame will be scanned out at, not one already past —
+		// so `ts-vts` wraps to 1.8e13 on every such row. The column exists so
+		// the fit can be redone from the raw pairs afterwards, which it could
+		// not: measured on four Pi 4 runs, every negative phase was corrupt.
+		// analyse() was unaffected (it subtracts in float64), so nothing in the
+		// printed report was ever wrong — only the file it left behind.
 		exp.Data.Add(i,
 			fmt.Sprintf("%.6f", float64(ts)/1e6),
 			fmt.Sprintf("%.6f", float64(vts)/1e6),
-			fmt.Sprintf("%.6f", float64(ts-vts)/1e6))
+			fmt.Sprintf("%.6f", (float64(ts)-float64(vts))/1e6))
 	}
 	ps := screen.PacingStats()
 
@@ -264,6 +272,32 @@ func analyse(exp *control.Experiment, s []sample, missing int, nominalMs float64
 	out.Printf("  %-22s : %.5f ms = %.4f Hz -> %+.1f ppm\n", "nominal (display mode)",
 		nominalMs, 1000/nominalMs, (nominalMs-panelMs)/panelMs*1e6)
 
+	// The flip cadence, fitted the same way against the same sequence, is what
+	// says WHICH of the two moved when a set of runs disagrees.
+	//
+	// The drift below is a difference of two rates, and a difference cannot tell
+	// you which term produced it. Four Pi 4 runs on 2026-08-16 reported +4.10,
+	// +26.22, +12.17 and +8.68 ppm, which reads as a wildly unstable machine
+	// until both terms are printed: the flip cadence held to 2.1 ppm across all
+	// four (+5.94, +4.76, +6.79, +4.73 vs nominal) while the vblank grid swung
+	// 23.3 ppm (+1.84 to -21.46). The reference was the moving party, and on
+	// V3D — whose grid residual is 73.7 us against amdgpu's 0.8 — that is the
+	// way to bet. Corroboration: nominal + 5 ppm is 60.0197 Hz, the rate the
+	// AMD box measured for the same panel through amdgpu's stamps.
+	//
+	// Fitted against seq, not the loop index, for the same reason the grid is: a
+	// dropped frame must count as the frame it was, not as a missing one.
+	flipMs, _ := leastSquares(seq, flMs)
+	flipVsNominalPPM := (flipMs - nominalMs) / nominalMs * 1e6
+	out.Printf("  %-22s : %.5f ms = %.4f Hz -> %+.1f ppm vs nominal\n", "flip cadence",
+		flipMs, 1000/flipMs, flipVsNominalPPM)
+	out.Printf("  %-22s   Compare this run's figure against other runs on this machine.\n", "")
+	out.Printf("  %-22s   A steady flip cadence with a wandering TRUE frame means the\n", "")
+	out.Printf("  %-22s   kernel's stamps are moving, not the panel — and the drift below\n", "")
+	out.Printf("  %-22s   is then measuring the reference, not the flip timestamps.\n", "")
+	exp.Data.WriteComment(fmt.Sprintf("flip cadence_ms=%.5f cadence_hz=%.4f vs_nominal_ppm=%+.2f",
+		flipMs, 1000/flipMs, flipVsNominalPPM))
+
 	// The measurement is the PHASE: how far into the frame the flip timestamp
 	// falls, and whether that walks.
 	//
@@ -334,12 +368,18 @@ func analyse(exp *control.Experiment, s []sample, missing int, nominalMs float64
 		driftPerFrame*1000, driftPPM, drift95PPM)
 	out.Printf("  %-22s : %+.3f ms/min, %+.2f ms over an 8-min block\n", "",
 		driftPerFrame*60000/panelMs, driftPerFrame*480000/panelMs)
-	// The gap between the measured drift and the nominal-vs-true error is a
-	// reproducible quantity in its own right — 5.13 +- 0.5 ppm across five Pi 4
-	// runs — and nothing here explains it yet. Surfacing it invites the question
-	// rather than burying it in two numbers the reader has to subtract.
+	// This gap is the flip cadence against nominal, and nothing else: it is
+	// (T_flip - T_panel) - (T_nominal - T_panel), so the panel term cancels.
+	// It was carried as an "unexplained" 5.13 +- 0.5 ppm across five Pi 4 runs
+	// until the flip cadence was printed beside it above and the two came out
+	// identical to two decimals. Nothing about the vblank stamps enters it, so
+	// on a machine whose stamps wander it is the more trustworthy of the two
+	// figures here — on the Pi 4 it says the loop runs 5 ppm slower than the
+	// nominal frame, i.e. the panel does, which is what the AMD box measured
+	// for that panel independently.
 	nominalErrPPM := (nominalMs - panelMs) / panelMs * 1e6
-	out.Printf("  %-22s : %+.2f ppm (drift minus nominal-vs-TRUE)\n", "unexplained gap", driftPPM-nominalErrPPM)
+	out.Printf("  %-22s : %+.2f ppm (drift minus nominal-vs-TRUE; = the flip cadence above)\n",
+		"cadence vs nominal", driftPPM-nominalErrPPM)
 	exp.Data.WriteComment(fmt.Sprintf("drift gap_vs_nominal_ppm=%+.2f", driftPPM-nominalErrPPM))
 
 	if math.Abs(driftPPM) < drift95PPM {
@@ -407,10 +447,28 @@ func analyse(exp *control.Experiment, s []sample, missing int, nominalMs float64
 // verdict reads the drift against what an 8-minute block can tolerate. 1 ppm is
 // 0.5 ms over such a block, which is under the frame quantisation nobody can
 // code around; 10 ppm is 5 ms, which is not.
+// verdict reads the drift against what an 8-minute block can tolerate, and
+// names a cause only when the pacing branch counts support one.
+//
+// The schedule explanation requires the presents to have BEEN scheduled. A
+// 2026-08-16 Pi 4 run printed "with 0 % of presents paced, they are being
+// stamped with the schedule" — self-contradictory, and it points the reader at
+// a mechanism that cannot be operating. When the presents are hardware-anchored
+// the drift is real but its cause is elsewhere, and the honest answer is to
+// name the two candidates rather than assert either.
 func verdict(driftPPM, driftPerFrame, pacedPct float64) string {
 	const indent = "\n                           "
 	over8min := math.Abs(driftPerFrame) * 480000 / 16.6667
 	switch {
+	case math.Abs(driftPPM) > 10 && pacedPct < 50:
+		return fmt.Sprintf("DRIFTING (%.1f ppm, %.1f ms per 8-min block).", driftPPM, over8min) +
+			indent + "The flip timestamps and the kernel's vblank stamps disagree, but with" +
+			indent + fmt.Sprintf("only %.0f %% of presents paced the flips carry the present's own return,", pacedPct) +
+			indent + "so the schedule cannot be the cause. Either the driver's returns do not" +
+			indent + "track the panel, or the vblank stamps do not. Compare the flip cadence" +
+			indent + "above against other runs on this machine: if it holds steady while the" +
+			indent + "TRUE frame moves, the reference is what drifted. Only a photodiode" +
+			indent + "settles it."
 	case math.Abs(driftPPM) > 10:
 		return fmt.Sprintf("DRIFTING (%.1f ppm, %.1f ms per 8-min block).", driftPPM, over8min) +
 			indent + fmt.Sprintf("Flip timestamps are walking away from the display. With %.0f %% of", pacedPct) +
