@@ -307,8 +307,11 @@ func analyse(exp *control.Experiment, s []sample, missing int, nominalMs float64
 		panelMs, 1000/panelMs, 1000/nominalMs, (nominalMs-panelMs)/panelMs*1e6))
 	exp.Data.WriteComment(fmt.Sprintf("drift us_per_frame=%+.4f ppm=%+.2f fitted_over=%d_of_%d_frames",
 		driftPerFrame*1000, driftPPM, segLen, n))
-	exp.Data.WriteComment(fmt.Sprintf("pacing blocked=%d paced=%d wait_mean_ms=%.3f wait_max_ms=%.3f",
-		ps.Blocked, ps.Paced, float64(ps.WaitMean().Nanoseconds())/1e6, float64(ps.WaitMax.Nanoseconds())/1e6))
+	exp.Data.WriteComment(fmt.Sprintf(
+		"pacing blocked=%d early=%d paced=%d vblank_held=%d wait_mean_ms=%.3f wait_max_ms=%.3f early_mean_ms=%.3f",
+		ps.Blocked, ps.Early, ps.Paced, ps.VblankHeld,
+		float64(ps.WaitMean().Nanoseconds())/1e6, float64(ps.WaitMax.Nanoseconds())/1e6,
+		float64(ps.EarlyMean().Nanoseconds())/1e6))
 
 	// Uncertainty on the slope, corrected for autocorrelated residuals.
 	//
@@ -380,14 +383,23 @@ func analyse(exp *control.Experiment, s []sample, missing int, nominalMs float64
 	exp.Data.WriteComment(fmt.Sprintf("drift fit_resid_sd_ms=%.4f fit_resid_ac1=%+.3f", residSD, residAC1))
 
 	out.Printf("\n── Pacing branches ───────────────────────────────────────\n")
-	total := ps.Blocked + ps.Paced
+	total := ps.Presents()
 	pacedPct := 0.0
 	if total > 0 {
 		pacedPct = 100 * float64(ps.Paced) / float64(total)
 	}
-	out.Printf("  %-22s : %d blocked / %d paced (%.1f %% paced)\n", "branches", ps.Blocked, ps.Paced, pacedPct)
+	out.Printf("  %-22s : %d blocked / %d paced / %d vblank-held (%.1f %% paced)\n",
+		"branches", ps.Blocked, ps.Paced, ps.VblankHeld, pacedPct)
 	out.Printf("  %-22s : mean %.3f ms, max %.3f ms\n", "early-return wait",
 		float64(ps.WaitMean().Nanoseconds())/1e6, float64(ps.WaitMax.Nanoseconds())/1e6)
+	if ps.Early > 0 {
+		// Blocking presents that landed just inside the nominal boundary. The
+		// mean is the phase between the two frame grids, so it belongs beside
+		// the drift figures above rather than in the wait line.
+		out.Printf("  %-22s : %d, by mean %.3f ms, max %.3f ms\n", "early within slack",
+			ps.Early, float64(ps.EarlyMean().Nanoseconds())/1e6,
+			float64(ps.EarlyMax.Nanoseconds())/1e6)
+	}
 
 	out.Printf("\n  %-22s : %s\n", "VERDICT", verdict(driftPPM, driftPerFrame, pacedPct))
 }

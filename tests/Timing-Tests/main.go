@@ -980,38 +980,155 @@ func runJitter(exp *control.Experiment) error {
 // not whether the driver imposed it. CalibrateRefresh is the one that bypasses
 // pacing.
 func printPacingStats(p control.PacingStats, frameDur time.Duration) {
-	total := p.Blocked + p.Paced
+	total := p.Presents()
 	fmt.Printf("\n── Frame pacing ───────────────────────────────\n")
 	if total == 0 {
 		fmt.Printf("  no paced presents (VSync off, or too few frames)\n")
 		return
 	}
-	pacedPct := 100 * float64(p.Paced) / float64(total)
-	fmt.Printf("  presents: %d\n", total)
-	fmt.Printf("  blocked : %d (%.1f %%)  — SDL_RenderPresent returned at or after the frame boundary\n",
-		p.Blocked, 100-pacedPct)
-	fmt.Printf("  paced   : %d (%.1f %%)  — returned early; Update held the frame\n",
-		p.Paced, pacedPct)
-	if p.Paced > 0 {
-		fmt.Printf("  wait    : mean %.3f ms  max %.3f ms   (frame = %.3f ms)\n",
-			float64(p.WaitMean())/float64(time.Millisecond),
-			float64(p.WaitMax)/float64(time.Millisecond),
-			float64(frameDur)/float64(time.Millisecond))
+	ms := func(d time.Duration) float64 { return float64(d) / float64(time.Millisecond) }
+	pct := func(n uint64) float64 { return 100 * float64(n) / float64(total) }
+	fmt.Printf("  presents: %d   (frame = %.3f ms)\n", total, ms(frameDur))
+	fmt.Printf("  blocked : %d (%.1f %%)  — present carried the frame; its return is the onset\n",
+		p.Blocked, pct(p.Blocked))
+	if p.Early > 0 {
+		fmt.Printf("            of which %d came back inside the nominal boundary by mean\n", p.Early)
+		fmt.Printf("            %.3f ms, max %.3f ms — the phase offset between the nominal\n",
+			ms(p.EarlyMean()), ms(p.EarlyMax))
+		fmt.Printf("            frame grid and the panel's, not a wait.\n")
 	}
-	switch {
-	case p.Paced == 0:
+	fmt.Printf("  paced   : %d (%.1f %%)  — returned early; Update held to the schedule\n",
+		p.Paced, pct(p.Paced))
+	if p.Paced > 0 {
+		fmt.Printf("            wait mean %.3f ms  max %.3f ms\n", ms(p.WaitMean()), ms(p.WaitMax))
+	}
+	if p.VblankHeld > 0 {
+		fmt.Printf("  vblank  : %d (%.1f %%)  — held against a kernel vblank; the vblank is the onset\n",
+			p.VblankHeld, pct(p.VblankHeld))
+	}
+	holdMs := holdFraction(p, frameDur) * ms(frameDur)
+	holdPct := 100 * holdFraction(p, frameDur)
+	switch classifyPacing(p, frameDur) {
+	case pacingVblank:
+		fmt.Printf("  verdict : onsets come from the kernel's vblank timestamp — measured, on the\n")
+		fmt.Printf("            display's own clock, re-read every frame. This is the best case:\n")
+		fmt.Printf("            the hold only advances to the next boundary after that stamp and\n")
+		fmt.Printf("            does not enter what is reported, so nothing can drift.\n")
+	case pacingBlocking:
 		fmt.Printf("  verdict : the driver blocks. Flip timestamps carry the display's own\n")
 		fmt.Printf("            instant, and cannot drift against the panel.\n")
-	case pacedPct < 5:
-		fmt.Printf("  verdict : the driver blocks, with occasional jitter around the boundary.\n")
-		fmt.Printf("            Compare the mean wait against the frame: a few hundred µs is\n")
-		fmt.Printf("            jitter, most of a frame is buffering that happened to be rare.\n")
+		if p.Paced > 0 {
+			fmt.Printf("            The loop held %.3f ms per present (%.1f %% of a frame), too little\n",
+				holdMs, holdPct)
+			fmt.Printf("            to be buffering: present itself covered the rest of the frame.\n")
+		}
+	case pacingMixed:
+		fmt.Printf("  verdict : MIXED — the loop held %.3f ms per present (%.1f %% of a frame),\n",
+			holdMs, holdPct)
+		fmt.Printf("            too much to be jitter around the boundary and too little for a\n")
+		fmt.Printf("            present that never blocks. Some frames are being buffered, so\n")
+		fmt.Printf("            part of the run is stamped with the schedule rather than with\n")
+		fmt.Printf("            the hardware. Read photodiode onsets here as relative until a\n")
+		fmt.Printf("            capture shows which way it falls.\n")
 	default:
-		fmt.Printf("  verdict : the driver does NOT block — Update is pacing the loop. Onsets\n")
-		fmt.Printf("            are stamped with the schedule, so they drift against the panel\n")
-		fmt.Printf("            by however wrong the nominal refresh rate is. Check the\n")
-		fmt.Printf("            estimated rate above against the nominal one, and read any\n")
-		fmt.Printf("            photodiode onset on this machine as relative, not absolute.\n")
+		fmt.Printf("  verdict : the driver does NOT block — Update is pacing the loop, holding\n")
+		fmt.Printf("            %.3f ms per present (%.1f %% of a frame). Onsets are stamped with\n",
+			holdMs, holdPct)
+		fmt.Printf("            the schedule, so they drift against the panel by however wrong\n")
+		fmt.Printf("            the nominal refresh rate is. Check the estimated rate above\n")
+		fmt.Printf("            against the nominal one, and read any photodiode onset on this\n")
+		fmt.Printf("            machine as relative, not absolute.\n")
+	}
+}
+
+// pacingClass is the verdict, shared by the stdout block and the info-file line
+// so a capture and its log cannot disagree.
+type pacingClass int
+
+const (
+	pacingNone     pacingClass = iota // VSync off, or too few frames
+	pacingVblank                      // onsets are kernel vblank timestamps
+	pacingBlocking                    // present carries the retrace; any hold is jitter/phase
+	pacingMixed                       // neither reading is safe on its own
+	pacingHeld                        // present returns early; the schedule sets the cadence
+)
+
+func (c pacingClass) String() string {
+	switch c {
+	case pacingVblank:
+		return "vblank"
+	case pacingBlocking:
+		return "blocking"
+	case pacingMixed:
+		return "mixed"
+	case pacingHeld:
+		return "not-blocking"
+	default:
+		return "none"
+	}
+}
+
+// Hold thresholds for the verdict, as fractions of a frame period. A driver
+// that blocks returns within jitter of the boundary, so what is left to hold is
+// a few hundred µs; one that does not block returns as soon as the command
+// batch is queued, so what is left is most of the frame. Between an eighth and
+// a half of a frame is neither, and is reported as such rather than rounded to
+// the nearer story.
+const (
+	blockingHoldFrac = 0.125
+	heldHoldFrac     = 0.5
+)
+
+// holdFraction is the share of a frame period the loop spent holding, averaged
+// over EVERY present in the run rather than over the paced ones alone.
+//
+// Averaging over the paced frames only conflates two different machines. A
+// driver that blocks but sits a few hundred µs on the late side of the vblank
+// takes the paced branch on nearly every frame with a tiny wait; a driver that
+// blocks except for a rare buffered frame takes it on 1 % of frames with a wait
+// of nearly a whole frame. The per-paced-frame mean says "small" for the first
+// and "huge" for the second, though both are blocking drivers whose timestamps
+// are hardware-anchored. Weighting by the count collapses both to a few percent
+// of a frame, which is what the verdict wants to know: how much of this run's
+// cadence came from the schedule instead of from the retrace.
+func holdFraction(p control.PacingStats, frameDur time.Duration) float64 {
+	if p.Presents() == 0 || frameDur <= 0 {
+		return 0
+	}
+	return float64(p.WaitTotal) / (float64(p.Presents()) * float64(frameDur))
+}
+
+// classifyPacing turns the tallies into the verdict.
+//
+// It keys on holdFraction rather than on the paced/blocked split because the
+// split alone misreads the common case. Measured on an Intel/Mesa laptop on
+// 2026-08-16: 98.8 % of presents took the paced branch, which the earlier
+// count-only rule reported as "the driver does NOT block" — but the mean wait
+// was 0.676 ms of a 16.661 ms frame, i.e. present had blocked for 15.99 ms of
+// every frame and the hold was closing a sub-millisecond phase offset. The
+// drift that verdict warns about needs a schedule running free for thousands of
+// frames; here the retrace re-establishes the phase on every present.
+func classifyPacing(p control.PacingStats, frameDur time.Duration) pacingClass {
+	if p.Presents() == 0 {
+		return pacingNone
+	}
+	// A vblank-clocked run is reported as such whatever the hold came to: there
+	// the hold advances to the next boundary after a MEASURED stamp and never
+	// reaches the onset, so scoring it like a schedule would flag the most
+	// accurate configuration the framework has as the least accurate one.
+	if p.VblankHeld > p.Presents()/2 {
+		return pacingVblank
+	}
+	if p.Paced == 0 {
+		return pacingBlocking
+	}
+	switch f := holdFraction(p, frameDur); {
+	case f <= blockingHoldFrac:
+		return pacingBlocking
+	case f < heldHoldFrac:
+		return pacingMixed
+	default:
+		return pacingHeld
 	}
 }
 
@@ -1049,17 +1166,25 @@ func vblankSummary(exp *control.Experiment) string {
 // blocked and pacing never engaged, changes what the comparison means, and
 // neither the CSV nor the info file recorded the answer.
 func pacingSummary(p control.PacingStats, frameDur time.Duration) string {
-	total := p.Blocked + p.Paced
+	total := p.Presents()
 	if total == 0 {
 		return "sys pacing: none (VSync off, or too few frames)"
 	}
+	// hold_frac and class travel with the counts because the paced share on its
+	// own does not say which machine this was; see classifyPacing.
 	return fmt.Sprintf(
-		"sys pacing: presents=%d blocked=%d paced=%d (%.1f %% paced) "+
-			"wait_mean=%.3f ms wait_max=%.3f ms frame=%.3f ms",
-		total, p.Blocked, p.Paced, 100*float64(p.Paced)/float64(total),
+		"sys pacing: presents=%d blocked=%d early=%d paced=%d vblank_held=%d "+
+			"(%.1f %% paced) wait_mean=%.3f ms wait_max=%.3f ms "+
+			"early_mean=%.3f ms early_max=%.3f ms frame=%.3f ms "+
+			"hold_frac=%.3f class=%s",
+		total, p.Blocked, p.Early, p.Paced, p.VblankHeld,
+		100*float64(p.Paced)/float64(total),
 		float64(p.WaitMean())/float64(time.Millisecond),
 		float64(p.WaitMax)/float64(time.Millisecond),
-		float64(frameDur)/float64(time.Millisecond))
+		float64(p.EarlyMean())/float64(time.Millisecond),
+		float64(p.EarlyMax)/float64(time.Millisecond),
+		float64(frameDur)/float64(time.Millisecond),
+		holdFraction(p, frameDur), classifyPacing(p, frameDur))
 }
 
 // sleepUntil sleeps until the given absolute time, with sub-millisecond

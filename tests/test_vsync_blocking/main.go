@@ -106,7 +106,7 @@ func main() {
 		}
 
 		ps := exp.Screen.PacingStats()
-		totalBranches := ps.Blocked + ps.Paced
+		totalBranches := ps.Presents()
 		pacedPct := 0.0
 		if totalBranches > 0 {
 			pacedPct = 100 * float64(ps.Paced) / float64(totalBranches)
@@ -133,6 +133,17 @@ func main() {
 			verdict = "BLOCKING — the driver honours VSYNC on its own."
 			recommendation = "Update's pacing exits immediately here and costs nothing.\n" +
 				"FlipTS carries the present's own return instant on every frame."
+			if ps.Early > 0 {
+				// Not a caveat: these ARE blocking presents, landing a little
+				// inside a nominal boundary that is not quite the panel's. Said
+				// plainly so the number does not read as a defect.
+				recommendation += fmt.Sprintf(
+					"\n%d of them came back inside the nominal boundary by mean %.3f ms\n"+
+						"(max %.3f ms) — the phase between the nominal frame grid and the\n"+
+						"panel's. The present is still the anchor, so this cannot accumulate.",
+					ps.Early, float64(ps.EarlyMean().Nanoseconds())/1e6,
+					float64(ps.EarlyMax.Nanoseconds())/1e6)
+			}
 		}
 
 		exp.Data.WriteComment(fmt.Sprintf("vsync nominal_ms=%.5f unaided_ms=%.5f paced_ms=%.5f short=%d/%d",
