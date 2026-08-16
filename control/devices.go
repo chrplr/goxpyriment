@@ -121,20 +121,24 @@ func writeVblank(b *strings.Builder) {
 
 	available := t.Precision() == vblank.HardwareVerified
 	var rows []string
+	// The default is not one source but whichever the driver leaves available
+	// each frame, so it is described that way: saying "the pacing schedule"
+	// misreports every machine where SDL_RenderPresent blocks, which is most of
+	// them. The run's own Frame pacing block says which it turned out to be.
+	const dflt = "onsets come from the present's return, or from the pacing " +
+		"schedule on frames where the driver did not block"
 	switch {
 	case vblank.Enabled() && available:
 		rows = append(rows, "IN USE (opt-in): "+t.Description())
 	case vblank.Enabled():
 		rows = append(rows,
 			vblank.EnvOptIn+"=on, but no hardware vblank clock on this machine",
-			"onsets will come from the pacing schedule after all")
+			"falling back: "+dflt)
 	case available:
-		rows = append(rows,
-			"onsets come from the pacing schedule (default)",
+		rows = append(rows, dflt+" (default)",
 			"available if asked for with "+vblank.EnvOptIn+"=on: "+t.Description())
 	default:
-		rows = append(rows,
-			"onsets come from the pacing schedule (default)",
+		rows = append(rows, dflt+" (default)",
 			"no hardware vblank clock on this machine")
 	}
 	section(b, "Vblank", rows)

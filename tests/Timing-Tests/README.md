@@ -29,20 +29,38 @@ that says how far to trust the rest of it — see below.
 
 ```
 ── Frame pacing ───────────────────────────────
-  presents: 466
-  blocked : 22 (4.7 %)  — SDL_RenderPresent returned at or after the frame boundary
-  paced   : 444 (95.3 %)  — returned early; Update held the frame
-  wait    : mean 1.593 ms  max 9.121 ms   (frame = 16.656 ms)
+  presents: 588   (frame = 16.656 ms)
+  blocked : 566 (96.3 %)  — present carried the frame; its return is the onset
+            of which 281 came back inside the nominal boundary by mean
+            0.285 ms, max 1.861 ms — the phase offset between the nominal
+            frame grid and the panel's, not a wait.
+  paced   : 22 (3.7 %)  — returned early; Update held to the schedule
+            wait mean 2.496 ms  max 2.696 ms
+  verdict : the driver blocks. Flip timestamps carry the display's own
+            instant, and cannot drift against the panel.
 ```
 
-`Update` presents and then holds to the expected frame boundary, because
-`SDL_RenderPresent` cannot be trusted to block until the retrace. These counts say
-which of those two things actually happened, per frame:
+**Nothing here counts dropped or missed frames.** Every present appears in this
+block; a frame that never reached the panel shows up in the interval statistics
+above it, not here. The question it answers is what the run's flip timestamps
+were anchored to.
 
-- **blocked** — the driver returned on the display's own cadence. The flip
-  timestamp is then a hardware instant, and cannot drift against the panel.
-- **paced** — the driver returned early and `Update` waited. The flip timestamp is
-  then *the schedule*, which is only as accurate as the nominal refresh rate.
+`Update` presents and then holds to the expected frame boundary, because
+`SDL_RenderPresent` cannot be trusted to block until the retrace. The counts say
+what actually happened, per frame:
+
+- **blocked** — present covered the frame and returned at, or just inside, the
+  boundary. The flip timestamp is a hardware instant and cannot drift.
+  - the **of which** line is the part that returned *just* inside. This is normal:
+    a blocking present returns one *panel* period after the last one, while the
+    boundary is one *nominal* period after, and the two grids are never in exact
+    phase. It is a constant offset, re-established every frame, and it cancels in
+    any duration or reaction time (both are differences).
+- **paced** — present came back with most of the frame left, so `Update` held it.
+  The flip timestamp is then *the schedule*, only as accurate as the nominal
+  refresh rate.
+- **vblank** — `GOXPY_VBLANK=on` and the kernel supplied a measured vblank stamp.
+  The best case; the hold never reaches what is reported.
 
 A mostly-paced machine is not broken — the frames still land on the panel one per
 refresh, and the intervals above will look immaculate either way. That is exactly
@@ -52,11 +70,15 @@ and the panel in step forever. On a Raspberry Pi 4 (V3D/kmsdrm) the two drifted
 apart by 14 ms over an 8-minute run, growing linearly, which a photodiode found
 and no console number did.
 
-Read the `wait` line before drawing conclusions from the percentage: a few hundred
-microseconds is jitter around the boundary, while most of a frame is genuine
-triple/mailbox buffering. If a run is largely paced, compare the estimated refresh
-rate against the nominal one — the gap between them *is* the drift rate — and
-treat onsets measured on that machine as relative rather than absolute.
+The `verdict` line already weighs the hold against the frame, so read it rather
+than the percentages: it is computed from the time held per present across the
+whole run, not from the paced share, precisely because a driver that blocks but
+sits a fraction of a millisecond off the nominal grid can take the held branch on
+nearly every frame while blocking for 96 % of each one. Only
+`the driver does NOT block` asks anything of you — compare the estimated refresh
+rate against the nominal one, since the gap between them *is* the drift rate, and
+treat onsets on that machine as relative rather than absolute. Fuller guidance in
+[`docs/TimingTests.md`](../../docs/TimingTests.md).
 
 ---
 

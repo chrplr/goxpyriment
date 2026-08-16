@@ -113,7 +113,7 @@ Displays:   [0] Built-in display  1920x1200  60.040 Hz  bounds 0,0 1920x1200  [p
             video driver: wayland   (the [N] above is the -d N value)
 Audio out:  [0] Speaker
             driver: pipewire
-Vblank:     onsets come from the pacing schedule (default)
+Vblank:     onsets come from the present's return, or from the pacing schedule on frames where the driver did not block (default)
             available if asked for with GOXPY_VBLANK=on: Linux DRM vblank (card /dev/dri/card1, crtc 0, DRM_IOCTL_WAIT_VBLANK, hardware-verified)
 ```
 

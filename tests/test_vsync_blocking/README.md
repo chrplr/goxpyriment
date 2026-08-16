@@ -19,8 +19,13 @@ a variable-refresh-rate panel exposes the supported range.
 
 ## How to interpret results
 
-- **BLOCKING** — unaided ≈ nominal. The driver honours VSYNC by itself, and the
-  pacing spin inside `Update` exits immediately, costing nothing.
+- **BLOCKING** — unaided ≈ nominal. The driver honours VSYNC by itself, and no
+  hold runs inside `Update` at all, costing nothing. This verdict often comes
+  with a count of presents that "came back inside the nominal boundary": those
+  *are* blocking presents, landing a fraction of a millisecond early because the
+  nominal frame grid and the panel's are never in exact phase. The present is
+  still the timestamp anchor, so the offset is constant and cannot accumulate —
+  it is reported, not warned about.
 - **NON-BLOCKING** — unaided well *below* nominal. `SDL_RenderPresent` returns
   before the retrace (triple/mailbox buffering, or a compositor accepting the
   buffer). Without pacing, stimulus frames would be swallowed before the panel
