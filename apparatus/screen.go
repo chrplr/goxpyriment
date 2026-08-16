@@ -726,6 +726,14 @@ func (s *Screen) SetVSync(vsync int) error {
 // The Pi 4 figure above was confirmed against modetest: mode #0 is
 // 108000 kHz / (1688 x 1066) = 60.019740 Hz, and the loop's measured cadence
 // over four runs was +5.55 ppm from the rounded value, of which +4.33 is this.
+// Confirmed by re-measuring after the change: the same figure reads +0.64 ppm,
+// so this accounted for 4.9 of the 5.55 and what remains is the slew between
+// CLOCK_MONOTONIC and the pixel clock (-0.9 ppm, measured separately). That the
+// residual is sub-ppm also says the Pi's system counter and its pixel clock
+// derive from one oscillator: an independent crystal would show tens of ppm,
+// which is the range a monitor's own clock lives in and the reason it never
+// entered any of these numbers — on a fixed-refresh digital link the source
+// generates the cadence and the panel slaves to it.
 func (s *Screen) FrameDuration() time.Duration {
 	var hz float32 = 60.0
 	id := sdl.GetDisplayForWindow(s.Window)
