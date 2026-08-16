@@ -228,17 +228,65 @@ func longestCleanRun(d []float64, frameMs float64) (lo, hi int) {
 	return bestLo, bestHi
 }
 
-// reportSeries prints the statistics that separate a ramp from jitter, and
-// returns the index range the slope was fitted over so the caller can fit the
-// period estimates on the same cycles.
+// longestCleanIntervalRun returns the widest half-open range [lo,hi) of an
+// ONSET train whose consecutive intervals are all within 0.4 of a frame of the
+// median interval, plus how many cycles fell outside that tolerance.
+//
+// longestCleanRun above is the same idea applied to a DIFFERENCE series, and
+// the two are not interchangeable. A dropped frame shifts every channel
+// together, so it is invisible in a difference and unmissable in an onset
+// train: use this one whenever the quantity being fitted is a period, and that
+// one whenever it is a delay.
+//
+// The tolerance is on the median interval rather than a nominal one so this
+// needs no assumption about the cycle length, and the median survives the drops
+// it is being used to find.
+func longestCleanIntervalRun(t []float64, frameMs float64) (lo, hi, dropped int) {
+	if frameMs <= 0 || len(t) < 3 {
+		return 0, len(t), 0
+	}
+	iv := make([]float64, len(t)-1)
+	for i := 1; i < len(t); i++ {
+		iv[i-1] = t[i] - t[i-1]
+	}
+	sorted := append([]float64(nil), iv...)
+	sort.Float64s(sorted)
+	med := sorted[len(sorted)/2]
+
+	bestLo, bestHi, curLo := 0, 0, 0
+	for i := 0; i <= len(iv); i++ {
+		// An interval outside tolerance ends the current stretch: index i is the
+		// last usable point of it, and the next stretch starts at i+1 so the
+		// long cycle itself is in neither.
+		if i == len(iv) || math.Abs(iv[i]-med) > 0.4*frameMs {
+			if i < len(iv) {
+				dropped++
+			}
+			if i+1-curLo > bestHi-bestLo {
+				bestLo, bestHi = curLo, i+1
+			}
+			curLo = i + 1
+		}
+	}
+	return bestLo, bestHi, dropped
+}
+
+// reportSeries prints the statistics that separate a ramp from jitter.
+//
+// It deliberately returns nothing. It used to hand back the index range its
+// slope was fitted over, "so the caller can fit the period estimates on the
+// same cycles" — and that was wrong: this range comes from a DIFFERENCE series,
+// where a dropped frame is invisible because it shifts both channels together.
+// Reusing it for a period fit walked straight into the drops it appeared to
+// exclude. Period fits use longestCleanIntervalRun on an onset train instead.
 //
 // The raw SD is printed because it is the number everybody quotes, immediately
 // beside the two that decompose it. A series that is 99% ramp and a series that
 // is 99% scatter can share a raw SD to three significant figures and mean
 // completely different things about the apparatus.
-func reportSeries(d, t []float64, cycleMs, frameMs float64) (lo, hi int) {
+func reportSeries(d, t []float64, cycleMs, frameMs float64) {
 	n := len(d)
-	lo, hi = longestCleanRun(d, frameMs)
+	lo, hi := longestCleanRun(d, frameMs)
 	seg := d[lo:hi]
 	slope, intercept := leastSquares(seg) // per cycle index within the segment
 	resid := make([]float64, len(seg))
@@ -308,7 +356,6 @@ func reportSeries(d, t []float64, cycleMs, frameMs float64) (lo, hi int) {
 	}
 
 	fmt.Printf("  %-20s : %s\n", "VERDICT", verdict(slope, detSD, sd(seg), cycleMs))
-	return lo, hi
 }
 
 // verdict names the failure mode rather than passing or failing, because the
@@ -386,7 +433,7 @@ func reportAgainstHost(flips, ttlOn, lightOn []float64, cycleMs, frameMs float64
 		fp[i] = photonHost - fl[i]
 	}
 	fmt.Printf("\n── flip timestamp → photons (host timebase) ──────────────\n")
-	lo, hi := reportSeries(fp, fl, cycleMs, frameMs)
+	reportSeries(fp, fl, cycleMs, frameMs)
 	fmt.Printf("  %-20s   this is the quantity that lands in a reaction time.\n", "")
 
 	// The panel's true period against the one the host ran on.
@@ -398,22 +445,46 @@ func reportAgainstHost(flips, ttlOn, lightOn []float64, cycleMs, frameMs float64
 	// not there. Fitting a line through a thousand points averages that
 	// quantisation down to well under a ppm.
 	//
-	// Fitted over the same dropped-frame-free span as the difference series
-	// above, and for the same reason: a cycle that ran one frame long adds a
-	// step to BOTH onset trains, and a step biases a fitted period exactly as it
-	// biases a fitted slope. On the 20-cycle capture that exposed this, the host
-	// frame came out 16.699 ms against a true 16.661 — a 2265 ppm error from one
-	// dropped frame, on a host whose real error is a few ppm.
-	panelSlope, _ := leastSquares(li[lo:hi])
-	hostSlope, _ := leastSquares(fl[lo:hi])
+	// A dropped frame biases a fitted period exactly as it biases a fitted
+	// slope, so this fit needs a dropped-frame-free span too — but NOT the one
+	// the difference series was fitted over.
+	//
+	// That was the bug. A cycle that runs one frame long delays the TTL, the
+	// photons and the flip stamp alike, so it leaves NO step in their
+	// difference: longestCleanRun over the delay series correctly reports zero
+	// one-frame jumps and hands back the whole run. Fitting the period over that
+	// span then walks straight into the drop. Measured on a 1000-cycle Pi 4
+	// capture on 2026-08-16 with exactly one drop: the tool reported the panel
+	// 29.9 ppm away from the display mode, while the median cycle put it at
+	// 0.1 ppm — the whole discrepancy was that one cycle. Earlier, on a 20-cycle
+	// capture, the same mechanism produced 2265 ppm.
+	//
+	// So the span for the period comes from the ONSET intervals, where a drop is
+	// visible as a cycle a frame longer than its neighbours.
+	plo, phi, dropped := longestCleanIntervalRun(fl, frameMs)
+	panelSlope, _ := leastSquares(li[plo:phi])
+	hostSlope, _ := leastSquares(fl[plo:phi])
 	panelMs := panelSlope / b
 	hostMs := hostSlope
 	fmt.Printf("\n── Cycle period: panel vs host ───────────────────────────\n")
-	fmt.Printf("  %-20s : %.5f ms  (fitted over %d cycles)\n", "from photons", panelMs, hi-lo)
+	fmt.Printf("  %-20s : %.5f ms  (fitted over %d cycles)\n", "from photons", panelMs, phi-plo)
 	fmt.Printf("  %-20s : %.5f ms\n", "from flip stamps", hostMs)
+	if dropped > 0 {
+		// Say what was excluded. A period quoted over 43 % of the run because
+		// the drops fell badly is a different measurement from one over 99 %,
+		// and the reader cannot tell from the number itself.
+		fmt.Printf("  %-20s : %d cycle(s) ran a frame or more long; the fit uses the\n",
+			"frames dropped", dropped)
+		fmt.Printf("  %-20s   longest clean stretch, %d of %d cycles (%.0f %%).\n", "",
+			phi-plo, len(fl), 100*float64(phi-plo)/float64(len(fl)))
+	}
 	if panelMs > 0 {
 		mism := (hostMs - panelMs) / panelMs * 1e6
-		fmt.Printf("  %-20s : %+.2f ppm  (%+.3f ms over %d cycles)\n", "mismatch", mism, (hostMs-panelMs)*float64(hi-lo-1), hi-lo)
+		// Accumulated over the cycles the periods were actually fitted on, not
+		// over the whole capture: quoting a total for cycles the fit excluded
+		// would overstate it in exactly the runs that had drops.
+		fmt.Printf("  %-20s : %+.2f ppm  (%+.3f ms over %d cycles)\n", "mismatch", mism,
+			(hostMs-panelMs)*float64(phi-plo-1), phi-plo)
 		if frameMs > 0 {
 			fpc := math.Round(panelMs / frameMs)
 			if fpc >= 1 {
