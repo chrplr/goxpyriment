@@ -117,31 +117,33 @@ import (
 // ── Flags ─────────────────────────────────────────────────────────────────────
 
 var (
-	fTest        = flag.String("test", "av", "Sub-test: av | vrr | rt | check | display | latency")
-	fTrigDevice  = flag.String("trigger-device", "dlpio8", "TTL output device: dlpio8 (USB serial) | parallel (LPT port via ppdev) |\n\tgpio (Linux GPIO character device) | ft232h (Adafruit FT232H over USB) |\n\tlabjackt4 (LabJack T4 over Modbus TCP).\n\tThey are not interchangeable: parallel and gpio write through a local ioctl,\n\tdlpio8 and ft232h cross a USB link, and labjackt4 crosses the network — each\n\tstep adds latency and jitter between the flip and the TTL edge. Prefer\n\tparallel on a desktop with an LPT port, gpio on a single-board computer\n\t(Raspberry Pi, Rock Pi, …). Recorded as 'trigger' in the results header.")
-	fPort        = flag.String("port", "", "Serial port for DLP-IO8-G (empty = auto-detect) [trigger-device=dlpio8]")
-	fLJHost      = flag.String("labjack-host", "", "LabJack T4 address, e.g. 192.168.1.100 or 192.168.1.100:502 (required)\n\t[trigger-device=labjackt4]. -trigger-pin selects the line: pin 1 is DIO4 =\n\tscrew terminal FIO4, pin 8 is DIO11 = EIO3 on the DB15.")
-	fParPort     = flag.String("parallel-port", "", "Parallel port device, e.g. /dev/parport0 (empty = first accessible one)\n\t[trigger-device=parallel]. -trigger-pin selects the data line: pin 1 is D0,\n\twhich is DB25 pin 2.")
-	fGPIOChip    = flag.String("gpio-chip", "/dev/gpiochip0", "GPIO chip device path [trigger-device=gpio]")
-	fGPIOPins    = flag.String("gpio-pins", "17,27,22,5,6,13,19,26", "The 8 GPIO output pins, comma-separated, chip-relative (BCM numbering on a\n\tRaspberry Pi) [trigger-device=gpio]. -trigger-pin selects among them: pin 1 is\n\tthe first in this list.")
-	fTriggerPin  = flag.Int("trigger-pin", 1, "Output pin (1–8). On dlpio8 this is the number on the terminal block;\n\ton gpio it is the position in -gpio-pins, NOT the BCM number; on ft232h it is\n\tthe D-bus line, pin 1 = AD0; on labjackt4 it is the position in DIO4–DIO11,\n\tpin 1 = DIO4 = FIO4.")
-	fTriggerMs   = flag.Int("trigger-ms", 5, "Trigger pulse duration (ms)")
-	fCycles      = flag.Int("cycles", 120, "Number of cycles [av / rt]")
-	fLevelA      = flag.Int("level-a", 0, "Dark luminance 0–255 (surround) [av / vrr]")
-	fLevelB      = flag.Int("level-b", 255, "Bright luminance 0–255 (squares) [av / vrr]")
-	fFramesOn    = flag.Int("frames-on", 12, "Bright frames per cycle (12 = 200 ms at 60 Hz) [av]")
-	fFramesOff   = flag.Int("frames-off", 18, "Dark frames per cycle (18 = 300 ms at 60 Hz) [av]")
-	fSoaMs       = flag.Float64("soa-ms", 0, "Visual-to-audio SOA ms; negative = audio first [av]")
-	fItiMs       = flag.Float64("iti-ms", 1000, "Mean inter-trial interval ms, jittered ±50 % [rt]")
-	fFreqHz      = flag.Float64("freq-hz", 1000, "Tone frequency Hz [av / latency]")
-	fDurationS   = flag.Float64("duration-s", 10, "Measurement duration in seconds [display]")
-	fAudioFrames = flag.Int("audio-frames", 0, "Audio hardware buffer size in sample frames, e.g. 256, 512, 1024,... (0=SDL default) ")
-	fHz          = flag.Float64("hz", 60.0, "Expected display refresh rate in Hz; sets the tone duration (frames-on × 1/hz) [av]")
-	fWarmup      = flag.Int("warmup", 10, "Leading cycles discarded from statistics [av / display]")
-	fDrainReps   = flag.Int("drain-reps", 10, "Repetitions per tone duration [latency]")
-	fVRRMaxMs    = flag.Int("vrr-max-ms", 20, "Maximum stimulus duration to sweep, in 1 ms steps [vrr]")
-	fVRRReps     = flag.Int("vrr-reps", 5, "Repetitions per duration step [vrr].\n\tThe defaults (20 steps x 5 reps) run in about 20 s; the sweep is a\n\tpass/fail check that arbitrary durations are presentable, so it does not\n\tneed the cycle counts the av test uses. Raise both for tighter SDs.")
-	fWindowed    = flag.Bool("w", false, "Windowed mode (1024×768 window instead of fullscreen)")
+	fTest         = flag.String("test", "av", "Sub-test: av | vrr | rt | check | display | latency")
+	fTrigDevice   = flag.String("trigger-device", "dlpio8", "TTL output device: dlpio8 (USB serial) | parallel (LPT port via ppdev) |\n\tgpio (Linux GPIO character device) | ft232h (Adafruit FT232H over USB) |\n\tlabjackt4 (LabJack T4 over Modbus TCP).\n\tThey are not interchangeable: parallel and gpio write through a local ioctl,\n\tdlpio8 and ft232h cross a USB link, and labjackt4 crosses the network — each\n\tstep adds latency and jitter between the flip and the TTL edge. Prefer\n\tparallel on a desktop with an LPT port, gpio on a single-board computer\n\t(Raspberry Pi, Rock Pi, …). Recorded as 'trigger' in the results header.")
+	fPort         = flag.String("port", "", "Serial port for DLP-IO8-G (empty = auto-detect) [trigger-device=dlpio8]")
+	fLJHost       = flag.String("labjack-host", "", "LabJack T4 address, e.g. 192.168.1.100 or 192.168.1.100:502 (required)\n\t[trigger-device=labjackt4]. -trigger-pin selects the line: pin 1 is DIO4 =\n\tscrew terminal FIO4, pin 8 is DIO11 = EIO3 on the DB15.")
+	fParPort      = flag.String("parallel-port", "", "Parallel port device, e.g. /dev/parport0 (empty = first accessible one)\n\t[trigger-device=parallel]. -trigger-pin selects the data line: pin 1 is D0,\n\twhich is DB25 pin 2.")
+	fGPIOChip     = flag.String("gpio-chip", "/dev/gpiochip0", "GPIO chip device path [trigger-device=gpio]")
+	fGPIOPins     = flag.String("gpio-pins", "17,27,22,5,6,13,19,26", "The 8 GPIO output pins, comma-separated, chip-relative (BCM numbering on a\n\tRaspberry Pi) [trigger-device=gpio]. -trigger-pin selects among them: pin 1 is\n\tthe first in this list.")
+	fTriggerPin   = flag.Int("trigger-pin", 1, "Output pin (1–8). On dlpio8 this is the number on the terminal block;\n\ton gpio it is the position in -gpio-pins, NOT the BCM number; on ft232h it is\n\tthe D-bus line, pin 1 = AD0; on labjackt4 it is the position in DIO4–DIO11,\n\tpin 1 = DIO4 = FIO4.")
+	fTriggerMs    = flag.Int("trigger-ms", 5, "Trigger pulse duration (ms)")
+	fCycles       = flag.Int("cycles", 120, "Number of cycles [av / rt]")
+	fLevelA       = flag.Int("level-a", 0, "Dark luminance 0–255 (surround) [av / vrr]")
+	fLevelB       = flag.Int("level-b", 255, "Bright luminance 0–255 (squares) [av / vrr]")
+	fFramesOn     = flag.Int("frames-on", 12, "Bright frames per cycle (12 = 200 ms at 60 Hz) [av]")
+	fFramesOff    = flag.Int("frames-off", 18, "Dark frames per cycle (18 = 300 ms at 60 Hz) [av]")
+	fSoaMs        = flag.Float64("soa-ms", 0, "Visual-to-audio SOA ms; negative = audio first [av]")
+	fItiMs        = flag.Float64("iti-ms", 1000, "Mean inter-trial interval ms, jittered ±50 % [rt]")
+	fFreqHz       = flag.Float64("freq-hz", 1000, "Tone frequency Hz [av / latency]")
+	fDurationS    = flag.Float64("duration-s", 10, "Measurement duration in seconds [display]")
+	fAudioFrames  = flag.Int("audio-frames", 0, "Audio hardware buffer size in sample frames, e.g. 256, 512, 1024,... (0=SDL default) ")
+	fHz           = flag.Float64("hz", 60.0, "Expected display refresh rate in Hz; sets the tone duration (frames-on × 1/hz) [av]")
+	fWarmup       = flag.Int("warmup", 10, "Leading cycles discarded from statistics [av / display]")
+	fDrainReps    = flag.Int("drain-reps", 10, "Repetitions per tone duration [latency]")
+	fVRRMaxMs     = flag.Int("vrr-max-ms", 20, "Maximum stimulus duration to sweep, in 1 ms steps [vrr]")
+	fVRRReps      = flag.Int("vrr-reps", 5, "Repetitions per duration step [vrr].\n\tThe defaults (20 steps x 5 reps) run in about 20 s; the sweep is a\n\tpass/fail check that arbitrary durations are presentable, so it does not\n\tneed the cycle counts the av test uses. Raise both for tighter SDs.")
+	fWindowed     = flag.Bool("w", false, "Windowed mode (1024×768 window instead of fullscreen)")
+	fRealtimePrio = flag.Int("realtime-priority", control.DefaultRealTimePriority,
+		"SCHED_FIFO priority to request (1-99), or 0 to run at normal scheduling.\n\tLowering it is how to test whether this thread is starving the audio server's.")
 	fDisplay     = flag.Int("d", -1, "Display index: monitor where the window/fullscreen will open (-1 = primary)")
 	fExclusiveFS = flag.String("exclusive-fullscreen", "auto", "Fullscreen presentation: auto | on (exclusive, bypasses the compositor where possible) | off (fullscreen-desktop).\n\tRecorded as 'sys fullscreen_mode' in the results header; the two are not comparable.")
 	fSysInfo     = flag.Bool("sysinfo", false, "Print system information and exit")
@@ -1641,6 +1643,20 @@ func main() {
 	if *fDisplay >= 0 {
 		exp.ScreenNumber = *fDisplay
 	}
+	// Must precede Initialize: that is where the elevation is requested.
+	//
+	// This test builds its Experiment with NewExperiment, so it never saw the
+	// -no-realtime / -realtime-priority flags that NewExperimentFromFlags
+	// parses, and ran at a fixed SCHED_FIFO 50 with no way to decline. That is
+	// the wrong program to leave without the switch: the scheduling policy is
+	// one of the conditions a timing measurement is supposed to vary, and on a
+	// Raspberry Pi 4 on 2026-08-16 a run's tone came out with ~20 ms silent gaps
+	// in 23 % of trials — one candidate being our real-time thread starving
+	// PipeWire's on a four-core host, which could not be tested without this.
+	if *fRealtimePrio < 0 || *fRealtimePrio > 99 {
+		log.Fatalf("-realtime-priority: %d is outside the SCHED_FIFO range 0-99 (0 = do not ask)", *fRealtimePrio)
+	}
+	exp.RealTimePriority = *fRealtimePrio
 	// Must precede Initialize: that is where the data file is created.
 	if *fOutDir != "" {
 		exp.SetOutputDirectory(*fOutDir)
@@ -1679,8 +1695,18 @@ func main() {
 	// Record the collector state in both the console report and the data-file
 	// header, so GC-on and GC-off runs cannot be confused during analysis.
 	fmt.Printf("gc: %s during timing-critical loops\n", gcLabel())
+	// The scheduling policy goes in for the same reason as the collector state:
+	// it changes results by more than most of what this test measures, and a run
+	// recorded without it cannot be compared with one recorded under a different
+	// policy afterwards.
+	schedLabel := fmt.Sprintf("SCHED_FIFO %d requested", exp.RealTimePriority)
+	if exp.RealTimePriority == 0 {
+		schedLabel = "normal scheduling (SCHED_OTHER), not requested"
+	}
+	fmt.Printf("sched: %s\n", schedLabel)
 	if exp.Data != nil {
 		exp.Data.WriteComment("gc=" + gcLabel())
+		exp.Data.WriteComment(fmt.Sprintf("sched realtime_priority=%d", exp.RealTimePriority))
 	}
 
 	trig, trigDesc := setupTrigger()
