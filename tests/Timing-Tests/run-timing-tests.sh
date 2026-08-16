@@ -16,11 +16,19 @@
 # Environment overrides:
 #   BIN               binary to run            (default: build ./Timing-Tests)
 #   SDL_AUDIODRIVER   audio backend            (default: unset = SDL picks)
-#   AUDIO_BUFFSIZE    hardware buffer, frames  (default: 512; a Pi 4 on PipeWire
-#                                              underruns at 512 — 23 % of tones
+#   AUDIO_BUFFSIZE    hardware buffer, frames  (default: 2048. It was 512 until
+#                                              a Pi 4 on PipeWire was found to
+#                                              underrun there — 23 % of tones
 #                                              torn by a ~22 ms silent gap, ears
-#                                              and microphone agreeing, console
-#                                              output clean. Use 2048 there and
+#                                              and microphone agreeing, while the
+#                                              console output stayed clean. A
+#                                              buffer that tears the sound costs
+#                                              more than the ~32 ms of extra
+#                                              latency it saves, and the latency
+#                                              is constant and measurable where
+#                                              the tearing is neither. Lower it
+#                                              deliberately, per machine, after
+#                                              checking pw-top's ERR column —
 #                                              see docs/TimingTests.md)
 #   REFRESH_HZ        expected refresh rate    (default: 60)
 #   OUTDIR            session directory        (default: reports-<hostname>)
@@ -110,11 +118,20 @@ set -o pipefail
 if [ -n "${SDL_AUDIODRIVER:-}" ]; then
 	export SDL_AUDIODRIVER
 fi
-# 512 frames (11.6 ms at 44100 Hz) rather than 256: at 256 the ALSA path
-# underran repeatedly on the reference rig, and a dropped buffer corrupts tone
-# onsets far more than the coarser quantisation does. This sets the floor on
-# audio-onset precision, so it is recorded in each run's -info.txt.
-AUDIO_BUFFSIZE="${AUDIO_BUFFSIZE:-512}"
+# 2048 frames (42.7 ms at 48 kHz). The value has been walked up twice by the
+# same failure: 256 underran on the reference rig's ALSA path, then 512 underran
+# on a Raspberry Pi 4's PipeWire path — 23 % of tones torn by a ~22 ms silent
+# gap, mic-verified, while every software statistic stayed clean (0.080 ms SD on
+# the release time). Buffer size, not scheduling: the same 2x2 with
+# -realtime-priority 0 scratched at 512 and was clean at 2048 under both.
+#
+# The trade is not symmetric, which is why the default sits high. A large buffer
+# costs latency that is CONSTANT and measurable — `-test latency` reports it, and
+# it can be compensated by scheduling the tone earlier. A buffer that underruns
+# costs torn audio that no host-side number reveals. This sets the floor on
+# audio-onset precision either way, so it is recorded in each run's -info.txt;
+# lower it per machine after watching pw-top's ERR column.
+AUDIO_BUFFSIZE="${AUDIO_BUFFSIZE:-2048}"
 REFRESH_HZ="${REFRESH_HZ:-60}"
 # 440 Hz, the tone Bridges et al. (2020) used, so the audio row of a session can
 # be placed beside their Table 2. Timing-Tests defaults to 1000 Hz and this
