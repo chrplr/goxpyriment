@@ -244,13 +244,14 @@ func PresentStreamOfStimuliHooks(screen *apparatus.Screen, elements []StreamElem
 		}
 	}
 
-	// 2. Timing Setup: query the display's actual refresh rate
-	var refreshRate float32 = 60.0
-	displayID := sdl.GetDisplayForWindow(screen.Window)
-	if mode, err := displayID.CurrentDisplayMode(); err == nil && mode != nil && mode.RefreshRate > 0 {
-		refreshRate = mode.RefreshRate
-	}
-	frameDuration := time.Duration(float64(time.Second) / float64(refreshRate))
+	// 2. Timing Setup: the display's frame period.
+	//
+	// Screen.FrameDuration rather than a second copy of the query here: it
+	// reads the mode's exact rational rate, where SDL's RefreshRate float is
+	// rounded to two decimals — +33 ppm on a 60.038 Hz panel. This loop is the
+	// high-precision RSVP path, so it is the last place that should carry a
+	// rounded frame period.
+	frameDuration := screen.FrameDuration()
 
 	var userEvents []UserEvent
 	var timingLogs []TimingLog

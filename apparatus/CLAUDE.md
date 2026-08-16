@@ -291,7 +291,18 @@ photodiode trains of the two runs above (`cmd/timing-drift`, 1000 cycles each):
 
 The display mode wins by a factor of ten on both. `CalibrateRefresh` takes the
 median of 59 intervals from a deliberately unpaced loop, so on a driver that does
-not block it measures the loop, not the panel. It remains the right tool for the
+not block it measures the loop, not the panel.
+
+**Those "nominal display mode" figures were SDL's `RefreshRate` float, which SDL3
+rounds to two decimals.** `FrameDuration` now reads the mode's exact rational
+(`RefreshRateNumerator/Denominator`) instead — on the 5490 that is 60.038 Hz, not
+60.0400, so the −25 ppm above becomes about −8 ppm (recomputed from the mode, not
+re-measured). Measured error of the rounded value: +33.3 ppm on the 5490,
++4.3 ppm on a Pi 4 whose kmsdrm mode is 108000 kHz / (1688 × 1066) =
+60.019740 Hz against a reported 60.02. What is left on the 5490 is Wayland
+reporting refresh in whole mHz — 16.7 ppm of quantisation at 60 Hz — which no
+reading of the mode can recover; kmsdrm derives the rational from the timing and
+is exact. It remains the right tool for the
 job it documents below; it is not a rate reference. The kernel's vblank timestamp
 is — consecutive `DRM_IOCTL_WAIT_VBLANK` stamps on the 5490 give 60.0384 Hz,
 **1.3 ppm** from the photodiode truth, and `media/present/drm_linux.go` already

@@ -127,6 +127,10 @@ func (s *Screen) present() error {
 //	nominal display mode 60.0000 Hz        60.0400 Hz   ->  -0.1 /  -25 ppm
 //	CalibrateRefresh(60) 60.0043 Hz        60.0228 Hz   -> -72 / +261 ppm
 //
+// (Those display-mode figures were SDL's rounded RefreshRate float.
+// FrameDuration now reads the mode's exact rational instead, which is a further
+// +33.3 ppm on the 5490 and +4.3 ppm on a Pi 4 — see FrameDuration.)
+//
 // The display mode is the better estimate on both machines, by a factor of
 // ten. CalibrateRefresh takes the median of 59 intervals from a loop that is
 // deliberately unpaced, so on a driver that does not block it measures the

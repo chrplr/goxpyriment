@@ -700,14 +700,46 @@ func (s *Screen) SetVSync(vsync int) error {
 	return nil
 }
 
-// FrameDuration returns the nominal duration of one display frame based on
-// the refresh rate of the screen's current display mode.
+// FrameDuration returns the nominal duration of one display frame, taken from
+// the screen's current display mode.
 // Falls back to 60 Hz if the refresh rate cannot be queried.
+//
+// It reads the mode's exact rational rate (RefreshRateNumerator /
+// RefreshRateDenominator) in preference to the RefreshRate float, because SDL3
+// rounds that float to two decimal places and the rounding is not small on the
+// scale this is used at. Measured 2026-08-16:
+//
+//	                        SDL RefreshRate   exact rational   error
+//	Precision 5490 (Wayland)   60.0400 Hz      60038/1000      +33.3 ppm
+//	Raspberry Pi 4 (kmsdrm)    60.0200 Hz   108000000/1799408   +4.3 ppm
+//
+// Where the driver does not block, this value IS the rate the flip timestamps
+// advance at, so its error is the drift rate against the panel — 33 ppm is
+// 16 ms over an eight-minute block, a whole frame. It also sets the frame grid
+// the vblank path counts on and the slack in paceToFrame, so it is worth having
+// exact everywhere.
+//
+// What remains after this is the source's own quantisation, and it differs by
+// backend: kmsdrm derives the rational from clock/(htotal x vtotal) and is
+// exact, while Wayland reports whole mHz — 1 mHz at 60 Hz is 16.7 ppm, so on
+// that path the mode cannot be trusted below about 8 ppm however it is read.
+// The Pi 4 figure above was confirmed against modetest: mode #0 is
+// 108000 kHz / (1688 x 1066) = 60.019740 Hz, and the loop's measured cadence
+// over four runs was +5.55 ppm from the rounded value, of which +4.33 is this.
 func (s *Screen) FrameDuration() time.Duration {
 	var hz float32 = 60.0
 	id := sdl.GetDisplayForWindow(s.Window)
-	if mode, err := id.CurrentDisplayMode(); err == nil && mode != nil && mode.RefreshRate > 0 {
-		hz = mode.RefreshRate
+	if mode, err := id.CurrentDisplayMode(); err == nil && mode != nil {
+		// int64 throughout: the denominator is a pixel count (under 1e7) and
+		// time.Second is 1e9, so the product cannot overflow, and doing it in
+		// integers avoids reintroducing a rounding of our own.
+		if mode.RefreshRateNumerator > 0 && mode.RefreshRateDenominator > 0 {
+			return time.Duration(int64(time.Second) *
+				int64(mode.RefreshRateDenominator) / int64(mode.RefreshRateNumerator))
+		}
+		if mode.RefreshRate > 0 {
+			hz = mode.RefreshRate
+		}
 	}
 	return time.Duration(float64(time.Second) / float64(hz))
 }
@@ -801,7 +833,17 @@ func (s *Screen) RefreshRate() float32 {
 		return 0
 	}
 	id := sdl.GetDisplayForWindow(s.Window)
-	if mode, err := id.CurrentDisplayMode(); err == nil && mode != nil && mode.RefreshRate > 0 {
+	mode, err := id.CurrentDisplayMode()
+	if err != nil || mode == nil {
+		return 0
+	}
+	// Same source and same preference as FrameDuration, so the two cannot
+	// disagree: the exact rational first, SDL's rounded float only as a
+	// fallback.
+	if mode.RefreshRateNumerator > 0 && mode.RefreshRateDenominator > 0 {
+		return float32(float64(mode.RefreshRateNumerator) / float64(mode.RefreshRateDenominator))
+	}
+	if mode.RefreshRate > 0 {
 		return mode.RefreshRate
 	}
 	return 0
