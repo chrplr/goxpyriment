@@ -122,9 +122,13 @@ Vblank:     onsets come from the pacing schedule (default)
 It reports two independent things: where this run's onset timestamps will come
 from, and whether the machine has a kernel vblank clock at all.
 
-By default `FlipTS` returns a timestamp derived from the pacing schedule.
-`GOXPY_VBLANK=on` instead anchors it on the kernel's vblank stamps — **off by
-default, and there is currently no reason to turn it on.**
+By default `FlipTS` returns whichever anchor the driver made available that
+frame: the present's own return where `SDL_RenderPresent` blocks on the retrace,
+and a timestamp derived from the pacing schedule where it does not (the run's
+`Frame pacing` block says which — see [The `Frame pacing`
+block](#the-frame-pacing-block)). `GOXPY_VBLANK=on` instead anchors every frame
+on the kernel's vblank stamps — **off by default, and there is currently no
+reason to turn it on.**
 
 Measured with a photodiode against a TTL, 1010 cycles per run, on a Raspberry
 Pi 4 (V3D/kmsdrm) and a Radeon Pro W5700 (radeonsi, X11 exclusive fullscreen):
@@ -233,6 +237,68 @@ What to look for: a tight distribution centred on your nominal frame period. A
 long right tail means dropped frames — a compositor, a background process, or
 power management. A *bimodal* distribution usually means the display is not
 running at the rate it reports.
+
+#### The `Frame pacing` block
+
+Below the interval statistics the test prints a second block. **It does not
+report dropped or missed frames** — every present is counted in it, and a frame
+that never reached the panel would show up in the intervals above, not here.
+
+It answers a different question: *what were this run's flip timestamps anchored
+to?* `SDL_RenderPresent` is supposed to block until the retrace, but under
+triple or mailbox buffering it queues the frame and returns immediately. When it
+does, `Screen.Update` holds the frame to the boundary itself — and the onset it
+reports is then a *scheduled* time rather than a hardware one. The counts say
+which happened:
+
+| line | meaning | the onset `FlipTS` reports |
+|---|---|---|
+| `blocked` | present covered the frame and returned at, or just inside, the boundary | the present's own return — a hardware instant |
+| `early` | the part of `blocked` that returned *just* inside the nominal boundary | unchanged: still the present's return |
+| `paced` | present came back with most of the frame left, so `Update` held it | the scheduled boundary — synthesised |
+| `vblank` | a kernel vblank timestamp was available (`GOXPY_VBLANK=on`) | the vblank — measured |
+
+A typical good result, on an Intel/Mesa laptop under Wayland:
+
+```
+── Frame pacing ───────────────────────────────
+  presents: 1798   (frame = 16.661 ms)
+  blocked : 1798 (100.0 %)  — present carried the frame; its return is the onset
+            of which 1776 came back inside the nominal boundary by mean
+            0.676 ms, max 1.140 ms — the phase offset between the nominal
+            frame grid and the panel's, not a wait.
+  paced   : 0 (0.0 %)  — returned early; Update held to the schedule
+  verdict : the driver blocks. Flip timestamps carry the display's own
+            instant, and cannot drift against the panel.
+```
+
+**The `early` count is not a fault, and a large one is not a warning.** A
+blocking present returns one *panel* period after the last one, while the
+boundary it is compared against is one *nominal* period after — and the two
+grids are never in exact phase. On the machine above the gap was 0.676 ms of a
+16.661 ms frame, meaning present had blocked for 15.99 ms of every frame. It is
+a constant offset, re-established by the hardware on every frame, so it cannot
+accumulate and it does not enter any duration or reaction time you compute (both
+are *differences* between timestamps, and the offset cancels).
+
+What each verdict means for your experiment:
+
+- **`the driver blocks`** — nothing to do. Onsets are hardware-anchored.
+- **`onsets come from the kernel's vblank timestamp`** — nothing to do; this is
+  the most accurate configuration available.
+- **`the driver does NOT block`** — your frames are still correctly paced and
+  your *durations* are fine, but the onsets are stamped with a schedule running
+  at the nominal refresh rate. If that rate is wrong, absolute onsets slide
+  against the panel over long blocks. Compare the estimated refresh rate printed
+  above against the nominal one, run `timing-drift` on a photodiode capture
+  before quoting absolute onsets, and consider fullscreen or a session without a
+  compositor (see [Improving timing on your system](#improving-timing-on-your-system)).
+- **`MIXED`** — some frames took each path. Worth a photodiode check before
+  quoting absolute onsets.
+
+For a rig whose durations and reaction times matter to a few milliseconds, only
+the third verdict asks anything of you, and even then it bounds a *slow slide*
+over minutes, not per-trial error.
 
 ### `latency` — audio pipeline delay
 
@@ -487,8 +553,14 @@ mean.
 | Dropped frames per 100 cycles (`av`) | 0 | < 5 | > 10 |
 | VRR duration error SD (`vrr`) | < 0.1 ms | < 0.5 ms | > 1 ms (or periodic → no VRR) |
 | RT SD (`rt`) | < 3 ms | < 10 ms | > 20 ms |
+| Pacing verdict (`display`) | vblank, or blocks | MIXED | does NOT block |
 
 The hardware rows are the ones worth quoting in a methods section.
+
+The pacing row grades *what the onsets are anchored to*, not frame quality, and
+it is the one row where "problematic" still leaves durations and reaction times
+intact — read [The `Frame pacing` block](#the-frame-pacing-block) before acting
+on it.
 
 **But an SD alone cannot grade a TTL→photodiode series**, and the row above is
 the one most likely to mislead. A delay that slides steadily across a run has an
@@ -550,18 +622,27 @@ genuine.
 the `-info.txt` beside `sys vblank_backend`:
 
 ```
-# sys pacing: presents=30000 blocked=29997 paced=3 (0.0 % paced) …
-# sys pacing: presents=30000 blocked=0 paced=30000 (100.0 % paced) wait_mean=16.141 ms …
+# sys pacing: presents=30000 blocked=30000 early=29610 paced=0 vblank_held=0 (0.0 % paced) … class=blocking
+# sys pacing: presents=30000 blocked=0 early=0 paced=30000 (100.0 % paced) wait_mean=16.141 ms … class=not-blocking
 ```
 
-A drift-free result means two different things in those two cases. **Mostly
-blocked** means `SDL_RenderPresent` returned at the retrace and every frame
-re-anchored to the hardware — the pacing schedule was barely used, so the run
-says little about how accurate that schedule is. **Mostly paced** means the
-schedule *was* what advanced the clock, and a flat result there is evidence
-about the schedule itself.
+A drift-free result means two different things in those two cases.
+**`class=blocking`** means `SDL_RenderPresent` returned at the retrace and every
+frame re-anchored to the hardware — the pacing schedule was barely used, so the
+run says little about how accurate that schedule is. **`class=not-blocking`**
+means the schedule *was* what advanced the clock, and a flat result there is
+evidence about the schedule itself. `class=vblank` is a third case again: the
+onsets came from kernel vblank stamps and neither the driver nor the schedule
+was the reference.
 
-Without this line the two are indistinguishable after the fact, and a set of
+The other fields: `early` is the subset of `blocked` that returned just inside
+the nominal boundary (see [The `Frame pacing` block](#the-frame-pacing-block) —
+normal, and `early_mean` is the phase between the nominal and panel frame
+grids); `hold_frac` is the share of a frame period the loop spent holding
+against a synthesised boundary, averaged over every present, and is what
+`class` is derived from.
+
+Without this line the cases are indistinguishable after the fact, and a set of
 captures can end up unable to answer the question it was run for.
 
 ---
