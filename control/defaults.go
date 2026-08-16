@@ -256,8 +256,9 @@ func FontFromFile(path string, size float32) (*ttf.Font, error) {
 type DisplayInfo = apparatus.DisplayInfo
 
 // PacingStats is re-exported so callers need not import apparatus. It is what
-// exp.Screen.PacingStats() returns: how many presents the driver blocked on its
-// own versus how many Update had to hold to the frame boundary itself.
+// exp.Screen.PacingStats() returns: what the flip timestamps of a run were
+// anchored to — the present's own return, a kernel vblank, or Update's
+// schedule — and, for the schedule-anchored ones, how long the hold was.
 type PacingStats = apparatus.PacingStats
 
 // ListDisplays returns metadata for all connected displays, ordered so that

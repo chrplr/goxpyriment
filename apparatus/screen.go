@@ -92,39 +92,63 @@ type Screen struct {
 	vblChecked bool         // whether the one-time probe for it has run
 
 	// Pacing branch tallies, maintained by paceToFrame. See PacingStats.
-	blockedFrames  uint64
-	pacedFrames    uint64
-	pacedWaitNS    uint64
-	pacedWaitMaxNS uint64
+	blockedFrames    uint64
+	earlyFrames      uint64 // subset of blockedFrames: early, but within slack
+	pacedFrames      uint64
+	vblankHeldFrames uint64
+	pacedWaitNS      uint64
+	pacedWaitMaxNS   uint64
+	earlyNS          uint64
+	earlyMaxNS       uint64
 }
 
-// PacingStats reports which of paceToFrame's two anchors the presents in a run
-// used — that is, whether the driver blocked to the retrace on its own or
-// Update had to hold the frame itself.
+// PacingStats reports what the presents in a run were timestamped against —
+// the display's own instant, a measured kernel vblank, or Update's schedule.
 //
-// This distinction is otherwise invisible from inside a program, and it decides
-// how much a flip timestamp can be trusted: a Blocked present is stamped with
-// the hardware's own instant, whereas a Paced one is stamped with the schedule,
-// which can only be as accurate as the nominal refresh rate. A machine that
-// paces every frame is one where the timestamps drift against the panel by
-// however wrong that nominal rate is. Finding that on a Raspberry Pi 4 took a
-// photodiode (see paceToFrame); these counters are so it does not have to
-// again.
+// This is otherwise invisible from inside a program, and it decides how much a
+// flip timestamp can be trusted. Blocked and VblankHeld frames carry a hardware
+// instant and re-lock to the panel every frame. A Paced frame is stamped with a
+// schedule, which can only be as accurate as the nominal refresh rate: a run
+// that paces every frame drifts against the panel by however wrong that rate
+// is. Finding that on a Raspberry Pi 4 took a photodiode (see paceToFrame);
+// these counters are so it does not have to again.
 //
-// WaitTotal/WaitMax cover the Paced frames only, and are what separate a
-// borderline case from a real one: a present returning a few microseconds early
-// is jitter around the boundary and harmless, while one returning most of a
-// frame early is genuine triple/mailbox buffering.
+// The four counts are exclusive and sum to the number of paced presents:
 //
-// Neither counter advances for presents made with VSync off (Update skips
-// pacing entirely then), nor for the first present of the session, which has no
-// previous flip to pace against. So Blocked+Paced is at most one less than the
+//   - Blocked — present returned at or after the frame boundary, or early by no
+//     more than hwAnchorSlackDiv of a frame. Onset = present's return.
+//   - Early — the subset of Blocked that was early-within-slack. Tracked
+//     separately because its shortfall is the phase offset between the nominal
+//     frame grid and the panel's, which is worth reading (EarlyMean) but is not
+//     a pacing problem. NOT added on top of Blocked.
+//   - Paced — present returned early enough that it plainly had not blocked, so
+//     Update held the frame. Onset = the scheduled boundary.
+//   - VblankHeld — a kernel vblank timestamp was available (GOXPY_VBLANK), and
+//     the hold advanced to the next boundary after it. Onset = the vblank, so
+//     these are hardware-anchored despite having been held.
+//
+// WaitTotal/WaitMax cover the Paced frames only — the ones whose timestamps
+// came from the schedule — so WaitTotal/(presents × frameDur) is the share of
+// the run that was schedule-driven.
+//
+// No counter advances for presents made with VSync off (Update skips pacing
+// entirely then), nor for the first present of the session, which has no
+// previous flip to pace against. So the total is at most one less than the
 // number of presents, and can be far less if VSync was toggled.
 type PacingStats struct {
-	Blocked   uint64        // presents that returned at or after the frame boundary
-	Paced     uint64        // presents that returned early and were held to it
-	WaitTotal time.Duration // total time spent waiting, across Paced frames
-	WaitMax   time.Duration // longest single wait
+	Blocked    uint64        // present's own return was kept as the anchor
+	Early      uint64        // subset of Blocked: returned early, but within slack
+	Paced      uint64        // held to a synthesised boundary, which became the anchor
+	VblankHeld uint64        // held against a measured kernel vblank
+	WaitTotal  time.Duration // total time spent waiting, across Paced frames
+	WaitMax    time.Duration // longest single wait, across Paced frames
+	EarlyTotal time.Duration // total shortfall to the boundary, across Early frames
+	EarlyMax   time.Duration // largest single shortfall
+}
+
+// Presents is the number of presents the tallies cover.
+func (p PacingStats) Presents() uint64 {
+	return p.Blocked + p.Paced + p.VblankHeld // Early is a subset of Blocked
 }
 
 // WaitMean is the average wait over the paced frames, or 0 if there were none.
@@ -135,22 +159,38 @@ func (p PacingStats) WaitMean() time.Duration {
 	return p.WaitTotal / time.Duration(p.Paced)
 }
 
+// EarlyMean is how far inside the nominal boundary a blocking present came
+// back, averaged over the Early frames, or 0 if there were none. It is a phase
+// offset between two frame grids, not a wait that was served.
+func (p PacingStats) EarlyMean() time.Duration {
+	if p.Early == 0 {
+		return 0
+	}
+	return p.EarlyTotal / time.Duration(p.Early)
+}
+
 // PacingStats returns the tallies accumulated since the screen was created or
 // ResetPacingStats was last called.
 func (s *Screen) PacingStats() PacingStats {
 	return PacingStats{
-		Blocked:   s.blockedFrames,
-		Paced:     s.pacedFrames,
-		WaitTotal: time.Duration(s.pacedWaitNS),
-		WaitMax:   time.Duration(s.pacedWaitMaxNS),
+		Blocked:    s.blockedFrames,
+		Early:      s.earlyFrames,
+		Paced:      s.pacedFrames,
+		VblankHeld: s.vblankHeldFrames,
+		WaitTotal:  time.Duration(s.pacedWaitNS),
+		WaitMax:    time.Duration(s.pacedWaitMaxNS),
+		EarlyTotal: time.Duration(s.earlyNS),
+		EarlyMax:   time.Duration(s.earlyMaxNS),
 	}
 }
 
 // ResetPacingStats zeroes the tallies, so a measurement can exclude warm-up
 // frames and cover exactly the frames it reports on.
 func (s *Screen) ResetPacingStats() {
-	s.blockedFrames, s.pacedFrames = 0, 0
+	s.blockedFrames, s.earlyFrames = 0, 0
+	s.pacedFrames, s.vblankHeldFrames = 0, 0
 	s.pacedWaitNS, s.pacedWaitMaxNS = 0, 0
+	s.earlyNS, s.earlyMaxNS = 0, 0
 }
 
 // CenterToSDL converts center‑based coordinates to SDL top‑left based

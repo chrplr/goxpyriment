@@ -163,7 +163,7 @@ func (s *Screen) paceToFrame(prevFlipNS uint64) {
 	if s.anchorIsHW && frame > 0 {
 		n := (now-prevFlipNS)/frame + 1
 		target := prevFlipNS + n*frame
-		s.holdUntil(target, target-now)
+		s.holdUntil(target, target-now, true)
 		return
 	}
 
@@ -178,14 +178,68 @@ func (s *Screen) paceToFrame(prevFlipNS uint64) {
 		s.heldToTarget = false
 		return
 	}
-	s.holdUntil(target, target-now)
+	if short := target - now; short <= frame/hwAnchorSlackDiv {
+		// Early, but only just: present covered all but a fraction of the
+		// frame, so it did block on the retrace and merely came back a little
+		// inside the NOMINAL boundary. Treat it as the branch above — keep
+		// present's stamp and do not hold. See hwAnchorSlackDiv for why the
+		// shortfall is a phase offset rather than buffering, and why holding
+		// here was actively harmful.
+		s.blockedFrames++
+		s.earlyFrames++
+		s.earlyNS += short
+		if short > s.earlyMaxNS {
+			s.earlyMaxNS = short
+		}
+		s.heldToTarget = false
+		return
+	}
+	s.holdUntil(target, target-now, false)
 }
+
+// hwAnchorSlackDiv sets how far inside the nominal boundary SDL_RenderPresent
+// may return and still count as having blocked on the retrace: frameDur divided
+// by this, so 2.08 ms of a 16.67 ms frame.
+//
+// The two cases are far apart, which is what makes a threshold workable at all.
+// A present that blocks returns one panel period after the last one, so the only
+// thing separating it from the nominal boundary is the phase between the two
+// grids plus jitter — measured on a Precision 5490 (Intel/Mesa, Wayland,
+// 60.04 Hz nominal) on 2026-08-16: mean 0.676 ms, max 1.14 ms of a 16.661 ms
+// frame, i.e. present had covered 15.99 ms of every frame. A present that does
+// NOT block returns as soon as the command batch is queued, leaving most of the
+// frame: 6.5 ms mean early on the same machine windowed, 15+ ms on a Radeon Pro
+// W5700. Nothing observed sits between.
+//
+// Before this branch existed those 0.676 ms went to holdUntil, and the cost was
+// not the wait but the anchor: holding replaced present's hardware stamp with
+// the schedule, so 98.8 % of frames on that machine were timestamped by a clock
+// free-running at the nominal rate — the same construction that put a Pi 4
+// 14 ms adrift over eight minutes (see above). Anchoring on present instead
+// re-locks every frame to the panel, and costs the caller nothing: the loop
+// returns up to one slack early, draws, and the next present blocks to the same
+// vblank it would have waited for.
+//
+// The known false positive is a loop on a NON-blocking driver whose drawing
+// alone fills all but a slack of the frame; its presents then look near-boundary
+// while carrying no hardware instant. It is visible in the stats — Early with a
+// mean shortfall pressed up against the ceiling, rather than the sub-millisecond
+// figure a blocking driver gives — and pacing was already doing almost nothing
+// for such a loop.
+const hwAnchorSlackDiv = 8
 
 // holdUntil sleeps and then spins to target, and records the outcome.
 //
+// hwAnchored says whether the onset for this frame is a measured vblank (the
+// GOXPY_VBLANK path, where the hold advances to the next boundary after a
+// kernel timestamp) rather than the synthesised boundary this hold waited for.
+// It only selects which tally the frame lands in: the hold is identical, but a
+// vblank-anchored frame is NOT schedule-timestamped and must not be counted as
+// though it were.
+//
 // Only the last spinTailNS is spun; see the note above on the real-time
 // throttle for why the rest is slept.
-func (s *Screen) holdUntil(target, wait uint64) {
+func (s *Screen) holdUntil(target, wait uint64, hwAnchored bool) {
 	now := sdl.TicksNS()
 	if target-now > spinTailNS+minSleepNS {
 		time.Sleep(time.Duration(target - now - spinTailNS))
@@ -200,6 +254,10 @@ func (s *Screen) holdUntil(target, wait uint64) {
 	// accumulate here, at 0.04 ppm. That is 20 us over the 8-minute run that
 	// exposed the 14.5 ms drift.
 	s.pacedTargetNS, s.heldToTarget = target, true
+	if hwAnchored {
+		s.vblankHeldFrames++
+		return
+	}
 	// Tally how early the present came back, not how long the wait took to
 	// serve: wait was measured before sleeping, so it is a property of the
 	// driver rather than of this function's own overshoot.

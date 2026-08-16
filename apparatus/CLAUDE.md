@@ -230,7 +230,8 @@ still came back as little as **6.95 ms** apart against an 8.33 ms frame.
 
 So `Update` presents *and then busy-waits* to the expected frame boundary
 (`paceToFrame`, `screen_present_notjs.go`). Where the driver does block
-correctly the spin exits after zero iterations and costs nothing.
+correctly no hold runs at all — the present had already covered the frame, so
+`paceToFrame` keeps its stamp and returns (see the anchor table below).
 
 There is deliberately **no per-platform switch**. Whether Present blocks
 depends on driver + compositor + window mode + GPU, not on `GOOS` or the SDL
@@ -250,8 +251,20 @@ refreshes that cached state.
 
 | driver behaviour | `FlipTS` returns | next target derives from |
 |---|---|---|
-| present blocked to the retrace | the present return (present()'s own stamp) | the hardware, re-anchored every frame |
-| present returned early | the **scheduled** frame boundary | the previous target, +`frameDur` |
+| present returned at/after the boundary | the present return (present()'s own stamp) | the hardware, re-anchored every frame |
+| present returned early by ≤ `frameDur/hwAnchorSlackDiv` | the present return, and no hold runs | the hardware, re-anchored every frame |
+| present returned early by more | the **scheduled** frame boundary | the previous target, +`frameDur` |
+| a kernel vblank was available (`GOXPY_VBLANK`) | the vblank stamp | the vblank, +whole frames to the next boundary |
+
+The second row is the common case on a well-behaved driver and it is not a
+rounding convenience. A blocking present returns one *panel* period after the
+last one, while the boundary is one *nominal* period after, so it lands slightly
+inside — measured on a Precision 5490 (Intel/Mesa, Wayland) 2026-08-16: mean
+0.676 ms, max 1.14 ms of a 16.661 ms frame, i.e. present had covered 15.99 ms of
+every frame. Sending that to the hold replaced a hardware stamp with a schedule
+on 98.8 % of frames, which is the construction that drifts. The shortfall is
+tallied as `Early` instead; `hwAnchorSlackDiv` documents the threshold and its
+one known false positive.
 
 The paced branch must anchor on the scheduled boundary, not on the spin exit.
 The spin exits at `target + ε` (one clock-read iteration); feeding that back
@@ -285,9 +298,19 @@ is — consecutive `DRM_IOCTL_WAIT_VBLANK` stamps on the 5490 give 60.0384 Hz,
 reads them for the movie player.
 
 `Screen.PacingStats()` reports which branch the presents took — `Blocked`,
-`Paced`, and the wait time across the paced ones — with `ResetPacingStats()` to
-exclude warm-up. Re-exported as `control.PacingStats`. `tests/Timing-Tests -test
-display` and `tests/test_vsync_blocking` both print it.
+`Early` (a subset of `Blocked`), `Paced`, `VblankHeld`, `Presents()`, the wait
+across the paced ones (`WaitMean`/`WaitMax`) and the shortfall across the early
+ones (`EarlyMean`/`EarlyMax`) — with `ResetPacingStats()` to exclude warm-up.
+Re-exported as `control.PacingStats`. `tests/Timing-Tests -test display`,
+`tests/test_vsync_blocking` and `tests/test_vblank_drift` all print it.
+
+**Grade a run on `WaitTotal/(Presents × frameDur)`, not on the paced share.**
+The share alone called the machine above non-blocking while present was blocking
+for 96 % of every frame; weighting the hold by the count collapses that to 4 %
+and separates it from a driver that really does not block (90 %+). It also
+handles the opposite shape — a blocking driver with one rare buffered frame,
+whose per-paced-frame mean wait is nearly a whole frame. `classifyPacing` in
+`tests/Timing-Tests/main.go` is the reference implementation.
 
 **The branch counts are the verdict; the frame-interval medians are not.**
 Pacing exists to make the median interval come out right, so it does. Measured
