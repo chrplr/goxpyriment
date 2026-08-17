@@ -627,17 +627,44 @@ Two machines, measured with a BBTK v3 photodiode over 1010 cycles each on
 | total drift over the run | 0.006 ms / 8.3 min | 0.066 ms / 8.3 min |
 | de-trended scatter | 0.128 ms | 0.278 ms |
 | one-frame jumps | 0 | 0 |
-| TTL → light | 23.43 ms, SD 0.075 ms (GPIO) | 54.85 ms, SD 0.304 ms (DLP-IO8 over USB) |
+| TTL → light | 23.43 ms, SD 0.075 ms (GPIO, kmsdrm) | 54.88 ms, SD 0.296 ms (DLP-IO8, **X11**) |
+| TTL → light, same box on kmsdrm | — | **22.55 ms, SD 0.057 ms** |
 | audio-visual lag, 1024 frames | 49.88 ms, SD 6.17 ms | 23.34 ms, SD 6.54 ms |
 
-Read the TTL row with the trigger device in mind: the Pi's GPIO writes through a
-local ioctl while the W5700's DLP-IO8 crosses a USB link, and that is most of the
-difference between 0.075 and 0.304 ms. It is the device, not the machine.
+**The TTL row is about the display stack, not the trigger device.** The obvious
+reading — the Pi's GPIO writes through a local ioctl while the W5700's DLP-IO8
+crosses a USB link — is wrong, and the third row is the control that shows it.
+Stopping the X server and running the same machine, panel, photodiode position
+and DLP-IO8 on bare kmsdrm moved the onset from 54.88 to 22.55 ms and the scatter
+from 0.296 to 0.057 ms. A USB serial trigger under kmsdrm beats a GPIO trigger
+under kmsdrm on scatter; the link was never the problem.
 
 The audio row is the same story in reverse — the W5700 drives a USB audio
 interface and the Pi its on-board codec, which is worth 26 ms of constant
 latency — while the *jitter* is one audio buffer period over root twelve on both,
 6.16 ms predicted at 1024 frames. Nothing about the machine changes it.
+
+#### The display stack is worth two frames of latency and five times the jitter
+
+| W5700, everything else identical | onset latency | scatter |
+|---|---|---|
+| X11, exclusive fullscreen | ~55 ms | 0.296 ms |
+| kmsdrm, bare console | ~22 ms | 0.057 ms |
+
+Measured 2026-08-17, 481 and 286 trials, one variable changed. 32.4 ms is almost
+exactly two frames, which is what an X11 Present path plus a driver swapchain
+queues ahead; on kmsdrm the application page-flips straight to the CRTC.
+
+The panel is not involved: its 10-90% transition measured 16.29 ms on the Pi and
+17.28 ms here, with the same asymmetry between halves, so the same monitor is
+behaving the same way on both machines and the latency is upstream of it.
+
+**None of this is visible from inside the program.** Both configurations report
+`class=blocking`, sub-ppm drift against the panel, and frame intervals with
+sub-millisecond scatter. An experiment that quotes an onset time would be 32 ms
+wrong under X11 and would have no way to know. If absolute latency matters —
+EEG, MEG, anything cross-modal — run the stimulus on a console without a display
+server, and measure it rather than assuming either number.
 
 For the drift row, the W5700 is the more informative case. Its GPU and CPU keep
 independent crystals, so its loop cadence runs **−4.20 ppm** off nominal; before
