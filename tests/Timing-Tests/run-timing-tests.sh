@@ -16,11 +16,9 @@
 # Environment overrides:
 #   BIN               binary to run            (default: build ./Timing-Tests)
 #   SDL_AUDIODRIVER   audio backend            (default: unset = SDL picks)
-#   AUDIO_BUFFSIZE    hardware buffer, frames  (default: 2048, but see below —
-#                                              512 and 1024 measure better on
-#                                              jitter and the default is likely
-#                                              to change. docs/TimingTests.md
-#                                              has the sweep)
+#   AUDIO_BUFFSIZE    hardware buffer, frames  (default: 1024 — measured best on
+#                                              a Pi 4; see below and
+#                                              docs/TimingTests.md)
 #   REFRESH_HZ        expected refresh rate    (default: 60)
 #   OUTDIR            session directory        (default: reports-<hostname>)
 #   TONE_HZ           tone frequency, Hz       (default: 440)
@@ -109,26 +107,25 @@ set -o pipefail
 if [ -n "${SDL_AUDIODRIVER:-}" ]; then
 	export SDL_AUDIODRIVER
 fi
-# 2048 frames (42.7 ms at 48 kHz), and this number is under review.
+# 1024 frames (21.3 ms at 48 kHz), chosen on a measured sweep rather than on the
+# usual "as small as it will go".
 #
-# It was raised from 512 on 2026-08-16 because a Pi 4 scratched audibly there and
-# a BBTK microphone channel reported 23 % of tones torn by ~22 ms gaps. Capturing
-# the Pi's line output directly the next day, at 100 kS/s, found the real defect
-# to be ONE 1.9 ms glitch in 59 tones — the 22 ms gaps were the acoustic
-# detector's recovery time, not the audio. See docs/TimingTests.md.
+# Capturing a Pi 4's line output directly at 100 kS/s (PipeWire, 48 kHz,
+# 2026-08-17), at 512 and below the audio tears: 2.0 % of 500 tones at 512,
+# 20.7 % of 483 at 256. At 512 it is worse than tearing — after ten glitches the
+# server ADDED a buffer period mid-run, stepping the latency +10.85 ms and going
+# quiet, so the setting is not one the machine holds. 1024 gave zero torn tones
+# in 481 and did not move.
 #
-# What that recheck also measured is the cost of a large buffer, which is not
-# only latency: the tone lands at a uniformly random position within the current
-# period, so the audio onset scatters by period/sqrt(12). Measured 3.34 / 6.13 /
-# 12.27 ms at 512 / 1024 / 2048, against a prediction of 3.08 / 6.16 / 12.32.
-# Unlike the latency, that jitter cannot be compensated by scheduling the tone
-# earlier.
+# Going higher costs jitter proportionally: the tone lands somewhere in the
+# current period, so the onset scatters by period/sqrt(12) — 6.17 ms measured at
+# 1024, 12.28 at 2048, both within 0.2 % of prediction. Unlike the latency, that
+# scatter cannot be compensated by scheduling the tone earlier.
 #
-# So the default is high for a reason that turned out to be overstated, and it
-# stays only until the glitch rate at 512 is pinned down properly — 1 in 59 is
-# 0-9 % at 95 % confidence, too loose to choose on. Set it per machine meanwhile;
-# it is recorded in each run's -info.txt either way.
-AUDIO_BUFFSIZE="${AUDIO_BUFFSIZE:-2048}"
+# So the floor is set by what the machine can keep filled and the ceiling by how
+# much onset scatter the experiment can carry. Both are per machine; this is
+# recorded in each run's -info.txt.
+AUDIO_BUFFSIZE="${AUDIO_BUFFSIZE:-1024}"
 REFRESH_HZ="${REFRESH_HZ:-60}"
 # 440 Hz, the tone Bridges et al. (2020) used, so the audio row of a session can
 # be placed beside their Table 2. Timing-Tests defaults to 1000 Hz and this

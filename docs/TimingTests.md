@@ -777,60 +777,77 @@ use that everywhere — including in your actual experiment.
 
 ### Choosing the buffer: jitter against glitches
 
-"Stable" above means more than a low SD in `latency`. Two different things go
-wrong at the two ends, and they pull in opposite directions.
+"Stable" above means more than a low SD in `latency`, and the two ends fail in
+opposite ways. Measured on a Raspberry Pi 4 (PipeWire, 48 kHz) on 2026-08-17,
+capturing the Pi's line output directly with an Analog Discovery 3 at 100 kS/s
+and taking the onset from a running-RMS envelope:
 
-**A large buffer costs jitter, exactly one buffer period of it.** The tone is
-handed over on time and then waits for the queue, landing at a uniformly random
-position within the current period — so the audio onset scatters by
-`period/sqrt(12)` no matter how well the software behaves. Measured on a
-Raspberry Pi 4 (PipeWire, 48 kHz) on 2026-08-17, with the Pi's line output
-captured directly by an Analog Discovery 3 at 100 kS/s and the onset taken from a
-running-RMS envelope:
+| `-audio-frames` | period | n | median AV lag | SD | `period/sqrt(12)` | torn tones |
+|---|---|---|---|---|---|---|
+| 2048 | 42.67 ms | 60 | 101.50 ms | 12.28 ms | 12.32 ms | none |
+| **1024** | 21.33 ms | 481 | **49.88 ms** | **6.17 ms** | 6.16 ms | **none** |
+| 512 | 10.67 ms | 500 | 27.30 ms | 7.28 ms* | 3.08 ms | 10 (2.0 %) |
+| 256 | 5.33 ms | 483 | 9.43 ms | 2.36 ms | 1.54 ms | 100 (20.7 %) |
 
-| `-audio-frames` | buffer | median AV lag | measured SD | `period/sqrt(12)` | glitches |
-|---|---|---|---|---|---|
-| 512 | 10.67 ms | 15.76 ms | 3.34 ms | 3.08 ms | 1 of 59 tones, 1.9 ms |
-| 1024 | 21.33 ms | 42.40 ms | 6.13 ms | 6.16 ms | 0 of 59 |
-| 2048 | 42.67 ms | 95.04 ms | 12.27 ms | 12.32 ms | 0 of 59 |
+\* inflated by a mid-run escalation, below; its first half scatters by 3.10 ms.
 
-Prediction and measurement agree within 8 % at every point, so this is the audio
-path behaving as a queue and nothing more. **Both the latency and its jitter are
-proportional to the buffer**, and only the latency is compensable by scheduling
-the tone earlier.
+**1024 is the recommended setting on this hardware** — the only one that is both
+clean and stable. Below it the stack degrades quickly, and at 512 it does
+something worse than degrade.
 
-**A small buffer costs glitches.** At 512 one tone in 59 lost its signal for
-1.9 ms — inaudible as silence, very audible as a click. That rate is far too
-loosely determined by 59 trials (95 % CI roughly 0-9 %) to choose a default on;
-what is solid is the jitter column, where every point has n=59 and a theory
-behind it.
+#### A large buffer costs jitter, and the jitter is a beat, not noise
 
-Neither failure appears in anything the host prints. In the same runs the
-software-side SOA statistic read **0.080 ms +- 0.035**, because the software's
-job — handing the tone over on time — was done correctly throughout.
+The tone is handed over on time and then waits for the queue, so the audio onset
+scatters across one buffer period — matching `period/sqrt(12)` to within 0.2 % at
+1024 and 2048. But it is not random. The tone's position in the buffer grid
+advances by `cycle mod period` every trial and wraps, a deterministic sawtooth:
 
-#### A cautionary tale about the instrument
+```
+cycle 499.830 mod buffer 10.667 = 9.163 ms
+  predicted  +1.503 ms per trial, wrapping by -9.163
+  observed   +1.500 ms per trial (n=161), wraps -9.170 (n=58)
+```
 
-An earlier version of this section reported, from a BBTK microphone channel, that
-512 frames tore **23 % of tones with gaps whose median was 22.3 ms**, and
-concluded that dropouts of about two buffer periods were the fault. The
-electrical measurement above, on the same rig and the same buffer, finds one
-1.9 ms glitch in 59 tones — two orders of magnitude smaller, and nothing
-resembling a 22 ms gap at any buffer size.
+Agreement to 7 us. Two consequences: a per-trial lag can be **predicted** from
+the cycle, the period and the trial index rather than merely bounded; and a cycle
+chosen as a whole multiple of the buffer period removes the beat altogether. At
+512, a 501.33 ms cycle (47 x 10.667) would hold the lag constant instead of
+spreading it over 10.7 ms.
 
-The fault was real; its shape was the detector's. A threshold detector watching
-an acoustic envelope needs the signal to recover past its threshold before it
-calls the tone present again, so a click reads as a gap tens of milliseconds
-long. The lesson generalises past audio: **an instrument's own recovery
-behaviour can set the scale of what it reports**, and a second instrument
-measuring by a different route is the only way to find out. Here the second
-route was electrical rather than acoustic, which also removed the speaker, the
-air and the microphone from the measurement.
+#### A small buffer costs glitches — and PipeWire moves the goalposts
 
-What did survive the recheck: **scheduling priority is not involved**. The 2x2 of
+At 512, ten of the first 245 tones were torn (gaps to 37.7 ms), and then at trial
+245 the lag stepped by **+10.85 ms — one buffer period — and the tearing stopped
+dead**, with no glitch in the remaining 255 tones. That is the audio server
+adding a period to the graph after repeated underruns.
+
+So a small buffer is not a setting the machine holds: it underruns, relocates
+your latency mid-run, and the naive linear fit through that step reports a 15 ms
+"drift" that does not exist. Anything measured across such a step is two
+populations averaged together.
+
+#### An instrument's detector can set the scale of what it reports
+
+The 512 case was first measured through a BBTK microphone channel, which reported
+23 % of tones torn by gaps whose median was 22.3 ms. The electrical capture finds
+the tearing to be real but 2.0 % of tones with gaps from 0.5 to 37.7 ms, mostly
+around 2 ms. A threshold detector watching an acoustic envelope needs the signal
+to recover past its threshold before it calls the tone present again, so short
+electrical glitches read as long acoustic gaps.
+
+The rate differed too, and plausibly for a real reason: the BBTK session ran
+`bbtk-capture` on the same Pi, competing for it. Take the lesson as: **a second
+instrument measuring by a different route is the only way to learn what the first
+one is adding**, and prefer the route with fewer transducers in it when the
+question is about software.
+
+What survived every recheck: **scheduling priority is not involved.** The 2x2 of
 `512`/`2048` against `-realtime-priority 50`/`0` scratched at 512 under both
-policies and was clean at 2048 under both, so a real-time thread starving the
-audio server — the obvious suspect on a four-core host — was not the cause.
+policies and was clean at 2048 under both.
+
+Neither failure appears in anything the host prints — in these same runs the
+software-side SOA read **0.080 ms +- 0.035**, because handing the tone over on
+time is the part the software does correctly.
 
 Check underruns at the source rather than by ear: run `pw-top` over ssh (a
 fullscreen test covers the console) and watch the **ERR** column.
