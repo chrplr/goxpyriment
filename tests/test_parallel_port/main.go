@@ -53,6 +53,7 @@ func main() {
 	fFind := flag.Bool("find", false, "walk D0..D7, holding each HIGH in turn (probe one pin, watch the console)")
 	fLine := flag.Int("line", -1, "hold this line (0-7) HIGH until interrupted (probe pins 2-9 to find it)")
 	fBlink := flag.Int("blink", -1, "toggle this line (0-7) at 1 Hz until interrupted")
+	fAll := flag.Bool("all", false, "drive ALL data lines HIGH — safe to probe with a clumsy meter, since bridging two pins shorts high to high")
 	fHold := flag.Duration("hold", 3*time.Second, "how long -find holds each line HIGH")
 	flag.Parse()
 
@@ -85,7 +86,22 @@ func main() {
 		os.Exit(0)
 	}()
 
+	if *fAll {
+		if err := pp.Send(0xFF); err != nil {
+			log.Fatalf("Send(0xFF): %v", err)
+		}
+		fmt.Println("\nAll eight data lines are HIGH (DB25 pins 2-9 on a standard port).")
+		fmt.Println("Ground is any of pins 18-25. Every data pin should read the same,")
+		fmt.Println("so bridging two of them with a wide probe is harmless here — use this")
+		fmt.Println("to find the data block, then -find to identify a single line.")
+		fmt.Println("Press Ctrl-C to stop; all lines are driven LOW on exit.")
+		select {}
+	}
+
 	if *fFind || *fLine >= 0 || *fBlink >= 0 {
+		fmt.Println("\nCAUTION: only one line is driven HIGH at a time here, so a probe that")
+		fmt.Println("bridges two adjacent pins shorts an output high into an output low.")
+		fmt.Println("Use -all while hunting for physical contact, then come back to this.")
 		fmt.Println("\nGround is any of DB25 pins 18-25. A TTL high reads ~5 V (3.3 V on some chipsets).")
 		fmt.Println("Press Ctrl-C to stop; all lines are driven LOW on exit.")
 		_ = pp.AllLow()
