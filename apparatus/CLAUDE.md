@@ -315,6 +315,28 @@ ones (`EarlyMean`/`EarlyMax`) — with `ResetPacingStats()` to exclude warm-up.
 Re-exported as `control.PacingStats`. `tests/Timing-Tests -test display`,
 `tests/test_vsync_blocking` and `tests/test_vblank_drift` all print it.
 
+### Validated against photons, 2026-08-17
+
+A BBTK v3 photodiode, 1010 cycles per run, the same protocol that measured the
+failure in the first place:
+
+| | before the anchor change | after |
+|---|---|---|
+| Raspberry Pi 4 (V3D/kmsdrm) | 14 ms over 8 min | **+0.01 ppm** (0.006 ms / 8.3 min) |
+| Radeon Pro W5700 (radeonsi/X11) | **−4.73 ppm**, mechanism confirmed | **+0.13 ppm** (0.066 ms / 8.3 min) |
+
+The W5700 is the row that establishes the mechanism rather than the symptom. Its
+GPU and CPU keep independent crystals, so its loop cadence sits **−4.20 ppm** off
+nominal — measured this same day, and unchanged by any of this. While presents
+were held, the timestamps advanced on the CPU clock at the nominal rate while the
+panel ran on the GPU clock, and that crystal difference *was* the drift: −4.73 ppm.
+Anchoring on present's return moves the difference inside the loop, so the cadence
+and the drift now disagree by a factor of 32 — which is the evidence that the
+timestamps are following the panel and not the schedule.
+
+On a Pi the two clocks derive from one SoC oscillator, which is why its cadence
+came out at +0.64 ppm and why the same fix looks less dramatic there.
+
 **Grade a run on `WaitTotal/(Presents × frameDur)`, not on the paced share.**
 The share alone called the machine above non-blocking while present was blocking
 for 96 % of every frame; weighting the hold by the count collapses that to 4 %

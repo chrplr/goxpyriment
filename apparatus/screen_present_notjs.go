@@ -230,6 +230,25 @@ func (s *Screen) paceToFrame(prevFlipNS uint64) {
 // mean shortfall pressed up against the ceiling, rather than the sub-millisecond
 // figure a blocking driver gives — and pacing was already doing almost nothing
 // for such a loop.
+//
+// # Validated against photons on both machines, 2026-08-17
+//
+// A BBTK v3 photodiode, 1010 cycles per run, the same protocol that measured the
+// failure:
+//
+//	                       before            after
+//	Raspberry Pi 4 (V3D)   14 ms / 8 min     +0.01 ppm (0.006 ms / 8.3 min)
+//	Radeon Pro W5700       -4.73 ppm         +0.13 ppm (0.066 ms / 8.3 min)
+//
+// The W5700 row is the one that establishes the mechanism rather than just the
+// symptom. Its GPU and CPU keep independent crystals, so its loop cadence is
+// -4.20 ppm off the nominal rate — measured, and unchanged by any of this. While
+// presents were held, timestamps advanced on the CPU clock at the nominal rate
+// and the panel ran on the GPU clock, so that crystal difference appeared as
+// drift: -4.73 ppm, which is the same quantity. Anchoring on present's return
+// puts the difference inside the loop instead of between the loop and the panel,
+// and the cadence and the drift now disagree by a factor of 32 — which is the
+// evidence that the timestamps follow the panel.
 const hwAnchorSlackDiv = 8
 
 // holdUntil sleeps and then spins to target, and records the outcome.

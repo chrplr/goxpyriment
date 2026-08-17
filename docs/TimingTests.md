@@ -616,6 +616,37 @@ are on different clocks and no absolute onset from that run can be trusted;
 `NO DRIFT, but … scatter` means the timestamps track the panel and the spread is
 genuine.
 
+### What a validated machine looks like
+
+Two machines, measured with a BBTK v3 photodiode over 1010 cycles each on
+2026-08-17, after the flip-timestamp anchoring was corrected:
+
+| | Raspberry Pi 4 (V3D/kmsdrm) | Radeon Pro W5700 (radeonsi/X11) |
+|---|---|---|
+| flip → photons, slope | **+0.01 ppm** | **+0.13 ppm** |
+| total drift over the run | 0.006 ms / 8.3 min | 0.066 ms / 8.3 min |
+| de-trended scatter | 0.128 ms | 0.278 ms |
+| one-frame jumps | 0 | 0 |
+| TTL → light | 23.43 ms, SD 0.075 ms (GPIO) | 54.85 ms, SD 0.304 ms (DLP-IO8 over USB) |
+| audio-visual lag, 1024 frames | 49.88 ms, SD 6.17 ms | 23.34 ms, SD 6.54 ms |
+
+Read the TTL row with the trigger device in mind: the Pi's GPIO writes through a
+local ioctl while the W5700's DLP-IO8 crosses a USB link, and that is most of the
+difference between 0.075 and 0.304 ms. It is the device, not the machine.
+
+The audio row is the same story in reverse — the W5700 drives a USB audio
+interface and the Pi its on-board codec, which is worth 26 ms of constant
+latency — while the *jitter* is one audio buffer period over root twelve on both,
+6.16 ms predicted at 1024 frames. Nothing about the machine changes it.
+
+For the drift row, the W5700 is the more informative case. Its GPU and CPU keep
+independent crystals, so its loop cadence runs **−4.20 ppm** off nominal; before
+the anchoring was corrected its flip timestamps advanced on the CPU clock at the
+nominal rate while the panel ran on the GPU clock, and that difference showed up
+as a measured **−4.73 ppm** of drift. The two numbers are the same quantity. That
+the cadence is still −4.20 ppm while the drift is now +0.13 is the evidence that
+onsets follow the panel rather than the schedule.
+
 ### Read the run's `sys pacing:` line alongside it
 
 `-test av` and `-test display` both record which branch their presents took, in
