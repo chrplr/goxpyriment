@@ -269,16 +269,6 @@ func FrameDurationForDisplay(id sdl.DisplayID) time.Duration {
 	return apparatus.FrameDurationForDisplay(id)
 }
 
-// PrimaryDisplayFrameDuration is FrameDurationForDisplay for the primary
-// display, which is what an experiment opens on unless -d says otherwise.
-func PrimaryDisplayFrameDuration() (time.Duration, error) {
-	displays, err := sdl.GetDisplays()
-	if err != nil || len(displays) == 0 {
-		return 0, fmt.Errorf("control: no displays: %w", err)
-	}
-	return apparatus.FrameDurationForDisplay(displays[0]), nil
-}
-
 // ListDisplays returns metadata for all connected displays, ordered so that
 // index 0 is the primary display. Assign an index to exp.ScreenNumber before
 // calling Initialize() (or before NewExperimentFromFlags) to open the

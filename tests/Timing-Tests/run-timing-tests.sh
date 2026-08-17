@@ -19,7 +19,6 @@
 #   AUDIO_BUFFSIZE    hardware buffer, frames  (default: 1024 — measured best on
 #                                              a Pi 4; see below and
 #                                              docs/TimingTests.md)
-#   REFRESH_HZ        expected refresh rate    (default: 60)
 #   OUTDIR            session directory        (default: reports-<hostname>)
 #   TONE_HZ           tone frequency, Hz       (default: 440)
 #   SQUARE_PX         stimulus square side, px (default: 0 = ¼ of render height)
@@ -131,7 +130,6 @@ fi
 # The ceiling is how much onset scatter the experiment can carry. Both are per
 # machine; this is recorded in each run's -info.txt.
 AUDIO_BUFFSIZE="${AUDIO_BUFFSIZE:-1024}"
-REFRESH_HZ="${REFRESH_HZ:-60}"
 # 440 Hz, the tone Bridges et al. (2020) used, so the audio row of a session can
 # be placed beside their Table 2. Timing-Tests defaults to 1000 Hz and this
 # script used to leave it there, which is why every session recorded before
@@ -318,21 +316,6 @@ case "$TRIGGER_MS" in
 esac
 [ "$TRIGGER_MS" -gt 0 ] || { echo "error: TRIGGER_MS must be greater than zero" >&2; exit 1; }
 
-# A pulse that outlasts its own cycle merges into the next one, leaving the line
-# permanently high and the TTL channel uncountable — the trace then has no trial
-# boundaries at all. That is a whole capture wasted, so refuse it here rather
-# than after the fact. It bites when the cycle is shortened (FRAMES_ON=1,
-# FRAMES_OFF=2 is 50 ms at 60 Hz, a quarter of the default pulse).
-CYCLE_MS=$(awk -v on="$FRAMES_ON" -v off="$FRAMES_OFF" -v hz="$REFRESH_HZ" \
-	'BEGIN { printf "%.1f", (on+off)*1000/hz }')
-if awk -v t="$TRIGGER_MS" -v c="$CYCLE_MS" 'BEGIN { exit !(t >= c) }'; then
-	echo "error: TRIGGER_MS=$TRIGGER_MS ms does not fit in a ${CYCLE_MS} ms cycle" >&2
-	echo "       (${FRAMES_ON}+${FRAMES_OFF} frames at ${REFRESH_HZ} Hz); consecutive pulses" >&2
-	echo "       would merge and the TTL channel could not be counted." >&2
-	echo "       Lower TRIGGER_MS, or lengthen the cycle." >&2
-	exit 1
-fi
-
 TRIGGER_ARGS+=(-trigger-ms "$TRIGGER_MS")
 
 # Overridable so the session plumbing (capture handshake, output paths) can be
@@ -389,6 +372,45 @@ if [ "$BIN_PREBUILT" = "0" ]; then
 		echo "       if it did not come from the code you think it did." >&2
 		exit 1
 	fi
+fi
+
+# The frame period comes from the DISPLAY, via the binary that is about to run
+# it, not from a variable someone typed.
+#
+# This replaces REFRESH_HZ (and the -hz flag it fed). Between them they produced
+# two typos in two days: 60.197, a valid float that silently shortened every tone
+# by 0.6 ms, and 60.0.197, which the flag parser rejected after bbtk-capture had
+# already armed — a nine-minute session lost. The program has always been able to
+# read the rate for itself, and now does; -print-frame-ms exposes the same figure
+# to this script, honouring -d so a multi-monitor machine is asked about the
+# right one.
+#
+# The value matters here for more than tidiness: it sizes the BBTK capture
+# window, and the device enforces that window itself, so an underestimate
+# truncates a recording with no way to recover it.
+FRAME_MS=$("$BIN" -print-frame-ms $DISPLAY_ARGS 2>/dev/null)
+case "$FRAME_MS" in
+'' | *[!0-9.]*)
+	echo "warning: could not read the frame period from $BIN (-print-frame-ms);" >&2
+	echo "         falling back to 60 Hz for capture-window arithmetic. The stimulus" >&2
+	echo "         still reads the true rate itself, so only the window is affected." >&2
+	FRAME_MS=16.666667
+	;;
+esac
+
+# A pulse that outlasts its own cycle merges into the next one, leaving the line
+# permanently high and the TTL channel uncountable — the trace then has no trial
+# boundaries at all. That is a whole capture wasted, so refuse it here rather
+# than after the fact. It bites when the cycle is shortened (FRAMES_ON=1,
+# FRAMES_OFF=2 is 50 ms at 60 Hz, a quarter of the default pulse).
+CYCLE_MS=$(awk -v on="$FRAMES_ON" -v off="$FRAMES_OFF" -v f="$FRAME_MS" \
+	'BEGIN { printf "%.1f", (on+off)*f }')
+if awk -v t="$TRIGGER_MS" -v c="$CYCLE_MS" 'BEGIN { exit !(t >= c) }'; then
+	echo "error: TRIGGER_MS=$TRIGGER_MS ms does not fit in a ${CYCLE_MS} ms cycle" >&2
+	echo "       (${FRAMES_ON}+${FRAMES_OFF} frames of ${FRAME_MS} ms); consecutive pulses" >&2
+	echo "       would merge and the TTL channel could not be counted." >&2
+	echo "       Lower TRIGGER_MS, or lengthen the cycle." >&2
+	exit 1
 fi
 
 SELECTED="$*"
@@ -505,8 +527,8 @@ run_recorded() {
 # recover it. Hence FRAMES_ON/FRAMES_OFF rather than the literals this used to
 # carry.
 av_seconds() {
-	awk -v c="$1" -v on="$FRAMES_ON" -v off="$FRAMES_OFF" -v hz="$REFRESH_HZ" \
-		'BEGIN { printf "%d", (c * (on + off) / hz) + 1 }'
+	awk -v c="$1" -v on="$FRAMES_ON" -v off="$FRAMES_OFF" -v f="$FRAME_MS" \
+		'BEGIN { printf "%d", (c * (on + off) * f / 1000) + 1 }'
 }
 
 # Computed once so the step labels can quote the real figure rather than the
@@ -558,10 +580,10 @@ fi
 echo "         ($CYCLES presented, first $WARMUP discarded as warm-up: $((CYCLES - WARMUP)) analysed)"
 # Print the cycle in frames AND milliseconds: the frame counts are what the flags
 # carry, but the millisecond figures are what a reader of the report needs, and
-# they depend on REFRESH_HZ.
-awk -v on="$FRAMES_ON" -v off="$FRAMES_OFF" -v hz="$REFRESH_HZ" -v secs="$AV_SECONDS" \
-	'BEGIN { printf "         cycle: %d on + %d off = %d frames (%.1f + %.1f = %.1f ms at %g Hz)\n         av step duration: %d s per run\n", \
-		on, off, on+off, on*1000/hz, off*1000/hz, (on+off)*1000/hz, hz, secs }'
+# they depend on the frame period, which is read from the display.
+awk -v on="$FRAMES_ON" -v off="$FRAMES_OFF" -v f="$FRAME_MS" -v secs="$AV_SECONDS" \
+	'BEGIN { printf "         cycle: %d on + %d off = %d frames (%.1f + %.1f = %.1f ms at %.4f Hz, from the display)\n         av step duration: %d s per run\n", \
+		on, off, on+off, on*f, off*f, (on+off)*f, 1000/f, secs }'
 if [ "$FRAMES_ON" -le 2 ]; then
 	echo "         NOTE: frames-on=$FRAMES_ON is at or below the panel's response time on"
 	echo "               typical LCDs — verify N(Opto1) == N(TTLin1) on a short pilot"
@@ -681,14 +703,14 @@ step latency "audio pipeline latency" &&
 #                     and a bottom square to also capture the scan-out gradient.
 step av "visual+audio+TTL, GC SUSPENDED (${AV_SECONDS} s)" &&
 	run_recorded av-gc-off "$AV_SECONDS" \
-		-test av -audio-frames "$AUDIO_BUFFSIZE" -hz "$REFRESH_HZ" \
+		-test av -audio-frames "$AUDIO_BUFFSIZE" \
 		-freq-hz "$TONE_HZ" "${TRIGGER_ARGS[@]}" \
 		-frames-on "$FRAMES_ON" -frames-off "$FRAMES_OFF" \
 		-cycles "$CYCLES" -warmup "$WARMUP" -square-px "$SQUARE_PX"
 
 step av-gc "visual+audio+TTL, GC RUNNING (${AV_SECONDS} s)" &&
 	run_recorded av-gc-on "$AV_SECONDS" \
-		-test av -audio-frames "$AUDIO_BUFFSIZE" -hz "$REFRESH_HZ" \
+		-test av -audio-frames "$AUDIO_BUFFSIZE" \
 		-freq-hz "$TONE_HZ" "${TRIGGER_ARGS[@]}" \
 		-frames-on "$FRAMES_ON" -frames-off "$FRAMES_OFF" \
 		-cycles "$CYCLES" -warmup "$WARMUP" -square-px "$SQUARE_PX" -gc

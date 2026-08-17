@@ -14,9 +14,11 @@ package control
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/Zyko0/go-sdl3/sdl"
 
+	"github.com/chrplr/goxpyriment/apparatus"
 	"github.com/chrplr/goxpyriment/vblank"
 )
 
@@ -47,6 +49,36 @@ func DevicesString() string {
 
 // PrintDevices writes DevicesString() to stdout.
 func PrintDevices() { fmt.Print(DevicesString()) }
+
+// FrameDurationOfDisplay reports the frame period of display `index` (0 = the
+// primary, the same ordering ListDisplays uses), initialising and shutting down
+// SDL video around the query.
+//
+// It exists for one-shot use before an Experiment exists — a harness sizing a
+// capture window, or deciding a tone length, without being told the refresh rate
+// by a human. That used to be a REFRESH_HZ variable in run-timing-tests.sh and a
+// -hz flag here, and between them they produced two typos in two days: 60.197,
+// which is a valid float and silently shortened every tone, and 60.0.197, which
+// is not and cost a nine-minute session.
+//
+// Do NOT call it while an Experiment is running: it calls sdl.Init and sdl.Quit
+// itself, and the second Init fights the first over device ownership.
+func FrameDurationOfDisplay(index int) (time.Duration, error) {
+	sdlLib := loadSDL()
+	defer sdlLib.Unload()
+	if err := sdl.Init(sdl.INIT_VIDEO); err != nil {
+		return 0, fmt.Errorf("control: sdl.Init: %w", err)
+	}
+	defer sdl.Quit()
+	displays, err := sdl.GetDisplays()
+	if err != nil {
+		return 0, fmt.Errorf("control: enumerating displays: %w", err)
+	}
+	if index < 0 || index >= len(displays) {
+		return 0, fmt.Errorf("control: display %d out of range (%d connected)", index, len(displays))
+	}
+	return apparatus.FrameDurationForDisplay(displays[index]), nil
+}
 
 // section renders label + rows in the two-column layout sysinfo uses, so the
 // combined output reads as one report rather than two stapled together.
