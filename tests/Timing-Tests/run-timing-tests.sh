@@ -122,9 +122,14 @@ fi
 # 1024, 12.28 at 2048, both within 0.2 % of prediction. Unlike the latency, that
 # scatter cannot be compensated by scheduling the tone earlier.
 #
-# So the floor is set by what the machine can keep filled and the ceiling by how
-# much onset scatter the experiment can carry. Both are per machine; this is
-# recorded in each run's -info.txt.
+# The floor is the HARDWARE, not the audio server. Bypassing PipeWire entirely
+# (SDL_AUDIODRIVER=alsa onto hw:2,0, server stopped) gave the lowest latency
+# measured — median 4.95 ms — and tore every one of 463 tones, five times each.
+# PipeWire's escalation at 512 was it finding the same floor and working around
+# it. So do not reach for a "direct" path to fix tearing; sit above the floor.
+#
+# The ceiling is how much onset scatter the experiment can carry. Both are per
+# machine; this is recorded in each run's -info.txt.
 AUDIO_BUFFSIZE="${AUDIO_BUFFSIZE:-1024}"
 REFRESH_HZ="${REFRESH_HZ:-60}"
 # 440 Hz, the tone Bridges et al. (2020) used, so the audio row of a session can

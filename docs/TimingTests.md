@@ -782,12 +782,13 @@ opposite ways. Measured on a Raspberry Pi 4 (PipeWire, 48 kHz) on 2026-08-17,
 capturing the Pi's line output directly with an Analog Discovery 3 at 100 kS/s
 and taking the onset from a running-RMS envelope:
 
-| `-audio-frames` | period | n | median AV lag | SD | `period/sqrt(12)` | torn tones |
-|---|---|---|---|---|---|---|
-| 2048 | 42.67 ms | 60 | 101.50 ms | 12.28 ms | 12.32 ms | none |
-| **1024** | 21.33 ms | 481 | **49.88 ms** | **6.17 ms** | 6.16 ms | **none** |
-| 512 | 10.67 ms | 500 | 27.30 ms | 7.28 ms* | 3.08 ms | 10 (2.0 %) |
-| 256 | 5.33 ms | 483 | 9.43 ms | 2.36 ms | 1.54 ms | 100 (20.7 %) |
+| driver | `-audio-frames` | period | n | median AV lag | SD | `period/sqrt(12)` | torn tones |
+|---|---|---|---|---|---|---|---|
+| PipeWire | 2048 | 42.67 ms | 60 | 101.50 ms | 12.28 ms | 12.32 ms | none |
+| PipeWire | **1024** | 21.33 ms | 481 | **49.88 ms** | **6.17 ms** | 6.16 ms | **none** |
+| PipeWire | 512 | 10.67 ms | 500 | 27.30 ms | 7.28 ms* | 3.08 ms | 10 (2.0 %) |
+| PipeWire | 256 | 5.33 ms | 483 | 9.43 ms | 2.36 ms | 1.54 ms | 100 (20.7 %) |
+| ALSA direct | 512 | 10.67 ms | 463 | 4.95 ms | 6.74 ms | 3.08 ms | **463 (100 %)** |
 
 \* inflated by a mid-run escalation, below; its first half scatters by 3.10 ms.
 
@@ -825,6 +826,32 @@ So a small buffer is not a setting the machine holds: it underruns, relocates
 your latency mid-run, and the naive linear fit through that step reports a 15 ms
 "drift" that does not exist. Anything measured across such a step is two
 populations averaged together.
+
+#### The floor is the hardware, not the audio server
+
+It is tempting to read the rows above as PipeWire's fault and reach for a
+"direct" path. That was tested: PipeWire stopped (services *and* sockets, or
+socket activation restarts it), `SDL_AUDIODRIVER=alsa` and
+`SDL_AUDIO_ALSA_DEFAULT_PLAYBACK_DEVICE=hw:2,0` to bypass the `default` device,
+which on a PipeWire system is the PipeWire plugin and fails with `ENOTSUPP` once
+the server is gone.
+
+Direct ALSA at 512 gave the lowest latency of anything measured — a median lag of
+**4.95 ms**, with some trials negative, the sound reaching the jack before the
+panel was 10 % lit. It was also completely unusable: **every one of 463 tones was
+torn**, typically five times each, the envelope collapsing to about 1 % of
+plateau every 30-40 ms and recovering.
+
+So the Pi cannot sustain a 10.7 ms buffer, and the audio server was never the
+constraint. PipeWire's mid-run escalation at 512 was it discovering the same
+hardware floor and working around it, which is why its glitch rate there was
+2 % rather than 100 %. A server that adapts is a nuisance for a measurement and
+a kindness for an experiment; the fix is to sit above the floor deliberately
+rather than to remove the thing that was hiding it.
+
+Restart the server afterwards (`systemctl --user start pipewire.socket
+pipewire-pulse.socket wireplumber.service`), and delete any `~/.asoundrc` written
+for the test, or the machine will bypass PipeWire from then on.
 
 #### An instrument's detector can set the scale of what it reports
 
