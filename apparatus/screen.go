@@ -286,6 +286,7 @@ type SystemInfo struct {
 	NominalHz      float64 // refresh rate SDL reports for the current display mode
 	MeasuredHz     float64 // refresh rate measured at startup (CalibrateRefresh); 0 = not measured
 	AudioDriver    string  // SDL audio driver, e.g. "pulseaudio", "alsa", "coreaudio"
+	AudioDevice    string  // name of the device actually opened, e.g. "Scarlett Solo USB Analogue Stereo"
 	AudioFormat    string  // audio sample format, e.g. "SDL_AUDIO_F32LE"
 	AudioFreq      int32   // sample rate in Hz, e.g. 44100 or 48000
 	AudioChannels  int32   // number of audio output channels (1=mono, 2=stereo)
@@ -294,9 +295,9 @@ type SystemInfo struct {
 }
 
 // GatherSystemInfo collects SDL and renderer properties from this Screen.
-// Audio fields (AudioDriver, AudioFormat, AudioFreq, AudioChannels, AudioFrames)
-// are left at their zero values; the caller fills them in after opening the
-// audio device.
+// Audio fields (AudioDriver, AudioDevice, AudioFormat, AudioFreq, AudioChannels,
+// AudioFrames) are left at their zero values; the caller fills them in after
+// opening the audio device.
 func (s *Screen) GatherSystemInfo() SystemInfo {
 	info := SystemInfo{
 		SDLVersion:  sdl.GetVersion().String(),

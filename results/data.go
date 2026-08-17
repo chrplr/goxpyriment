@@ -214,6 +214,9 @@ func (df *DataFile) WriteSystemInfo(info apparatus.SystemInfo) {
 		df.WriteComment(fmt.Sprintf("sys refresh_measured_hz: %.4f", info.MeasuredHz))
 	}
 	df.WriteComment(fmt.Sprintf("sys audio_driver: %s", info.AudioDriver))
+	if info.AudioDevice != "" {
+		df.WriteComment(fmt.Sprintf("sys audio_device: %s", info.AudioDevice))
+	}
 	df.WriteComment(fmt.Sprintf("sys audio_format: %s", info.AudioFormat))
 	df.WriteComment(fmt.Sprintf("sys audio_sample_rate_hz: %d", info.AudioFreq))
 	df.WriteComment(fmt.Sprintf("sys audio_channels: %d", info.AudioChannels))

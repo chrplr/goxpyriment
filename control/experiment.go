@@ -872,6 +872,16 @@ func (e *Experiment) Initialize() error {
 
 	sysInfo.AudioDriver = sdl.GetCurrentAudioDriver()
 	if e.AudioDevice != 0 {
+		// WHICH device, not just which driver. The default playback device
+		// follows the desktop's current selection, so two runs an hour apart can
+		// go to different hardware with nothing in the data to say so — and the
+		// difference is worth tens of milliseconds of audio latency. Diagnosed
+		// 2026-08-17 on a machine whose USB interface was connected while the
+		// desktop was still routing to the motherboard codec. Name() resolves a
+		// logical device to the physical one behind it.
+		if name, err := e.AudioDevice.Name(); err == nil {
+			sysInfo.AudioDevice = name
+		}
 		if spec, frames, err := e.AudioDevice.Format(); err == nil && spec != nil {
 			sysInfo.AudioFreq = spec.Freq
 			sysInfo.AudioChannels = spec.Channels
