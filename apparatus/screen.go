@@ -745,8 +745,17 @@ func (s *Screen) SetVSync(vsync int) error {
 // entered any of these numbers — on a fixed-refresh digital link the source
 // generates the cadence and the panel slaves to it.
 func (s *Screen) FrameDuration() time.Duration {
+	return FrameDurationForDisplay(sdl.GetDisplayForWindow(s.Window))
+}
+
+// FrameDurationForDisplay is FrameDuration for a display this process has not
+// opened a window on — the same reading, available before a Screen exists, so a
+// harness can size a capture window or a tone without being told the rate.
+// Keeping one implementation matters more than the convenience: the exact
+// rational is easy to forget, and a second copy would quietly go back to the
+// rounded float.
+func FrameDurationForDisplay(id sdl.DisplayID) time.Duration {
 	var hz float32 = 60.0
-	id := sdl.GetDisplayForWindow(s.Window)
 	if mode, err := id.CurrentDisplayMode(); err == nil && mode != nil {
 		// int64 throughout: the denominator is a pixel count (under 1e7) and
 		// time.Second is 1e9, so the product cannot overflow, and doing it in

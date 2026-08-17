@@ -2,11 +2,29 @@
 // Licensed under the Apache License, Version 2.0 (see LICENSE.txt).
 
 // test_parallel_port exercises read and write on a Linux LPT parallel port
-// via the ppdev kernel interface.
+// via the ppdev kernel interface, and helps find which physical DB25 pin a
+// logical line comes out on.
 //
 // Usage:
 //
-//	go run main.go /dev/parport0
+//	go run ./tests/test_parallel_port /dev/parport0             # self-test
+//	go run ./tests/test_parallel_port -find /dev/parport0       # walk D0..D7 slowly
+//	go run ./tests/test_parallel_port -line 0 /dev/parport0     # hold one line HIGH
+//	go run ./tests/test_parallel_port -blink 0 /dev/parport0    # toggle one line at 1 Hz
+//
+// # Finding the pin with a multimeter
+//
+// The self-test flips lines every 50 ms, which a meter reads as an average of
+// nothing useful. The three modes above are slow on purpose.
+//
+// Put the black probe on any ground pin (18-25) and the red probe on a data pin.
+// The data lines D0-D7 are DB25 pins 2-9 on a standard port, but the mapping is
+// worth confirming rather than assuming — that is what -line is for: hold one
+// line HIGH, then probe pins 2 through 9 until one reads about 5 V (3.3 V on
+// some chipsets; either is a valid TTL high).
+//
+// -find is the other way round: leave the probe on one pin and watch the console
+// as each line is held HIGH in turn.
 //
 // Prerequisites:
 //
@@ -15,22 +33,37 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/chrplr/goxpyriment/triggers"
 )
 
+// db25 names the DB25 pin each data line is expected on, for a standard port.
+// Printed as a hint, never as an assertion — confirming it against a meter is
+// the whole point of these modes.
+var db25 = [8]int{2, 3, 4, 5, 6, 7, 8, 9}
+
 func main() {
-	if len(os.Args) < 2 {
-		fmt.Fprintf(os.Stderr, "Usage: %s <device>\n  e.g. %s /dev/parport0\n",
+	fFind := flag.Bool("find", false, "walk D0..D7, holding each HIGH in turn (probe one pin, watch the console)")
+	fLine := flag.Int("line", -1, "hold this line (0-7) HIGH until interrupted (probe pins 2-9 to find it)")
+	fBlink := flag.Int("blink", -1, "toggle this line (0-7) at 1 Hz until interrupted")
+	fHold := flag.Duration("hold", 3*time.Second, "how long -find holds each line HIGH")
+	flag.Parse()
+
+	if flag.NArg() < 1 {
+		fmt.Fprintf(os.Stderr, "Usage: %s [flags] <device>\n  e.g. %s /dev/parport0\n",
 			os.Args[0], os.Args[0])
+		flag.PrintDefaults()
 		fmt.Fprintf(os.Stderr, "\nAvailable ports: %v\n", triggers.AvailableParallelPorts())
 		os.Exit(1)
 	}
-	device := os.Args[1]
+	device := flag.Arg(0)
 
 	pp := triggers.NewParallelPort(device)
 	if err := pp.Open(); err != nil {
@@ -38,6 +71,66 @@ func main() {
 	}
 	defer pp.Close()
 	fmt.Printf("Opened %s\n", device)
+
+	// Leave the port LOW however the program exits, including Ctrl-C: a data
+	// line left HIGH keeps whatever is downstream latched, and on a trigger rig
+	// that means the next recording starts with a stuck trigger.
+	stop := make(chan os.Signal, 1)
+	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		<-stop
+		_ = pp.AllLow()
+		_ = pp.Close()
+		fmt.Println("\nall lines LOW, port closed.")
+		os.Exit(0)
+	}()
+
+	if *fFind || *fLine >= 0 || *fBlink >= 0 {
+		fmt.Println("\nGround is any of DB25 pins 18-25. A TTL high reads ~5 V (3.3 V on some chipsets).")
+		fmt.Println("Press Ctrl-C to stop; all lines are driven LOW on exit.")
+		_ = pp.AllLow()
+		switch {
+		case *fLine >= 0:
+			if *fLine > 7 {
+				log.Fatalf("-line %d out of range (0-7)", *fLine)
+			}
+			if err := pp.SetHigh(*fLine); err != nil {
+				log.Fatalf("SetHigh(%d): %v", *fLine, err)
+			}
+			fmt.Printf("\nD%d is HIGH and will stay HIGH — expected on DB25 pin %d.\n",
+				*fLine, db25[*fLine])
+			fmt.Println("Probe pins 2,3,4,5,6,7,8,9 in turn; exactly one should read high.")
+			select {} // until Ctrl-C
+		case *fBlink >= 0:
+			if *fBlink > 7 {
+				log.Fatalf("-blink %d out of range (0-7)", *fBlink)
+			}
+			fmt.Printf("\nD%d toggling at 1 Hz — expected on DB25 pin %d.\n", *fBlink, db25[*fBlink])
+			for high := true; ; high = !high {
+				if high {
+					_ = pp.SetHigh(*fBlink)
+				} else {
+					_ = pp.SetLow(*fBlink)
+				}
+				fmt.Printf("\r  D%d %-4s ", *fBlink, map[bool]string{true: "HIGH", false: "low"}[high])
+				time.Sleep(500 * time.Millisecond)
+			}
+		default:
+			fmt.Printf("\nWalking D0..D7, %v each. Leave the probe on ONE pin and note when it goes high.\n\n", *fHold)
+			for {
+				for line := 0; line <= 7; line++ {
+					_ = pp.AllLow()
+					if err := pp.SetHigh(line); err != nil {
+						log.Printf("SetHigh(%d): %v", line, err)
+						continue
+					}
+					fmt.Printf("  D%d HIGH   (expected DB25 pin %d)\n", line, db25[line])
+					time.Sleep(*fHold)
+				}
+				fmt.Println("  ---- repeating ----")
+			}
+		}
+	}
 
 	// --- Data register write tests ---
 	fmt.Println("\n--- Data register write tests ---")

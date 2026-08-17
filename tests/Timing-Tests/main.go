@@ -136,7 +136,6 @@ var (
 	fFreqHz       = flag.Float64("freq-hz", 1000, "Tone frequency Hz [av / latency]")
 	fDurationS    = flag.Float64("duration-s", 10, "Measurement duration in seconds [display]")
 	fAudioFrames  = flag.Int("audio-frames", 0, "Audio hardware buffer size in sample frames, e.g. 256, 512, 1024,... (0=SDL default) ")
-	fHz           = flag.Float64("hz", 60.0, "Expected display refresh rate in Hz; sets the tone duration (frames-on × 1/hz) [av]")
 	fWarmup       = flag.Int("warmup", 10, "Leading cycles discarded from statistics [av / display]")
 	fDrainReps    = flag.Int("drain-reps", 10, "Repetitions per tone duration [latency]")
 	fVRRMaxMs     = flag.Int("vrr-max-ms", 20, "Maximum stimulus duration to sweep, in 1 ms steps [vrr]")
@@ -603,7 +602,20 @@ func printStatsVsMean(label string, xs []float64) {
 // period, and a stimulus's onset therefore depends on where it sits on screen.
 func runAV(exp *control.Experiment, trig triggers.OutputTTLDevice) error {
 	framesOn, framesOff := *fFramesOn, *fFramesOff
-	frameMs := 1000.0 / *fHz
+	// The frame period comes from the display, not from the command line.
+	//
+	// This used to be -hz, defaulting to 60, and it was a standing invitation to
+	// get it wrong: on 2026-08-16 a session went out with 60.197 instead of
+	// 60.0197 — a valid float, so nothing complained, and every tone was 0.6 ms
+	// short. The next day the same typo arrived as 60.0.197, which the flag
+	// parser rejected and which cost a nine-minute session instead. One typo
+	// corrupts the data silently and the other wastes the rig; neither is worth
+	// tolerating for a number the program can read for itself.
+	//
+	// Screen.FrameDuration reads the mode's exact rational rate, which is a
+	// better figure than anyone would type: 16.661185 ms where the display
+	// reports "60.02 Hz".
+	frameMs := float64(exp.Screen.FrameDuration()) / float64(time.Millisecond)
 	toneDurMs := int(math.Round(float64(framesOn) * frameMs))
 
 	withSound := !*fNoSound
@@ -650,8 +662,8 @@ func runAV(exp *control.Experiment, trig triggers.OutputTTLDevice) error {
 	}
 
 	exp.Data.WriteComment(fmt.Sprintf(
-		"test=av level-a=%d level-b=%d square-px=%d frames-on=%d frames-off=%d cycles=%d warmup=%d hz=%.3f sound=%v ttl=%v soa-ms=%.1f freq-hz=%.0f",
-		*fLevelA, *fLevelB, *fSquarePx, framesOn, framesOff, *fCycles, *fWarmup, *fHz,
+		"test=av level-a=%d level-b=%d square-px=%d frames-on=%d frames-off=%d cycles=%d warmup=%d hz=%.4f sound=%v ttl=%v soa-ms=%.1f freq-hz=%.0f",
+		*fLevelA, *fLevelB, *fSquarePx, framesOn, framesOff, *fCycles, *fWarmup, 1000.0/frameMs,
 		withSound, withTTL, *fSoaMs, *fFreqHz))
 	// onset_source records, per cycle, where t_visual_after_ms came from:
 	//

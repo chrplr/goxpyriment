@@ -8,6 +8,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/Zyko0/go-sdl3/sdl"
 	"github.com/Zyko0/go-sdl3/ttf"
@@ -260,6 +261,23 @@ type DisplayInfo = apparatus.DisplayInfo
 // anchored to — the present's own return, a kernel vblank, or Update's
 // schedule — and, for the schedule-anchored ones, how long the hold was.
 type PacingStats = apparatus.PacingStats
+
+// FrameDurationForDisplay returns the nominal duration of one frame on the
+// given display, read from its mode's exact rational rate. Use it before an
+// Experiment exists; afterwards prefer exp.Screen.FrameDuration().
+func FrameDurationForDisplay(id sdl.DisplayID) time.Duration {
+	return apparatus.FrameDurationForDisplay(id)
+}
+
+// PrimaryDisplayFrameDuration is FrameDurationForDisplay for the primary
+// display, which is what an experiment opens on unless -d says otherwise.
+func PrimaryDisplayFrameDuration() (time.Duration, error) {
+	displays, err := sdl.GetDisplays()
+	if err != nil || len(displays) == 0 {
+		return 0, fmt.Errorf("control: no displays: %w", err)
+	}
+	return apparatus.FrameDurationForDisplay(displays[0]), nil
+}
 
 // ListDisplays returns metadata for all connected displays, ordered so that
 // index 0 is the primary display. Assign an index to exp.ScreenNumber before
