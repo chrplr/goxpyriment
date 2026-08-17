@@ -16,20 +16,11 @@
 # Environment overrides:
 #   BIN               binary to run            (default: build ./Timing-Tests)
 #   SDL_AUDIODRIVER   audio backend            (default: unset = SDL picks)
-#   AUDIO_BUFFSIZE    hardware buffer, frames  (default: 2048. It was 512 until
-#                                              a Pi 4 on PipeWire was found to
-#                                              underrun there — 23 % of tones
-#                                              torn by a ~22 ms silent gap, ears
-#                                              and microphone agreeing, while the
-#                                              console output stayed clean. A
-#                                              buffer that tears the sound costs
-#                                              more than the ~32 ms of extra
-#                                              latency it saves, and the latency
-#                                              is constant and measurable where
-#                                              the tearing is neither. Lower it
-#                                              deliberately, per machine, after
-#                                              checking pw-top's ERR column —
-#                                              see docs/TimingTests.md)
+#   AUDIO_BUFFSIZE    hardware buffer, frames  (default: 2048, but see below —
+#                                              512 and 1024 measure better on
+#                                              jitter and the default is likely
+#                                              to change. docs/TimingTests.md
+#                                              has the sweep)
 #   REFRESH_HZ        expected refresh rate    (default: 60)
 #   OUTDIR            session directory        (default: reports-<hostname>)
 #   TONE_HZ           tone frequency, Hz       (default: 440)
@@ -118,19 +109,25 @@ set -o pipefail
 if [ -n "${SDL_AUDIODRIVER:-}" ]; then
 	export SDL_AUDIODRIVER
 fi
-# 2048 frames (42.7 ms at 48 kHz). The value has been walked up twice by the
-# same failure: 256 underran on the reference rig's ALSA path, then 512 underran
-# on a Raspberry Pi 4's PipeWire path — 23 % of tones torn by a ~22 ms silent
-# gap, mic-verified, while every software statistic stayed clean (0.080 ms SD on
-# the release time). Buffer size, not scheduling: the same 2x2 with
-# -realtime-priority 0 scratched at 512 and was clean at 2048 under both.
+# 2048 frames (42.7 ms at 48 kHz), and this number is under review.
 #
-# The trade is not symmetric, which is why the default sits high. A large buffer
-# costs latency that is CONSTANT and measurable — `-test latency` reports it, and
-# it can be compensated by scheduling the tone earlier. A buffer that underruns
-# costs torn audio that no host-side number reveals. This sets the floor on
-# audio-onset precision either way, so it is recorded in each run's -info.txt;
-# lower it per machine after watching pw-top's ERR column.
+# It was raised from 512 on 2026-08-16 because a Pi 4 scratched audibly there and
+# a BBTK microphone channel reported 23 % of tones torn by ~22 ms gaps. Capturing
+# the Pi's line output directly the next day, at 100 kS/s, found the real defect
+# to be ONE 1.9 ms glitch in 59 tones — the 22 ms gaps were the acoustic
+# detector's recovery time, not the audio. See docs/TimingTests.md.
+#
+# What that recheck also measured is the cost of a large buffer, which is not
+# only latency: the tone lands at a uniformly random position within the current
+# period, so the audio onset scatters by period/sqrt(12). Measured 3.34 / 6.13 /
+# 12.27 ms at 512 / 1024 / 2048, against a prediction of 3.08 / 6.16 / 12.32.
+# Unlike the latency, that jitter cannot be compensated by scheduling the tone
+# earlier.
+#
+# So the default is high for a reason that turned out to be overstated, and it
+# stays only until the glitch rate at 512 is pinned down properly — 1 in 59 is
+# 0-9 % at 95 % confidence, too loose to choose on. Set it per machine meanwhile;
+# it is recorded in each run's -info.txt either way.
 AUDIO_BUFFSIZE="${AUDIO_BUFFSIZE:-2048}"
 REFRESH_HZ="${REFRESH_HZ:-60}"
 # 440 Hz, the tone Bridges et al. (2020) used, so the audio row of a session can
