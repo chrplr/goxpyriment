@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/chrplr/goxpyriment/sysinfo"
 )
 
 // TestDataFileFormatting verifies that CSV rows are correctly formatted and escaped.
@@ -142,5 +144,60 @@ func TestNewDataFileDefaultDir(t *testing.T) {
 	}
 	if !strings.Contains(string(infoContent), "EXPERIMENT INFO") {
 		t.Errorf("Info file should contain EXPERIMENT INFO section, got:\n%s", infoContent)
+	}
+}
+
+func TestWriteHostInfoSection(t *testing.T) {
+	dir := t.TempDir()
+	df, err := NewDataFile(dir, 999, "hostinfo")
+	if err != nil {
+		t.Fatalf("NewDataFile: %v", err)
+	}
+	df.WriteHostInfo(sysinfo.Host())
+	if err := df.Save(); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+	matches, _ := filepath.Glob(filepath.Join(dir, "*-info.txt"))
+	if len(matches) != 1 {
+		t.Fatalf("expected one info file, got %v", matches)
+	}
+	b, err := os.ReadFile(matches[0])
+	if err != nil {
+		t.Fatalf("ReadFile: %v", err)
+	}
+	got := string(b)
+
+	if !strings.Contains(got, "# --HOST INFO") {
+		t.Errorf("info file has no --HOST INFO section:\n%s", got)
+	}
+	// Host facts must be prefixed "host", never "sys": the prefix is what tells
+	// a reader whether a line came from the operating system or from SDL, and
+	// the two can legitimately disagree about the same hardware.
+	for _, line := range strings.Split(got, "\n") {
+		if strings.HasPrefix(line, "# host ") && !strings.Contains(line, ": ") {
+			t.Errorf("malformed host line %q, want \"# host key: value\"", line)
+		}
+	}
+	if strings.Contains(got, "# sys machine:") || strings.Contains(got, "# sys kernel:") {
+		t.Errorf("host facts were written under the sys prefix:\n%s", got)
+	}
+}
+
+func TestWriteHostInfoSkipsEmptySection(t *testing.T) {
+	// On a system where every probe failed, the header must not be written on
+	// its own: a section with no lines under it reads as a truncated file.
+	dir := t.TempDir()
+	df, err := NewDataFile(dir, 999, "empty")
+	if err != nil {
+		t.Fatalf("NewDataFile: %v", err)
+	}
+	df.WriteHostInfo(sysinfo.SysInfo{})
+	if err := df.Save(); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+	matches, _ := filepath.Glob(filepath.Join(dir, "*-info.txt"))
+	b, _ := os.ReadFile(matches[0])
+	if strings.Contains(string(b), "HOST INFO") {
+		t.Errorf("empty SysInfo still wrote a --HOST INFO header:\n%s", b)
 	}
 }

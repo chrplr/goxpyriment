@@ -731,6 +731,13 @@ func (e *Experiment) Initialize() error {
 	//
 	// This runs on the main goroutine, which init() has locked to its OS thread,
 	// so the elevation lands on the thread the experiment loop will use.
+	//
+	// Collect the host facts BEFORE elevating. sysinfo.Host shells out to
+	// lspci and friends, and a forked child inherits the caller's scheduling
+	// policy: collecting afterwards would run a PCI enumeration at SCHED_FIFO.
+	// Priming the cache here keeps that fork at ordinary priority, and the
+	// later read in WriteHostInfo is then a cached struct copy.
+	sysinfo.Host()
 	if e.RealTimePriority > 0 {
 		if err := sysinfo.RaiseToRealTime(e.RealTimePriority); err != nil {
 			log.Printf("real-time scheduling not obtained, continuing at normal priority: %v", err)
@@ -890,6 +897,7 @@ func (e *Experiment) Initialize() error {
 		}
 	}
 	e.Data.WriteSystemInfo(sysInfo)
+	e.Data.WriteHostInfo(sysinfo.Host())
 	e.Data.WriteDisplayInfo(e.Screen.DisplayInfo())
 
 	if len(e.Info) > 0 {

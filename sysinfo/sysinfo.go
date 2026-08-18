@@ -6,6 +6,7 @@ package sysinfo
 import (
 	"fmt"
 	"strings"
+	"sync"
 )
 
 // MachineInfo describes the physical device chassis.
@@ -236,4 +237,119 @@ func (s SysInfo) String() string {
 // Print writes String() to stdout.
 func (s SysInfo) Print() {
 	fmt.Print(s.String())
+}
+
+// hostOnce guards the cached host snapshot returned by Host.
+var (
+	hostOnce  sync.Once
+	hostCache SysInfo
+)
+
+// Host returns the static machine and OS facts, collected at most once per
+// process.
+//
+// It is cached and it is meant to be called EARLY -- before a program raises
+// itself to a real-time scheduling policy. Collect shells out to lspci and
+// friends, and a fork inherits the caller's policy, so collecting after the
+// elevation runs a PCI enumeration at SCHED_FIFO. Priming this cache first
+// keeps that fork at ordinary priority and leaves the later, timing-sensitive
+// call free of any fork at all.
+//
+// The Sched field of the returned value is whatever was in force at the first
+// call, which is usually not what the experiment ran under. Read scheduling
+// with Scheduling() instead, which is live.
+func Host() SysInfo {
+	hostOnce.Do(func() { hostCache = Collect() })
+	return hostCache
+}
+
+// Fields returns the host facts worth recording in a data file, as ordered
+// key/value pairs with empty values already dropped.
+//
+// It is deliberately narrower than String(). Two rules decide what is here:
+//
+//   - Only what a stimulus program cannot report about itself. SDL already
+//     names the display mode, the audio device it opened and the renderer it
+//     got, and those are recorded beside these; repeating them from a second
+//     source only creates two numbers that can disagree.
+//   - Only what changes results. The compositor, the sound server version, the
+//     kernel and the set of GPUs present are all conditions under which a
+//     measurement was taken -- on this framework's own hardware the display
+//     stack moved onset precision by an order of magnitude. Uptime and the
+//     login shell are not, and are left to String().
+func (s SysInfo) Fields() [][2]string {
+	var f [][2]string
+	add := func(k, v string) {
+		if v != "" {
+			f = append(f, [2]string{k, v})
+		}
+	}
+
+	m := s.Machine
+	add("machine", strings.TrimSpace(strings.Join(compact([]string{
+		m.SysVendor, m.ProductName, m.ProductVersion,
+	}), " ")))
+	add("machine_type", m.DeviceType)
+
+	add("os", s.System.OS)
+	add("kernel", strings.TrimSpace(s.System.Kernel+" "+s.System.Arch))
+	// The single largest effect measured with this framework was the display
+	// stack. SDL reports "wayland"; which compositor it was is only here.
+	add("desktop", s.System.Desktop)
+
+	cpu := s.CPU
+	add("cpu", cpu.Model)
+	if cpu.Cores > 0 {
+		topology := fmt.Sprintf("%d cores", cpu.Cores)
+		if cpu.Threads > cpu.Cores {
+			topology = fmt.Sprintf("%d cores / %d threads", cpu.Cores, cpu.Threads)
+		}
+		add("cpu_topology", topology)
+	}
+	// Current clock against maximum: a throttled machine times differently, and
+	// nothing else in the file would show it.
+	if cpu.MHz > 0 && cpu.MaxMHz > 0 {
+		add("cpu_mhz", fmt.Sprintf("%.0f (max %.0f)", cpu.MHz, cpu.MaxMHz))
+	}
+
+	if s.Memory.TotalKB > 0 {
+		ram := fmtBytes(s.Memory.TotalKB * 1024)
+		if s.Memory.UsedKB > 0 {
+			ram += fmt.Sprintf(" (%.0f%% used at start)",
+				float64(s.Memory.UsedKB)/float64(s.Memory.TotalKB)*100)
+		}
+		add("ram", ram)
+	}
+
+	// Every card, not just the one SDL rendered on: a laptop with a second,
+	// switchable GPU can be offloading, and gl_renderer names only the winner.
+	for i, g := range s.GPUs {
+		key := "gpu"
+		if len(s.GPUs) > 1 {
+			key = fmt.Sprintf("gpu%d", i)
+		}
+		add(key, strings.TrimSpace(g.Model+kvSuffix(" [driver ", g.Driver, "]")))
+	}
+
+	for i, c := range s.Audio.Cards {
+		key := "audio_card"
+		if len(s.Audio.Cards) > 1 {
+			key = fmt.Sprintf("audio_card%d", i)
+		}
+		add(key, strings.TrimSpace(c.Name+kvSuffix(" [driver ", c.Driver, "]")))
+	}
+	// The sound server and its version, not merely SDL's backend name: a server
+	// that silently grows the buffer mid-run does so by version.
+	add("audio_server", strings.TrimSpace(s.Audio.Server+kvSuffix(" ", s.Audio.SrvVer, "")))
+	add("alsa", s.Audio.ALSA)
+
+	return f
+}
+
+// kvSuffix returns prefix+val+suffix, or "" when val is empty.
+func kvSuffix(prefix, val, suffix string) string {
+	if val == "" {
+		return ""
+	}
+	return prefix + val + suffix
 }

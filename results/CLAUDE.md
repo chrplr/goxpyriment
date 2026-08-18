@@ -14,7 +14,7 @@ df, err := results.NewDataFile(directory, subjectID, expName)
 Creates two files in `<directory>`:
 
 - `<expName>_sub-<NNN>_date-<YYYYMMDD>-<HHMMSS>.csv` — pure CSV data, directly importable by Excel and R.
-- `<expName>_sub-<NNN>_date-<YYYYMMDD>-<HHMMSS>-info.txt` — `#`-prefixed metadata (start time, hostname, OS, framework version, system info, display info, participant info).
+- `<expName>_sub-<NNN>_date-<YYYYMMDD>-<HHMMSS>-info.txt` — `#`-prefixed metadata (start time, hostname, OS, framework version, host info, system info, display info, participant info).
 
 The directory is created if absent.
 
@@ -27,6 +27,7 @@ In normal experiments, access via `exp.Data` — do not create a `DataFile` dire
 | `WriteComment(string)` | Write a `#`-prefixed line to the info file |
 | `WriteSystemInfo(apparatus.SystemInfo)` | Write SDL/renderer/audio metadata to the info file |
 | `WriteDisplayInfo(apparatus.DisplayInfo)` | Write display metadata to the info file |
+| `WriteHostInfo(sysinfo.SysInfo)` | Write machine/OS metadata (kernel, desktop, CPU, GPUs, sound server) to the info file |
 | `WriteParticipantInfo(map[string]string)` | Write participant metadata to the info file (keys sorted) |
 | `WriteEndTime()` | Write session end time and duration to the info file |
 | `Save()` | Flush both the CSV and the info file to disk |

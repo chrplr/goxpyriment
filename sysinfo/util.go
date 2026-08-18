@@ -1,6 +1,7 @@
 package sysinfo
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
@@ -36,9 +37,24 @@ func readFile(path string) string {
 	return strings.TrimSpace(string(b))
 }
 
-// run executes a command and returns its trimmed stdout, or "" on error.
+// probeTimeout bounds every external command this package runs.
+//
+// These probes (lspci, sysctl, system_profiler, wmic) are cheap and local, and
+// on a healthy machine finish in milliseconds. The timeout is not there for
+// them: it is there because Collect now runs at the start of every experiment,
+// so a probe that blocks forever -- a wedged PCI enumeration, an unresponsive
+// WMI service -- would hang the session in front of a participant rather than
+// in front of whoever typed the command. A missing field in the data file is a
+// far better outcome than an experiment that never starts, so the deadline is
+// short and the failure is silent, like every other failure here.
+const probeTimeout = 2 * time.Second
+
+// run executes a command and returns its trimmed stdout, or "" on error or
+// timeout.
 func run(name string, args ...string) string {
-	out, err := exec.Command(name, args...).Output()
+	ctx, cancel := context.WithTimeout(context.Background(), probeTimeout)
+	defer cancel()
+	out, err := exec.CommandContext(ctx, name, args...).Output()
 	if err != nil {
 		return ""
 	}

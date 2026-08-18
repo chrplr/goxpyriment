@@ -947,6 +947,7 @@ Saves raw PCM bytes as a standard RIFF/WAV file. Supports `AUDIO_F32LE`, `AUDIO_
 exp.Data.Add(field1, field2, ...)             // append a data row
 exp.Data.AddVariableNames([]string{...})      // write column header
 exp.Data.WriteDisplayInfo(info)               // append display metadata to the info file
+exp.Data.WriteHostInfo(sysinfo.Host())        // append machine/OS metadata to the info file
 exp.Data.WriteParticipantInfo(info)           // append --PARTICIPANT INFO block to the info file (called automatically by Initialize when exp.Info is set)
 exp.Data.WriteEndTime()                       // append end time + duration to the info file
 ```

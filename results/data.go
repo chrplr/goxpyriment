@@ -180,6 +180,30 @@ func (df *DataFile) Add(data ...interface{}) {
 	df.WriteLine(strings.Join(parts, df.Delimiter))
 }
 
+// WriteHostInfo appends the machine and OS facts under a --HOST INFO section.
+//
+// These are kept apart from --SYSTEM INFO, and prefixed "host" rather than
+// "sys", because they come from a different source: --SYSTEM INFO is what SDL
+// reports about what it opened, and --HOST INFO is what the operating system
+// says about the machine. Where the two describe the same thing they can
+// legitimately differ (SDL names the mode it asked for; the kernel names the
+// hardware), and a reader needs to be able to tell which is which.
+//
+// Called automatically by Experiment.Initialize(), so a data file states the
+// kernel, compositor, sound server and GPUs it was recorded under. None of that
+// is recoverable afterwards, and on this framework's own measurements the
+// display stack alone moved onset precision by an order of magnitude.
+func (df *DataFile) WriteHostInfo(info sysinfo.SysInfo) {
+	fields := info.Fields()
+	if len(fields) == 0 {
+		return
+	}
+	df.WriteComment("--HOST INFO")
+	for _, kv := range fields {
+		df.WriteComment(fmt.Sprintf("host %s: %s", kv[0], kv[1]))
+	}
+}
+
 // WriteSystemInfo appends SDL, renderer, and audio runtime properties as
 // comment lines under a --SYSTEM INFO section. Called automatically by
 // Experiment.Initialize() so every data file carries a complete record of the

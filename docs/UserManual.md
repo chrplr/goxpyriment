@@ -927,7 +927,7 @@ When `exp.End()` is called, two files are written to `~/goxpy_data/`:
 | File | Contents |
 |------|----------|
 | `<expName>_sub-<NNN>_date-<YYYYMMDD>-<HHMMSS>.csv` | Pure CSV data rows — directly importable by Excel, R, or pandas |
-| `<expName>_sub-<NNN>_date-<YYYYMMDD>-<HHMMSS>-info.txt` | Session metadata: start/end time, hostname, OS, framework version, display and audio configuration, participant info |
+| `<expName>_sub-<NNN>_date-<YYYYMMDD>-<HHMMSS>-info.txt` | Session metadata: start/end time, hostname, framework version, participant info, the machine and OS it ran on (model, kernel, desktop/compositor, CPU, every GPU and its driver, sound server and version), and the display and audio configuration SDL actually opened |
 
 Both files open automatically on `Initialize()` and are flushed to disk when `exp.End()` is called. Any spaces in `<expName>` are replaced by `-` so the resulting filenames never contain whitespace.
 
