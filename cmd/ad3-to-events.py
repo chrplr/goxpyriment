@@ -44,6 +44,7 @@ plo, phi = np.percentile(pd_, (1, 99))
 
 PRE, POST = int(0.008*rate), int(0.400*rate)
 rows = []
+rise, fall = [], []
 for e in ttl_on:
     if e-PRE < 0 or e+POST >= len(pd_):
         continue
@@ -61,6 +62,19 @@ for e in ttl_on:
     f = np.flatnonzero(after < thr)
     dur = (f[0]+int(0.05*rate))/rate*1000 if f.size else 0.0
     rows.append(("Opto1", on, dur))
+    # Panel response, for the summary below. Levels are taken per trial so a
+    # slow drift in backlight output does not leak into the transition times.
+    def cross(level, rising, start):
+        t = base + level*(peak-base)
+        i = np.flatnonzero(seg[start:] >= t) if rising else np.flatnonzero(seg[start:] <= t)
+        return start+i[0] if i.size else None
+    r10, r90 = cross(0.10, True, PRE), cross(0.90, True, PRE)
+    if r90 is not None:
+        f90 = cross(0.90, False, r90+int(0.05*rate))
+        f10 = cross(0.10, False, f90) if f90 is not None else None
+        if f10 is not None:
+            rise.append((r90-r10)/rate*1000)
+            fall.append((f10-f90)/rate*1000)
 k = min(len(ttl_on), len(ttl_off))
 for a, b in zip(ttl_on[:k], ttl_off[:k]):
     if b > a:
@@ -72,3 +86,22 @@ with open(out, "w") as fh:
         fh.write(f"{t},{on:.4f},{d:.4f},{d:.4f}\n")
 print(f"{out}: {sum(1 for r in rows if r[0]=='Opto1')} Opto1, "
       f"{sum(1 for r in rows if r[0]=='TTLin1')} TTLin1")
+
+# Panel response is not a curiosity: it sets how much of the measured duration
+# is the panel rather than the software. Any fixed-level criterion applied to an
+# asymmetric transition biases the interval by roughly (fall-rise)/2, so the SAME
+# monitor driven by two machines reported durations 5.3 ms apart on 2026-08-18
+# while the trigger-to-trigger SOA agreed to 3 decimals. Print it every time, so
+# a cross-machine duration comparison can be corrected instead of believed.
+if rise:
+    r, f_ = np.array(rise), np.array(fall)
+    bias = (f_.mean()-r.mean())/2
+    print(f"panel: rise 10-90% {r.mean():.2f} ms, fall 90-10% {f_.mean():.2f} ms, "
+          f"n={len(r)}")
+    print(f"panel: fixed-criterion duration bias ~{bias:+.2f} ms "
+          f"(measured durations are short by this much)")
+    third = len(r)//3
+    if third:
+        drift = r[-third:].mean()-r[:third].mean()
+        note = "still settling - let it warm" if abs(drift) > 0.3 else "steady"
+        print(f"panel: rise drift first-to-last third {drift:+.2f} ms ({note})")
