@@ -104,3 +104,33 @@ func TestHostIsCached(t *testing.T) {
 		t.Errorf("Host() returned differing snapshots")
 	}
 }
+
+func TestCPUClockReportedWithWhateverIsKnown(t *testing.T) {
+	// macOS reports no maximum clock, and Apple Silicon reports no current one
+	// either. Requiring both dropped the line entirely on those machines.
+	for _, tc := range []struct {
+		name     string
+		cpu      CPUInfo
+		want     string
+		wantNone bool
+	}{
+		{name: "both", cpu: CPUInfo{MHz: 2188, MaxMHz: 4700}, want: "2188 (max 4700)"},
+		{name: "current only (Intel Mac)", cpu: CPUInfo{MHz: 2600}, want: "2600"},
+		{name: "max only", cpu: CPUInfo{MaxMHz: 3200}, want: "max 3200"},
+		{name: "neither (Apple Silicon)", cpu: CPUInfo{Model: "Apple M3"}, wantNone: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			m := fieldMap(t, SysInfo{CPU: tc.cpu})
+			got, ok := m["cpu_mhz"]
+			if tc.wantNone {
+				if ok {
+					t.Errorf("cpu_mhz = %q, want the field to be absent", got)
+				}
+				return
+			}
+			if got != tc.want {
+				t.Errorf("cpu_mhz = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}

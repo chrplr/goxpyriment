@@ -324,9 +324,17 @@ func (s SysInfo) Fields() [][2]string {
 		add("cpu_topology", topology)
 	}
 	// Current clock against maximum: a throttled machine times differently, and
-	// nothing else in the file would show it.
-	if cpu.MHz > 0 && cpu.MaxMHz > 0 {
+	// nothing else in the file would show it. The maximum is not available
+	// everywhere -- macOS reports no equivalent of MaxClockSpeed, and Apple
+	// Silicon has no hw.cpufrequency at all -- so report whatever is known
+	// rather than dropping the line for want of half of it.
+	switch {
+	case cpu.MHz > 0 && cpu.MaxMHz > 0:
 		add("cpu_mhz", fmt.Sprintf("%.0f (max %.0f)", cpu.MHz, cpu.MaxMHz))
+	case cpu.MHz > 0:
+		add("cpu_mhz", fmt.Sprintf("%.0f", cpu.MHz))
+	case cpu.MaxMHz > 0:
+		add("cpu_mhz", fmt.Sprintf("max %.0f", cpu.MaxMHz))
 	}
 
 	if s.Memory.TotalKB > 0 {
