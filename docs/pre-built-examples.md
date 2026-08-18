@@ -3,9 +3,11 @@
 
 If you prefer not to compile the [examples](GalleryOfExamples.md) with Go, you can download _pre-built executables_ ready to run on your computer.
 
-⚠️  **WARNING** These binaries are unsigned. macOS Gatekeeper and Windows Defender will show security warnings or worse, _misleasding messages_ such as 'this program is damaged'. Your antivirus may quarantine the files. Don't let them intimidate you:
+⚠️  **WARNING** These binaries are unsigned. macOS Gatekeeper and Windows Defender will show security warnings or worse, _misleading messages_ such as 'this program is damaged'. Your antivirus may quarantine the files. Don't let them intimidate you:
 *  macOS: Right-click the app → **Open**, or run `xattr -dr com.apple.quarantine <AppName>.app` in Terminal. See [macOS installation and security](https://chrplr.github.io/note-about-macos-unsigned-apps) for step-by-step instructions.
-*  Windows: Just click on "More info" then "Run anyway".
+*  Windows: click **More info**, then **Run anyway**.
+   *  Better, do it once for the whole download **before unzipping**: right-click the downloaded `.zip` → **Properties** → at the bottom of the **General** tab tick **Unblock** → **OK**. Windows tags anything downloaded from the internet, and files extracted from a tagged archive inherit the tag — so unblocking the archive first means none of the extracted `.exe` files carry it, and none of them trigger the warning. In PowerShell the same thing is `Unblock-File .\goxpyriment-examples-windows-x86_64.zip`.
+   *  If you have already extracted them, unblock the extracted files instead: `Get-ChildItem -Recurse <folder> | Unblock-File`.
 *  These warnings will only pop out the first time you try to execute a given program.  
 *  They appear because I am not willing to pay third parties to sign the executables.
 
