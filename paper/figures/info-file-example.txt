@@ -1,0 +1,62 @@
+# --EXPERIMENT INFO
+# e mainfile: Timing-Tests
+# e cmdline: Timing-Tests -test display -duration-s 3 -w
+# e start_time: 20260818-142047
+# e hostname: is158520
+#   [...]
+# e os: linux/amd64
+# e framework: goxpyriment (devel) --- see http://chrplr.github.io/goxpyriment
+#   [...]
+# --SUBJECT INFO
+# s id: 0
+#   [...]
+# --SYSTEM INFO
+# sys sdl_version: 3.4.0
+# sys video_driver: wayland
+# sys renderer: opengl
+# sys gl_renderer: Mesa Intel(R) Arc(tm) Graphics (MTL)
+#   [...]
+# sys fullscreen: false
+# sys vsync: 1
+# sys vblank_backend: not requested (set GOXPY_VBLANK=on to anchor onsets on kernel vblanks)
+# sys refresh_nominal_hz: 60.0190
+# sys refresh_measured_hz: 60.0025
+# sys audio_driver: pipewire
+# sys audio_device: Meteor Lake-P HD Audio Controller Speaker
+#   [...]
+# sys audio_buffer_frames: 1024
+# sys sched_policy: SCHED_FIFO
+# sys sched_realtime: true
+# sys sched_priority: 50
+#   [...]
+# --HOST INFO
+# host machine: Dell Inc. Precision 5490
+# host machine_type: laptop
+# host os: Ubuntu 26.04 LTS
+# host kernel: 7.0.0-29-generic x86_64
+# host desktop: ubuntu:GNOME
+# host cpu: Intel(R) Core(TM) Ultra 7 165H
+# host cpu_topology: 16 cores / 22 threads
+# host cpu_mhz: 1667 (max 4700)
+# host ram: 30.04 GiB (40% used at start)
+# host gpu0: Intel Corporation Meteor Lake-P [Intel Arc Graphics] [driver i915]
+# host gpu1: NVIDIA Corporation AD107GLM [RTX 2000 Ada Generation Laptop GPU] [driver nvidia]
+# host audio_card: sof-soundwire [driver snd_soc_sof_sdw]
+# host audio_server: PipeWire 1.6.2
+# host alsa: k7.0.0-29-generic
+# --DISPLAY INFO
+# d id: 3
+# d name: Dell Inc. 19"
+# d native_resolution: 1280x1024
+#   [...]
+# d refresh_rate_hz: 60.0200
+#   [...]
+# d bounds: 0,0 1280x1024
+# gc=suspended
+#   [...]
+# test=display duration-s=3.0 warmup=10
+#   [...]
+# sys pacing: presents=171 blocked=171 early=93 paced=0 vblank_held=0 (0.0 % paced)
+#              wait_mean=0.000 ms wait_max=0.000 ms frame=16.661 ms hold_frac=0.000 class=blocking
+# e end_time: 20260818-142052.248
+# e duration: 00:00:04.509

@@ -353,9 +353,18 @@ hierarchical structure of blocks and trials, over which the program
 can iterate, following a pattern inspired by Expyriment
 \parencite{krause2014}. Each trial is a collection of factors that can
 be randomized and logged. Data collection is handled by an
-\texttt{exp.Data} object, which writes to a CSV file with metadata
-headers providing extensive information about the computer OS and
-hardware, timestamps, etc.
+\texttt{exp.Data} object, which writes \emph{two} files per session. The first
+is the trial data as plain CSV, with no comment or metadata lines, so it opens
+directly in a spreadsheet program or a statistics package without preprocessing.
+The second is a companion \texttt{-info.txt} holding everything about the
+conditions the session ran under: the machine, operating system, kernel and
+desktop environment; every GPU and its driver; the sound server and its version;
+the display mode, audio device and buffer size that were actually opened; the
+scheduling policy obtained; and the participant details. Splitting them this way
+means the analysable file needs no cleaning and the provenance is still
+recorded --- and recorded automatically, rather than depending on someone
+writing it down. An example appears in the
+\hyperref[app:timing]{Supplementary Material} (Figure~\ref{fig:infofile}).
 
 Another thing which is not transparent from the source code is the fact
 that \texttt{goxpyriment} provides a graphical
@@ -863,6 +872,23 @@ Timing-Tests -test av -cycles 500 -audio-frames 1024 -trigger-device dlpio8 -tri
 # 4. regenerate the figures in this paper
 ./cmd/plot-timing-figures.py <capture-dir> paper/figures
 \end{lstlisting}
+
+\begin{figure}[htb]
+\lstinputlisting[basicstyle=\ttfamily\tiny,numbers=none,frame=single,
+                 breaklines=true,columns=fullflexible]{figures/info-file-example.txt}
+\caption{The companion \texttt{-info.txt} written beside every session's CSV,
+  from a short run on the laptop of Table~\ref{tab:duration} (abridged; each
+  \texttt{[...]} marks omitted lines of the same kind, nothing is reworded).
+  \texttt{sys} lines are what SDL reports about what it opened; \texttt{host}
+  lines are what the operating system says about the machine. The CSV beside it
+  carries no comment lines at all, so it loads into a spreadsheet or statistics
+  package unmodified. Every field here is written without the experimenter doing
+  anything, which is the point: the compositor, the sound server version and the
+  scheduling policy obtained are all conditions that changed our own results by
+  more than the experiment code did, and none of them can be recovered from the
+  data afterwards.}
+\label{fig:infofile}
+\end{figure}
 
 To change the display stack, the desktop session was left running for the
 Wayland and X11 conditions, and stopped in favour of a virtual console for the
