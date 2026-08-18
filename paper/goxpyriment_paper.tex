@@ -1,4 +1,4 @@
-\documentclass[doc,a4paper]{apa7}
+\documentclass[doc,a4paper,floatsintext]{apa7}
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
 \usepackage[style=apa, backend=biber, url=true]{biblatex}
@@ -386,203 +386,163 @@ are automatically recorded in the output data file header.
 \end{figure}
 
 
-% Every number in this section was measured on 2026-08-16/17 and is traceable
-% to a capture file. Where a measurement is missing it says so rather than
-% reusing an older figure taken under different conditions.
+% Every number in this section was measured on 2026-08-16/18 and is traceable to
+% a capture file. Where a measurement is missing it says so rather than reusing
+% an older figure taken under different conditions.
 \section{Timing Validation}\label{timing-verification}
 
-To characterise temporal precision we adopt the hardware-measurement protocol of
-the timing mega-study \parencite{bridges2020}, which compared a range of
-lab-based and online experiment generators using a Black Box Toolkit (BBTK).
-External instruments record the physical events---light onsets from a photodiode
-on the screen, sound onsets, and TTL edges on a digital line---independently of
-the computer under test, so the reported latencies do not depend on the timing of
-the machine being measured.
+We follow the hardware-measurement protocol of the timing mega-study
+\parencite{bridges2020}: external instruments record the physical
+events---light from a photodiode on the screen, sound from the line output, TTL
+edges on a digital line---independently of the computer under test, so the
+reported latencies do not depend on the timing of the machine being measured.
+Alongside the Black Box Toolkit (BBTK) we recorded the same events with a
+Digilent Analog Discovery~3 (AD3) sampling two analogue channels at 100~kS/s on
+a single timebase. The BBTK quantises onsets to 0.25~ms and applies a detection
+threshold it does not report; the AD3 stores the waveform, so the onset
+criterion is chosen at analysis time and stated with the result.
 
-We depart from that protocol in one respect, and the departure turned out to
-matter. Alongside the BBTK we recorded the same events with a Digilent Analog
-Discovery~3 (AD3) sampling two analogue channels at 100~kS/s on a single
-timebase. The BBTK quantises event onsets to 0.25~ms and applies a detection
-threshold whose value is not reported in its output; the AD3 records the
-waveform, so the onset criterion is a choice made at analysis time and stated
-with the result. Two independent instruments measuring the same events by
-different routes is also the only way we found to discover what each was adding:
-several of the results below correct earlier measurements of ours that were
-instrument artefacts rather than properties of the apparatus.
+Three questions organise what follows, in the order an experimenter should ask
+them. Are the frames presented at all, and for as long as requested? How stable
+is the delay from a trigger to the light? And where does the sound fall
+relative to the image? The apparatus, the individual runs, the commands that
+produced every number, and the full tables and supporting analyses are given in
+the \hyperref[app:timing]{Supplementary Material}.
 
-\subsection{What is measured, and why the three are not interchangeable}
+\subsection{Are frames dropped, and are durations what was asked for?}
 
-We report three quantities that are routinely conflated under the word
-``timing'':
+Figure~\ref{fig:durations} shows the optically measured duration of a nominal
+200~ms (12-frame) stimulus presented in a 500~ms cycle, on three machines under
+four display stacks. Each panel is drawn as deviation from its own median,
+because the absolute value is a property of the panel and not of the software:
+the same monitor driven by two of our machines returned medians 5.9~ms apart,
+which liquid-crystal rise/fall asymmetry accounts for almost entirely. What
+compares across configurations is the width of the bulk and the size of the
+tail.
 
-\begin{description}
-\item[Accuracy] the mean lag between an event and its physical
-  consequence---trigger to light, light to sound. Accuracy is a constant offset,
-  and a constant offset can be compensated by scheduling the stimulus earlier.
-\item[Precision] the trial-to-trial scatter of that lag. It cannot be
-  compensated, and it is what propagates into a single-trial reaction time.
-\item[Stability] whether the lag holds over a block. A lag that slides has an
-  ordinary standard deviation and an ordinary mean, and every within-channel
-  statistic looks correct while it happens; only a comparison against an
-  external clock reveals it.
-\end{description}
+\begin{figure}[tb]
+\centering
+\includegraphics[width=\linewidth]{figures/timing-durations.pdf}
+\caption{Optically measured duration of a 12-frame stimulus, photodiode on the
+  screen, 50\,\% criterion on both edges, plotted as deviation from each run's
+  own median. Counts are logarithmic so that a handful of long trials remains
+  visible against a mode of several hundred. Trials falling outside the axis are
+  counted in each panel title; they are dropped or held frames, not scatter.
+  Absolute medians differ by panel and by machine and are not comparable across
+  rows---see the \hyperref[app:timing]{Supplementary Material}.}
+\label{fig:durations}
+\end{figure}
 
-Stability is the one most often omitted, and it is the one that fails silently.
+Where no frame is dropped, presentation is exact: the middle 90\,\% of trials
+spans 0.03--0.47~ms, individual durations repeat to 11--91~$\mu$s, and the
+30-frame cycle period matches nominal to within 9~$\mu$s. The tail is what
+separates the configurations, and one factor produces all of it. Under a Wayland
+compositor 2.3--3.4\,\% of stimuli ran long---by one frame usually, by 33~ms at
+worst---and the same runs dropped 15 and 43 frames per thousand cycles, against
+zero to one everywhere else. No host-side statistic saw any of this: those runs
+report that the driver blocks, sub-ppm stability against the panel, and frame
+intervals with sub-millisecond scatter. Only the photodiode showed it.
 
-\subsection{The framework's own timestamps track the display}
+This is also why we report the tail rather than a standard deviation. In these
+data an SD of 3.654~ms belonged to a distribution whose middle 90\,\% spanned
+0.08~ms; the SD describes neither the bulk nor the failure.
 
-A stimulus generator reports an onset time, and an experiment's reaction times
-are measured from it. If that reported time advances on a clock other than the
-display's, the error grows for as long as the block lasts. This is not
-hypothetical: an earlier version of \texttt{goxpyriment} held each frame to a
-schedule derived from the nominal refresh rate, and on a Radeon Pro W5700 the
-reported onsets walked away from the photons at $-4.73$~ppm---2.3~ms per
-eight-minute block, exceeding a frame within the hour---while the program's own
-frame-interval statistics remained immaculate.
+\subsection{How stable is the trigger-to-light delay?}
 
-The mechanism is worth stating because it generalises beyond this framework. On
-that machine the GPU and the CPU keep independent crystals; its loop cadence
-differs from the nominal rate by $-4.20$~ppm. While onsets were timestamped with
-a schedule advancing on the CPU clock and the panel ran on the GPU clock, that
-crystal difference \emph{was} the drift. The two figures are the same quantity.
+Two quantities matter here. Trigger-to-light is what an EEG or MEG analysis
+needs in order to place a stimulus in a recording; flip-timestamp-to-photons is
+what the framework told the experiment against what the participant saw, and it
+is the one that enters a single-trial reaction time. Figure~\ref{fig:onsets}
+shows the first, per trial, on the same four configurations.
 
-The current version anchors each onset on the instant
-\texttt{SDL\_RenderPresent} returns wherever the driver blocks on the retrace,
-which re-establishes the phase from hardware on every frame. Measured against a
-photodiode over 1000 cycles ($\approx$8.3~min) per run:
+\begin{figure}[tb]
+\centering
+\includegraphics[width=\linewidth]{figures/timing-onsets.pdf}
+\caption{Trigger-to-light delay, deviation from each run's median, 10\,\%
+  criterion, logarithmic counts. Median delays were 55.7, 22.3, 24.9 and
+  22.1~ms respectively: a display server costs about two frames of latency, but
+  it is the width that separates the configurations. Absolute values and the
+  flip-to-photon figures are tabulated in the
+  \hyperref[app:timing]{Supplementary Material}.}
+\label{fig:onsets}
+\end{figure}
 
-\begin{center}
-\begin{tabular}{lrr}
-\hline \hline
-Machine & before & after \\
-\hline
-Raspberry Pi 4 (V3D, kmsdrm)      & 14~ms / 8~min & $+0.01$~ppm (0.006~ms) \\
-Radeon Pro W5700 (radeonsi, X11)  & $-4.73$~ppm   & $+0.13$~ppm (0.066~ms) \\
-\hline
-\end{tabular}
-\end{center}
+\paragraph{The timestamps track the display.} A stimulus generator reports an
+onset and reaction times are measured from it; if that time advances on a clock
+other than the display's, the error grows for as long as the block lasts. An
+earlier version of this framework held each frame to a schedule derived from the
+nominal refresh rate, and on one machine the reported onsets walked away from
+the photons at $-4.73$~ppm---2.3~ms per eight-minute block, exceeding a frame
+within the hour---while its own frame-interval statistics stayed immaculate.
+That machine's GPU and CPU keep independent crystals, and its loop cadence
+differs from nominal by $-4.20$~ppm: the crystal difference \emph{was} the
+drift. Anchoring each onset on the instant \texttt{SDL\_RenderPresent} returns,
+wherever the driver blocks on the retrace, re-establishes the phase from
+hardware every frame. Measured against a photodiode over 1010 cycles per run,
+the residual drift is $+0.01$, $+0.13$ and $-0.77$~ppm on three machines---0.01
+to 0.4~ms over an eight-minute block---while the same machine's cadence remains
+$-4.20$~ppm from nominal. That the cadence and the drift now disagree by a
+factor of thirty is the evidence that onsets follow the panel and not the
+schedule.
 
-The W5700 row is the stronger evidence: there the failure was measured, its
-magnitude was predicted from the crystal offset, and it is now measured gone,
-while the machine's cadence is still $-4.20$~ppm from nominal. That the cadence
-and the drift now disagree by a factor of 32 is what demonstrates the onsets are
-following the panel rather than the schedule.
+\paragraph{Precision is set by the display stack, not by the trigger device.}
+Under a compositor the flip-to-photon scatter is 0.674~ms; on the same machine,
+panel, photodiode and trigger, running on bare KMS/DRM it is 0.079~ms---an order
+of magnitude, from a setting. The trigger device is not the limitation it is
+assumed to be: a USB-serial trigger under KMS/DRM (0.057~ms) beat a
+directly-driven GPIO line on another machine (0.075~ms), and both trigger boxes
+put their edge out within 20~$\mu$s of the flip.
 
-\subsection{Configuration dominates the hardware}
+\subsection{Where does the sound fall?}
 
-Table~\ref{timings} reports the two machines. The pattern across it is that
-differences between \emph{configurations} of one machine exceed differences
-between machines.
+Audio was characterised on two machines by capturing the line output
+electrically rather than through a microphone. The audio-visual lag was 49.88~ms
+(SD 6.17~ms) on a Raspberry~Pi's on-board codec and 23.34~ms (SD 6.54~ms) on a
+USB audio interface, both at a 1024-frame buffer. \emph{The third machine has
+not been measured for audio}; that figure is missing rather than assumed.
 
-\begin{table*}[tb]
-\caption{Timing measured with a photodiode on the screen and, for the audio
-  rows, the machine's line output; 100~kS/s, both channels on one acquisition,
-  onsets at a 10\% criterion. Both machines drove the same Dell 1905FP panel at
-  1280$\times$1024, 60.0197~Hz, with the photodiode in the same position. Cycle:
-  12 frames on, 18 off. The criterion is named because it matters: this panel's
-  10--90\% transition takes 16.3~ms, a full frame, so where the onset is declared
-  on that ramp shifts every lag below by up to 16~ms. It costs nothing in
-  precision --- the trial-to-trial scatter is 8--23~$\mu$s at every level --- and
-  sets everything in accuracy, which is why a latency quoted without its
-  criterion is not reproducible even on the same rig.}
-\label{timings}
-\scriptsize
-\begin{tabular}{llrrrl}
-\hline \hline
-Machine & Configuration & $n$ & Mean & SD & Quantity \\
-\hline
-\multicolumn{6}{l}{\emph{Trigger to light}} \\
-Pi 4    & GPIO, kmsdrm            & 300 & 23.43~ms & 0.075~ms & TTL edge $\rightarrow$ 10\% light \\
-W5700   & DLP-IO8 (USB), X11      & 481 & 54.88~ms & 0.296~ms & \\
-W5700   & DLP-IO8 (USB), kmsdrm   & 286 & 22.55~ms & 0.057~ms & \\
-\\
-\multicolumn{6}{l}{\emph{Light to sound (audio-visual synchrony), 1024-frame buffer}} \\
-Pi 4    & on-board codec, PipeWire & 481 & 49.88~ms & 6.17~ms & 10\% light $\rightarrow$ tone envelope \\
-W5700   & Scarlett Solo, PipeWire  & 646 & 23.34~ms & 6.54~ms & \\
-\\
-\multicolumn{6}{l}{\emph{Flip timestamp to photons (stability)}} \\
-Pi 4    & kmsdrm  & 1000 & $+0.01$~ppm & 0.128~ms & slope; de-trended SD \\
-W5700   & X11     & 1000 & $+0.13$~ppm & 0.278~ms & \\
-\\
-\multicolumn{6}{l}{\emph{Presentation}} \\
-Pi 4    & kmsdrm  & 481 & 197.840~ms & 0.070~ms & 12-frame duration, 50\% criterion \\
-Pi 4    & kmsdrm  & 480 & 499.820~ms & 0.012~ms & cycle period \\
-\hline
-\end{tabular}
-\end{table*}
+The scatter is not device noise. The tone is handed to the device on time---the
+software-side interval between the visual flip and the moment the tone was
+queued was $0.080 \pm 0.035$~ms---and then waits for the queue, so its onset
+falls uniformly across one buffer period. Figure~\ref{fig:audio} shows measured
+scatter against the $\mathrm{period}/\sqrt{12}$ this predicts: they agree to
+within 8\,\% at every buffer size, on both machines. Below 1024 frames the
+tones tore audibly on our hardware. Buffer size therefore sets audio latency
+and audio jitter together, and it is the single most consequential audio
+setting an experimenter chooses.
 
-\paragraph{The display stack costs two frames.} On the W5700, stopping the X
-server and running the same binary on bare KMS/DRM---same machine, panel,
-photodiode position and trigger device---moved the trigger-to-light lag from
-54.88~ms to 22.55~ms and the scatter from 0.296~ms to 0.057~ms. The 32.4~ms is
-almost exactly two frames, consistent with an X11 Present path plus a driver
-swapchain queueing ahead of scanout; under KMS/DRM the application page-flips
-directly to the CRTC. The panel is not implicated: its 10--90\% transition
-measures 16.29~ms on the Pi and 17.28~ms here, with the same shape.
-
-None of this is visible from inside the program. Both configurations report that
-the driver blocks, sub-ppm stability against the panel, and frame intervals
-with sub-millisecond scatter. An experiment reporting an absolute onset would be
-32~ms wrong under X11 with no internal evidence of it.
-
-\paragraph{The trigger device is not the bottleneck it is assumed to be.} A
-USB-serial trigger (DLP-IO8) under KMS/DRM gives 0.057~ms of scatter---better
-than a directly-driven GPIO line on the Pi (0.075~ms). We had initially
-attributed the W5700's wider spread to its USB link; the KMS/DRM run shows the
-display server was responsible.
-
-\paragraph{Audio jitter is the buffer, and it is deterministic.} Recording the
-line output electrically, the audio onset scatters by one buffer period divided
-by $\sqrt{12}$:
-
-\begin{center}
-\begin{tabular}{lrrrr}
-\hline \hline
-Buffer (frames at 48~kHz) & period & measured SD & $\mathrm{period}/\sqrt{12}$ & torn tones \\
-\hline
-\phantom{0}256 & \phantom{0}5.33~ms & \phantom{0}2.36~ms & \phantom{0}1.54~ms & 100 / 483 \\
-\phantom{0}512 & 10.67~ms & \phantom{0}3.34~ms & \phantom{0}3.08~ms & 10 / 500 \\
-1024           & 21.33~ms & \phantom{0}6.17~ms & \phantom{0}6.16~ms & 0 / 481 \\
-2048           & 42.67~ms & 12.27~ms & 12.32~ms & 0 / \phantom{0}60 \\
-\hline
-\end{tabular}
-\end{center}
-
-Prediction and measurement agree to within 8\% at every point, and the same
-relation held on a USB audio interface on the other machine. The scatter is not
-noise: the tone's position within the buffer grid advances by
-$(\mathrm{cycle} \bmod \mathrm{period})$ each trial and wraps, a deterministic
-beat. On the Pi, with a 499.830~ms cycle and a 10.667~ms buffer, this predicts
-$+1.503$~ms per trial with a $-9.163$~ms wrap; the measured values were
-$+1.500$ and $-9.170$~ms. A cycle chosen as a whole multiple of the buffer
-period removes the beat entirely.
-
-Below 1024 frames the audio tears: 2.0\% of tones at 512 and 20.7\% at 256
-contained audible silences. At 512 the audio server responded to repeated
-underruns by adding a buffer period mid-run, stepping the latency by
-$+10.85$~ms and relocating the very quantity being measured. This is a floor set
-by the hardware, not by the server: with the server stopped and the device
-opened directly through ALSA, every one of 463 tones was torn.
-
-Throughout all of this the software-side statistic---the interval between the
-visual flip and the moment the tone was handed to the audio device---read
-$0.080 \pm 0.035$~ms. The framework does its part correctly; everything above
-happens downstream of it, and no host-side number reveals any of it.
+\begin{figure}[tb]
+\centering
+\includegraphics[width=\linewidth]{figures/timing-audio.pdf}
+\caption{Measured tone-onset scatter against audio buffer period, with the
+  scatter predicted if the onset falls uniformly within one buffer. Both
+  latency and jitter scale with the buffer, and below 1024 frames this machine
+  could not deliver tones intact. The scatter is a deterministic beat rather
+  than noise, and can be removed entirely by choosing the trial cycle as a whole
+  multiple of the buffer period (\hyperref[app:timing]{Supplementary Material}).}
+\label{fig:audio}
+\end{figure}
 
 \subsection{Recommendations}
 
 \begin{itemize}
+\tightlist
 \item Measure the configuration, not the machine. The largest effects we found
-  (32~ms from the display server, 79~ms and 4$\times$ the jitter from the audio
-  buffer) are settings, not hardware.
-\item If absolute onset latency matters---EEG, MEG, cross-modal work---run
-  without a display server, and measure rather than assume.
-\item Choose the audio buffer by measurement: as small as the machine sustains
-  without tearing, since both latency and jitter scale with it.
-\item State the onset criterion with any latency, and the buffer size with any
-  audio figure.
-\item Report stability, not only mean and SD. A drifting lag is invisible to
-  both.
+  were settings: 32~ms of latency from a display server, an order of magnitude
+  of onset precision from a compositor, 79~ms and four times the jitter from an
+  audio buffer.
+\item If absolute onset latency or single-trial precision matters, run without a
+  display server.
+\item On Wayland, run the panel at its native resolution: with a scaled desktop
+  the refresh rate reported to the program was wrong by 1477~ppm, and no
+  program can detect this from the inside.
+\item Choose the audio buffer by measurement---as small as the machine sustains
+  without tearing---and make the trial cycle a whole multiple of it.
+\item Warm the display in its final mode before recording; liquid-crystal
+  response and panel rate both move while a display settles.
+\item State the onset criterion with any latency, the panel with any duration,
+  and the buffer size with any audio figure. Report the count of trials outside
+  the bulk, not only a standard deviation.
 \end{itemize}
 
 The suite that produces these measurements ships with the framework
@@ -597,9 +557,12 @@ it was collected under.
 %       already runs the pair; the analysis is not written);
 %   (c) recovered response-time accuracy with the BBTK generating programmed
 %       responses at known delays;
-%   (d) the Dell Precision 5490 configuration, for a third display stack
-%       (Wayland), which is the one where SDL_RenderPresent does not block.
+%   (d) audio on the 5490, and a second audio campaign at a stated buffer size
+%       on all three machines.
 
+
+
+\FloatBarrier
 
 \section{Gallery of Examples}
 
@@ -759,13 +722,18 @@ Not applicable.
 
 \subsection{Availability of data and materials}
 
+The raw instrument captures and run logs behind the Timing Validation section,
+and the scripts that turn them into the reported figures, are available with the
+source repository (see the \hyperref[app:timing]{Supplementary Material}).
+
 \subsection{Code availability}
 
 The source code of \texttt{goxpyriment} is available under the Apache
 License 2.0 at
 \url{https://github.com/chrplr/goxpyriment}. All example experiments
-described in this article are included in the repository. No empirical
-data are reported in this article.
+described in this article are included in the repository. No
+behavioural data from human participants are reported; the empirical
+measurements in this article are hardware timing measurements.
 
 \subsection{Authors Contributions}\label{author-contributions}
 
@@ -783,5 +751,280 @@ measurement system and performed tests.
 \clearpage
 
 \printbibliography
+
+
+\clearpage
+\appendix
+
+\section{Supplementary Material: Timing Validation in Detail}\label{app:timing}
+
+This appendix documents the apparatus, the individual runs, the commands that
+produced every number in the Timing Validation section, and the analyses that
+the main text summarises. All measurements were made on 2026-08-16 to
+2026-08-18, and each is traceable to a capture file.
+
+\subsection{Apparatus}
+
+\paragraph{Machines.} Three, chosen to span the range of hardware a laboratory
+is likely to own rather than to represent it: a single-board computer, a
+workstation with a professional GPU, and a current laptop. All ran Linux with
+SDL~3.4.0, with the garbage collector suspended for the duration of each
+measurement loop and the process at \texttt{SCHED\_FIFO} priority~50.
+
+\begin{center}
+\scriptsize
+\begin{tabular}{llll}
+\hline \hline
+Host & Machine & Graphics & Audio \\
+\hline
+\texttt{omv-pi4}   & Raspberry Pi 4B          & V3D 4.2.14.0                & on-board codec \\
+\texttt{pcstim7}   & workstation              & AMD Radeon Pro W5700 (radeonsi, navi10) & Focusrite Scarlett Solo 3rd Gen \\
+\texttt{is158520}  & Dell Precision 5490      & Intel Arc Graphics (Meteor Lake) & on-board (PipeWire) \\
+\hline
+\end{tabular}
+\end{center}
+
+\paragraph{Displays.} A single Dell 1905FP (1280$\times$1024, nominal 60.0197~Hz)
+was shared between \texttt{pcstim7} and \texttt{is158520}, connected by a
+DisplayPort-to-HDMI adapter on the first and a USB-C-to-HDMI hub on the second.
+The 5490's built-in panel (2560$\times$1600) was measured separately, and the
+Pi drove an HDMI display. The same physical monitor on two machines is what
+allows the panel contribution to be separated from the software's
+(\hyperref[app:panel]{\emph{What the panel contributes}}, below).
+
+\paragraph{Instruments.} A Black Box Toolkit, and a Digilent Analog Discovery~3
+sampling two channels at 100~kS/s on one timebase. Channel~1 carried a
+photodiode taped to the screen over the stimulus square; channel~2 carried the
+trigger line, or the audio line output for the audio-visual runs. Because both
+channels share one acquisition and one clock, the instrument's timebase cancels
+in any interval measured between them.
+
+Two properties of the AD3 rig cost us time and are worth stating. Its analogue
+inputs are differential, so a lead that leaves the negative input floating reads
+mains hum rather than signal; and the device must be on a root USB port---behind
+a laptop dock it enumerates normally, accepts every configuration, and then
+delivers about 20 samples per second before stalling.
+
+\paragraph{Triggers.} A DLP-IO8 USB relay box on \texttt{pcstim7} and
+\texttt{is158520}, and a directly-driven GPIO line on the Pi. Measured against
+the flip timestamp, both put their edge out within 20~$\mu$s
+(\hyperref[app:onsets]{\emph{Onset timing}}, below), so neither limits the measurements reported here.
+
+\subsection{Runs and commands}
+
+Each run presents a square for 12 frames in a 30-frame (500~ms) cycle, emitting
+a TTL pulse on the flip that turns it on. The commands below are those recorded
+in each run's own \texttt{-info.txt}; the AD3 capture is started first, from a
+second machine or a second terminal, and outlives the run.
+
+\begin{lstlisting}[basicstyle=\ttfamily\scriptsize,numbers=none,breaklines=true]
+# 1. start the capture (root USB port; --save-raw is needed for envelope work)
+ad3-capture --seconds 545 --rate 1e5 --channels 1,2 --save-raw --out run.npz
+
+# 2. run the measurement (examples as actually invoked)
+Timing-Tests -test display -duration-s 300
+Timing-Tests -test av -cycles 1010 -no-sound -trigger-ms 15 \
+             -trigger-device dlpio8 -port /dev/serial/by-id/usb-DLP_Design_DLP-IO8_...
+Timing-Tests -test av -cycles 1010 -no-sound -trigger-ms 15 \
+             -trigger-device dlpio8 -d 1 -port /dev/serial/by-id/...   # external display
+Timing-Tests -test av -cycles 500 -audio-frames 1024 -trigger-device dlpio8 -trigger-ms 15
+
+# 3. extract events, and fit the host-to-instrument clock relation
+./cmd/ad3-to-events.py run.npz events.csv       # also prints the panel rise/fall
+./_build/timing-drift events.csv Timing-Tests_sub-000_date-....csv
+
+# 4. regenerate the figures in this paper
+./cmd/plot-timing-figures.py <capture-dir> paper/figures
+\end{lstlisting}
+
+To change the display stack, the desktop session was left running for the
+Wayland and X11 conditions, and stopped in favour of a virtual console for the
+KMS/DRM conditions; nothing else was altered between the members of a pair.
+
+\subsection{Duration: full results}
+
+\begin{table*}[htb]
+\caption{Optically measured duration of a 12-frame stimulus, photodiode on the
+  screen, 50\,\% criterion on both edges. All rows but the last two used the
+  same Dell 1905FP panel. ``Off by ${>}1$~ms'' counts trials outside a
+  millisecond of the median; those are dropped or held frames, not scatter. The
+  SD is given because it is conventional, but for these distributions it
+  describes neither the bulk nor the tail --- compare the p5--p95 column beside
+  it, and see Figure~\ref{fig:durations}.}
+\label{tab:duration}
+\scriptsize
+\centering
+\begin{tabular}{llrrrrr}
+\hline \hline
+Machine & Stack & $n$ & Median & p5--p95 & SD & Off by ${>}1$~ms \\
+\hline
+5490  & Wayland & \phantom{0}987 & 202.620~ms & 0.08~ms & 3.654~ms & \textbf{34 (3.4\,\%)}, to 236~ms \\
+5490  & kmsdrm  & 1004 & 203.150~ms & 0.26~ms & 0.091~ms & 0 \\
+W5700 & X11     & \phantom{0}476 & 197.250~ms & 0.03~ms & 0.011~ms & 0 \\
+W5700 & kmsdrm$^{a}$ & \phantom{0}280 & 198.040~ms & 0.79~ms & 0.322~ms & 0 \\
+5490  & Wayland$^{b}$ & 1005 & 221.050~ms & 0.14~ms & 2.648~ms & 23 (2.3\,\%) \\
+5490  & kmsdrm$^{b}$  & 1005 & 220.770~ms & 0.15~ms & 0.048~ms & 0 \\
+\hline
+\end{tabular}
+
+{\footnotesize $^{a}$ measured before the panel had settled: its 10--90\,\% rise
+time climbed 0.6~ms across the run, against 0.04~ms in the settled sessions, and
+the spread is that monotonic ramp rather than scatter (\hyperref[app:settling]{\emph{Why the configurations differ}}).
+$^{b}$ the laptop's built-in panel rather than the shared 1905FP.}
+\end{table*}
+
+\subsection{What the panel contributes, and why absolute durations do not
+  compare}\label{app:panel}
+
+The median duration is not 200~ms on any panel: it is 197.25~ms and 203.15~ms on
+\emph{the same} Dell 1905FP driven by two different machines, and 220.77~ms on
+the laptop's built-in display. The framework presented exactly twelve frames in
+every case, and the two 1905FP sessions agree on the trigger-to-trigger interval
+to three decimals (499.830~ms), so no frame differed between them.
+
+The difference is the panel. A liquid-crystal display does not rise and fall
+symmetrically, so a fixed-level criterion applied to both edges does not return
+the presented duration; the bias is approximately
+$(\mathrm{fall}-\mathrm{rise})/2$. In the two 1905FP sessions the same monitor,
+at indistinguishable drive levels (photodiode swing 7.93 against 8.03~V, ruling
+out a difference in signal range), rose (10--90\,\%) in 16.8 and 10.1~ms and fell
+(90--10\,\%) in 8.2 and 8.9~ms, predicting biases of $-4.4$ and $-0.6$~ms and so
+accounting for most of the 5.9~ms between them; the remainder is within what
+these corrections resolve. The laptop panel rises in 6.1~ms, falls in 12.1~ms,
+and holds its last frame about 5~ms past the offset before decaying---an
+asymmetry of $+6.0$~ms, in the other direction.
+
+The slower of the two 1905FP sessions was also the one still warming: its rise
+time climbed 0.6~ms across the run while the other held to 0.04~ms.
+\texttt{cmd/ad3-to-events.py} prints rise time, fall time, the implied criterion
+bias and a settling check for every capture, so that a cross-machine comparison
+can be corrected rather than believed.
+
+The consequence for practice is not that the measurement is wrong but that
+``stimulus duration'' names two quantities. The number an experiment controls is
+the frame count, and it is exact. The number a participant's retina integrates
+is panel-dependent and cannot be recovered from software. A duration reported
+without the panel and the criterion is not reproducible even on the same rig.
+
+\subsection{Onset timing: full results}\label{app:onsets}
+
+\begin{table*}[htb]
+\caption{Onset timing, 1010 cycles per run except where noted.
+  Trigger-to-light is measured on one instrument timebase; flip-to-photons
+  additionally uses the run's own timestamps, with the host--instrument clock
+  ratio fitted from the trigger-versus-flip relation over the whole run, so that
+  a constant trigger latency cancels. De-trended SD is the scatter after
+  removing any linear ramp; where the two SD columns differ, the raw one is
+  describing a drift rather than a jitter.}
+\label{tab:onset}
+\scriptsize
+\centering
+\begin{tabular}{llrrrrr}
+\hline \hline
+Machine & Stack (trigger) & TTL$\rightarrow$light & SD & Flip$\rightarrow$photons & de-trended SD & drift \\
+\hline
+Pi 4  & kmsdrm (GPIO)      & 23.43~ms & 0.075~ms & --- & 0.128~ms & $+0.01$~ppm \\
+W5700 & X11 (DLP-IO8)      & 54.88~ms & 0.296~ms & 54.85~ms & 0.278~ms & $+0.13$~ppm \\
+W5700 & kmsdrm (DLP-IO8)$^{a}$ & 22.55~ms & 0.057~ms & 22.61~ms & 0.028~ms & $+1.20$~ppm \\
+5490  & Wayland (DLP-IO8)  & 24.89~ms & 0.850~ms & 25.25~ms & 0.674~ms & $+2.05$~ppm \\
+5490  & kmsdrm (DLP-IO8)   & 22.26~ms & 0.137~ms & \textbf{22.28~ms} & \textbf{0.079~ms} & $-0.77$~ppm \\
+\hline
+\end{tabular}
+
+{\footnotesize $^{a}$ 286 cycles over 2.3 min, on a panel still settling; its
+drift is that transient, not a property of the stack.}
+\end{table*}
+
+\paragraph{The trigger devices cost microseconds.} Subtracting trigger-to-light
+from flip-to-photons on the same run isolates the latency of the trigger device
+itself: $+17~\mu$s for the DLP-IO8 behind a USB-C hub on the 5490, and
+$+12~\mu$s for the same box behind a DisplayPort adapter on the W5700. A
+USB-serial trigger is often assumed to be the weak link in such a rig; here it
+is three orders of magnitude below the display stack's contribution.
+
+\subsection{Why the configurations differ}\label{app:settling}
+
+\paragraph{The display stack.} Two machines were measured with the display
+server as the only variable. On the W5700, stopping the X server moved the
+trigger-to-light lag from 54.88 to 22.55~ms---32.4~ms, almost exactly two
+frames, consistent with an X11 Present path plus a driver swapchain queueing
+ahead of scanout. On the 5490 against a Wayland compositor the latency cost was
+smaller (3.0~ms) and the precision cost far larger: scatter $0.674 \to
+0.079$~ms, dropped frames $15 \to 0$, and long stimuli $3.4\,\% \to 0$. Under
+Wayland only 32 consecutive clean cycles existed in 981 from which to fit a
+panel rate; under KMS/DRM all 1000 were usable.
+
+\paragraph{Scaled modes on Wayland.} With the 5490's desktop scaled to
+1920$\times$1200 on a 2560$\times$1600 panel, SDL was told the mode was
+1920$\times$1200 at 59.95~Hz---with no scale factor declared---while the
+hardware ran at 60.0386~Hz. The reported refresh was wrong by \textbf{1477~ppm},
+and 16.8\,\% of presents returned early enough to be held to a schedule built on
+it. At native resolution the reported rate came within 10~ppm of the hardware
+and the held fraction fell to 0.2\,\%. This is the one case we found where the
+framework's own frame period was materially wrong through no fault of its own,
+and it cannot be detected from inside the program.
+
+\paragraph{Panels settle, and it is worth waiting.} Liquid-crystal response
+depends on temperature, so a panel measured soon after a mode change is still
+changing. A run begun seconds after a console switch showed its measured
+duration falling monotonically by 0.68~ms over 2.3 minutes, with no such ramp on
+a display that had been in the same mode for hours. The panel's \emph{rate}
+moves too, by 23~ppm over six minutes while warming. Both argue for warming the
+display in its final mode before recording anything.
+
+\subsection{Audio in detail}
+
+Audio was characterised by capturing the line output electrically rather than
+through a microphone, which removes the acoustic path and the microphone's own
+onset criterion from the measurement.
+
+\paragraph{The jitter is one buffer period, and it is a beat rather than noise.}
+The tone is handed to the device on time---the software-side interval between
+the visual flip and the moment the tone was queued was $0.080 \pm 0.035$~ms---and
+then waits for the queue, so its onset scatters across one buffer period:
+
+\begin{center}
+\scriptsize
+\begin{tabular}{lrrrr}
+\hline \hline
+Buffer (frames at 48~kHz) & period & measured SD & $\mathrm{period}/\sqrt{12}$ & torn tones \\
+\hline
+\phantom{0}256 & \phantom{0}5.33~ms & \phantom{0}2.36~ms & \phantom{0}1.54~ms & 100 / 483 \\
+\phantom{0}512 & 10.67~ms & \phantom{0}3.34~ms & \phantom{0}3.08~ms & 10 / 500 \\
+1024           & 21.33~ms & \phantom{0}6.17~ms & \phantom{0}6.16~ms & 0 / 481 \\
+2048           & 42.67~ms & 12.27~ms & 12.32~ms & 0 / \phantom{0}60 \\
+\hline
+\end{tabular}
+\end{center}
+
+Prediction and measurement agree to within 8\,\% at every point, and the same
+relation held on a USB interface on the other machine. The scatter is not
+random: the tone's position in the buffer grid advances by
+$(\mathrm{cycle} \bmod \mathrm{period})$ each trial and wraps. On the Pi, with a
+499.830~ms cycle and a 10.667~ms buffer, that predicts $+1.503$~ms per trial
+with a $-9.163$~ms wrap; the measured values were $+1.500$ and $-9.170$~ms. A
+cycle chosen as a whole multiple of the buffer period removes the beat
+altogether---an experimenter who needs a fixed audio-visual lag can have one.
+
+\paragraph{Below 1024 frames the audio tears.} 2.0\,\% of tones at 512 frames
+and 20.7\,\% at 256 contained audible silences. At 512 the audio server
+responded to repeated underruns by adding a buffer period mid-run, stepping the
+latency by $+10.85$~ms---so the setting is not one that machine holds. The floor
+is the hardware and not the server: with the server stopped and the device
+opened directly through ALSA, every one of 463 tones was torn.
+
+\subsection{Availability}
+
+The measurement suite is \texttt{tests/Timing-Tests/} in the repository, and the
+analysis tools used here are \texttt{cmd/ad3-to-events.py},
+\texttt{cmd/extract-av-sync.py}, \texttt{cmd/plot-durations.py} and
+\texttt{cmd/plot-timing-figures.py}. Capture is performed with
+\texttt{ad3-capture} (\url{https://github.com/chrplr/ad3-capture}), which is
+released separately because it is useful independently of this framework. Every
+run writes its full configuration---display mode, audio device and buffer,
+scheduling policy, onset source, and the pacing branch each frame took---into a
+companion \texttt{-info.txt}, and the figures in this paper are regenerated from
+the raw captures by a single command.
+
 
 \end{document}
