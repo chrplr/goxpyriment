@@ -263,6 +263,23 @@ func Host() SysInfo {
 	return hostCache
 }
 
+// PrimeHost starts collecting the host snapshot in the background and returns
+// immediately. A later Host() blocks until it is ready.
+//
+// Two reasons to call this first thing in a program's start-up, both measured:
+//
+//   - It is not free. The first lspci after boot took 2.07 s on a Precision
+//     5490 (0.04 s warm), and that is time a participant spends looking at
+//     nothing. Overlapped with SDL initialisation, window creation and font
+//     loading -- which have to happen anyway -- it disappears.
+//   - The fork must not inherit a real-time policy. Linux applies
+//     sched_setscheduler(0, ...) to the calling THREAD, so a collection started
+//     before the main thread elevates itself stays at ordinary priority even if
+//     it is still running afterwards.
+func PrimeHost() {
+	go Host()
+}
+
 // Fields returns the host facts worth recording in a data file, as ordered
 // key/value pairs with empty values already dropped.
 //

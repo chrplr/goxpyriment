@@ -39,15 +39,22 @@ func readFile(path string) string {
 
 // probeTimeout bounds every external command this package runs.
 //
-// These probes (lspci, sysctl, system_profiler, wmic) are cheap and local, and
-// on a healthy machine finish in milliseconds. The timeout is not there for
-// them: it is there because Collect now runs at the start of every experiment,
-// so a probe that blocks forever -- a wedged PCI enumeration, an unresponsive
-// WMI service -- would hang the session in front of a participant rather than
-// in front of whoever typed the command. A missing field in the data file is a
-// far better outcome than an experiment that never starts, so the deadline is
-// short and the failure is silent, like every other failure here.
-const probeTimeout = 2 * time.Second
+// It exists because Collect runs at the start of every experiment, so a probe
+// that blocks forever -- a wedged PCI enumeration, an unresponsive WMI service
+// -- would hang the session in front of a participant rather than in front of
+// whoever typed the command. A missing field in a data file is a far better
+// outcome than an experiment that never starts.
+//
+// Ten seconds looks generous for a local probe, and the first draft used two.
+// Measured on a Precision 5490 on 2026-08-18, `lspci` takes 2.07 s on its first
+// call after boot (nearly all of it in the kernel, reading PCI config space)
+// and 0.04 s warm. A two-second deadline therefore fired on exactly the run
+// that matters -- the first of a session -- and silently degraded the recorded
+// GPU names from "Intel Meteor Lake-P [Arc Graphics]" to the raw ID "0x7d55".
+// The deadline is a hang guard, not a latency budget: it must sit well above
+// how slow a working probe can legitimately be. The cost of the slow case is
+// hidden by PrimeHost, which overlaps it with SDL start-up.
+const probeTimeout = 10 * time.Second
 
 // run executes a command and returns its trimmed stdout, or "" on error or
 // timeout.
