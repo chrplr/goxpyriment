@@ -805,6 +805,33 @@ mains hum rather than signal; and the device must be on a root USB port---behind
 a laptop dock it enumerates normally, accepts every configuration, and then
 delivers about 20 samples per second before stalling.
 
+\begin{figure}[htb]
+\centering
+\includegraphics[width=0.58\linewidth]{figures/photodiode-crop.pdf}
+\caption{The photodiode detector used on channel~1. D1 is reverse-biased from a
+  9~V battery and its photocurrent develops across the 10~k$\Omega$ load R1, so
+  the output at \emph{Sortie} rises with screen luminance; C1 decouples the
+  supply. Running the detector from a battery keeps it off the mains ground of
+  the machine under test.}
+\label{fig:photodiode}
+\end{figure}
+
+\paragraph{Photodiode.} Figure~\ref{fig:photodiode} gives the detector circuit.
+It is a passive design on purpose: with no amplifier in the path there is no
+amplifier settling time to disentangle from the panel's. The load resistance and
+the junction-plus-cable capacitance, tens of picofarads, put the detector's own
+time constant well under a microsecond---below the 10~$\mu$s sample interval,
+and three orders of magnitude faster than the millisecond panel transitions it
+is used to measure.
+
+Onset and offset criteria are applied per trial against that trial's own dark
+and bright levels rather than against a fixed voltage, so a slow drift in
+backlight output does not leak into the transition times. Levels were stable
+throughout: the dark level sat at 0.15--0.25~V and the bright level at
+8.18--8.19~V across every session reported here, which is also what rules out a
+difference in signal range as the explanation for the two 1905FP sessions
+disagreeing (\hyperref[app:panel]{\emph{What the panel contributes}}, below).
+
 \paragraph{Triggers.} A DLP-IO8 USB relay box on \texttt{pcstim7} and
 \texttt{is158520}, and a directly-driven GPIO line on the Pi. Measured against
 the flip timestamp, both put their edge out within 20~$\mu$s
