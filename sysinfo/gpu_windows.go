@@ -3,7 +3,7 @@
 package sysinfo
 
 func collectGPUs() []GPUInfo {
-	rows := wmicPath("Win32_VideoController", "Name", "DriverVersion")
+	rows := cimGet("Win32_VideoController")
 	if len(rows) == 0 {
 		return nil
 	}

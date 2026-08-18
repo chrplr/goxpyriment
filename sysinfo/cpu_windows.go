@@ -8,10 +8,7 @@ import (
 )
 
 func collectCPU() CPUInfo {
-	rows := wmicGet("cpu",
-		"Name", "NumberOfCores", "NumberOfLogicalProcessors",
-		"CurrentClockSpeed", "MaxClockSpeed",
-	)
+	rows := cimGet("Win32_Processor")
 	if len(rows) == 0 {
 		return CPUInfo{}
 	}

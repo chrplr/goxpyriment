@@ -3,7 +3,7 @@
 package sysinfo
 
 func collectMachine() MachineInfo {
-	sys := first(wmicGet("ComputerSystem", "Manufacturer", "Model", "PCSystemType"))
+	sys := first(cimGet("Win32_ComputerSystem"))
 
 	// PCSystemType: 1=Desktop, 2=Mobile/Laptop, 3=Workstation, 4=EnterpriseServer,
 	// 5=SOHOServer, 6=AppliancePC, 7=PerformanceServer, 8=Slate

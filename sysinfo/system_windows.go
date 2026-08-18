@@ -10,10 +10,10 @@ import (
 
 func collectSystem() SystemInfo {
 	host, _ := os.Hostname()
-	info := first(wmicGet("OS", "Caption", "Version", "LastBootUpTime"))
+	info := first(cimGet("Win32_OperatingSystem"))
 
 	uptime := ""
-	if boot, err := parseWMIDatetime(info["LastBootUpTime"]); err == nil {
+	if boot, err := parseCIMTime(info["LastBootUpTime"]); err == nil {
 		uptime = fmtDuration(time.Since(boot))
 	}
 

@@ -3,7 +3,7 @@
 package sysinfo
 
 func collectAudio() AudioInfo {
-	devices := wmicPath("Win32_SoundDevice", "Name", "Manufacturer", "DriverVersion")
+	devices := cimGet("Win32_SoundDevice")
 	if len(devices) == 0 {
 		return AudioInfo{}
 	}

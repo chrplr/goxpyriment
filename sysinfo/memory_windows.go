@@ -7,7 +7,7 @@ import (
 )
 
 func collectMemory() MemInfo {
-	osInfo := first(wmicGet("OS", "TotalVisibleMemorySize", "FreePhysicalMemory"))
+	osInfo := first(cimGet("Win32_OperatingSystem"))
 	// Values are in KiB.
 	totalKB, _ := strconv.ParseInt(osInfo["TotalVisibleMemorySize"], 10, 64)
 	freeKB, _ := strconv.ParseInt(osInfo["FreePhysicalMemory"], 10, 64)
@@ -18,7 +18,7 @@ func collectMemory() MemInfo {
 
 	var swapTotalKB, swapUsedKB int64
 	// Page file (Windows equivalent of swap). AllocatedBaseSize and CurrentUsage are in MiB.
-	pf := first(wmicPath("Win32_PageFileUsage", "AllocatedBaseSize", "CurrentUsage"))
+	pf := first(cimGet("Win32_PageFileUsage"))
 	if pfTotal, err := strconv.ParseInt(pf["AllocatedBaseSize"], 10, 64); err == nil && pfTotal > 0 {
 		pfUsed, _ := strconv.ParseInt(pf["CurrentUsage"], 10, 64)
 		swapTotalKB = pfTotal << 10 // MiB → KiB
