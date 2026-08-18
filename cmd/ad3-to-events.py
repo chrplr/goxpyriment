@@ -28,11 +28,20 @@ did not make obvious.
 Needs `ad3` (github.com/chrplr/ad3-capture) only for the capture itself; this
 script reads the .npz with numpy and nothing else.
 """
+import os
 import sys
+
 import numpy as np
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import ad3_check
 
 cap, out = sys.argv[1], sys.argv[2]
 z = np.load(cap); rate = float(z["rate"])
+# Refuse before doing anything else. A clipped capture yields duration figures
+# that are wrong AND unusually self-consistent, so nothing further downstream
+# would call them into question.
+ad3_check.check(z, channels=(1,), where=cap)
 def v(ch): return z[f"offset_v_ch{ch}"] + z[f"range_v_ch{ch}"]*z[f"samples_ch{ch}"].astype(float)/65536
 pd_, ttl = v(1), v(2)
 

@@ -35,6 +35,9 @@ import os
 import sys
 
 import numpy as np
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import ad3_check
 import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
@@ -60,6 +63,7 @@ PLOT = {"font.size": 8, "figure.facecolor": "white", "axes.facecolor": "white",
 
 def channels(path):
     z = np.load(path)
+    ad3_check.check(z, channels=(1,), where=path)
     rate = float(z["rate"])
     def v(ch):
         return (z[f"offset_v_ch{ch}"]
