@@ -157,21 +157,34 @@ func writeVblank(b *strings.Builder) {
 	// each frame, so it is described that way: saying "the pacing schedule"
 	// misreports every machine where SDL_RenderPresent blocks, which is most of
 	// them. The run's own Frame pacing block says which it turned out to be.
-	const dflt = "onsets come from the present's return, or from the pacing " +
-		"schedule on frames where the driver did not block"
+	//
+	// Spelled out rather than summarised. This line is read by someone deciding
+	// whether to trust a latency, and the short version -- "onsets come from the
+	// present's return" -- assumes the reader already knows that a blocking
+	// present returns AT the retrace, which is the entire point being made.
+	dflt := []string{
+		"onsets are timestamped the moment SDL_RenderPresent() returns.",
+		"Where the driver blocks on the retrace, that moment IS the retrace,",
+		"so the timestamp is a hardware instant. On a frame where the present",
+		"returned early instead, the timestamp comes from the pacing schedule.",
+	}
+	lead := func(prefix string) []string {
+		out := append([]string(nil), dflt...)
+		out[0] = prefix + out[0]
+		return out
+	}
 	switch {
 	case vblank.Enabled() && available:
 		rows = append(rows, "IN USE (opt-in): "+t.Description())
 	case vblank.Enabled():
-		rows = append(rows,
-			vblank.EnvOptIn+"=on, but no hardware vblank clock on this machine",
-			"falling back: "+dflt)
+		rows = append(rows, vblank.EnvOptIn+"=on, but no hardware vblank clock on this machine")
+		rows = append(rows, lead("falling back: ")...)
 	case available:
-		rows = append(rows, dflt+" (default)",
-			"available if asked for with "+vblank.EnvOptIn+"=on: "+t.Description())
+		rows = append(rows, lead("default: ")...)
+		rows = append(rows, "available if asked for with "+vblank.EnvOptIn+"=on: "+t.Description())
 	default:
-		rows = append(rows, dflt+" (default)",
-			"no hardware vblank clock on this machine")
+		rows = append(rows, lead("default: ")...)
+		rows = append(rows, "no hardware vblank clock on this machine")
 	}
 	section(b, "Vblank", rows)
 }
