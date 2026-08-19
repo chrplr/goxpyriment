@@ -1,5 +1,12 @@
 # SDL3 Fullscreen in a Linux Virtual Console (TTY)
 
+> This page is the narrow troubleshooting note for one symptom: SDL not going
+> fullscreen on a bare console. For running experiments there properly — the
+> groups it needs, why the console's display mode (not the monitor's native one)
+> is the mode you get, how to pin it, and what a second lit head does to the
+> vblank clock — see [Running from a virtual
+> console](SettingPriorityUnderLinux.md#running-from-a-virtual-console-vt).
+
 ## Problem
 
 When running with no display server (GDM stopped, bare TTY), SDL3 may fail to switch to

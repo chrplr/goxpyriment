@@ -117,7 +117,7 @@ Vblank:     default: onsets are timestamped the moment SDL_RenderPresent() retur
             Where the driver blocks on the retrace, that moment IS the retrace,
             so the timestamp is a hardware instant. On a frame where the present
             returned early instead, the timestamp comes from the pacing schedule.
-            available if asked for with GOXPY_VBLANK=on: Linux DRM vblank (card /dev/dri/card1, crtc 0, DRM_IOCTL_WAIT_VBLANK, hardware-verified)
+            available if asked for with GOXPY_VBLANK=on: Linux DRM vblank (card /dev/dri/card1, crtc 0 driving eDP-1 1920x1200@60.0386 Hz, DRM_IOCTL_WAIT_VBLANK, hardware-verified)
 ```
 
 ### The `Vblank` line
@@ -157,6 +157,39 @@ interrupt on **31.3 % of frames**, and identifying which vblank a frame belongs
 to is the whole job. A wrong answer there is exactly one frame out, which on a
 frame grid still looks like a perfectly regular train — so nothing in the
 timestamps themselves would tell you.
+
+The same line ends with the check that the vblanks came from the **right
+display**:
+
+```
+sys vblank_resolution: frames=30000 … measured=59.9514 Hz nominal=59.9506 Hz (frame period -13 ppm, matches the display)
+```
+
+`measured` is the cadence of the vblanks the run actually read, taken from the
+kernel's own stamps and divided by the vblank *count* so a dropped frame cannot
+stretch it. `nominal` is the display the experiment drew on. On a single-head
+machine the two agree by construction and there is nothing to think about. On a
+laptop with an external monitor they are the sentence worth reading, because the
+two heads run different clocks and the vblank ioctl names a pipe by index, not by
+monitor.
+
+That mistake was made and measured. On a Precision 5490 driving a U2720Q on
+DP-1, with the internal panel also lit, the backend read the internal panel's
+CRTC — 60.0386 Hz against the external monitor's 59.9514, **1449 ppm apart**. The
+presents were flawless (the photodiode saw an unbroken 30-frames-per-cycle lock
+with 3 µs stability for 8.4 minutes) but the recorded onsets walked 24.2 µs per
+frame until they were a whole frame out and jumped back — 44 times in the run, a
+flip→photon lag sawtoothing across a full frame, and `onset_source` reporting
+`hardware-verified` in all 1010 rows. It was the right kind of hardware and the
+wrong piece of it.
+
+The backend now reads the card's mode resources and picks the CRTC whose
+programmed mode is the display you are presenting to, names that head in the
+`Vblank` line (`crtc 1 driving DP-1 2560x1440@59.9514 Hz`), refuses to start if
+no lit CRTC matches — falling back to the default present-return anchoring, which
+cannot pick the wrong display — and keeps checking the live cadence for the whole
+run. If it ever says `WRONG DISPLAY`, the onsets in that file are on another
+monitor's grid and should not be used.
 
 Check this line **before** committing to a photodiode capture rather than
 afterwards in the run's `-info.txt`: a machine with no backend and a run that

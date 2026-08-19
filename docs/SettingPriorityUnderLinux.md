@@ -4,6 +4,9 @@ Steps 1-5 cover real-time priority. [Step 6](#step-6-two-other-groups-the-same-m
 covers the `input` and `video` groups, which a machine needs before it can read
 keyboards or drive the display from a bare console — the configuration the
 timing measurements recommend, and the one where their absence first shows.
+[Running from a virtual console](#running-from-a-virtual-console-vt) covers that
+configuration itself: getting there, the display mode you actually get, and what
+a second lit monitor does to the timing.
 
 ---
 
@@ -261,6 +264,129 @@ that means `-no-realtime` was passed or `RealTimePriority` was set to 0, since
 otherwise it asks on its own; for anything else it means no `chrt` prefix.
 Without the line in the data you would be left comparing timing distributions and
 guessing which had happened.
+
+---
+
+## Running from a virtual console (VT)
+
+Running with no display server at all — GDM/SDDM stopped, a bare virtual
+console, SDL on the `kmsdrm` driver — is the configuration this page's groups
+exist for, and it is the single largest improvement available on Linux. On a
+Radeon Pro W5700 with everything else held identical it took onset latency from
+~55 ms to ~22 ms and the scatter from 0.296 ms to 0.057 ms (measured 2026-08-17
+with a photodiode; see [The display stack is worth two frames of latency and
+five times the jitter](TimingTests.md#the-display-stack-is-worth-two-frames-of-latency-and-five-times-the-jitter)).
+
+It also changes two things that a desktop session hides, and both have already
+cost a real capture.
+
+### Getting there
+
+```bash
+sudo systemctl stop gdm3          # or sddm, lightdm — whatever your machine runs
+# Ctrl-Alt-F3, log in, then:
+cd ~/my-experiment && go run .
+```
+
+You need the `input` and `video` groups from [Step
+6](#step-6-two-other-groups-the-same-machine-usually-needs) — in a desktop
+session `systemd-logind` grants those devices by ACL, and the ACL does not
+follow you to a bare VT. If SDL still fails to go fullscreen, see [SDL3
+fullscreen in a Linux virtual console](LinuxVirtualConsoleSDL.md); the usual fix
+is `SDL_VIDEODRIVER=kmsdrm`.
+
+### The console's mode is the mode you get
+
+goxpyriment **never changes the display mode.** On KMS/DRM it opens a
+fullscreen-desktop window and the fullscreen mode it passes is always the
+display's *current* mode, so resolution and refresh rate come from whatever the
+kernel already set on that console — not from the monitor's native mode, and not
+from what the desktop session was using before you stopped it.
+
+That is easy to miss, because the number that changes is not the one you would
+watch. A Dell U2720Q (native 3840x2160) driven from a VT at **2560x1440** ran at
+**59.951 Hz** instead of the 59.997 Hz of its native mode — 750 ppm apart, and
+the monitor was upscaling every frame to its own panel for the whole run.
+Nothing in the experiment complained; the pacing schedule, the vblank clock and
+the `-hz` figure passed to the tone all simply worked from the mode that was
+actually set.
+
+**Read back what you got**, from the run's own `-info.txt` rather than from
+memory:
+
+```
+# sys physical_resolution: 2560x1440 px
+# d name: DP-1
+# d refresh_rate_hz: 59.9500
+# sys vblank_backend: Linux DRM vblank (card /dev/dri/card2, crtc 1 driving DP-1 2560x1440@59.9514 Hz, ...)
+```
+
+Before a run, the same questions from the console:
+
+```bash
+# Which heads are connected, and what modes each offers (first = preferred)
+for c in /sys/class/drm/card*-*; do
+  [ "$(cat $c/status)" = connected ] && { echo "== $c"; head -3 $c/modes; }
+done
+
+# What is actually set right now, with exact pixel clocks
+sudo apt install libdrm-tests   # provides modetest; drm_info also works
+modetest -c | grep -A2 'connector.*connected'
+```
+
+### Pinning the mode
+
+The console's mode is set by the kernel at boot, so the place to change it is
+the kernel command line — one entry per connector, named exactly as it appears
+in `/sys/class/drm/cardN-<NAME>`:
+
+```
+video=DP-1:3840x2160@60
+```
+
+Add it to `GRUB_CMDLINE_LINUX_DEFAULT` in `/etc/default/grub`, run `sudo
+update-grub`, reboot, and check `/proc/cmdline` and the `-info.txt` afterwards.
+Several connectors take several `video=` entries.
+
+`modetest -s` can also set a mode, but it holds DRM master for as long as it
+runs and drops the mode when it exits, so it is a diagnostic rather than a way
+to prepare a run — SDL cannot open the device while it is held.
+
+Whether the native mode is worth insisting on is a measurement, not a rule. What
+is certain is that a non-native mode makes the monitor scale, and that its
+refresh rate is a different number from the one on the box. The TTL→photon lag
+in the 1440p capture above ran 38–55 ms end to end; how much of that the scaler
+accounted for was not measured, because the native mode was never captured for
+comparison. If input lag matters to your paradigm, capture both.
+
+### One display, or name the one you mean
+
+A VT lights every connected head, and that is where the second trap is. The
+vblank ioctl names a CRTC by index, not by monitor, and a laptop's internal panel
+and an external monitor run **different clocks** — on a Precision 5490 they were
+1449 ppm apart. Reading the wrong one produced onsets that looked perfectly
+regular, reported themselves as `hardware-verified`, and walked a whole frame
+away from the photons and back 44 times in eight minutes.
+
+goxpyriment now resolves the CRTC from the display it is presenting to and says
+which head it picked in `sys vblank_backend`, and refuses to use a vblank clock
+it cannot match rather than timing the wrong monitor. Two things are still worth
+doing:
+
+- Pass `-d N` deliberately and confirm `d name:` in the `-info.txt` is the
+  monitor the participant is looking at.
+- Read the end of `sys vblank_resolution:` on any run with `GOXPY_VBLANK=on`. It
+  compares the vblanks actually read against the display drawn on:
+
+  ```
+  sys vblank_resolution: frames=30000 … measured=59.9514 Hz nominal=59.9506 Hz (frame period -13 ppm, matches the display)
+  ```
+
+  If it says `WRONG DISPLAY`, the onsets in that file are on another monitor's
+  grid.
+
+The simplest way to have neither problem is to blank or unplug the head you are
+not using, so there is only one mode and one clock on the machine.
 
 ---
 

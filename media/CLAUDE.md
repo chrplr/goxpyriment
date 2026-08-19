@@ -76,19 +76,29 @@ timer for the platform:
   membership, though a local login often grants it through a logind ACL;
   otherwise falls back. `Onset.Source: HardwareVerified`.
 
-  It searches **every card node × CRTC 0–3** and takes the first pair that
-  answers. Neither "first node that opens" nor "CRTC 0" is safe on its own: a
-  render-only node enumerated first returns `EINVAL` (its pipe count is zero),
-  and the display need not be on CRTC 0. Both were found on real hardware — an
-  Intel/Mesa laptop where `card1` answers and `card2` returns `ENOTSUP` on every
-  CRTC, and a Radeon Pro W5700 where the first node to open returned `EINVAL`
-  and the old code gave up rather than trying the next. `Description()` names
-  the pair that won, so a wrong choice is visible in the log.
+  It searches **every card node** — neither "first node that opens" nor "CRTC 0"
+  is safe on its own: a render-only node enumerated first returns `EINVAL` (its
+  pipe count is zero), and the display need not be on CRTC 0. Both were found on
+  real hardware — an Intel/Mesa laptop where `card1` answers and `card2` returns
+  `ENOTSUP` on every CRTC, and a Radeon Pro W5700 where the first node to open
+  returned `EINVAL` and the old code gave up rather than trying the next.
 
-  The probe cannot tell a live CRTC from a blanked one — an idle pipe answers
-  without its sequence advancing, and distinguishing them means waiting, which a
-  constructor must not do. `tests/test_vblank_drift` checks the sequence and
-  reports the grid residual for that reason; run it if onsets look wrong.
+  **Which CRTC** comes from `vblank.Target`, not from whichever answers. The
+  backend reads the card's mode resources (`DRM_IOCTL_MODE_GETRESOURCES` +
+  `GETCRTC`) and picks the pipe whose programmed mode is the display the caller
+  is presenting to; `GETCONNECTOR`/`GETENCODER` attach the head's name, so
+  `Description()` reads `crtc 1 driving DP-1 2560x1440@59.9514 Hz` and a wrong
+  choice is legible rather than inferred. If no lit CRTC matches, construction
+  **fails** instead of guessing, and onsets fall back to the present's return.
+  See the header of `vblank/drm_crtc_linux.go`: taking the first pipe that
+  answered put an 8.4-minute photodiode capture on a laptop's internal panel,
+  1449 ppm away from the monitor the stimuli were on.
+
+  A programmed mode is still a claim about hardware, and a pipe can be
+  programmed without scanning out, so `Stats.MeasuredFrameNS` keeps measuring
+  the live cadence against the same target for the whole run
+  (`Stats.WrongDisplay()`). `tests/test_vblank_drift` checks the sequence and
+  reports the grid residual too; run it if onsets look wrong.
 - **Other / fallback**: post-`Present` `Screen.FlipTS` value.
   `Onset.Source: VsyncEstimated`.
 
