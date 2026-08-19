@@ -66,14 +66,51 @@ Psychtoolbox original: nothing accumulates drift and a slow trial cannot push
 the schedule. Each word is VSYNC-locked by `stimuli.PresentStreamOfText`, and
 450 ms is a whole number of frames at 60 Hz (27) and at 120 Hz (54).
 
-> **Check the timing on the presentation machine, not in a test window.** In a
-> windowed run on a GNOME/Wayland desktop (5120×2880 @ 60 Hz), the first ~10
-> trials were exact — word streams of 5400 ms, first-word onset 1–4 ms after
-> schedule — and the compositor then throttled the window to 20 Hz for the rest
-> of the run, stretching every 5400 ms stream to ~16350 ms. Since the words are
-> paced by VSYNC, a throttled surface silently slows the whole design. Validate
-> with a fullscreen run and read `displayed_onset - scheduled_onset` in the data
-> file.
+**Measured fullscreen** (photodiode on the `-photodiode` patch, AD3 at
+100 kS/s, complete 48-trial run) under the conditions below:
+
+| | |
+|---|---|
+| run length | 358 s, as designed |
+| word-to-word interval | **450.021 ms, SD 0.025 ms** for 555 of 576 intervals |
+| the other 21 | 18 late by exactly one frame, 3 by two frames; **never early, never dropped** |
+| trial onsets | followed the absolute schedule; residual 58 ppm against the AD3's timebase, i.e. two crystals disagreeing, not drift in the design |
+
+The one-frame-late intervals are 3.6 % of word onsets. They are not caused by
+the trigger code: a control run with `-dlpio8` off gave the same rate (6 of 132),
+and forcing `-exclusive-fullscreen on` did not remove them either. They are the
+display stack's, and they delay a word by 16.7 ms without ever losing one.
+
+### Conditions these numbers describe
+
+Every figure on this page was recorded on **2026-08-19** with SDL's
+**`wayland` video driver** under GNOME — a compositor is in the path — with the
+OpenGL renderer on Mesa Intel Arc (Meteor Lake), 5120×2880 at a nominal
+59.996 Hz (measured 60.03), and `GOXPY_VBLANK` not enabled. From the session
+metadata:
+
+```
+# sys video_driver: wayland          # sys renderer: opengl
+# sys gl_renderer: Mesa Intel(R) Arc(tm) Graphics (MTL)
+# sys vblank_backend: not requested
+# sys refresh_nominal_hz: 59.9960    # sys refresh_measured_hz: 60.0315
+```
+
+They are **not** measurements of a `kmsdrm` run. Running from a Linux virtual
+console with `SDL_VIDEODRIVER=kmsdrm` takes the compositor out of the path
+entirely (see [`docs/LinuxVirtualConsoleSDL.md`](../../docs/LinuxVirtualConsoleSDL.md)),
+and both quantities most likely to change are the ones a compositor owns: the
+3.6 % of one-frame-late onsets, and the up-to-one-frame trigger-to-photon lead.
+The 450.021 ms / SD 0.025 ms pacing of the frames that *are* on time is a
+property of the VSYNC lock and should survive. Re-measure before quoting any of
+this for a console-mode setup.
+
+> **Do not judge the timing from a windowed test run.** Windowed on the same
+> machine, the first ~10 trials were exact and the compositor then throttled the
+> surface to 20 Hz for the rest of the run, stretching every 5400 ms stream to
+> ~16350 ms. Fullscreen never showed it. Since the words are paced by VSYNC, a
+> throttled surface silently slows the whole design; validate fullscreen and
+> read `displayed_onset - scheduled_onset` in the data file.
 
 ## Task
 
@@ -119,8 +156,17 @@ recording can be segmented on the stimulus itself. The condition is carried by
 | 2 | pulsed at every word onset of a **nonword** trial | `-ttl-pin-nonword` |
 | 3 | pulsed (10 ms) at the **press-probe**, which ends the trial | `-ttl-pin-probe` (0 = none) |
 
-A trial reads as 12 pulses on pin 1 or on pin 2, followed by one on pin 3. The
-word pulses are one display frame wide (~16.7 ms at 60 Hz).
+A trial reads as 12 pulses on pin 1 or on pin 2, followed by one on pin 3. A
+word pulse is dropped by the first frame callback at least 10 ms after its
+rising edge, which on a 60 Hz display makes it one frame wide — **measured
+16.675 ms, SD 0.022 ms** (n = 72, AD3 at 100 kS/s).
+
+Do not clear such a pulse by counting display frames: the render loop runs a
+frame ahead of scan-out, so the next frame callback arrives ~0.1 ms after the
+onset hook, not 16.7 ms after it. An earlier version of this program counted
+frames and emitted **0.087 ms** pulses, which most EEG/MEG inputs would miss
+entirely. The photodiode patch, being about what is on screen, is still
+specified in frames.
 
 Pins are numbered **1–8 as labelled on the board**, like `tests/test_dlpio8`.
 The `triggers` package counts lines from 0, so pin 1 is line 0; the conversion
@@ -132,14 +178,25 @@ write-all command: `triggers.DLPIO8.Send` writes one ASCII byte per line, so an
 would record the intermediate values. Only one pin is ever changed at a time
 here.
 
-**Where the pulse falls.** The rising edge is emitted from the stream's
-post-flip `OnsetCallback`, i.e. at the same SDL-clock instant as the
-`TimingLog.OnsetNS` recorded in the data file — the *displayed* onset, not
-GPU-submission time one frame earlier. What remains between that edge and the
-photons is the fixed hardware pipeline (scan-out and panel response), which a
-photodiode on the presentation display can measure once and subtract.
+**Where the pulse falls, measured.** The rising edge is emitted from the
+stream's post-flip `OnsetCallback`, at the same SDL-clock instant as the
+`TimingLog.OnsetNS` recorded in the data file. Against a photodiode on the
+patch (AD3, both channels on one timebase, fullscreen under the `wayland`
+video driver — see *Conditions these numbers describe* above):
 
-**Measured on the hardware** (DLP-IO8-G on `/dev/ttyUSB0`, 2026-08-19):
+* the trigger **leads the photons by 9.9–24.4 ms**, i.e. by up to one frame;
+* within a trial that lead is **constant to ~0.1 ms** — all 12 words of a trial
+  share it;
+* it changes from trial to trial, because each trial is re-anchored to an
+  absolute host-clock deadline and so starts at an arbitrary phase within the
+  frame.
+
+The trigger therefore marks the right *frame* reliably, and within a trial the
+offset to the photons is a constant you could subtract — but it is not the same
+constant across trials. Where that matters, take the photodiode as the
+reference; that is what the patch is for.
+
+**Measured on the DLP-IO8-G itself** (2026-08-19):
 
 * Pins 1, 2 and 3 read back as `1` while driven high and `0` while driven low.
 * `SetHigh`/`SetLow` block the caller for a median of 5.6 µs (p95 11 µs, max
@@ -168,6 +225,12 @@ Verified by reading the rendered frames back with `SDL_RenderReadPixels`
 (1024×768 window, 200 px patch): pixel (195,195) is white and (205,205) black on
 frame 0 of every word, and both are black on frames 1 and 2 — the square is
 exactly 200×200 in the corner and lasts exactly one frame per onset.
+
+Measured with a photodiode on it (AD3 at 100 kS/s, fullscreen): the light rises
+10–90 % in 3.4 ms, and the flash is 29.6 ms wide at half amplitude (SD 0.76,
+n = 625) for a square drawn on a single 16.7 ms frame — the excess is this
+panel's decay, not extra frames. The onset, which is what a photodiode is used
+for, is sharp.
 
 The square is drawn on top of the stimulus, so on the participant's display it
 is visible unless the sensor housing covers it. In an EEG/MEG booth that is

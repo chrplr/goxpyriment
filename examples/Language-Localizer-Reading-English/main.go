@@ -127,16 +127,25 @@ const (
 	defaultNonwordPin  = 2
 	defaultProbePin    = 3
 
-	ttlWordPulseFrames = 1                     // word pulse width, in display frames
-	ttlProbePulse      = 10 * time.Millisecond // width of the probe pulse
+	ttlWordPulseMs = 10                    // minimum width of the word pulse
+	ttlProbePulse  = 10 * time.Millisecond // width of the probe pulse
+
+	// patchFrames is how many display frames the photodiode square is drawn
+	// for. This is a frame count because it is about what is on screen; the
+	// TTL width above is a duration because it is about the recording system,
+	// and the two are NOT the same clock: the render loop runs a frame ahead of
+	// scan-out, so "the next frame callback" arrives ~0.1 ms after the onset
+	// hook, not 16.7 ms after it. Clearing the line on a frame count produced
+	// 0.087 ms pulses (measured on an AD3, 2026-08-19) — too short for most
+	// EEG/MEG inputs to latch.
+	patchFrames = 1
 )
 
 // defaultPhotodiodeSize is the side, in pixels, of the square flashed in the
-// top-left corner by -photodiode. It is shown for exactly the same frames as
-// the TTL word pulse (ttlWordPulseFrames), so a photodiode on the corner of the
-// screen and a scope on the trigger pin measure the same event: the difference
-// between the two traces is the display pipeline's latency, which is what a
-// photodiode is for.
+// top-left corner by -photodiode. It goes up on the same frame whose flip fires
+// the TTL word pulse, so a photodiode on the corner of the screen and a scope on
+// the trigger pin measure the same event: the difference between the two traces
+// is the display pipeline's latency, which is what a photodiode is for.
 const defaultPhotodiodeSize = 200
 
 // pinToLine converts a board pin number (1-8) to the 0-indexed line the
@@ -318,7 +327,7 @@ func main() {
 		patch = stimuli.NewRectangle(-w/2+side/2, h/2-side/2, side, side, control.White)
 		stimuli.PreloadVisualOnScreen(exp.Screen, patch)
 		log.Printf("photodiode: %.0f px white square in the top-left corner of the %.0fx%.0f drawable area, "+
-			"%d frame(s) at each word onset and at the probe", side, w, h, ttlWordPulseFrames)
+			"%d frame(s) at each word onset and at the probe", side, w, h, patchFrames)
 	}
 
 	exp.AddDataVariableNames([]string{
@@ -436,22 +445,31 @@ func main() {
 		// codes this trial's condition. The hooks read it rather than the trial
 		// itself so the timing-critical path does nothing but one serial write.
 		wordLine := pinToLine(*sentencePin)
-		onOnset := func(_ int, _ uint64) error {
+
+		// pulseEndNS is when the current word pulse may be dropped, on the SDL
+		// clock; 0 means no pulse is up. Timing the width rather than counting
+		// frames is what makes it a real 10 ms edge — see ttlWordPulseMs.
+		var pulseEndNS uint64
+		onOnset := func(_ int, onsetNS uint64) error {
 			ttlFail("word onset", ttl.SetHigh(wordLine))
+			pulseEndNS = onsetNS + uint64(ttlWordPulseMs)*1_000_000
 			return nil
 		}
 		onFrame := func(ctx stimuli.FrameContext) error {
-			// Words have no ISI, so the pulse is cleared on the frame after the
-			// onset rather than at the start of an off-phase.
-			if ctx.OnPhase && ctx.Frame == ttlWordPulseFrames {
+			// Words have no ISI, so the pulse is dropped by the first frame
+			// callback at least ttlWordPulseMs after the rising edge, rather
+			// than at the start of an off-phase. The achieved width is thus
+			// between ttlWordPulseMs and one frame more than it.
+			if pulseEndNS != 0 && ctx.NowNS >= pulseEndNS {
 				ttlFail("word offset", ttl.SetLow(wordLine))
+				pulseEndNS = 0
 			}
 			// The photodiode patch is drawn on top of the word, on the frame
 			// that is about to be flipped — the same frame whose flip fires the
 			// TTL from onOnset. Drawing it here rather than adding it to the
 			// stream keeps the stream's own timing untouched: it is one more
 			// filled rect in a frame that was being rendered anyway.
-			if patch != nil && ctx.OnPhase && ctx.Frame < ttlWordPulseFrames {
+			if patch != nil && ctx.OnPhase && ctx.Frame < patchFrames {
 				if derr := patch.Draw(ctx.Screen); derr != nil {
 					return derr
 				}
@@ -532,6 +550,7 @@ func main() {
 			// The stream ends on the last word's final frame; make sure the
 			// pulse is not left high if that frame was also its first.
 			ttlFail("word offset", ttl.SetLow(wordLine))
+			pulseEndNS = 0
 			for _, ev := range events {
 				if isResponse(ev, respKeys) {
 					credit(ev.TimestampNS)
