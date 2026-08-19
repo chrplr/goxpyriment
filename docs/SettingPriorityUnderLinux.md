@@ -1,5 +1,10 @@
 Here are the step-by-step instructions to set up the `goxpyriment` group with those high-priority privileges.
 
+Steps 1-5 cover real-time priority. [Step 6](#step-6-two-other-groups-the-same-machine-usually-needs)
+covers the `input` and `video` groups, which a machine needs before it can read
+keyboards or drive the display from a bare console — the configuration the
+timing measurements recommend, and the one where their absence first shows.
+
 ---
 
 If you are here because of EEG or MEG trigger timing, read
@@ -123,6 +128,73 @@ It does not persist to your shell or to the next command; that is deliberate.
 You *can* make a shell real-time with `chrt -f -p 50 $$`, but do not: every
 command you then type runs above most system threads, and a mistyped one is
 very hard to interrupt.
+
+### Step 6: Two other groups the same machine usually needs
+
+Real-time priority is not the only permission a stimulus machine wants, and the
+other two bite in exactly the configuration the timing measurements recommend:
+running without a display server, from a virtual console.
+
+```bash
+sudo usermod -aG input $USER      # /dev/input/event*  — keyboards, mice, gamepads
+sudo usermod -aG video $USER      # /dev/dri/card*     — KMS/DRM output and vblank
+```
+
+Both need a full logout and login, the same as Step 4.
+
+**Why it only shows up on the console.** In a desktop session `systemd-logind`
+attaches an ACL granting the active user access to that seat's devices — the
+`+` at the end of the permission bits is the ACL:
+
+```
+crw-rw----+ 1 root video  226,   0 /dev/dri/card0
+crw-rw---- 1 root input   13,  64 /dev/input/event0
+```
+
+So everything works in a desktop session and the same program run from a bare VT
+finds the nodes closed to it. Group membership is not seat-dependent and covers
+both.
+
+**`input`** — without it SDL prints a line per device it cannot open while it
+enumerates for joysticks:
+
+```
+Error: could not open /dev/input/event3
+```
+
+Harmless in itself, and a visual-only run is unaffected. It matters for
+**reaction times**: with evdev unavailable SDL falls back to reading the console
+tty, which is not the same input path as the one a desktop run uses. We have not
+measured the difference — which is the reason to remove the ambiguity rather
+than to reason about it. Never compare RT distributions between a console run
+and a desktop run without checking both used the same path.
+
+> ⚠️ A user in `input` can read every keystroke on the machine, in every
+> session, including other users'. On a dedicated stimulus box that is a fair
+> trade; on a shared machine it is not, and the alternative is to make sure the
+> VT login creates a proper logind session so the ACLs are applied
+> (`loginctl session-status` should show it active on `seat0`).
+
+**`video`** — needed to open `/dev/dri/card*`, which is both how SDL drives the
+display under `kmsdrm` and how the vblank backend reads hardware timestamps
+(`GOXPY_VBLANK=on`, see `vblank/drm_linux.go`). If GPU rendering then fails
+while output works, add `render` as well: the two are separate nodes with
+separate groups.
+
+```
+crw-rw----+ 1 root video  226,   0 /dev/dri/card0        # video
+crw-rw----+ 1 root render 226, 128 /dev/dri/renderD128   # render
+```
+
+Verify the same way as the rest of this page — from the data, not from memory.
+A run that obtained the vblank clock says so in its `-info.txt`:
+
+```
+# sys vblank_backend: Linux DRM vblank (card /dev/dri/card2, crtc 0, ...)
+```
+
+and a run that could not falls back silently to a software-derived onset, which
+is a difference of several parts per million in a long block.
 
 ---
 
