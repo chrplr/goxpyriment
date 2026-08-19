@@ -244,6 +244,65 @@ That removes the backstop along with the throttle, so a runaway real-time loop
 will then hold a CPU with nothing left to take it back. Reasonable on a
 dedicated stimulus machine; not on a laptop you also read mail on.
 
+---
+
+### ⚠️ The speed the CPU runs at is not fixed either
+
+Real-time priority decides **when** your thread runs. It says nothing about how
+fast the core runs once it does, nor how long the core takes to wake up, and
+both default to saving power rather than responding quickly:
+
+- **The frequency governor.** `powersave` and `schedutil` raise the clock only
+  after they observe load, so the first work after an idle gap runs at a lower
+  clock than the work after it.
+- **Idle states.** A deeply idle core takes tens to hundreds of microseconds to
+  come back. An experiment that sleeps between frames is idle by design — which
+  is precisely the pattern that pays this cost, and the pattern the previous
+  section tells you to adopt.
+
+To pin the clock for a session:
+
+```bash
+sudo cpupower frequency-set -g performance     # package: linux-tools-common / cpupower
+cpupower frequency-info | grep -i "current policy"
+```
+
+It does not survive a reboot. Make it persistent through your distribution's
+usual mechanism (a systemd unit, or `GOVERNOR=performance` in
+`/etc/default/cpufrequtils` on Debian and Ubuntu) rather than by remembering to
+type it, since the failure mode is silent.
+
+**Unlike the rest of this page, this section is not backed by a measurement of
+its own.** It is here because of one unexplained observation: on 2026-08-19, in
+a 1010-cycle run on a workstation whose onsets were anchored on kernel DRM
+vblanks, the host loop's cadence changed by **10 ppm** 316 s in, while the panel
+it was driving held its own period to 0.27 ppm across the same instant. Nothing
+in the recorded configuration changed. The frequency governor is a *candidate*
+for that, not a diagnosis — the honest status is that the run has not been
+repeated with the governor pinned, and until it has, this is a cheap precaution
+rather than a fix.
+
+Cheap is the operative word: it costs one command and some electricity, and the
+alternative is discovering afterwards that two halves of a session were not
+comparable.
+
+**Check it from the data rather than from memory.** Every run records the clock
+it saw at start-up in its `-info.txt`:
+
+```
+# host cpu_mhz: 3600 (max 4800)
+```
+
+A run that starts well below its maximum was not on a pinned clock. As with
+`sys sched_policy`, the value is in the file so that two runs can be compared
+afterwards without anyone having to recall what the machine was doing.
+
+If you take this further — holding `/dev/cpu_dma_latency` open at 0 to keep
+cores out of deep idle is the usual next step — measure the pair before and
+after and add the numbers here. That is what the rest of this page is made of.
+
+---
+
 > **Note on the grant itself:** goxpyriment only uses `rtprio`. The `nice -20`
 > and `memlock unlimited` lines in Step 2 are there because they are commonly
 > wanted alongside it and cost nothing, not because anything here requires them.
