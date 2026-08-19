@@ -186,6 +186,29 @@ crw-rw----+ 1 root video  226,   0 /dev/dri/card0        # video
 crw-rw----+ 1 root render 226, 128 /dev/dri/renderD128   # render
 ```
 
+**`audio`** — usually **not** needed, despite looking like the same case. The
+nodes are protected identically:
+
+```
+crw-rw----+ 1 root audio  116,   8 /dev/snd/pcmC0D0p
+```
+
+but the resemblance stops there. SDL does not normally open them: it talks to
+PipeWire or PulseAudio over a socket in your own runtime directory, and the
+sound server holds the device. So audio keeps working from a console where the
+display and the keyboard do not, and joining `audio` changes nothing.
+
+It matters only if you bypass the server and open ALSA directly
+(`SDL_AUDIO_DRIVER=alsa` with no server running) — which our own measurements
+argue against on other grounds: on a Raspberry Pi 4 with the server stopped and
+the device opened directly, **every one of 463 tones was torn**. If you are in
+that configuration, the missing group is not your biggest problem.
+
+Do not join `audio` to obtain real-time priority either — see [the note in Step
+2](#step-2-create-the-limits-configuration) on why that grant is the wrong one
+to rely on. PipeWire gets its own real-time threads through RealtimeKit, not
+through the group.
+
 Verify the same way as the rest of this page — from the data, not from memory.
 A run that obtained the vblank clock says so in its `-info.txt`:
 
