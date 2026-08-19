@@ -60,7 +60,10 @@ func TestDrmWaitVblankLayout(t *testing.T) {
 // Skips where there is no usable DRM node, so it is silent on CI and on any
 // machine without a display.
 func TestPollForSequenceResolvesNextVblank(t *testing.T) {
-	fd, path, crtc, err := findDRMNode()
+	// An empty Target: the test does not care which head answers, only that the
+	// poll resolves the sequence it asks for, and naming a display would make
+	// the test skip on the machines it most needs to run on.
+	fd, path, pipe, err := findDRMNode(Target{})
 	if err != nil {
 		t.Skipf("no DRM vblank source here: %v", err)
 	}
@@ -69,10 +72,10 @@ func TestPollForSequenceResolvesNextVblank(t *testing.T) {
 	// capture the clock epoch. Only the ioctl path is under test, and a zero
 	// offset leaves timestamps in CLOCK_MONOTONIC, which is what the poll
 	// measures against anyway.
-	b := &drmBackend{fd: fd, path: path, crtc: crtc}
-	t.Logf("using %s crtc %d", path, crtc)
+	b := &drmBackend{fd: fd, path: path, pipe: pipe}
+	t.Logf("using %s crtc %d (%s)", path, pipe.index, pipe)
 
-	seq, _, err := b.query(requestType(b.crtc)|drmVblankRelative, 0)
+	seq, _, err := b.query(requestType(b.pipe.index)|drmVblankRelative, 0)
 	if err != nil {
 		t.Fatalf("relative query: %v", err)
 	}

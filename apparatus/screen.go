@@ -601,11 +601,38 @@ func (s *Screen) ensureVblank() {
 		return
 	}
 	log.Printf("vblank: enabled by %s=on — onsets will be anchored on kernel vblank stamps (opt-in; see vblank.Enabled)", vblank.EnvOptIn)
-	if t := vblank.AutoDetect(); t.Precision() == vblank.HardwareVerified {
+	if t := vblank.AutoDetectFor(s.VblankTarget()); t.Precision() == vblank.HardwareVerified {
 		s.vbl = t
+		log.Printf("vblank: %s", t.Description())
 	} else {
 		_ = t.Close() // the fallback would echo back whatever we passed it
 	}
+}
+
+// VblankTarget names the display this Screen is presenting to, so a vblank
+// backend reads THAT head's vblanks and not whichever pipe answers first.
+//
+// Exported because Screen is not the only thing that opens a vblank clock:
+// media/present and tests/test_vblank_drift open their own, and a drift test
+// comparing this Screen's flips against another monitor's vblanks would report a
+// drift that is nothing but the gap between two panels.
+//
+// A machine lighting two heads runs two clocks: on a Precision 5490 with an
+// external monitor the internal panel is 1449 ppm off the external one, and the
+// backend used to read whichever it found. See vblank/drm_crtc_linux.go for what
+// that did to an eight-minute photodiode capture.
+//
+// The size comes from the same display mode as the frame period so the two
+// cannot describe different displays. Where the mode is unreadable the size is
+// left zero, which the backend treats as "match on the rate alone" rather than
+// as a mismatch.
+func (s *Screen) VblankTarget() vblank.Target {
+	t := vblank.Target{FrameNS: uint64(s.FrameDuration())}
+	id := sdl.GetDisplayForWindow(s.Window)
+	if mode, err := id.CurrentDisplayMode(); err == nil && mode != nil {
+		t.Width, t.Height = int(mode.W), int(mode.H)
+	}
+	return t
 }
 
 // OnsetSource reports how the timestamp FlipTS last returned was obtained.

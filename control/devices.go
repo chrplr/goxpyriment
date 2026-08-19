@@ -148,7 +148,12 @@ func writeDisplays(b *strings.Builder) {
 // go straight to the OS, and no window has to exist. It probes and closes
 // immediately, so nothing is held when the experiment later opens its own.
 func writeVblank(b *strings.Builder) {
-	t := vblank.AutoDetect()
+	// Probed against the PRIMARY display, because no window exists yet and so
+	// there is no experiment display to name. On a multi-head machine that makes
+	// this line an answer about the primary head, which is why the Description
+	// it prints names the head it found: a run that will use -d 1 can see that
+	// the probe looked somewhere else.
+	t := vblank.AutoDetectFor(primaryVblankTarget())
 	defer t.Close() //nolint:errcheck // a probe's close has nothing to report
 
 	available := t.Precision() == vblank.HardwareVerified
@@ -187,6 +192,22 @@ func writeVblank(b *strings.Builder) {
 		rows = append(rows, "no hardware vblank clock on this machine")
 	}
 	section(b, "Vblank", rows)
+}
+
+// primaryVblankTarget describes the primary display for the pre-experiment
+// probe. A zero Target on failure is the right degradation: the backend reads it
+// as "the caller cannot say" and falls back to the blind probe instead of
+// refusing to report a vblank clock the machine does have.
+func primaryVblankTarget() vblank.Target {
+	id := sdl.GetPrimaryDisplay()
+	if id == 0 {
+		return vblank.Target{}
+	}
+	t := vblank.Target{FrameNS: uint64(apparatus.FrameDurationForDisplay(id))}
+	if mode, merr := id.CurrentDisplayMode(); merr == nil && mode != nil {
+		t.Width, t.Height = int(mode.W), int(mode.H)
+	}
+	return t
 }
 
 func writeAudioOutputs(b *strings.Builder) {

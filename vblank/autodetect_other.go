@@ -5,7 +5,7 @@
 
 package vblank
 
-func autoDetect() Timer {
+func autoDetect(_ Target) Timer {
 	// No platform-specific backend implemented for this OS yet.
 	// Stage 5 of media/Plan.md targets macOS and Linux first; Windows
 	// (DXGI GetFrameStatistics) is a future addition.

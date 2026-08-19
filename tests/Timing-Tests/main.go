@@ -1167,12 +1167,27 @@ func vblankSummary(exp *control.Experiment) string {
 	if !ok || st.Frames == 0 {
 		return ""
 	}
-	return fmt.Sprintf(
+	line := fmt.Sprintf(
 		"sys vblank_resolution: frames=%d waited_for_next=%d (%.1f %%) "+
 			"max_wait=%.3f ms sequence_gaps=%d failures=%d",
 		st.Frames, st.WaitedForNext,
 		100*float64(st.WaitedForNext)/float64(st.Frames),
 		float64(st.MaxWaitNS)/1e6, st.SequenceGaps, st.Failures)
+
+	// The cadence the run actually read, against the display it was drawing on.
+	// This is the one figure that says the vblanks came from the right head, and
+	// it belongs in the file rather than on stdout: a capture whose onsets were
+	// taken from the wrong pipe looks perfectly regular in the CSV, and the
+	// analysis that would notice needs a photodiode.
+	if ppm, ok := st.MismatchPPM(); ok {
+		verdict := "matches the display"
+		if st.WrongDisplay() {
+			verdict = "WRONG DISPLAY — onsets from this run drift a frame and jump back"
+		}
+		line += fmt.Sprintf(" measured=%.4f Hz nominal=%.4f Hz (frame period %+d ppm, %s)",
+			1e9/float64(st.MeasuredFrameNS), 1e9/float64(st.TargetFrameNS), ppm, verdict)
+	}
+	return line
 }
 
 // pacingSummary condenses the same tallies to one line for the info file.

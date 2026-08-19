@@ -131,13 +131,21 @@ func NewFallback() Timer { return adapter{vblank.NewFallback()} }
 // available or if its initialisation fails.
 //
 // On macOS: tries CVDisplayLink via CoreVideo (purego).
-// On Linux:  tries DRM_IOCTL_WAIT_VBLANK, searching every /dev/dri/cardN
-// and every CRTC.
+// On Linux:  tries DRM_IOCTL_WAIT_VBLANK, searching every /dev/dri/cardN and
+// selecting the CRTC that drives the screen's display.
 // Elsewhere: returns NewFallback().
 //
-// The screen argument is retained for API compatibility and is unused: no
-// backend ever needed it.
+// The screen argument names the display to time. It used to be unused — no
+// backend needed it — which was true right up until a laptop with an external
+// monitor showed that "which display" is the question a vblank clock has to
+// answer first. A nil screen still works and leaves the backend to guess.
 //
 // The return value is never nil. Failures are logged via the standard
 // log package and surfaced through the returned Timer's Description.
-func AutoDetect(_ *apparatus.Screen) Timer { return adapter{vblank.AutoDetect()} }
+func AutoDetect(screen *apparatus.Screen) Timer {
+	var t vblank.Target
+	if screen != nil {
+		t = screen.VblankTarget()
+	}
+	return adapter{vblank.AutoDetectFor(t)}
+}

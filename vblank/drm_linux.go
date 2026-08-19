@@ -85,6 +85,7 @@ package vblank
 
 import (
 	"fmt"
+	"log"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -142,6 +143,17 @@ const (
 	clockMonotonic uintptr = 1
 
 	drmRingSize = 8
+
+	// How many vblanks must have gone by before the measured cadence is worth
+	// comparing against the display the caller named.
+	//
+	// The comparison has to resolve crtcMatchPPM (300 ppm). Each endpoint is a
+	// kernel vblank stamp, good to a few microseconds; over n frames of ~16.7 ms
+	// a 20 us endpoint error is 1200/n ppm, so 60 frames — one second at 60 Hz —
+	// puts the noise floor around 20 ppm, an order of magnitude under the
+	// threshold. It is a floor, not a window: the estimate keeps sharpening for
+	// the whole run, because it is always taken from the first resolved frame.
+	drmRateMinFrames = 60
 )
 
 // drmWaitVblank mirrors `union drm_wait_vblank`:
@@ -175,8 +187,19 @@ type drmFlipVsync struct {
 
 type drmBackend struct {
 	fd   int
-	path string // which /dev/dri node answered, for Description
-	crtc uint32 // which CRTC answered; folded into every request
+	path string   // which /dev/dri node answered, for Description
+	pipe crtcInfo // which CRTC is being read, and what it is driving
+
+	// targetFrameNS is the frame period of the display the caller said it was
+	// presenting to, 0 when it did not say. Kept so the run can check the
+	// vblanks it is actually reading against it rather than trusting the CRTC
+	// choice made at construction.
+	targetFrameNS uint64
+
+	// First resolved frame, for the live cadence check. Guarded by mu.
+	firstSeq  uint32
+	firstTS   uint64
+	warnedBad bool
 
 	mu       sync.Mutex
 	pairs    [drmRingSize]drmFlipVsync
@@ -200,7 +223,7 @@ func requestType(crtc uint32) uint32 {
 	return drmVblankRelative | ((crtc << drmVblankHighCrtcShift) & drmVblankHighCrtcMask)
 }
 
-func newDRMBackend() (Timer, error) {
+func newDRMBackend(t Target) (Timer, error) {
 	// Search every card node AND every CRTC, rather than assuming the first
 	// node that opens is the one with a display on CRTC 0.
 	//
@@ -215,11 +238,14 @@ func newDRMBackend() (Timer, error) {
 	// The old code broke out of its loop on the first successful OPEN and then
 	// returned the probe's error, so a single unlucky enumeration order was
 	// enough to lose the vblank clock on a machine that had one.
-	fd, path, crtc, err := findDRMNode()
+	//
+	// Answering is not the same as being the right one, which is the later and
+	// more expensive lesson: see drm_crtc_linux.go.
+	fd, path, pipe, err := findDRMNode(t)
 	if err != nil {
 		return nil, err
 	}
-	return newBackendOn(fd, path, crtc)
+	return newBackendOn(fd, path, pipe, t)
 }
 
 // findDRMNode returns an open fd on the first card/CRTC pair that answers a
@@ -228,7 +254,7 @@ func newDRMBackend() (Timer, error) {
 // Separate from newDRMBackend so it can be used without newBackendOn, which
 // needs SDL loaded to capture the clock epoch — a unit test exercising the ioctl
 // has no SDL and does not need one.
-func findDRMNode() (fd int, path string, crtc uint32, err error) {
+func findDRMNode(t Target) (fd int, path string, pipe crtcInfo, err error) {
 	var tried []string
 	for card := 0; card < maxCards; card++ {
 		p := fmt.Sprintf("/dev/dri/card%d", card)
@@ -237,32 +263,88 @@ func findDRMNode() (fd int, path string, crtc uint32, err error) {
 			tried = append(tried, fmt.Sprintf("%s: open: %v", p, oerr))
 			continue
 		}
-		c, perr := probeCRTCs(f)
-		if perr != nil {
-			tried = append(tried, fmt.Sprintf("%s: %v", p, perr))
+		c, why := pickCRTC(f, t)
+		if why != nil {
+			tried = append(tried, fmt.Sprintf("%s: %v", p, why))
 			_ = syscall.Close(f)
 			continue
 		}
 		return f, p, c, nil
 	}
-	return -1, "", 0, fmt.Errorf("no DRM node answered DRM_IOCTL_WAIT_VBLANK (%s)",
+	return -1, "", crtcInfo{}, fmt.Errorf("no DRM node drives the display (%s)",
 		strings.Join(tried, "; "))
+}
+
+// pickCRTC returns the CRTC on fd to read vblanks from.
+//
+// Preferred route: read the card's mode resources and take the pipe whose
+// programmed mode is the caller's display. Where that is unavailable — a render
+// node, an old kernel, a target the caller could not name — it falls back to the
+// blind probe, which is what this did before and is still better than nothing;
+// the live cadence check in RecordFlip is what covers the fallback.
+func pickCRTC(fd int, t Target) (crtcInfo, error) {
+	cands, lerr := listActiveCRTCs(fd)
+	if lerr == nil {
+		pipe, cerr := chooseCRTC(cands, t)
+		if cerr == nil {
+			// A lit CRTC should answer, but the mode resources and the vblank
+			// ioctl are different subsystems and the index maps between them by
+			// convention, so it is confirmed rather than assumed.
+			if perr := probeCRTC(fd, pipe.index); perr != nil {
+				return crtcInfo{}, fmt.Errorf("%s: %w", pipe, perr)
+			}
+			return pipe, nil
+		}
+		if t.FrameNS != 0 {
+			// The card was interrogated successfully and does not drive this
+			// display. Reading one of its other pipes would be a wrong answer
+			// dressed as a measurement, so it is refused.
+			return crtcInfo{}, cerr
+		}
+	}
+
+	idx, perr := probeCRTCs(fd)
+	if perr != nil {
+		if lerr != nil {
+			return crtcInfo{}, fmt.Errorf("%v; %w", lerr, perr)
+		}
+		return crtcInfo{}, perr
+	}
+	// Fill in what is known about the pipe that answered, so the Description
+	// still names it even on the blind path.
+	for _, c := range cands {
+		if c.index == idx {
+			return c, nil
+		}
+	}
+	return crtcInfo{index: idx}, nil
+}
+
+// probeCRTC reports whether one CRTC index answers a vblank query.
+func probeCRTC(fd int, crtc uint32) error {
+	probe := drmWaitVblank{Type: requestType(crtc), Sequence: 0}
+	if _, _, errno := syscall.Syscall(syscall.SYS_IOCTL,
+		uintptr(fd), drmIoctlWaitVblank,
+		uintptr(unsafe.Pointer(&probe))); errno != 0 {
+		return fmt.Errorf("crtc %d does not answer DRM_IOCTL_WAIT_VBLANK: %w", crtc, errno)
+	}
+	return nil
 }
 
 // probeCRTCs returns the first CRTC on fd that answers a vblank query.
 //
-// It cannot tell a live CRTC from an idle one — a blanked pipe answers without
-// its sequence advancing — because distinguishing them means waiting, and this
-// runs in a constructor. Callers that care check the sequence themselves;
-// tests/test_vblank_drift reports the grid residual for exactly this reason.
+// Last resort only — pickCRTC prefers the mode resources, because answering
+// says nothing about which display a pipe is driving. This cannot tell a live
+// CRTC from an idle one either: a blanked pipe answers without its sequence
+// advancing, and distinguishing them means waiting, which a constructor should
+// not. Both holes are covered afterwards by the live cadence check in
+// RecordFlip, which reads Stats.MeasuredFrameNS against the display the caller
+// named.
 func probeCRTCs(fd int) (uint32, error) {
 	var errs []string
 	for crtc := uint32(0); crtc < maxCrtcs; crtc++ {
-		probe := drmWaitVblank{Type: requestType(crtc), Sequence: 0}
-		if _, _, errno := syscall.Syscall(syscall.SYS_IOCTL,
-			uintptr(fd), drmIoctlWaitVblank,
-			uintptr(unsafe.Pointer(&probe))); errno != 0 {
-			errs = append(errs, fmt.Sprintf("crtc %d: %v", crtc, errno))
+		if err := probeCRTC(fd, crtc); err != nil {
+			errs = append(errs, err.Error())
 			continue
 		}
 		return crtc, nil
@@ -270,7 +352,7 @@ func probeCRTCs(fd int) (uint32, error) {
 	return 0, fmt.Errorf("no CRTC answered (%s)", strings.Join(errs, ", "))
 }
 
-func newBackendOn(fd int, path string, crtc uint32) (Timer, error) {
+func newBackendOn(fd int, path string, pipe crtcInfo, t Target) (Timer, error) {
 
 	// Capture epoch offset between CLOCK_MONOTONIC and sdl.TicksNS.
 	clockNow, err := monotonicNS()
@@ -283,7 +365,8 @@ func newBackendOn(fd int, path string, crtc uint32) (Timer, error) {
 	return &drmBackend{
 		fd:            fd,
 		path:          path,
-		crtc:          crtc,
+		pipe:          pipe,
+		targetFrameNS: t.FrameNS,
 		epochOffsetNS: int64(clockNow) - int64(sdlNow),
 	}, nil
 }
@@ -346,7 +429,7 @@ func (b *drmBackend) pollForSequence(want uint32, budgetNS uint64) (seq uint32, 
 		return 0, 0, 0, false
 	}
 	for {
-		s, t, qerr := b.query(requestType(b.crtc)|drmVblankRelative, 0)
+		s, t, qerr := b.query(requestType(b.pipe.index)|drmVblankRelative, 0)
 		now, cerr := monotonicNS()
 		if cerr != nil {
 			return 0, 0, 0, false
@@ -365,7 +448,7 @@ func (b *drmBackend) RecordFlip(flipTS uint64) {
 		return
 	}
 
-	seq, ts, err := b.query(requestType(b.crtc)|drmVblankRelative, 0)
+	seq, ts, err := b.query(requestType(b.pipe.index)|drmVblankRelative, 0)
 	if err != nil {
 		// Silent: this fires every frame, so a persistent failure would spam
 		// the log. It surfaces as Stats.Failures and as an Estimated onset.
@@ -426,13 +509,50 @@ func (b *drmBackend) RecordFlip(flipTS uint64) {
 	b.stats.Frames++
 	b.pairs[b.pairsIdx] = drmFlipVsync{flipTS: flipTS, vsyncTS: ts}
 	b.pairsIdx = (b.pairsIdx + 1) % drmRingSize
+
+	b.updateRate(seq, ts)
+}
+
+// updateRate keeps the measured vblank cadence current and complains once if it
+// does not belong to the display the caller said it was presenting to.
+//
+// Divides by the SEQUENCE span, not the frame count: a frame the caller missed
+// leaves both endpoints intact and must not stretch the average. Called with mu
+// held.
+func (b *drmBackend) updateRate(seq uint32, ts uint64) {
+	if b.stats.Frames == 1 {
+		b.firstSeq, b.firstTS = seq, ts
+		return
+	}
+	span := int32(seq - b.firstSeq)
+	if span < drmRateMinFrames || ts <= b.firstTS {
+		return
+	}
+	b.stats.MeasuredFrameNS = (ts - b.firstTS) / uint64(span)
+
+	if b.warnedBad || !b.stats.WrongDisplay() {
+		return
+	}
+	b.warnedBad = true
+	ppm, _ := b.stats.MismatchPPM()
+	// Loud, because nothing downstream can see this. Onsets from the wrong
+	// pipe stay perfectly regular and keep reporting themselves as
+	// hardware-verified; what gives it away is only that they walk away from
+	// the photons, which needs a photodiode and eight minutes.
+	log.Printf("vblank: WRONG DISPLAY — reading %s, which is ticking at %.4f Hz, "+
+		"but the experiment is presenting to a %.4f Hz display (%+d ppm apart). "+
+		"Onsets from this pipe will drift a frame and jump back. "+
+		"Unset %s to anchor on the present's return instead.",
+		b.pipe, hzOf(b.stats.MeasuredFrameNS), hzOf(b.targetFrameNS), ppm, EnvOptIn)
 }
 
 // Stats implements StatsReporter.
 func (b *drmBackend) Stats() Stats {
 	b.mu.Lock()
 	defer b.mu.Unlock()
-	return b.stats
+	st := b.stats
+	st.TargetFrameNS = b.targetFrameNS
+	return st
 }
 
 func (b *drmBackend) OnsetForFlip(flipTS uint64) (uint64, Source, bool) {
@@ -448,8 +568,11 @@ func (b *drmBackend) OnsetForFlip(flipTS uint64) (uint64, Source, bool) {
 
 func (b *drmBackend) Precision() Source { return HardwareVerified }
 
-// Description names the node and CRTC that answered, so a wrong choice on a
-// multi-GPU or multi-head machine is visible rather than inferred.
+// Description names the node and CRTC being read AND the head it is driving, so
+// a wrong choice on a multi-GPU or multi-head machine is visible rather than
+// inferred. The head is the part that was missing: "crtc 0" alone reads as a
+// detail, while "crtc 0 driving eDP-1 2560x1600@60.0386 Hz" in the header of a
+// capture made on an external monitor is the whole diagnosis.
 //
 // The word before the path is load-bearing, however odd that looks. This string
 // is reproduced verbatim in the documentation, and TeX announces every file it
@@ -459,7 +582,8 @@ func (b *drmBackend) Precision() Source { return HardwareVerified }
 // blocks, so the PDF build hung indefinitely on the one page quoting this line.
 // Anything non-path-shaped after the parenthesis prevents that.
 func (b *drmBackend) Description() string {
-	return fmt.Sprintf("Linux DRM vblank (card %s, crtc %d, DRM_IOCTL_WAIT_VBLANK, hardware-verified)", b.path, b.crtc)
+	return fmt.Sprintf("Linux DRM vblank (card %s, crtc %d driving %s, DRM_IOCTL_WAIT_VBLANK, hardware-verified)",
+		b.path, b.pipe.index, b.pipe)
 }
 
 func (b *drmBackend) Close() error {

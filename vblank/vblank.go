@@ -153,6 +153,58 @@ type Stats struct {
 	// Failures counts frames where no measured vblank could be obtained and the
 	// caller had to fall back to an estimate.
 	Failures uint64
+	// TargetFrameNS is the frame period of the display the caller said it was
+	// presenting to (Target.FrameNS), or 0 if it did not say.
+	TargetFrameNS uint64
+	// MeasuredFrameNS is the mean interval between the vblanks resolved so far,
+	// computed from the vblank COUNT rather than the frame count so that
+	// dropped frames do not stretch it. It stays 0 until enough frames have
+	// been seen for the figure to mean anything.
+	MeasuredFrameNS uint64
+}
+
+// crtcMatchPPM is how far a display's measured or programmed frame period may
+// sit from the one the caller named before the two are taken to be different
+// displays.
+//
+// The budget it has to cover: SDL falls back to a refresh rounded to two
+// decimals when a driver gives no exact rational, which is 83 ppm at 60 Hz; and
+// the live check measures a cadence rather than reading a mode, which adds tens
+// of ppm over its sample. 300 ppm covers both with room and is still five times
+// smaller than the 1449 ppm a Precision 5490 was out by when it read the wrong
+// CRTC. It is deliberately NOT set to the tens of ppm a panel's own crystal
+// wanders by: this asks "is this the same display", not "is this display
+// accurate".
+const crtcMatchPPM = 300
+
+// MismatchPPM reports how far the vblanks actually being read sit from the frame
+// period the caller named, in parts per million, and whether both figures are
+// known yet.
+//
+// This is the check that catches a backend reading the wrong display. A CRTC is
+// chosen from its programmed mode, which is exact but is still a claim about
+// hardware; this is the cadence measured on the running machine. It also catches
+// the one case mode selection cannot: a pipe that is programmed with the right
+// mode but is not scanning it out, whose sequence therefore does not advance.
+func (s Stats) MismatchPPM() (int64, bool) {
+	if s.TargetFrameNS == 0 || s.MeasuredFrameNS == 0 {
+		return 0, false
+	}
+	return (int64(s.MeasuredFrameNS) - int64(s.TargetFrameNS)) * 1_000_000 /
+		int64(s.TargetFrameNS), true
+}
+
+// WrongDisplay reports whether the measured cadence is too far from the named
+// display's for the two to be the same display.
+//
+// False on a run that has not measured yet, which is the safe direction: it says
+// "no evidence of a mismatch", not "verified".
+func (s Stats) WrongDisplay() bool {
+	ppm, ok := s.MismatchPPM()
+	if !ok {
+		return false
+	}
+	return ppm > crtcMatchPPM || ppm < -crtcMatchPPM
 }
 
 // StatsReporter is implemented by backends that can report resolution counts.
@@ -177,14 +229,48 @@ func (fallback) Description() string {
 	return "vsync-estimated (post-present flip timestamp, no OS integration)"
 }
 
-// AutoDetect returns the best Timer available on this platform, falling back to
-// NewFallback if no backend initialises. It never returns nil; failures are
-// logged and surface through the returned Timer's Description.
+// Target describes the display the caller is presenting to.
+//
+// It exists because "the vblank clock" is not one clock. A machine lights one
+// CRTC per head, each with its own cadence, and the backend has to be told which
+// one the experiment is showing stimuli on — a laptop with an external monitor
+// runs two pipes a thousand ppm apart, and reading the wrong one produces
+// timestamps that look perfectly regular while walking a frame away from the
+// photons. See the header of drm_crtc_linux.go for the capture that established
+// this.
+//
+// FrameNS is the one field that matters; the size only breaks ties between heads
+// running the same rate. A zero Target means "I cannot say", and a backend that
+// gets one falls back to the older blind probe rather than refusing to start.
+type Target struct {
+	// FrameNS is the nominal frame period of the display, in nanoseconds —
+	// apparatus.Screen.FrameDuration(). 0 means unknown.
+	FrameNS uint64
+	// Width and Height are the display mode's size in pixels. 0 means unknown.
+	Width, Height int
+}
+
+// AutoDetect returns the best Timer available on this platform without naming a
+// display. Equivalent to AutoDetectFor(Target{}).
+//
+// Prefer AutoDetectFor wherever the display is known: on a multi-head machine
+// this cannot tell which CRTC to read and has to guess.
+func AutoDetect() Timer { return AutoDetectFor(Target{}) }
+
+// AutoDetectFor returns the best Timer available on this platform for the given
+// display, falling back to NewFallback if no backend initialises. It never
+// returns nil; failures are logged and surface through the returned Timer's
+// Description.
+//
+// A backend that cannot find a CRTC matching the target reports that as a
+// failure rather than reading whichever one answers. Falling back to
+// present-return anchoring is a known quantity — five photodiode runs behind it,
+// see Enabled — and timing a display the experiment is not drawing on is not.
 //
 // It does NOT consult EnvOptIn — that switch belongs to the caller, which has to
 // report the difference between "this machine has no vblank clock" and "you did
 // not ask for one" in its own vocabulary. Check Enabled first.
-func AutoDetect() Timer { return autoDetect() }
+func AutoDetectFor(t Target) Timer { return autoDetect(t) }
 
 // EnvOptIn names the environment variable that turns the vblank clock on.
 //

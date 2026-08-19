@@ -9,8 +9,8 @@ import (
 	"log"
 )
 
-func autoDetect() Timer {
-	backend, err := newDRMBackend()
+func autoDetect(t Target) Timer {
+	backend, err := newDRMBackend(t)
 	if err != nil {
 		log.Printf("present: Linux DRM vblank unavailable (%v); falling back to vsync-estimated", err)
 		return NewFallback()

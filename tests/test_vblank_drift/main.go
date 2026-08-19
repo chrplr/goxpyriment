@@ -88,7 +88,12 @@ func main() {
 func measure(exp *control.Experiment) error {
 	screen := exp.Screen
 
-	timer := vblank.AutoDetect()
+	// Targeted at the screen's own display. Comparing this screen's flips
+	// against some other head's vblanks would report a drift that is nothing but
+	// the gap between two panels' clocks — which is exactly what a laptop with
+	// an external monitor produces, and it is not small: 1449 ppm on a
+	// Precision 5490.
+	timer := vblank.AutoDetectFor(screen.VblankTarget())
 	defer timer.Close()
 
 	fmt.Printf("vblank backend: %s\n", timer.Description())
