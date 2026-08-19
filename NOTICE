@@ -44,3 +44,23 @@ The bundled sound effects (assets_embed/buzzer.wav, assets_embed/correct.wav)
 were created by the author. The bundled logo/icon artwork
 (assets_embed/logo.png) was created by the author using Google Gemini image
 generation. All are covered by this product's own license.
+
+--------------------------------------------------------------------------------
+Bundled stimulus material
+--------------------------------------------------------------------------------
+
+The sentence and nonword lists of the English reading language localizer
+(examples/Language-Localizer-Reading-English/stim/langloc_fmri_run*_stim_set*.csv)
+come from the EvLab materials published at https://osf.io/vc2bw, where they are
+distributed under the Creative Commons Attribution-NonCommercial 4.0
+International license (CC BY-NC 4.0):
+
+    https://creativecommons.org/licenses/by-nc/4.0/
+
+They are NOT covered by the Apache License 2.0 that governs this product's
+code, and they are compiled into that example's executable via //go:embed, so
+any binary built from it carries the CC BY-NC 4.0 material as well. The two
+remain separately licensed: embedding the unmodified stimuli alongside the
+program is an aggregation, and does not place the Go source code under
+CC BY-NC. The NonCommercial term does, however, restrict commercial use and
+redistribution of the stimuli themselves.
