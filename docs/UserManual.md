@@ -17,7 +17,7 @@ This manual explains the key concepts of the library. It assumes you have read t
 3. [The Run Loop and Error Handling](#3-the-run-loop-and-error-handling)
 4. [The Coordinate System](#4-the-coordinate-system)
 5. [The Rendering Model](#5-the-rendering-model)
-6. [Timing Architecture](#6-timing-architecture) — frame cadence, the two clocks, GC, nanosecond RT, VRR
+6. [Timing Architecture](#6-timing-architecture) — frame cadence, what `Update()` does with a frame, the two clocks, GC, nanosecond RT, VRR
 7. [Input Handling](#7-input-handling)
 8. [Data Collection](#8-data-collection)
 9. [Stimuli: Lifecycle and Preloading](#9-stimuli-lifecycle-and-preloading)
@@ -349,6 +349,95 @@ To know your frame duration at runtime:
 frameDur := exp.Screen.FrameDuration()  // e.g., 16.666ms on a 60 Hz display
 fmt.Printf("Frame: %.2f ms\n", frameDur.Seconds()*1000)
 ```
+
+### What `Update()` actually does with a frame
+
+You rarely need this, but when a duration comes out one frame long, or you are
+deciding whether to trust an onset timestamp, this is the machinery underneath.
+Each `Update()` does four things in order (sketch, not compilable Go):
+
+```
+anchor := previous frame's onset      1. sampled BEFORE this frame overwrites it
+SDL_RenderPresent(); presentNS = now  2. submit, and stamp the return
+paceToFrame(anchor)                   3. maybe hold to the frame boundary
+recordOnset()                         4. decide this frame's onset
+```
+
+**The deadline is measured from the previous frame's *onset*, not from the
+previous `Update()` call.** That onset comes from the best source available, in
+this order: the kernel's vblank timestamp (`GOXPY_VBLANK=on`), the scheduled
+boundary if pacing held the frame, or the moment `SDL_RenderPresent` returned.
+Whichever it was, `target = anchor + FrameDuration()`, and the run's
+`onset_source` column records which.
+
+Now let `now` be the clock read the instant `SDL_RenderPresent` returned. Where
+it falls decides everything:
+
+```
+        anchor                                        target = anchor + frameDur
+          |                                                |
+   -------+------------------------------------------------+-------------->
+          |<------------ frameDur, e.g. 16.67 ms --------->|
+                                              |<- 2.08 ms ->|   = frameDur/8
+             ^                      ^               ^              ^
+          present               present          present         present
+          returns               returns          returns         returns
+          6.5 ms early          3 ms early       0.7 ms early     late
+             |                      |               |              |
+           HOLD                   HOLD          do nothing     do nothing
+         (paced)                (paced)      (blocked+early)     (blocked)
+```
+
+**Early by more than an eighth of a frame — hold.** The driver queued the frame
+and returned (triple/mailbox buffering). `Update` sleeps until 2 ms before the
+boundary, then spins the last 2 ms, and reports the *scheduled* boundary as the
+onset. It is split that way for a reason in each direction: spinning the whole
+wait puts a real-time thread at 100 % duty and trips the kernel's throttle
+(measured: 24 stalls of 51 ms in 25 s, three dropped frames a second at 60 Hz),
+while sleeping the whole wait overshoots the boundary by up to 0.83 ms and
+misses the frame.
+
+**Early by an eighth of a frame or less — do nothing.** This is a driver that
+*did* block on the retrace and simply came back a little inside the *nominal*
+boundary, because the panel's grid and the nominal grid sit at a fixed phase
+offset. Its return is a hardware instant, and holding would throw that away and
+substitute a synthesised time — on one machine that happened on 98.8 % of
+frames. The two cases are far apart in practice, which is what makes a threshold
+workable: a blocking present came back 0.68 ms early on average and 1.14 ms at
+worst, against 6.5–15 ms for a non-blocking one. Nothing has been observed in
+between.
+
+**Late — also nothing, and the missed time is not made up.** If `now` is already
+past `target`, the target is *abandoned*, not chased. `Update` never shortens a
+later frame to compensate, and the next deadline is measured from the present
+that just returned, so the schedule quietly re-phases onto wherever the display
+actually is. The consequence is the one you see in the data: a loop of twelve
+`Update()` calls that hits one stall takes thirteen frames, and its duration
+column reads one frame long. That is the honest report — a compressed frame
+afterwards would be worse — but it does mean a stall shows up as a long
+interval, never as a short one.
+
+Two things follow that are worth knowing:
+
+- A late present is tallied as `blocked`, the same as a healthy blocking one, so
+  the pacing counters alone do not reveal lateness. What reveals it is the
+  measured-vs-nominal comparison in [Startup calibration](#startup-calibration)
+  below, and `sequence_gaps` when the vblank clock is enabled.
+- Pacing is skipped entirely when VSync is off, on the grounds that a caller who
+  turned it off wants frames as fast as the GPU can make them.
+
+The tallies land in the run's `-info.txt`, and `early` is a **subset** of
+`blocked` rather than a fourth category:
+
+```
+# sys pacing: presents=30000 blocked=30000 early=29610 paced=0 vblank_held=0 … class=blocking
+```
+
+So `presents = blocked + paced + vblank_held`. `blocked` with a high `early` and
+a sub-millisecond `early_mean` is a healthy blocking driver; `paced` with a
+multi-millisecond `wait_mean` is a driver that does not block, being held;
+`vblank_held` is the kernel-vblank path. [Timing
+Tests](TimingTests.md#the-frame-pacing-block) reads these out in full.
 
 ### Startup calibration
 
