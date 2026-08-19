@@ -348,6 +348,29 @@ Add it to `GRUB_CMDLINE_LINUX_DEFAULT` in `/etc/default/grub`, run `sudo
 update-grub`, reboot, and check `/proc/cmdline` and the `-info.txt` afterwards.
 Several connectors take several `video=` entries.
 
+**A monitor on USB-C is still `DP-N`.** The DRM connector type names the
+*protocol*, not the plug: USB-C carries DisplayPort over Alt Mode, so a monitor
+on a USB-C–USB-C cable appears as `DP-1`, `DP-2`, … exactly like one on a
+full-size DisplayPort socket. There is no `USB-C-1`. On a Precision 5490 all
+four external outputs are USB-C/Thunderbolt and all four are exposed as
+`card2-DP-1` … `card2-DP-4`, one per port; each carries its own ACPI firmware
+node, so a given socket keeps its number across reboots. Plugging the same
+monitor into a *different* socket will change it — which is the reason to read
+the name off `/sys/class/drm` rather than remember it:
+
+```bash
+ls -d /sys/class/drm/card*-* | while read c; do
+  echo "$(basename $c)  $(cat $c/status)"
+done
+```
+
+One exception: a monitor reached through an MST hub or a docking station is a
+branch device, and its connector is created on hotplug rather than fixed in
+firmware. It has a `path` attribute (`cat /sys/class/drm/card*-DP-*/path`) where
+a directly-attached one has none, and a boot-time `video=` entry cannot be
+relied on to find it. For a timing rig, plug the stimulus monitor straight into
+the machine.
+
 `modetest -s` can also set a mode, but it holds DRM master for as long as it
 runs and drops the mode when it exits, so it is a diagnostic rather than a way
 to prepare a run — SDL cannot open the device while it is held.
