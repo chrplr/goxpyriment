@@ -30,6 +30,33 @@ class ClippedCapture(Exception):
     """Raised when a channel spent part of the capture pinned at the ADC rail."""
 
 
+class HolesInCapture(Exception):
+    """Raised when the capture dropped samples while the host was not draining."""
+
+
+def holes(z, where=""):
+    """Raise if the capture recorded lost or corrupted samples.
+
+    ad3-capture writes the file before refusing it, precisely so that a long
+    recording is not thrown away over a dropped sample -- which means a file
+    carrying holes exists and could be analysed by accident. Losses cluster
+    wherever the host was busiest, so they land on the trials least like the
+    rest, and no amount of care downstream can tell which those were.
+
+    Older captures predate the counters and carry neither key; those pass, since
+    absence of the record is not evidence of loss.
+    """
+    lost = int(z["lost"]) if "lost" in z else 0
+    corrupt = int(z["corrupted"]) if "corrupted" in z else 0
+    if lost or corrupt:
+        raise HolesInCapture(
+            f"capture with holes{': ' + where if where else ''}\n"
+            f"  {lost} samples lost, {corrupt} corrupted while recording.\n"
+            f"  They fall wherever the host was busiest, so the trials they hit are\n"
+            f"  the ones least like the others. Re-record -- if the capture shared a\n"
+            f"  machine with the stimulus program, move it to another one.")
+
+
 def clipping(z, channels=(1, 2)):
     """Fraction of samples resting on the single most extreme code, per channel.
 
@@ -69,6 +96,7 @@ def check(z, channels=(1,), tolerance=0.0005, where=""):
     the same rig show 4 to 13 samples on the extreme code out of 54 million,
     which is a signal momentarily touching its own peak, not a wrong range.
     """
+    holes(z, where)
     bad = {ch: f for ch, f in clipping(z, channels).items() if f > tolerance}
     if not bad:
         return
