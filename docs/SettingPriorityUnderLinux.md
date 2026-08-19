@@ -367,19 +367,29 @@ usual mechanism (a systemd unit, or `GOVERNOR=performance` in
 `/etc/default/cpufrequtils` on Debian and Ubuntu) rather than by remembering to
 type it, since the failure mode is silent.
 
-**Unlike the rest of this page, this section is not backed by a measurement of
-its own.** It is here because of one unexplained observation: on 2026-08-19, in
-a 1010-cycle run on a workstation whose onsets were anchored on kernel DRM
-vblanks, the host loop's cadence changed by **10 ppm** 316 s in, while the panel
-it was driving held its own period to 0.27 ppm across the same instant. Nothing
-in the recorded configuration changed. The frequency governor is a *candidate*
-for that, not a diagnosis — the honest status is that the run has not been
-repeated with the governor pinned, and until it has, this is a cheap precaution
-rather than a fix.
+**Measured, on a Radeon Pro W5700 workstation driving a 4K panel over
+DisplayPort, 1010 cycles per run, onsets anchored on kernel DRM vblanks and
+verified against a photodiode.** Two runs differing only in the governor:
 
-Cheap is the operative word: it costs one command and some electricity, and the
-alternative is discovering afterwards that two halves of a session were not
-comparable.
+| governor | flip -> photons drift | shape |
+|---|---|---|
+| default (`schedutil`) | +11.8 ppm | flat at +0.3 ppm for 316 s, then +10.6 ppm |
+| `performance` | **+0.41 ppm** | no change of regime; 0.059 ms scatter |
+
+The default-governor run is the instructive one. Its cadence did not degrade
+gradually: it held to 0.3 ppm for five minutes and then switched, cleanly, to
+10.6 ppm and stayed there — with the *panel* holding its own period to 0.27 ppm
+across the same instant, so the display was not what moved. Nothing in the
+recorded configuration changed. A run like that reports excellent frame
+statistics throughout and would pass any host-side check.
+
+That is the failure worth guarding against: not noise, which shows up in a
+standard deviation, but two halves of a session that are internally tidy and not
+comparable to each other. Pinning the governor removed it. The recorded
+`host cpu_mhz` went from 3600 of a 4800 maximum to 4500.
+
+One pair of runs, one machine — enough to act on, not enough to call it the only
+mechanism.
 
 **Check it from the data rather than from memory.** Every run records the clock
 it saw at start-up in its `-info.txt`:
@@ -392,9 +402,10 @@ A run that starts well below its maximum was not on a pinned clock. As with
 `sys sched_policy`, the value is in the file so that two runs can be compared
 afterwards without anyone having to recall what the machine was doing.
 
-If you take this further — holding `/dev/cpu_dma_latency` open at 0 to keep
-cores out of deep idle is the usual next step — measure the pair before and
-after and add the numbers here. That is what the rest of this page is made of.
+Idle states are the untested half. Holding `/dev/cpu_dma_latency` open at 0 to
+keep cores out of deep idle is the usual next step, and we have not measured it;
+if you do, measure the pair before and after and add the numbers here. That is
+what the rest of this page is made of.
 
 ---
 
