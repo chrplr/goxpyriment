@@ -1,0 +1,17 @@
+# Source media, kept out of the repository: 221 MB of inputs that have already
+# been consumed by the generators. What the experiment needs at runtime is
+# stimuli/ (embedded into the binary) and the small derived assets, both of
+# which are tracked.
+#
+# Keep local copies if you want to re-run split-sheets.py or
+# natural_sounds/make-sound-clips.py; nothing else depends on them.
+assets/faces/*.jpeg
+assets/houses/*.jpeg
+assets/natural_sounds/*
+!assets/natural_sounds/sound_*.wav
+!assets/natural_sounds/make-sound-clips.py
+!assets/natural_sounds/README.txt
+
+# R session leftovers
+.RData
+.Rhistory
