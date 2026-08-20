@@ -1,0 +1,3 @@
+category: demo
+description: Cut one image into a grid of stimuli sharing a single GPU texture, drawn by source rectangle (Psychtoolbox's DrawTexture sourceRect)
+reference: "https://lazyfoo.net/tutorials/SDL/11_clip_rendering_and_sprite_sheets/"

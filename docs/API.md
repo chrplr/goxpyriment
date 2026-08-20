@@ -353,6 +353,12 @@ Both support a `Font *ttf.Font` field — set it to override the screen default.
 |---|---|
 | `NewPicture(filePath string, x, y float32) *Picture` | Image loaded from file (PNG, JPG, BMP…). |
 | `NewPictureFromMemory(data []byte, x, y float32) *Picture` | Image loaded from embedded bytes. |
+| `NewSpriteSheet(filePath string) *SpriteSheet` | One image holding many stimuli, sharing a single GPU texture. |
+| `NewSpriteSheetFromMemory(data []byte) *SpriteSheet` | Same, from embedded bytes (required for the browser build). |
+| `(*SpriteSheet) Grid(screen, cols, rows int) ([]*Sprite, error)` | Cut into `cols*rows` equal cells, row-major. |
+| `(*SpriteSheet) GridWithSpacing(screen, cols, rows int, margin, spacing float32) ([]*Sprite, error)` | As `Grid`, for sheets with a border or gutters. |
+| `(*SpriteSheet) Sprites(screen, clips []sdl.FRect) ([]*Sprite, error)` | Explicit source rectangles, for irregular sheets. |
+| `(*SpriteSheet) Unload() error` | Destroys the shared texture. `Sprite.Unload` is a no-op by design. |
 | `PlayGv(screen, path string, x, y float32) ([]UserEvent, error)` | Play a `.gv` (LZ4-compressed RGBA) video file, VSYNC-locked. |
 | `NewGvVideo(path string) (*GvVideo, error)` | Open a `.gv` file for frame-by-frame access. |
 

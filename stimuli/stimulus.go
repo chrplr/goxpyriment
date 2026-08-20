@@ -120,6 +120,13 @@ func PreloadVisualOnScreen(screen *apparatus.Screen, v VisualStimulus) error {
 		return s.preload(screen, f)
 	case *Picture:
 		return s.preload(screen)
+	case *Sprite:
+		// Preloading any sprite uploads the sheet all of them share, so a
+		// stream of sprites pays the cost once, on its first element.
+		if s.Sheet == nil {
+			return nil
+		}
+		return s.Sheet.preload(screen)
 	case *VisualMask:
 		return s.preload(screen)
 	case *RDS:
