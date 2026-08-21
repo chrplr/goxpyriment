@@ -22,7 +22,10 @@ PANDOC_OPTS=(
   # so the hand-written tables of contents — and Zensical/python-markdown, which
   # uses the same scheme — resolve. Pandoc's default strips leading numbers,
   # which silently breaks every numbered TOC link.
-  --from=markdown+gfm_auto_identifiers
+  # autolink_bare_uris: a bare URL in the text becomes a real link, which
+  # makes it clickable and, with xurl, breakable — otherwise a long DOI runs
+  # off the page (it hid half the citation on the landing page).
+  --from=markdown+gfm_auto_identifiers+autolink_bare_uris
   --pdf-engine=latexmk
   --pdf-engine-opt=-xelatex
   --toc

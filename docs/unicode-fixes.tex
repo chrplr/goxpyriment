@@ -21,3 +21,95 @@
   \newunicodechar{⚠}{\textbf{!}}%
   \newunicodechar{💡}{\textbf{*}}%
 }
+
+% Long lines in code blocks: wrap them instead of running off the page.
+%
+% pandoc sets code blocks in fancyvrb's Verbatim, which does not break lines at
+% all — a shell command longer than the text width simply runs into the margin
+% and off the paper, taking the end of the command with it. Measured on the
+% single-file book before this: 155 overfull boxes, the worst 195.6pt (about
+% 6.9cm) past the margin.
+%
+% fvextra extends fancyvrb with line breaking. The Highlighting environment has
+% to be redefined rather than configured, because pandoc defines it itself; this
+% file is included after pandoc's own definitions, so this one wins. Keep
+% commandchars: it is what carries the syntax highlighting.
+%
+% breakanywhere is on because the offenders here are long paths, URLs and flags
+% with no spaces to break at, which breaklines alone cannot help.
+%
+% breaknonspaceingroup is the one that is easy to miss, and without it the worst
+% lines stay broken: pandoc wraps every highlighted run in a macro
+% (\StringTok{...}, \NormalTok{...}), and breakanywhere cannot break inside a
+% macro argument. A 220-character emcc command in docs/WASM.md still ran 347pt
+% past the margin with breaklines+breakanywhere alone; this option is what
+% lets a break happen inside the group.
+% A fence with no language is not highlighted, and pandoc renders those with
+% LaTeX's own verbatim rather than Highlighting — so redefining Highlighting
+% alone leaves exactly the blocks that hold long shell commands untouched.
+% RecustomVerbatimEnvironment routes plain verbatim through fancyvrb too.
+\usepackage{fvextra}
+\RecustomVerbatimEnvironment{verbatim}{Verbatim}{breaklines,breakanywhere}
+\DefineVerbatimEnvironment{Highlighting}{Verbatim}{%
+  breaklines,%
+  breakanywhere,%
+  breaknonspaceingroup,%
+  breaksymbolleft={\raisebox{0.2ex}{\tiny\ensuremath{\hookrightarrow}}},%
+  commandchars=\\\{\}%
+}
+
+% Long words in ordinary text: break them rather than letting them run off the
+% paper. The margin is 25mm (about 71pt), so anything overflowing by more than
+% that is not merely ugly — it is off the sheet and unreadable. Measured on the
+% book before this: five such boxes, and one of them hid half of the citation
+% DOI on page 14.
+%
+% Two causes, two fixes.
+%
+% 1. URLs. LaTeX will not break a URL at all by default, so a DOI in running
+%    text runs straight off the page. xurl allows a break anywhere in one,
+%    without inserting a hyphen. It has to load after hyperref, which the pandoc
+%    template loads after this file — hence AtEndPreamble rather than a plain
+%    \usepackage here.
+\usepackage{etoolbox}
+\AtEndPreamble{\usepackage{xurl}}
+
+% 2. Identifiers with underscores, which turn up as example names in narrow
+%    table columns (demo_mouse_audio_feedback, Trubutschek_Unconscious_Working_
+%    Memory). A hyphen is a legal break point in LaTeX and a literal underscore
+%    is not, so a hyphenated name wraps and an underscored one of the same
+%    length does not. Allowing a break *after* the underscore adds no character
+%    to the text — which matters, because these names get copied.
+\AtBeginDocument{%
+  \let\goxpyoldunderscore\_%
+  \renewcommand{\_}{\goxpyoldunderscore\allowbreak}%
+}
+
+% 3. Long inline code — a Go call or a path in a narrow table column. Widening
+%    the column cannot fix these: `exp.AddDataVariableNames([]string{...})`
+%    measures ~257pt against a 440pt text width, so it would need 58% of the
+%    table, and the column beside it holds a 38-character cell with the same
+%    problem. The text has to break instead.
+%
+%    seqsplit permits a break between any two characters, inserting nothing —
+%    which is what code needs, since a hyphen would be copied along with the
+%    command. It is applied only when the span is too wide for the space it is
+%    in (\linewidth is the cell width inside a table), so ordinary short code
+%    keeps its normal kerning and is untouched.
+%
+%    \protected matters: \texttt appears inside section titles, which are
+%    written to the .aux as moving arguments. Unprotected, the width test would
+%    be expanded there and break the table of contents.
+\usepackage{seqsplit}
+\newlength{\goxpyttwidth}
+\AtBeginDocument{%
+  \let\goxpyorigtexttt\texttt
+  \protected\def\texttt#1{%
+    \settowidth{\goxpyttwidth}{\goxpyorigtexttt{#1}}%
+    \ifdim\goxpyttwidth>0.30\linewidth
+      \goxpyorigtexttt{\seqsplit{#1}}%
+    \else
+      \goxpyorigtexttt{#1}%
+    \fi
+  }%
+}

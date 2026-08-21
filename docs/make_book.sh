@@ -32,7 +32,7 @@ go run ./cmd/gen-book/
 # resolve now that the source lives in _build/.
 echo "Typesetting $OUT ..."
 pandoc _build/book.md \
-  --from=markdown+gfm_auto_identifiers \
+  --from=markdown+gfm_auto_identifiers+autolink_bare_uris \
   --pdf-engine=latexmk \
   --pdf-engine-opt=-xelatex \
   --pdf-engine-opt=-interaction=nonstopmode \
