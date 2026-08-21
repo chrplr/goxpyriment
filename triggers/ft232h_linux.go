@@ -231,6 +231,28 @@ func ft232hInitMPSSE(fd int) error {
 		return fmt.Errorf("enable MPSSE: %w", err)
 	}
 
+	// Drive the D-bus LOW immediately, before anything else.
+	//
+	// From the moment MPSSE is enabled the pins are inputs on the chip's
+	// internal pull-ups, so every AD line sits HIGH until something drives it.
+	// The rest of this function — a 50 ms settle, a buffer purge, the sync
+	// handshake — used to run first, and the D-bus was configured only at the
+	// end. Measured on an AD3 (2026-08-21): opening the device put a **51.25 ms
+	// HIGH pulse on AD0**, and by the same mechanism on all eight lines. Into an
+	// EEG/MEG amplifier that is a spurious trigger, code 0xFF, on every open.
+	//
+	// This write is deliberately placed before the settle rather than after it:
+	// the settle is what costs the 50 ms. If the engine is not ready the bytes
+	// are discarded or answered with a bad-command echo, and either way the
+	// purge below clears the RX buffer before the sync handshake runs — so an
+	// ignored write costs nothing and a successful one saves 50 ms of signal.
+	// The definitive configuration is still written at the end of this function.
+	//
+	// It does not close the window entirely. The pins are pulled up from the
+	// instant the mode is set, and nothing host-side can act sooner than one
+	// USB transfer later.
+	_ = ft232hBulkWrite(fd, []byte{mpsseSetBitsLow, 0x00, 0xFF})
+
 	// Wait for MPSSE to stabilise.
 	time.Sleep(50 * time.Millisecond)
 
