@@ -1,9 +1,10 @@
 Here are the step-by-step instructions to set up the `goxpyriment` group with those high-priority privileges.
 
-Steps 1-5 cover real-time priority. [Step 6](#step-6-two-other-groups-the-same-machine-usually-needs)
+Steps 1-5 cover real-time priority. [Step 6](#step-6-the-other-groups-the-same-machine-usually-needs)
 covers the `input` and `video` groups, which a machine needs before it can read
 keyboards or drive the display from a bare console — the configuration the
-timing measurements recommend, and the one where their absence first shows.
+timing measurements recommend, and the one where their absence first shows — and
+`lp`, for a machine that triggers through a parallel port.
 [Running from a virtual console](#running-from-a-virtual-console-vt) covers that
 configuration itself: getting there, the display mode you actually get, and what
 a second lit monitor does to the timing.
@@ -132,7 +133,7 @@ You *can* make a shell real-time with `chrt -f -p 50 $$`, but do not: every
 command you then type runs above most system threads, and a mistyped one is
 very hard to interrupt.
 
-### Step 6: Two other groups the same machine usually needs
+### Step 6: The other groups the same machine usually needs
 
 Real-time priority is not the only permission a stimulus machine wants, and the
 other two bite in exactly the configuration the timing measurements recommend:
@@ -212,6 +213,45 @@ Do not join `audio` to obtain real-time priority either — see [the note in Ste
 to rely on. PipeWire gets its own real-time threads through RealtimeKit, not
 through the group.
 
+**`lp`** — only on a machine that triggers through a **parallel port**, and it is
+two separate things wearing one name. Get both, or the port is unusable in a way
+that is hard to read as a permissions problem:
+
+```bash
+sudo usermod -aG lp $USER   # the GROUP lp — rw access to /dev/parport0
+sudo rmmod lp               # the MODULE lp — the parallel printer driver
+```
+
+The group is the ordinary case: without it `/dev/parport0` cannot be opened and
+you get a plain permission error.
+
+The module is the one that costs an afternoon. `lp` and `ppdev` can both be
+registered on one port, and `ParallelPort.Open`'s `PPCLAIM` then goes through the
+kernel's `parport_claim_or_block`. If `lp` is *holding* the port, that ioctl
+blocks in **uninterruptible sleep** — the process survives Ctrl-C and `kill -9`
+alike, and on the machine where this was diagnosed (2026-08-21, a PCIe LPT card)
+the desktop had to be powered off at the switch. It is intermittent, because `lp`
+holds the port only some of the time, so a run that works proves nothing.
+
+`dmesg` says whether you are exposed, at boot:
+
+```
+[    2.503789] lp: driver loaded but no devices found      ← lp loads before the card probes
+[    2.824137] parport0: PC-style at 0x3100, irq 16 [PCSPP,TRISTATE]
+[    2.929160] lp0: using parport0 (interrupt-driven).     ← and then attaches to it
+```
+
+That last line is the one to grep for. To keep it away across reboots:
+
+```bash
+echo 'blacklist lp' | sudo tee /etc/modprobe.d/blacklist-lp.conf
+```
+
+Nothing is lost: `lp` is the parallel *printer* driver, and unloading it also
+leaves the port's IRQ unarmed, which ppdev writes never use. See
+[`tests/test_parallel_port`](https://github.com/chrplr/goxpyriment/tree/main/tests/test_parallel_port)
+for the diagnosis in full.
+
 Verify the same way as the rest of this page — from the data, not from memory.
 A run that obtained the vblank clock says so in its `-info.txt`:
 
@@ -289,7 +329,7 @@ cd ~/my-experiment && go run .
 ```
 
 You need the `input` and `video` groups from [Step
-6](#step-6-two-other-groups-the-same-machine-usually-needs) — in a desktop
+6](#step-6-the-other-groups-the-same-machine-usually-needs) — in a desktop
 session `systemd-logind` grants those devices by ACL, and the ACL does not
 follow you to a bare VT. If SDL still fails to go fullscreen, see [SDL3
 fullscreen in a Linux virtual console](LinuxVirtualConsoleSDL.md); the usual fix
@@ -434,6 +474,12 @@ on:
 Either way: keep a terminal with `top` or `htop` open while developing, and use
 `-no-realtime` when stepping through code in a debugger — a breakpoint hit on a
 real-time thread can leave the desktop unresponsive until the process is killed.
+
+If a program is unkillable and real-time priority is *not* involved, suspect a
+different mechanism with the same symptom: a thread blocked in the kernel, in
+uninterruptible sleep, which no signal can reach. The parallel port has a known
+way of doing this — see [`lp` in Step
+6](#step-6-the-other-groups-the-same-machine-usually-needs).
 
 The kernel's real-time throttle (`/proc/sys/kernel/sched_rt_runtime_us`, 950 ms
 per second by default) is a backstop, not a licence: it stops a runaway task
