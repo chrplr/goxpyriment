@@ -158,6 +158,10 @@ func main() {
 		attribute(sources, edges, isi, total)
 	}
 
+	// Written after the run, not with the rest of the header: this is the one
+	// header field that is an outcome rather than a setting.
+	df.WriteComment("t realtime_obtained: " + schedSummary())
+
 	writeRows(df, sources, witness != nil)
 	summarise(out, sources, witness, dropped)
 
@@ -504,15 +508,78 @@ func fireLow(d *device, k int, t0 time.Time) {
 	}
 }
 
-// lockAndRaise pins the goroutine to its thread and asks for real-time
-// scheduling. RaiseToRealTime applies to the calling thread, so each firing
-// goroutine has to ask for itself.
+// lockAndRaise pins the goroutine to its thread, asks for real-time scheduling,
+// and records what the thread actually ended up with. RaiseToRealTime applies to
+// the calling thread, so each firing goroutine has to ask for itself.
+//
+// The policy is read back from the OS rather than inferred from the request
+// having returned nil. The data file used to record only what was asked for,
+// which is the one condition the host-side columns depend on and the one a
+// reader cannot check afterwards: a run at SCHED_OTHER and a run at SCHED_FIFO
+// are not comparable, and nothing in the numbers says which you have.
 func lockAndRaise(what string) {
 	runtime.LockOSThread()
+	var reqErr error
 	if *fPrio > 0 {
-		if err := sysinfo.RaiseToRealTime(*fPrio); err != nil {
-			log.Printf("warning: %s: real-time priority %d refused: %v", what, *fPrio, err)
+		if reqErr = sysinfo.RaiseToRealTime(*fPrio); reqErr != nil {
+			log.Printf("warning: %s: real-time priority %d refused: %v", what, *fPrio, reqErr)
 		}
+	}
+	got := sysinfo.Scheduling() // sched_getscheduler on THIS thread
+	schedMu.Lock()
+	schedGot = append(schedGot, schedOutcome{label: what, info: got, err: reqErr})
+	schedMu.Unlock()
+}
+
+// schedOutcome is what one firing thread actually got.
+type schedOutcome struct {
+	label string
+	info  sysinfo.SchedulingInfo
+	err   error
+}
+
+var (
+	schedMu  sync.Mutex
+	schedGot []schedOutcome
+)
+
+// schedSummary describes what the firing threads ran under, for the data file
+// and the report. It distinguishes the three cases that have three different
+// fixes: not asked for, asked for and refused, asked for and obtained.
+func schedSummary() string {
+	schedMu.Lock()
+	defer schedMu.Unlock()
+	if len(schedGot) == 0 {
+		return "unknown (no firing thread reported)"
+	}
+	realtime, prio, policy := 0, 0, ""
+	for _, o := range schedGot {
+		if o.info.RealTime {
+			realtime++
+			prio = o.info.Priority
+		}
+		if policy == "" || !o.info.RealTime {
+			policy = o.info.Policy
+		}
+	}
+	n := len(schedGot)
+	switch {
+	case *fPrio == 0:
+		return fmt.Sprintf("not requested (-realtime-priority 0); ran %s on %d thread(s)", policy, n)
+	case realtime == n:
+		return fmt.Sprintf("obtained: %s priority %d on all %d firing thread(s)",
+			schedGot[0].info.Policy, prio, n)
+	case realtime > 0:
+		return fmt.Sprintf("PARTIAL: real-time on %d of %d firing thread(s); the rest ran %s "+
+			"— those pulses are not comparable with the others", realtime, n, policy)
+	default:
+		reason := fmt.Sprintf("highest real-time priority available to this user is %d",
+			schedGot[0].info.RealTimeMax)
+		if schedGot[0].err != nil {
+			reason = schedGot[0].err.Error()
+		}
+		return fmt.Sprintf("REFUSED: asked for %d, ran %s on all %d thread(s) (%s)",
+			*fPrio, policy, n, reason)
 	}
 }
 
@@ -779,8 +846,9 @@ func summarise(out *report.Tee, sources []*device, witness *device, dropped bool
 	out.Printf("%d recorded pulses of %.3f ms every %.3f ms; %d warm-up pulses excluded\n",
 		*fN, *fWidthMs, *fISIMs, *fWarmup)
 	out.Printf("reference device (skews are measured against it): [%d] %s\n", ref.index, ref.Label)
-	out.Printf("realtime priority: %s;  GC %s during the train\n\n",
-		prioText(), map[bool]string{true: "running", false: "suspended"}[*fGC])
+	out.Printf("realtime priority: %s\n", schedSummary())
+	out.Printf("GC %s during the train\n\n",
+		map[bool]string{true: "running", false: "suspended"}[*fGC])
 
 	failures := 0
 	for _, d := range sources {
