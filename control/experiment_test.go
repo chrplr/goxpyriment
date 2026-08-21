@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/Zyko0/go-sdl3/sdl"
+	"github.com/chrplr/goxpyriment/apparatus"
 )
 
 // TestRunRecovery verifies that Experiment.Run correctly catches our internal
@@ -183,5 +184,45 @@ func TestNewExperimentRequestsRealTime(t *testing.T) {
 	exp.RealTimePriority = 0
 	if exp.RealTimePriority != 0 {
 		t.Error("RealTimePriority must be settable to 0 to decline")
+	}
+}
+
+// DrawArea has to report the space stimuli are actually drawn in. Reading the
+// window size instead is the bug that made ShowInstructions wrap text against a
+// width several times too large on a fullscreen display: the block was
+// positioned in the logical space by CenterToSDL and laid out against the
+// window, so it broke in the wrong places and ran off the sides.
+func TestDrawAreaPrefersTheLogicalSize(t *testing.T) {
+	cases := []struct {
+		name         string
+		screen       *apparatus.Screen
+		wantW, wantH float32
+	}{
+		{
+			name:   "no logical size: the window is the drawing space",
+			screen: &apparatus.Screen{Width: 1024, Height: 768},
+			wantW:  1024, wantH: 768,
+		},
+		{
+			name: "logical size set: it wins over the window",
+			screen: &apparatus.Screen{
+				Width: 2560, Height: 1440,
+				LogicalSize: &sdl.FPoint{X: 1024, Y: 768},
+			},
+			wantW: 1024, wantH: 768,
+		},
+	}
+	for _, c := range cases {
+		exp := &Experiment{Screen: c.screen}
+		w, h := exp.DrawArea()
+		if w != c.wantW || h != c.wantH {
+			t.Errorf("%s: DrawArea() = (%v, %v), want (%v, %v)", c.name, w, h, c.wantW, c.wantH)
+		}
+	}
+
+	// No screen at all must not panic: End() and error paths can reach here.
+	exp := &Experiment{}
+	if w, h := exp.DrawArea(); w != 0 || h != 0 {
+		t.Errorf("DrawArea() with no screen = (%v, %v), want (0, 0)", w, h)
 	}
 }

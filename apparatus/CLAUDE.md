@@ -41,7 +41,7 @@ sdlX, sdlY := screen.CenterToSDL(posX, posY)
 | `FrameDuration() time.Duration` | Nominal frame time (1 / refresh rate) |
 | `VSync() int` | Current VSYNC state (1=on, 0=off, -1=adaptive) |
 | `SetVSync(vsync int)` | Change VSYNC mode |
-| `SetLogicalSize(w, h int32)` | Device-independent logical resolution with letterboxing |
+| `SetLogicalSize(w, h int32)` | Device-independent logical resolution with letterboxing. Updates `Screen.Width`/`Height` too — they are the *drawing* space, not the window, and layout code reads them. For physical pixels use `Renderer.CurrentOutputSize()`. |
 | `MousePosition() (float32, float32)` | Cursor in center-based coords (HiDPI-corrected) |
 | `DisplayInfo() DisplayInfo` | Native resolution, refresh rate, pixel density, format |
 

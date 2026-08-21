@@ -292,7 +292,8 @@ func confirmThreshold(exp *control.Experiment, p90, threshold float32) (bool, er
 			"Press SPACE to keep this calibration,\nor R to redo the 10-second silent recording.",
 		calibPercentile*100, p90, calibFactor, threshold,
 	)
-	tb := stimuli.NewTextBox(text, int32(float32(exp.Screen.Width)*0.80), sdl.FPoint{}, control.White)
+	tb := exp.FittedTextBox(text)
+	defer tb.Unload()
 	if err := exp.Screen.Clear(); err != nil {
 		return false, err
 	}

@@ -155,8 +155,10 @@ control.ErrCancelled  // returned when the user cancels the dialog
 | `exp.ShowFrames(stim VisualStimulus, n int) (uint64, error)` | Hold the stimulus for exactly `n` display frames, returning the onset timestamp of the first flip. The stimulus is redrawn every frame — see *Holding a stimulus for a fixed number of frames* below. |
 | `exp.BlankFrames(n int) (uint64, error)` | Frame-locked counterpart of `Blank(ms)`: clear and hold blank for exactly `n` frames, returning the timestamp of the first flip (i.e. the previous stimulus's offset). |
 | `exp.ShowAndGetRT(stim VisualStimulus, keys []Keycode, timeoutMs int) (Keycode, int64, error)` | Clears stale keyboard events, shows stim with hardware-precise onset timing, waits for a key, and returns `(key, rtMs, error)`. Pass `timeoutMs = -1` for no timeout; returns `(0, 0, nil)` on timeout. This is the canonical single-stimulus RT measurement call. |
-| `exp.ShowEndMessage(message string) error` | Display a centered completion message and wait for any key. For end-of-experiment screens. |
-| `exp.ShowInstructions(text string) error` | Display centered text and wait for spacebar. |
+| `exp.ShowEndMessage(message string) error` | Display a centered completion message and wait for any key. For end-of-experiment screens. Laid out by `FittedTextBox`. |
+| `exp.ShowInstructions(text string) error` | Display centered text and wait for spacebar. Laid out by `FittedTextBox`. |
+| `exp.FittedTextBox(text string) *stimuli.TextBox` | A centered `TextBox` wrapped to the drawing area and rendered at the largest point size — never above the default — at which the whole block fits. See *Laying out a block of text* below. |
+| `exp.DrawArea() (w, h float32)` | Size of the coordinate space stimuli are drawn in (the logical resolution). What layout code should measure against. |
 | `exp.Blank(ms int) error` | Clear and flip screen, then wait `ms` milliseconds. |
 | `exp.Wait(ms int) error` | Wait `ms` ms while pumping SDL events (ESC-abortable). |
 | `exp.ShowSplash(waitForKey bool) error` | Show experiment name + version splash. |
@@ -688,6 +690,14 @@ In normal experiments you access `apparatus` types through `exp.Screen`, `exp.Ke
 
 All stimulus positions use a **center-origin coordinate system**: `(0, 0)` is the screen center; positive Y is upward.
 
+`screen.Width` and `screen.Height` are the **logical** drawing space — the
+coordinate system stimuli are positioned in — and move with `SetLogicalSize`.
+They are what layout code should measure against; a width computed from anything
+else lands somewhere other than where `CenterToSDL` puts it. For *physical*
+pixels, as in a degrees-of-visual-angle calculation, ask
+`screen.Renderer.CurrentOutputSize()` instead. In fullscreen with no logical size
+set the two are the same, which is what makes the distinction easy to miss.
+
 ```go
 screen.CenterToSDL(x, y float32) (float32, float32)  // convert to SDL top-left coords
 screen.CenteredRect(pos FPoint, w, h float32) *FRect  // SDL dest rect for a w×h texture centered at pos
@@ -698,11 +708,39 @@ screen.Flip() error                                    // alias for Update
 screen.FlipTS() (uint64, error)                        // present + return SDL nanosecond timestamp after flip
 screen.FrameDuration() time.Duration                   // nominal frame duration (falls back to 60 Hz)
 screen.CalibrateRefresh(n int) (time.Duration, error)  // measured frame period, pacing bypassed
-screen.SetLogicalSize(w, h int32) error
+screen.SetLogicalSize(w, h int32) error                // also updates screen.Width/Height
 screen.SetVSync(vsync int) error
 screen.DisplayInfo() apparatus.DisplayInfo                    // monitor properties
 screen.Destroy()
 ```
+
+### Laying out a block of text
+
+`ShowInstructions`, `ShowEndMessage` and `FittedTextBox` size a text screen by
+measuring it, not by a fixed fraction of the window. Two things go wrong when a
+wrap width is written as a constant share of the screen:
+
+- **The column count moves with the display.** A wrap width in pixels divided by
+  a font in points is a number of characters, and it changes per machine: at
+  28 pt in the default monospace font, 80 % of a 1024-pixel-wide screen is
+  48 characters and 80 % of a 1920-pixel one is 90. Instruction text
+  hand-wrapped in the source at the usual 55–70 columns therefore survives on
+  the author's screen and is re-broken on a narrower one, each over-long line
+  becoming a full line plus a short orphan.
+- **Nothing checks the height.** A screen that has grown a few lines simply runs
+  off the bottom edge, with no error and nothing in the log.
+
+`FittedTextBox` wraps at `0.92 × DrawArea().w` and then picks the largest point
+size, up to `exp.DefaultFontSize`, at which the rendered block fits within
+`0.90 × DrawArea().h`. Where it can do so without shrinking below
+`keepBreaksFloor` (three quarters) of that size, it prefers a size at which no
+line the author wrote has to be re-wrapped — so hand-wrapped text keeps its own
+breaks on any display, while a paragraph written as one long line still wraps,
+as intended. Below `control.MinTextFontSize` (11 pt) it stops and logs a
+warning: a screen that will not fit at 11 pt is too long, not too big.
+
+The fitted font belongs to the experiment and is closed by `End()`; a caller of
+`FittedTextBox` only has to `Unload()` the box.
 
 `FlipTS` returns `sdl.TicksNS()` captured immediately after the flip. This timestamp is on the same nanosecond clock as SDL3 event timestamps, so `int64(event.Timestamp - onsetNS)` gives hardware-precision reaction time without any polling latency.
 

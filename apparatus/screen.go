@@ -63,11 +63,23 @@ func CreateSurfaceFrom(width, height int, format PixelFormat, pixels []byte, pit
 //     coordinates to SDL's top‑left space (CenterToSDL),
 //   - holding the default font and optional canvas/logical size overrides.
 type Screen struct {
-	Window       *sdl.Window
-	Renderer     *sdl.Renderer
-	BgColor      sdl.Color
-	Width        int
-	Height       int
+	Window   *sdl.Window
+	Renderer *sdl.Renderer
+	BgColor  sdl.Color
+
+	// Width and Height are the size of the coordinate space stimuli are drawn
+	// in — the logical resolution, not the window. In fullscreen with no
+	// logical size set the two are the same, which is what makes the
+	// distinction easy to miss; once SetLogicalSize has been called they are
+	// not, and it is this pair that layout code wants. Reading the window's own
+	// size instead gives a width several times too large on a big display, and
+	// text laid out against it wraps in the wrong places or runs off the sides.
+	//
+	// For physical pixels — the denominator of a degrees-of-visual-angle
+	// calculation, say — ask the renderer: Renderer.CurrentOutputSize().
+	Width  int
+	Height int
+
 	DefaultFont  *ttf.Font
 	CanvasOffset *sdl.FPoint   // If not nil, use this instead of true center
 	LogicalSize  *sdl.FPoint   // If not nil, use this for CenterToSDL
@@ -262,8 +274,15 @@ func (s *Screen) MousePosition() (float32, float32) {
 // SetLogicalSize sets a device‑independent logical resolution for the
 // renderer. All subsequent drawing operations are scaled to this size using
 // SDL's logical presentation (letterboxed by default).
+//
+// Width and Height move with it. They are the drawing space, and after this
+// call the drawing space is the one just named — leaving them at the window's
+// size would put the two halves of the layout in different coordinate systems,
+// with CenterToSDL positioning a stimulus in the logical space while code that
+// sized it had measured against the window.
 func (s *Screen) SetLogicalSize(width, height int32) error {
 	s.LogicalSize = &sdl.FPoint{X: float32(width), Y: float32(height)}
+	s.Width, s.Height = int(width), int(height)
 	return s.Renderer.SetLogicalPresentation(width, height, sdl.LOGICAL_PRESENTATION_LETTERBOX)
 }
 

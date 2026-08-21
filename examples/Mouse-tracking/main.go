@@ -28,7 +28,6 @@ import (
 	"time"
 
 	"github.com/chrplr/goxpyriment/apparatus"
-	"github.com/chrplr/goxpyriment/assets_embed"
 	"github.com/chrplr/goxpyriment/clock"
 	"github.com/chrplr/goxpyriment/control"
 	"github.com/chrplr/goxpyriment/design"
@@ -277,13 +276,6 @@ func main() {
 		log.Printf("Warning: could not set logical size: %v", err)
 	}
 
-	instrFont, err := control.FontFromMemory(assets_embed.InconsolataFont, 24)
-	if err != nil {
-		log.Printf("Warning: could not load instruction font: %v", err)
-	} else {
-		defer instrFont.Close()
-	}
-
 	exp.AddDataVariableNames([]string{
 		"trial", "condition", "target", "left_item", "right_item",
 		"target_side", "response", "correct", "rt_ms", "trajectory",
@@ -303,13 +295,10 @@ func main() {
 		len(trials),
 	)
 
-	err = exp.Run(func() error {
-		tb := stimuli.NewTextBox(instrText, int32(float32(exp.Screen.Width)*0.80), control.FPoint{}, exp.ForegroundColor)
-		if instrFont != nil {
-			tb.Font = instrFont
+	err := exp.Run(func() error {
+		if err := exp.ShowInstructions(instrText); err != nil {
+			return err
 		}
-		exp.Show(tb)
-		exp.Keyboard.WaitKey(control.K_SPACE)
 
 		for i, t := range trials {
 			exp.Blank(itiMS)

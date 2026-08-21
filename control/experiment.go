@@ -137,6 +137,11 @@ type Experiment struct {
 	imgLoader interface{ Unload() }
 	ttfLoader interface{ Unload() }
 
+	// fittedFonts holds the extra font sizes FittedTextBox has opened, keyed by
+	// point size, so that fitting the same screen twice costs no new handles
+	// and the caller never has to own a font. Closed by End().
+	fittedFonts map[float32]*ttf.Font
+
 	event    EventState
 	quitFlag atomic.Int32 // set to 1 by signal handler goroutine; checked by pumpFrame
 	endOnce  sync.Once    // guards finalizeData so the footer is written exactly once
@@ -612,6 +617,217 @@ func (e *Experiment) ShowAndGetRT(v stimuli.VisualStimulus, keys []Keycode, time
 	return key, int64(eventTS-onsetNS) / 1_000_000, nil
 }
 
+// ---------------------------------------------------------------------------
+// Text blocks
+// ---------------------------------------------------------------------------
+
+// Layout of a full-screen block of text.
+//
+// textWrapFraction and textHeightFraction are the share of the drawing area a
+// block may occupy; the remainder is the margin. MinTextFontSize is the point
+// size below which text stops being readable across a testing room, and so the
+// point at which a block that still does not fit is too long rather than too
+// big.
+const (
+	textWrapFraction   = 0.92
+	textHeightFraction = 0.90
+
+	// MinTextFontSize is the floor FittedTextBox will not shrink past.
+	MinTextFontSize = 11
+)
+
+// DrawArea returns the size of the coordinate space stimuli are drawn in.
+//
+// This is the logical resolution, which is what layout code wants: a position
+// or a width computed against anything else lands somewhere other than where
+// CenterToSDL puts it. For physical pixels — a degrees-of-visual-angle
+// denominator, say — use Screen.Renderer.CurrentOutputSize().
+func (e *Experiment) DrawArea() (w, h float32) {
+	if e.Screen == nil {
+		return 0, 0
+	}
+	if ls := e.Screen.LogicalSize; ls != nil {
+		return ls.X, ls.Y
+	}
+	return float32(e.Screen.Width), float32(e.Screen.Height)
+}
+
+// fontAt returns the embedded font at the given point size, opening it once and
+// keeping it for the life of the experiment. The handles are closed by End().
+func (e *Experiment) fontAt(size float32) *ttf.Font {
+	if font, ok := e.fittedFonts[size]; ok {
+		return font
+	}
+	stream, err := sdl.IOFromBytes(assets_embed.InconsolataFont)
+	if err != nil {
+		return nil
+	}
+	font, err := ttf.OpenFontIO(stream, true, size)
+	if err != nil {
+		return nil
+	}
+	if e.fittedFonts == nil {
+		e.fittedFonts = map[float32]*ttf.Font{}
+	}
+	e.fittedFonts[size] = font
+	return font
+}
+
+// FittedTextBox returns a centered TextBox holding text, wrapped to the width
+// of the drawing area and rendered at the largest point size — never above the
+// experiment's default — at which the whole block fits on screen.
+//
+// It exists because the obvious formula does not work. Wrapping at a fixed
+// fraction of the screen width converts a pixel width into a *column count*
+// that depends on the display: at 28 pt in the default monospace font, 80 % of
+// a 1024-pixel-wide screen is 48 characters and 80 % of a 1920-pixel one is 90.
+// Instruction text hand-wrapped in the source at the usual 55–70 columns
+// therefore survives on the author's screen and is re-broken on a narrower one,
+// each over-long line becoming a full line plus a short orphan. Fitting the
+// font to the text instead keeps the author's own line breaks on any display,
+// and keeps a long block from running off the bottom edge unannounced.
+//
+// The font is owned by the experiment and closed by End(); the caller only has
+// to Unload the box.
+func (e *Experiment) FittedTextBox(text string) *stimuli.TextBox {
+	areaW, areaH := e.DrawArea()
+	wrap := int32(areaW * textWrapFraction)
+	if wrap < 400 {
+		wrap = 400
+	}
+	box := stimuli.NewTextBox(text, wrap, sdl.FPoint{}, e.ForegroundColor)
+	if font := e.fitFont(text, areaW, areaH, wrap); font != nil {
+		box.Font = font
+	}
+	return box
+}
+
+// keepBreaksFloor is how much smaller than the largest fitting size fitFont is
+// willing to go in order to keep the line breaks the author wrote. A quarter
+// covers the ordinary case — text hand-wrapped at 60-odd columns that a 28 pt
+// font would re-break at 55 — while refusing the pathological one, a paragraph
+// written as a single long line, where honouring "the author's breaks" would
+// mean shrinking to nothing to avoid a wrap that was always intended.
+const keepBreaksFloor = 0.75
+
+// longestLine returns the width of the widest line of text as f would render
+// it, ignoring wrapping. A block whose longest line fits the wrap width comes
+// out with exactly the lines its author wrote.
+func longestLine(f *ttf.Font, text string) float32 {
+	var widest float32
+	for _, line := range strings.Split(text, "\n") {
+		if line == "" {
+			continue
+		}
+		w, _, err := f.StringSize(line)
+		if err == nil && float32(w) > widest {
+			widest = float32(w)
+		}
+	}
+	return widest
+}
+
+// largestFitting returns the biggest point size between MinTextFontSize and the
+// experiment's default at which ok holds, or 0 when it holds at none of them.
+//
+// ok has to be monotone — true at a size implies true at every smaller one —
+// which both of fitFont's tests are: shrinking a font can only shrink what it
+// draws.
+func (e *Experiment) largestFitting(ok func(*ttf.Font) bool) float32 {
+	lo, hi := float32(MinTextFontSize), e.DefaultFontSize
+	if !ok(e.fontAt(lo)) {
+		return 0
+	}
+	best := lo
+	for hi-lo > 0.5 {
+		mid := (lo + hi) / 2
+		font := e.fontAt(mid)
+		if font == nil {
+			break
+		}
+		if ok(font) {
+			best, lo = mid, mid
+		} else {
+			hi = mid
+		}
+	}
+	return best
+}
+
+// fitFont picks the point size a block of text is rendered at. It returns nil
+// when the experiment's default font is already the right answer, which leaves
+// the TextBox to pick it up in the ordinary way.
+//
+// Two things have to be true of the result. The block must fit inside
+// maxW x maxH — otherwise it runs off the screen, which nothing else checks.
+// And, where the price is reasonable, every line the author wrote should still
+// be one line: a font too large for the text turns each over-long line into a
+// full line plus a short orphan, which is what makes a re-wrapped instruction
+// screen look ragged.
+func (e *Experiment) fitFont(text string, areaW, areaH float32, wrapWidth int32) *ttf.Font {
+	// The extent is established by rendering and reading the surface back —
+	// the same call the TextBox will make, so what is measured is what will be
+	// drawn. ttf.StringSizeWrapped would be the cheaper way to ask, but the
+	// go-sdl3 binding for it returns 0x0 with a nil error, which reads as "it
+	// fits". Counting newlines and multiplying by a line height is no
+	// substitute either: the rendered line height is not the point size, and a
+	// line that wraps becomes two, so the block is taller than the text says.
+	within := func(f *ttf.Font, maxH float32) bool {
+		if f == nil {
+			return false
+		}
+		f.SetWrapAlignment(ttf.HORIZONTAL_ALIGN_CENTER)
+		surface, err := f.RenderTextBlendedWrapped(text, e.ForegroundColor, wrapWidth)
+		if err != nil || surface == nil {
+			return false
+		}
+		defer surface.Destroy()
+		return float32(surface.W) <= areaW && float32(surface.H) <= maxH
+	}
+
+	// The block is fitted to a height that leaves a margin, but only failing to
+	// fit the screen *itself* is worth telling the experimenter about.
+	fits := func(f *ttf.Font) bool { return within(f, areaH*textHeightFraction) }
+	keepsBreaks := func(f *ttf.Font) bool {
+		return f != nil && fits(f) && longestLine(f, text) <= float32(wrapWidth)
+	}
+
+	if e.DefaultFont == nil {
+		return nil
+	}
+	if keepsBreaks(e.DefaultFont) {
+		return nil // the default font both fits and needs no re-wrapping
+	}
+
+	// Binary search rather than one guess scaled from the default size: a guess
+	// undershoots badly, because shrinking the font also unwraps the long lines,
+	// so the block shortens faster than the point size does. Halving the
+	// interval converges in about five renders — a cost paid on the two or three
+	// text screens of a session, never inside a trial loop.
+	biggest := e.largestFitting(fits)
+	if biggest == 0 {
+		// No size leaves a margin. Give up the margin rather than the text, and
+		// complain only if even that is not enough.
+		floor := e.fontAt(MinTextFontSize)
+		if !within(floor, areaH) {
+			log.Printf("Warning: a text screen does not fit at %d pt and will be clipped; shorten it", MinTextFontSize)
+		}
+		return floor
+	}
+	if keep := e.largestFitting(keepsBreaks); keep >= biggest*keepBreaksFloor {
+		return e.fontAt(keep)
+	}
+
+	// Re-wrapping is sometimes exactly what the author meant: a paragraph
+	// written as one long line has no breaks worth keeping. If the default size
+	// fits the screen, leave it be rather than shave it to whichever size the
+	// search happened to stop at.
+	if fits(e.DefaultFont) {
+		return nil
+	}
+	return e.fontAt(biggest)
+}
+
 // ShowEndMessage displays a centered completion message and waits for any key.
 // It replaces the common end-of-experiment pattern:
 //
@@ -619,11 +835,8 @@ func (e *Experiment) ShowAndGetRT(v stimuli.VisualStimulus, keys []Keycode, time
 //	exp.Show(box)
 //	exp.Keyboard.Wait()
 func (e *Experiment) ShowEndMessage(message string) error {
-	w := int32(float32(e.Screen.Width) * 0.80)
-	if w < 400 {
-		w = 400
-	}
-	tb := stimuli.NewTextBox(message, w, sdl.FPoint{}, e.ForegroundColor)
+	tb := e.FittedTextBox(message)
+	defer tb.Unload()
 	if err := e.Show(tb); err != nil {
 		return fmt.Errorf("control.Experiment.ShowEndMessage: %w", err)
 	}
@@ -639,13 +852,12 @@ func (e *Experiment) ShowEndMessage(message string) error {
 //	exp.Show(tb)
 //	exp.Keyboard.WaitKey(control.K_SPACE)
 //
-// The wrap width defaults to 80 % of the screen width (minimum 400 px).
+// The block is laid out by FittedTextBox: wrapped to the drawing area and shrunk
+// until it fits, so the line breaks written in the source survive on displays of
+// any size and a long screen does not run off the bottom.
 func (e *Experiment) ShowInstructions(text string) error {
-	w := int32(float32(e.Screen.Width) * 0.80)
-	if w < 400 {
-		w = 400
-	}
-	tb := stimuli.NewTextBox(text, w, sdl.FPoint{}, e.ForegroundColor)
+	tb := e.FittedTextBox(text)
+	defer tb.Unload()
 	if err := e.Show(tb); err != nil {
 		return fmt.Errorf("control.Experiment.ShowInstructions: %w", err)
 	}
@@ -1247,6 +1459,10 @@ func (e *Experiment) End() {
 	e.finalizeData()
 	if e.DefaultFont != nil {
 		e.DefaultFont.Close()
+	}
+	for size, font := range e.fittedFonts {
+		font.Close()
+		delete(e.fittedFonts, size)
 	}
 	if e.Screen != nil {
 		e.Screen.Destroy()

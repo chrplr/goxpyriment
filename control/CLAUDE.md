@@ -61,6 +61,8 @@ When `-s` is **absent** (e.g. the binary was launched by double-clicking its ico
 - `exp.ShowAndGetRT(stim, keys, timeoutMs)` — Clears stale keyboard events, shows stim with `ShowTS`, waits for a key with `GetKeyEventTS`, returns `(key, rtMs, error)` with hardware-precise RT. `timeoutMs = -1` for no timeout; returns `(0, 0, nil)` on timeout.
 - `exp.ShowEndMessage(message)` — Renders a centered completion message and waits for any key. For end-of-experiment screens.
 - `exp.ShowInstructions(text)` — Renders centered text, waits for spacebar.
+- `exp.FittedTextBox(text)` — the layout behind both: a centered `TextBox` wrapped to `exp.DrawArea()` and rendered at the largest point size (never above `DefaultFontSize`) at which the whole block fits, preferring a size that leaves the author's own line breaks intact. Never wrap a text screen at a fixed fraction of the window: that turns a pixel width into a column count that varies with the display, so hand-wrapped text is re-broken into orphan lines on a narrower screen, and nothing checks the height at all. The fitted font is owned by the experiment and closed by `End()`.
+- `exp.DrawArea()` — the logical drawing space (`Screen.LogicalSize`, else `Screen.Width/Height`). Layout code wants this, not the window size.
 - `exp.Blank(ms)` — Clears screen, flips, sleeps `ms` milliseconds.
 - `exp.PollEvents(handler)` — Drains SDL queue; `handler` may be nil. Returns `EventState`.
 - `exp.HandleEvents()` — Returns `(lastKey, lastMouseButton, error)`. Prefer `PollEvents` for new code.

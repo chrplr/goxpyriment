@@ -349,9 +349,9 @@ func main() {
 	)
 
 	err = exp.Run(func() error {
-		tb := stimuli.NewTextBox(instrText, int32(float32(exp.Screen.Width)*0.80), control.FPoint{}, exp.ForegroundColor)
-		exp.Show(tb)
-		exp.Keyboard.WaitKey(control.K_SPACE)
+		if err := exp.ShowInstructions(instrText); err != nil {
+			return err
+		}
 
 		for i, target := range targets {
 			exp.Blank(itiMS)
