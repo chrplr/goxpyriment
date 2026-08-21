@@ -1,0 +1,65 @@
+# --EXPERIMENT INFO
+# e mainfile: test_triggers
+# e cmdline: /home/neurostim/.cache/go-build/6f/6f56d4d38f04d448e7537aabe5f5ab6c9493c0e05f137e0e7dd88dc85552d1ec-d/test_triggers -no-prompt -device parallel:pin=1 -device dlpio8:pin=1 -n 300 -isi-ms 500 -width-ms 5
+# e start_time: 20260821-202847
+# e hostname: pcstim7
+# e username: neurostim
+# e os: linux/amd64
+# e framework: goxpyriment (devel) --- see http://chrplr.github.io/goxpyriment
+# e framework_author: Christophe Pallier <christophe@pallier.org>
+# --SUBJECT INFO
+# s id: 999
+# #
+# --HOST INFO
+# host machine: Dell Inc. Precision 3650 Tower
+# host machine_type: desktop
+# host os: Ubuntu 24.04.4 LTS
+# host kernel: 7.0.0-28-generic x86_64
+# host desktop: ubuntu:GNOME
+# host cpu: Intel(R) Core(TM) i5-10600K CPU @ 4.10GHz
+# host cpu_topology: 6 cores / 12 threads
+# host cpu_mhz: 3256 (max 4800)
+# host ram: 31.08 GiB (5% used at start)
+# host gpu0: Intel Corporation CometLake-S GT2 [UHD Graphics 630] [driver i915]
+# host gpu1: Advanced Micro Devices, Inc. [AMD/ATI] Navi 10 [Radeon Pro W5700] [driver amdgpu]
+# host audio_card0: HDA Intel PCH [driver snd_hda_intel]
+# host audio_card1: Scarlett Solo USB [driver snd_usb_audio]
+# host audio_card2: HDA ATI HDMI [driver snd_hda_intel]
+# host audio_server: PipeWire 1.0.5
+# host alsa: k7.0.0-28-generic
+# --TRIGGER COMPARISON
+# t mode: parallel
+# t pulses: 305 (warmup 5 + recorded 300)
+# t isi_ms: 500.0000
+# t width_ms: 5.0000
+# t realtime_priority: 50
+# t gc_during_train: false
+# t device1: parallel device=/dev/parport0 pin=1 line=D0 db25=2 role=source spec="parallel:pin=1"
+# t device2: dlpio8 port=/dev/serial/by-id/usb-DLP_Design_DLP-IO8_12345678-if00-port0 pin=1 role=source spec="dlpio8:pin=1"
+# #
+# --- test_triggers report ---
+# 
+# ═══ test_triggers ═══════════════════════════════════════════════════════
+# mode: one locked thread per device, common deadline
+# 300 recorded pulses of 5.000 ms every 500.000 ms; 5 warm-up pulses excluded
+# reference device (skews are measured against it): [1] parallel:D0
+# realtime priority: SCHED_FIFO 50 requested;  GC suspended during the train
+# ── host: cost of the SetHigh call (µs) ──────────────────────────────────
+#   [1] parallel:D0            n=300  median     20.3  mean     20.2  sd     0.9  min     12.6  p95     21.0  max     25.3
+#   [2] dlpio8:1               n=300  median     31.0  mean     30.6  sd     2.9  min     14.4  p95     32.3  max     50.8
+# 
+# ── host: when the write was ISSUED, against the reference (µs) ──────────
+#   [1] parallel:D0            (reference)
+#   [2] dlpio8:1               n=300  median     -0.1  mean     -0.1  sd     2.2  min    -36.5  p95      0.4  max      2.8
+# 
+# ── host: realised pulse width, SetHigh call to SetLow call (µs) ─────────
+#   [1] parallel:D0            n=300  median   4999.7  mean   4999.1  sd     4.3  min   4942.0  p95   5000.0  max   5000.5
+#   [2] dlpio8:1               n=300  median   4999.8  mean   4999.3  sd     3.1  min   4976.1  p95   5000.2  max   5000.8
+# 
+# ── how to read this ─────────────────────────────────────────────────────
+#   These are HOST-side numbers: when this program issued each write, not when
+#   the edge reached the wire. The instrument's trace is the measurement; the
+#   numbers above say whether a skew seen there came from the device or from
+#   the host having issued the writes late.
+#   Match a scope edge to a row with target_ns: repetition k was scheduled at
+#   k × 500.000 ms after the first pulse.
