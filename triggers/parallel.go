@@ -23,6 +23,23 @@ import (
 //   - Load the ppdev kernel module: modprobe ppdev
 //   - The user must have rw access to /dev/parport0, e.g. by being in the
 //     "lp" group: sudo usermod -aG lp $USER (re-login to take effect).
+//   - Unload the "lp" kernel module: sudo rmmod lp
+//
+// Note that the last two both say "lp" and are unrelated: one is the Unix group
+// that owns the device node, the other is the parallel *printer* driver. Both
+// drivers can be registered on one port, and then [ParallelPort.Open]'s PPCLAIM
+// goes through the kernel's parport_claim_or_block: if lp is holding the port,
+// the ioctl blocks in uninterruptible sleep, and the process cannot be killed —
+// not even with SIGKILL — until lp lets go. It is intermittent, because lp
+// holds the port only some of the time.
+//
+// Look for this line in dmesg; it means lp is attached and the hang is possible:
+//
+//	lp0: using parport0 (interrupt-driven).
+//
+// To keep it away across reboots: echo 'blacklist lp' | sudo tee
+// /etc/modprobe.d/blacklist-lp.conf. Unloading lp also leaves the port's IRQ
+// unarmed, which costs nothing here — ppdev writes do not use the interrupt.
 type ParallelPort struct {
 	Device string // e.g. "/dev/parport0"
 	shadow byte   // shadow register: current value of the 8 data lines

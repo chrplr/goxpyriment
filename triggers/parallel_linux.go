@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"syscall"
 	"unsafe"
 )
@@ -57,6 +58,18 @@ func (p *ParallelPort) Open() error {
 	}
 	if _, _, errno := syscall.Syscall(syscall.SYS_IOCTL, f.Fd(), ppClaim, 0); errno != 0 {
 		f.Close()
+		if errno == syscall.EBUSY {
+			// Name the usual culprit. PPCLAIM contends with every other driver
+			// registered on the port, and on a stock desktop that is the lp
+			// printer driver -- which dmesg announces as "lp0: using parport0".
+			// Refusing outright is the good case: when lp holds the port rather
+			// than merely being attached, the claim blocks in uninterruptible
+			// sleep instead, and the process cannot be killed at all.
+			return fmt.Errorf("parallel: claim %s: %w "+
+				"(another driver holds the port; if dmesg says \"lp0: using %s\", "+
+				"unload the lp printer module: sudo rmmod lp)",
+				p.Device, errno, filepath.Base(p.Device))
+		}
 		return fmt.Errorf("parallel: claim %s: %w", p.Device, errno)
 	}
 	// Force the data lines to OUTPUT. A port left in reverse direction by

@@ -374,7 +374,8 @@ func openParallel(spec Spec) (Opened, error) {
 		if len(ports) == 0 {
 			return Opened{}, fmt.Errorf("no accessible parallel port found " +
 				"(needs Linux with ppdev loaded and rw access: sudo modprobe ppdev; " +
-				"sudo usermod -aG lp $USER, then log in again)")
+				"sudo usermod -aG lp $USER, then log in again. If dmesg says " +
+				"'lp0: using parport0', also unload the lp printer module: sudo rmmod lp)")
 		}
 		// Report the choice rather than making it silently: a machine with two
 		// LPT ports would otherwise fire whichever enumerated first.

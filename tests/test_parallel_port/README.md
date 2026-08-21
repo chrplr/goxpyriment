@@ -6,8 +6,32 @@ Interactive smoke-test for the Linux LPT parallel port driver (`triggers/paralle
 
 ```bash
 sudo modprobe ppdev
-sudo usermod -aG lp $USER   # re-login to take effect
+sudo usermod -aG lp $USER   # the GROUP lp — rw access to /dev/parport0
+sudo rmmod lp               # the MODULE lp — the printer driver
 ```
+
+The last two are different things that happen to share a name: `lp` the Unix
+group owns the device node, `lp` the kernel module is the parallel *printer*
+driver. Both it and `ppdev` can be registered on one port, and then `Open`'s
+`PPCLAIM` goes through `parport_claim_or_block` — if `lp` is holding the port,
+the ioctl blocks in **uninterruptible sleep**. The process then survives Ctrl-C
+*and* `kill -9` until `lp` releases it. It is intermittent, because `lp` only
+holds the port some of the time.
+
+Check for it in `dmesg`:
+
+```
+[    2.929160] lp0: using parport0 (interrupt-driven).   ← lp is attached
+```
+
+To keep it away across reboots:
+
+```bash
+echo 'blacklist lp' | sudo tee /etc/modprobe.d/blacklist-lp.conf
+```
+
+That also leaves the port's IRQ unarmed, which costs nothing: `ppdev` writes
+do not use the interrupt.
 
 ## Usage
 

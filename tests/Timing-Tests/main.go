@@ -397,7 +397,9 @@ func setupParallel() (triggers.OutputTTLDevice, string) {
 		if len(ports) == 0 {
 			log.Printf("warning: no accessible parallel port found — triggers disabled")
 			log.Printf("         (needs Linux with the ppdev module loaded, and rw access:")
-			log.Printf("          sudo modprobe ppdev; sudo usermod -aG lp $USER, then log in again)")
+			log.Printf("          sudo modprobe ppdev; sudo usermod -aG lp $USER, then log in again.")
+			log.Printf("          Also unload the lp PRINTER module -- sudo rmmod lp -- if dmesg says")
+			log.Printf("          'lp0: using parport0': it can block the claim uninterruptibly.)")
 			return triggers.NullOutputTTLDevice{}, ""
 		}
 		// Report the choice rather than making it silently: a machine with two

@@ -29,7 +29,13 @@
 // Prerequisites:
 //
 //	sudo modprobe ppdev
-//	sudo usermod -aG lp $USER   # re-login afterwards
+//	sudo usermod -aG lp $USER   # the GROUP lp: rw access to /dev/parport0
+//	sudo rmmod lp               # the MODULE lp: the printer driver, which fights us
+//
+// The last two are unrelated despite the shared name. If dmesg says "lp0: using
+// parport0", the printer driver is registered on the same port, and an Open can
+// block in the kernel — uninterruptibly, so Ctrl-C will not save you — until it
+// lets the port go.
 package main
 
 import (
