@@ -440,6 +440,9 @@ go run ./tests/test_photodiode_latency -s 1 -isi-frames 18 -diode all
 
 # The same with the established harness
 go run ./tests/Timing-Tests -test av -no-sound
+
+# Two trigger devices against each other, on one schedule and one timebase
+go run ./tests/test_triggers -device parallel:pin=1 -device dlpio8:pin=1
 ```
 
 `tests/test_vblank_drift` is the one to run first, because it needs no hardware
@@ -456,3 +459,15 @@ and the gap between them for every trial, so the host-side contribution is in
 the data rather than assumed. Its README works through the arithmetic of
 converting an instrument's trigger-to-light interval into the quantity you
 actually want.
+
+`tests/test_triggers` answers a different question: *which* trigger device. The
+figures above come from one device at a time, and comparing runs made hours
+apart on different clocks is exactly the comparison this document warns about
+everywhere else. That test pulses two or more devices on **one absolute
+schedule** — a locked thread each, all waiting on the same deadline — so an
+oscilloscope reads the difference between their edges directly and its own clock
+cancels. It records when the host issued each write as well, which is what
+separates a device that is slow from a program that was late. Its `-sequential`
+mode measures the other thing worth knowing: what a blocking USB write costs the
+device queued behind it, which is what experiment code pulsing two boxes in a row
+actually does.

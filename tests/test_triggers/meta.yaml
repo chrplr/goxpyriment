@@ -1,0 +1,3 @@
+category: test
+description: Fires the same pulse train on two or more TTL output devices at once, on one absolute schedule, so an oscilloscope (or a MEG TTL box acting as witness) can measure the skew between their edges
+reference: ""
