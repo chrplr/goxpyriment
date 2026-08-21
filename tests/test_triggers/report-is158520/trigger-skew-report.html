@@ -1,0 +1,1386 @@
+<title>Two Trigger Boxes, One Timebase</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&display=swap">
+<style>
+:root{
+  --ground:#F7F8F9; --card:#FFFFFF; --ink:#16202A; --ink-2:#3D4B58; --muted:#66737F;
+  --rule:#DCE2E7; --rule-soft:#E9EDF0;
+  --c-a:#9A6B00; --c-b:#0F6FD1; --c-ok:#2C3A46; --c-bad:#A8402F;
+  --code-bg:#EEF1F4;
+  --sans:"IBM Plex Sans Condensed",-apple-system,"Segoe UI",sans-serif;
+  --serif:"Source Serif 4",Georgia,"Times New Roman",serif;
+  --mono:"IBM Plex Mono",ui-monospace,"SF Mono",Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --ground:#12181D; --card:#182029; --ink:#E6ECF2; --ink-2:#BAC6D1; --muted:#8E9CA9;
+    --rule:#2A3542; --rule-soft:#212B35;
+    --c-a:#BC8A28; --c-b:#5A96DE; --c-ok:#C3CEDA; --c-bad:#CE6A56;
+    --code-bg:#1E2831;
+  }
+}
+:root[data-theme="dark"]{
+  --ground:#12181D; --card:#182029; --ink:#E6ECF2; --ink-2:#BAC6D1; --muted:#8E9CA9;
+  --rule:#2A3542; --rule-soft:#212B35;
+  --c-a:#BC8A28; --c-b:#5A96DE; --c-ok:#C3CEDA; --c-bad:#CE6A56;
+  --code-bg:#1E2831;
+}
+*{box-sizing:border-box}
+body{background:var(--ground);color:var(--ink);font-family:var(--serif);
+     font-size:17px;line-height:1.62;margin:0;padding:0 20px 96px;
+     -webkit-font-smoothing:antialiased}
+.wrap{max-width:1080px;margin:0 auto}
+.col{max-width:640px;margin-inline:auto}
+.col>*+*{margin-top:1.1em}
+
+header.masthead{border-bottom:2px solid var(--ink);padding:52px 0 20px;margin-bottom:38px}
+.eyebrow{font-family:var(--mono);font-size:11.5px;letter-spacing:.13em;text-transform:uppercase;
+         color:var(--muted);margin:0 0 18px}
+h1{font-family:var(--sans);font-weight:600;font-size:clamp(34px,5.4vw,54px);line-height:1.02;
+   letter-spacing:-.015em;margin:0;text-wrap:balance;max-width:16ch}
+.standfirst{font-size:19px;color:var(--ink-2);max-width:56ch;margin:18px 0 0}
+.byline{font-family:var(--mono);font-size:12px;color:var(--muted);margin:22px 0 0;
+        display:flex;flex-wrap:wrap;gap:6px 22px}
+
+h2{font-family:var(--sans);font-weight:600;font-size:27px;letter-spacing:-.01em;
+   margin:0 0 2px;text-wrap:balance}
+h3{font-family:var(--sans);font-weight:600;font-size:19px;letter-spacing:.005em;margin:0 0 2px}
+section{margin-top:60px}
+section>.col>h2:first-child{margin-top:0}
+.sectnum{font-family:var(--mono);font-size:11.5px;letter-spacing:.12em;text-transform:uppercase;
+         color:var(--muted);display:block;margin-bottom:10px}
+
+p{margin:0}
+strong{font-weight:600}
+code{font-family:var(--mono);font-size:.88em;background:var(--code-bg);padding:.1em .34em;border-radius:3px}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:.92em}
+a{color:var(--c-b)}
+
+.result{background:var(--card);border:1px solid var(--rule);border-left:3px solid var(--c-b);
+        padding:26px 30px;margin:34px auto 0;max-width:640px}
+.result .k{font-family:var(--mono);font-size:11.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.result .v{font-family:var(--sans);font-weight:600;font-size:clamp(38px,7vw,60px);line-height:1;
+           letter-spacing:-.02em;margin:10px 0 6px;font-variant-numeric:tabular-nums}
+.result .v em{font-style:normal;font-size:.42em;font-weight:500;color:var(--muted);letter-spacing:0}
+.result p{font-size:15.5px;color:var(--ink-2);margin-top:12px}
+
+figure{margin:34px 0 0}
+.fig{width:100%;height:auto;display:block}
+.figbox{background:var(--card);border:1px solid var(--rule);padding:20px 10px 10px;overflow-x:auto}
+figcaption{font-size:14.5px;color:var(--muted);margin-top:12px;max-width:640px;
+           margin-inline:auto;font-family:var(--serif)}
+figcaption b{color:var(--ink-2);font-weight:600}
+.grid{stroke:var(--rule-soft);stroke-width:1}
+.axisrow{stroke:var(--rule);stroke-width:1}
+.dot{fill-opacity:.4}
+.med{stroke-width:2.5}
+text{font-family:var(--mono);fill:var(--muted)}
+.tick{font-size:11px}
+.rowlab{font-family:var(--sans);font-size:14px;fill:var(--ink);font-weight:500}
+.rowsub{font-size:10.5px;fill:var(--muted)}
+.medlab{font-size:12.5px;font-weight:500}
+.nlab{font-size:10.5px;fill:var(--muted)}
+.axlab{font-size:11px;letter-spacing:.1em;text-transform:uppercase}
+
+.key{display:flex;flex-wrap:wrap;gap:8px 22px;font-family:var(--mono);font-size:12px;
+     color:var(--muted);margin:14px auto 0;max-width:640px}
+.key span{display:inline-flex;align-items:center;gap:7px}
+.swatch{width:11px;height:11px;border-radius:2px;display:inline-block}
+
+.tablewrap{overflow-x:auto;margin:28px 0 0}
+table{border-collapse:collapse;width:100%;font-family:var(--mono);font-size:13.5px;
+      font-variant-numeric:tabular-nums;background:var(--card)}
+caption{font-family:var(--sans);font-weight:600;font-size:15px;text-align:left;color:var(--ink);
+        padding:0 0 10px}
+th,td{padding:9px 14px;border-bottom:1px solid var(--rule-soft);text-align:right;white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+thead th{font-weight:500;color:var(--muted);font-size:11.5px;letter-spacing:.06em;
+         text-transform:uppercase;border-bottom:1px solid var(--rule)}
+tbody tr:last-child td{border-bottom:1px solid var(--rule)}
+td.flag{color:var(--c-bad)}
+tr.total td{font-weight:500;color:var(--ink)}
+
+pre{background:var(--card);border:1px solid var(--rule);padding:16px 18px;overflow-x:auto;
+    font-family:var(--mono);font-size:13px;line-height:1.62;margin:22px 0 0}
+pre code{background:none;padding:0;font-size:inherit}
+
+.callout{border-left:3px solid var(--c-bad);background:var(--card);padding:18px 22px;
+         font-size:16px;color:var(--ink-2)}
+.callout b{color:var(--ink)}
+
+ul{margin:0;padding-left:1.15em}
+li+li{margin-top:.5em}
+li::marker{color:var(--muted)}
+
+.foot{margin-top:72px;border-top:1px solid var(--rule);padding-top:20px;
+      font-family:var(--mono);font-size:12px;color:var(--muted);line-height:1.8}
+.foot b{color:var(--ink-2);font-weight:500}
+@media (max-width:640px){body{font-size:16px}.result{padding:22px}}
+</style>
+
+<div class="wrap">
+<header class="masthead">
+  <div class="col" style="max-width:1080px">
+    <p class="eyebrow">goxpyriment · bench measurement · 21 August 2026</p>
+    <h1>Two Trigger Boxes, One Timebase</h1>
+    <p class="standfirst">How far apart do an FT232H and a DLP-IO8 actually fire when a program
+    tells them to fire together? Six runs on one oscilloscope acquisition, with the host's own
+    timestamps recorded alongside — so the answer separates what the devices cost from what the
+    software cost.</p>
+    <p class="byline"><span>Dell Precision 5490 · Ubuntu 26.04 · kernel 7.0.0-30</span>
+      <span>Analog Discovery 3 @ 1 MS/s</span>
+      <span>tests/test_triggers</span></p>
+  </div>
+</header>
+
+<div class="col">
+<p>Every TTL device in <code>triggers/</code> had been characterised on its own. Nothing had
+ever put two of them on one timebase, so the claim that a USB write costs more than a local
+ioctl rested on runs made hours apart against different clocks. <code>test_triggers</code>
+removes the comparison problem by removing the second run: both devices are pulsed on
+<em>one absolute schedule</em>, and an instrument watching both channels reads the difference
+directly. Its clock cancels; nothing has to be reconciled with the host's.</p>
+</div>
+
+<div class="result">
+  <div class="k">DLP-IO8 lags FT232H by</div>
+  <div class="v">179.4 <em>µs</em></div>
+  <div class="k">sd 5.7 µs · 322 pulses · three 60-second runs</div>
+  <p>The program's own contribution to that number is <span class="num">0.03 µs</span> (median),
+  so essentially all of it is the hardware. It is not a constant you can calibrate once:
+  two runs in six sat 40–50 µs higher.</p>
+</div>
+
+<section>
+<div class="col">
+  <span class="sectnum">The method</span>
+  <h2>Fire on a deadline, not in a sequence</h2>
+  <p>Each device gets its own OS thread, locked, at <code>SCHED_FIFO</code> priority. All threads
+  wait on the <em>same absolute deadline</em> and busy-spin the last 1.5 ms into it. They are never
+  woken through a channel, because a per-repetition broadcast would re-serialise exactly what is
+  being measured. The garbage collector is suspended for the whole train.</p>
+  <p>Every pulse also records the host clock either side of both writes. That is what makes a
+  skew attributable: subtract the moment the program issued each write, and what remains is the
+  device. Without it, a descheduled thread and a slow trigger box look identical.</p>
+</div>
+</section>
+
+<section>
+<div class="col">
+  <span class="sectnum">The result</span>
+  <h2>179 µs, until it isn't</h2>
+  <p>Three full-length runs agree on the median to within 4.9 µs. Two datasets sit far outside
+  that cluster — one whole run, and the last quarter of another.</p>
+</div>
+<figure>
+  <div class="figbox"><svg viewBox="0 0 760 320" role="img" class="fig" preserveAspectRatio="xMidYMid meet">
+<line class="grid" x1="132.0" y1="26" x2="132.0" y2="286"/>
+<text class="tick" x="132.0" y="304" text-anchor="middle">160</text>
+<line class="grid" x1="184.2" y1="26" x2="184.2" y2="286"/>
+<text class="tick" x="184.2" y="304" text-anchor="middle">170</text>
+<line class="grid" x1="236.4" y1="26" x2="236.4" y2="286"/>
+<text class="tick" x="236.4" y="304" text-anchor="middle">180</text>
+<line class="grid" x1="288.5" y1="26" x2="288.5" y2="286"/>
+<text class="tick" x="288.5" y="304" text-anchor="middle">190</text>
+<line class="grid" x1="340.7" y1="26" x2="340.7" y2="286"/>
+<text class="tick" x="340.7" y="304" text-anchor="middle">200</text>
+<line class="grid" x1="392.9" y1="26" x2="392.9" y2="286"/>
+<text class="tick" x="392.9" y="304" text-anchor="middle">210</text>
+<line class="grid" x1="445.1" y1="26" x2="445.1" y2="286"/>
+<text class="tick" x="445.1" y="304" text-anchor="middle">220</text>
+<line class="grid" x1="497.3" y1="26" x2="497.3" y2="286"/>
+<text class="tick" x="497.3" y="304" text-anchor="middle">230</text>
+<line class="grid" x1="549.5" y1="26" x2="549.5" y2="286"/>
+<text class="tick" x="549.5" y="304" text-anchor="middle">240</text>
+<line class="grid" x1="601.6" y1="26" x2="601.6" y2="286"/>
+<text class="tick" x="601.6" y="304" text-anchor="middle">250</text>
+<line class="grid" x1="653.8" y1="26" x2="653.8" y2="286"/>
+<text class="tick" x="653.8" y="304" text-anchor="middle">260</text>
+<line class="grid" x1="706.0" y1="26" x2="706.0" y2="286"/>
+<text class="tick" x="706.0" y="304" text-anchor="middle">270</text>
+<text class="rowlab" x="118" y="51.0" text-anchor="end">run 1 · first 46 s</text>
+<text class="rowsub" x="118" y="65.0" text-anchor="end">115 pulses, 60 s</text>
+<line class="axisrow" x1="132" y1="52.0" x2="706" y2="52.0"/>
+<circle class="dot" cx="233.2" cy="45.2" r="2.6" fill="var(--c-ok)"><title>pulse 1: 179.4 us</title></circle>
+<circle class="dot" cx="185.7" cy="50.6" r="2.6" fill="var(--c-ok)"><title>pulse 2: 170.3 us</title></circle>
+<circle class="dot" cx="239.2" cy="56.0" r="2.6" fill="var(--c-ok)"><title>pulse 3: 180.5 us</title></circle>
+<circle class="dot" cx="241.2" cy="46.6" r="2.6" fill="var(--c-ok)"><title>pulse 4: 180.9 us</title></circle>
+<circle class="dot" cx="292.7" cy="52.0" r="2.6" fill="var(--c-ok)"><title>pulse 5: 190.8 us</title></circle>
+<circle class="dot" cx="198.4" cy="57.4" r="2.6" fill="var(--c-ok)"><title>pulse 6: 172.7 us</title></circle>
+<circle class="dot" cx="238.8" cy="48.0" r="2.6" fill="var(--c-ok)"><title>pulse 7: 180.5 us</title></circle>
+<circle class="dot" cx="298.1" cy="53.4" r="2.6" fill="var(--c-ok)"><title>pulse 8: 191.8 us</title></circle>
+<circle class="dot" cx="271.1" cy="58.8" r="2.6" fill="var(--c-ok)"><title>pulse 9: 186.7 us</title></circle>
+<circle class="dot" cx="292.4" cy="49.3" r="2.6" fill="var(--c-ok)"><title>pulse 10: 190.7 us</title></circle>
+<circle class="dot" cx="242.3" cy="54.7" r="2.6" fill="var(--c-ok)"><title>pulse 11: 181.1 us</title></circle>
+<circle class="dot" cx="218.1" cy="45.2" r="2.6" fill="var(--c-ok)"><title>pulse 12: 176.5 us</title></circle>
+<circle class="dot" cx="223.6" cy="50.6" r="2.6" fill="var(--c-ok)"><title>pulse 13: 177.6 us</title></circle>
+<circle class="dot" cx="238.4" cy="56.0" r="2.6" fill="var(--c-ok)"><title>pulse 14: 180.4 us</title></circle>
+<circle class="dot" cx="235.8" cy="46.6" r="2.6" fill="var(--c-ok)"><title>pulse 15: 179.9 us</title></circle>
+<circle class="dot" cx="268.2" cy="52.0" r="2.6" fill="var(--c-ok)"><title>pulse 16: 186.1 us</title></circle>
+<circle class="dot" cx="244.5" cy="57.4" r="2.6" fill="var(--c-ok)"><title>pulse 17: 181.6 us</title></circle>
+<circle class="dot" cx="221.3" cy="48.0" r="2.6" fill="var(--c-ok)"><title>pulse 18: 177.1 us</title></circle>
+<circle class="dot" cx="207.3" cy="53.4" r="2.6" fill="var(--c-ok)"><title>pulse 19: 174.4 us</title></circle>
+<circle class="dot" cx="265.3" cy="58.8" r="2.6" fill="var(--c-ok)"><title>pulse 20: 185.5 us</title></circle>
+<circle class="dot" cx="185.3" cy="49.3" r="2.6" fill="var(--c-ok)"><title>pulse 21: 170.2 us</title></circle>
+<circle class="dot" cx="244.5" cy="54.7" r="2.6" fill="var(--c-ok)"><title>pulse 22: 181.6 us</title></circle>
+<circle class="dot" cx="229.9" cy="45.2" r="2.6" fill="var(--c-ok)"><title>pulse 23: 178.8 us</title></circle>
+<circle class="dot" cx="279.0" cy="50.6" r="2.6" fill="var(--c-ok)"><title>pulse 24: 188.2 us</title></circle>
+<circle class="dot" cx="259.8" cy="56.0" r="2.6" fill="var(--c-ok)"><title>pulse 25: 184.5 us</title></circle>
+<circle class="dot" cx="262.1" cy="46.6" r="2.6" fill="var(--c-ok)"><title>pulse 26: 184.9 us</title></circle>
+<circle class="dot" cx="203.2" cy="52.0" r="2.6" fill="var(--c-ok)"><title>pulse 27: 173.7 us</title></circle>
+<circle class="dot" cx="256.0" cy="57.4" r="2.6" fill="var(--c-ok)"><title>pulse 28: 183.8 us</title></circle>
+<circle class="dot" cx="257.6" cy="48.0" r="2.6" fill="var(--c-ok)"><title>pulse 29: 184.1 us</title></circle>
+<circle class="dot" cx="255.0" cy="53.4" r="2.6" fill="var(--c-ok)"><title>pulse 30: 183.6 us</title></circle>
+<circle class="dot" cx="296.2" cy="58.8" r="2.6" fill="var(--c-ok)"><title>pulse 31: 191.5 us</title></circle>
+<circle class="dot" cx="240.5" cy="49.3" r="2.6" fill="var(--c-ok)"><title>pulse 32: 180.8 us</title></circle>
+<circle class="dot" cx="275.4" cy="54.7" r="2.6" fill="var(--c-ok)"><title>pulse 33: 187.5 us</title></circle>
+<circle class="dot" cx="249.1" cy="45.2" r="2.6" fill="var(--c-ok)"><title>pulse 34: 182.4 us</title></circle>
+<circle class="dot" cx="230.8" cy="50.6" r="2.6" fill="var(--c-ok)"><title>pulse 35: 178.9 us</title></circle>
+<circle class="dot" cx="219.7" cy="56.0" r="2.6" fill="var(--c-ok)"><title>pulse 36: 176.8 us</title></circle>
+<circle class="dot" cx="240.8" cy="46.6" r="2.6" fill="var(--c-ok)"><title>pulse 37: 180.9 us</title></circle>
+<circle class="dot" cx="254.7" cy="52.0" r="2.6" fill="var(--c-ok)"><title>pulse 38: 183.5 us</title></circle>
+<circle class="dot" cx="272.7" cy="57.4" r="2.6" fill="var(--c-ok)"><title>pulse 39: 187.0 us</title></circle>
+<circle class="dot" cx="244.6" cy="48.0" r="2.6" fill="var(--c-ok)"><title>pulse 40: 181.6 us</title></circle>
+<circle class="dot" cx="262.3" cy="53.4" r="2.6" fill="var(--c-ok)"><title>pulse 41: 185.0 us</title></circle>
+<circle class="dot" cx="241.9" cy="58.8" r="2.6" fill="var(--c-ok)"><title>pulse 42: 181.1 us</title></circle>
+<circle class="dot" cx="255.4" cy="49.3" r="2.6" fill="var(--c-ok)"><title>pulse 43: 183.6 us</title></circle>
+<circle class="dot" cx="222.0" cy="54.7" r="2.6" fill="var(--c-ok)"><title>pulse 44: 177.3 us</title></circle>
+<circle class="dot" cx="217.4" cy="45.2" r="2.6" fill="var(--c-ok)"><title>pulse 45: 176.4 us</title></circle>
+<circle class="dot" cx="249.2" cy="50.6" r="2.6" fill="var(--c-ok)"><title>pulse 46: 182.5 us</title></circle>
+<circle class="dot" cx="228.9" cy="56.0" r="2.6" fill="var(--c-ok)"><title>pulse 47: 178.6 us</title></circle>
+<circle class="dot" cx="240.1" cy="46.6" r="2.6" fill="var(--c-ok)"><title>pulse 48: 180.7 us</title></circle>
+<circle class="dot" cx="206.0" cy="52.0" r="2.6" fill="var(--c-ok)"><title>pulse 49: 174.2 us</title></circle>
+<circle class="dot" cx="237.3" cy="57.4" r="2.6" fill="var(--c-ok)"><title>pulse 50: 180.2 us</title></circle>
+<circle class="dot" cx="230.6" cy="48.0" r="2.6" fill="var(--c-ok)"><title>pulse 51: 178.9 us</title></circle>
+<circle class="dot" cx="258.3" cy="53.4" r="2.6" fill="var(--c-ok)"><title>pulse 52: 184.2 us</title></circle>
+<circle class="dot" cx="215.0" cy="58.8" r="2.6" fill="var(--c-ok)"><title>pulse 53: 175.9 us</title></circle>
+<circle class="dot" cx="215.7" cy="49.3" r="2.6" fill="var(--c-ok)"><title>pulse 54: 176.0 us</title></circle>
+<circle class="dot" cx="245.6" cy="54.7" r="2.6" fill="var(--c-ok)"><title>pulse 55: 181.8 us</title></circle>
+<circle class="dot" cx="245.0" cy="45.2" r="2.6" fill="var(--c-ok)"><title>pulse 56: 181.7 us</title></circle>
+<circle class="dot" cx="266.1" cy="50.6" r="2.6" fill="var(--c-ok)"><title>pulse 57: 185.7 us</title></circle>
+<circle class="dot" cx="164.0" cy="56.0" r="2.6" fill="var(--c-ok)"><title>pulse 58: 166.1 us</title></circle>
+<circle class="dot" cx="245.4" cy="46.6" r="2.6" fill="var(--c-ok)"><title>pulse 59: 181.7 us</title></circle>
+<circle class="dot" cx="225.4" cy="52.0" r="2.6" fill="var(--c-ok)"><title>pulse 60: 177.9 us</title></circle>
+<circle class="dot" cx="299.0" cy="57.4" r="2.6" fill="var(--c-ok)"><title>pulse 61: 192.0 us</title></circle>
+<circle class="dot" cx="247.3" cy="48.0" r="2.6" fill="var(--c-ok)"><title>pulse 62: 182.1 us</title></circle>
+<circle class="dot" cx="308.8" cy="53.4" r="2.6" fill="var(--c-ok)"><title>pulse 63: 193.9 us</title></circle>
+<circle class="dot" cx="241.7" cy="58.8" r="2.6" fill="var(--c-ok)"><title>pulse 64: 181.0 us</title></circle>
+<circle class="dot" cx="277.1" cy="49.3" r="2.6" fill="var(--c-ok)"><title>pulse 65: 187.8 us</title></circle>
+<circle class="dot" cx="246.1" cy="54.7" r="2.6" fill="var(--c-ok)"><title>pulse 66: 181.9 us</title></circle>
+<circle class="dot" cx="280.7" cy="45.2" r="2.6" fill="var(--c-ok)"><title>pulse 67: 188.5 us</title></circle>
+<circle class="dot" cx="245.4" cy="50.6" r="2.6" fill="var(--c-ok)"><title>pulse 68: 181.7 us</title></circle>
+<circle class="dot" cx="250.6" cy="56.0" r="2.6" fill="var(--c-ok)"><title>pulse 69: 182.7 us</title></circle>
+<circle class="dot" cx="210.3" cy="46.6" r="2.6" fill="var(--c-ok)"><title>pulse 70: 175.0 us</title></circle>
+<circle class="dot" cx="233.4" cy="52.0" r="2.6" fill="var(--c-ok)"><title>pulse 71: 179.4 us</title></circle>
+<circle class="dot" cx="231.6" cy="57.4" r="2.6" fill="var(--c-ok)"><title>pulse 72: 179.1 us</title></circle>
+<circle class="dot" cx="227.6" cy="48.0" r="2.6" fill="var(--c-ok)"><title>pulse 73: 178.3 us</title></circle>
+<circle class="dot" cx="254.4" cy="53.4" r="2.6" fill="var(--c-ok)"><title>pulse 74: 183.5 us</title></circle>
+<circle class="dot" cx="221.2" cy="58.8" r="2.6" fill="var(--c-ok)"><title>pulse 75: 177.1 us</title></circle>
+<circle class="dot" cx="263.6" cy="49.3" r="2.6" fill="var(--c-ok)"><title>pulse 76: 185.2 us</title></circle>
+<circle class="dot" cx="232.6" cy="54.7" r="2.6" fill="var(--c-ok)"><title>pulse 77: 179.3 us</title></circle>
+<circle class="dot" cx="230.9" cy="45.2" r="2.6" fill="var(--c-ok)"><title>pulse 78: 179.0 us</title></circle>
+<circle class="dot" cx="221.1" cy="50.6" r="2.6" fill="var(--c-ok)"><title>pulse 79: 177.1 us</title></circle>
+<circle class="dot" cx="225.4" cy="56.0" r="2.6" fill="var(--c-ok)"><title>pulse 80: 177.9 us</title></circle>
+<circle class="dot" cx="235.0" cy="46.6" r="2.6" fill="var(--c-ok)"><title>pulse 81: 179.7 us</title></circle>
+<circle class="dot" cx="274.5" cy="52.0" r="2.6" fill="var(--c-ok)"><title>pulse 82: 187.3 us</title></circle>
+<circle class="dot" cx="229.9" cy="57.4" r="2.6" fill="var(--c-ok)"><title>pulse 83: 178.8 us</title></circle>
+<circle class="dot" cx="227.9" cy="48.0" r="2.6" fill="var(--c-ok)"><title>pulse 84: 178.4 us</title></circle>
+<circle class="dot" cx="248.9" cy="53.4" r="2.6" fill="var(--c-ok)"><title>pulse 85: 182.4 us</title></circle>
+<circle class="dot" cx="246.7" cy="58.8" r="2.6" fill="var(--c-ok)"><title>pulse 86: 182.0 us</title></circle>
+<circle class="dot" cx="252.4" cy="49.3" r="2.6" fill="var(--c-ok)"><title>pulse 87: 183.1 us</title></circle>
+<circle class="dot" cx="213.3" cy="54.7" r="2.6" fill="var(--c-ok)"><title>pulse 88: 175.6 us</title></circle>
+<circle class="dot" cx="223.5" cy="45.2" r="2.6" fill="var(--c-ok)"><title>pulse 89: 177.5 us</title></circle>
+<circle class="dot" cx="244.4" cy="50.6" r="2.6" fill="var(--c-ok)"><title>pulse 90: 181.5 us</title></circle>
+<circle class="dot" cx="243.3" cy="56.0" r="2.6" fill="var(--c-ok)"><title>pulse 91: 181.3 us</title></circle>
+<circle class="dot" cx="289.3" cy="46.6" r="2.6" fill="var(--c-ok)"><title>pulse 92: 190.1 us</title></circle>
+<line class="med" x1="242.1" y1="33.0" x2="242.1" y2="71.0" stroke="var(--c-ok)"/>
+<text class="medlab" x="242.1" y="29.0" text-anchor="middle" fill="var(--c-ok)">181</text>
+<text class="nlab" x="714" y="56.0">n=92</text>
+<text class="rowlab" x="118" y="103.0" text-anchor="end">run 1 · last 12 s</text>
+<text class="rowsub" x="118" y="117.0" text-anchor="end">same run, later</text>
+<line class="axisrow" x1="132" y1="104.0" x2="706" y2="104.0"/>
+<circle class="dot" cx="586.2" cy="97.2" r="2.6" fill="var(--c-bad)"><title>pulse 1: 247.0 us</title></circle>
+<circle class="dot" cx="643.0" cy="102.7" r="2.6" fill="var(--c-bad)"><title>pulse 2: 257.9 us</title></circle>
+<circle class="dot" cx="569.9" cy="108.0" r="2.6" fill="var(--c-bad)"><title>pulse 3: 243.9 us</title></circle>
+<circle class="dot" cx="284.2" cy="98.6" r="2.6" fill="var(--c-bad)"><title>pulse 4: 189.2 us</title></circle>
+<circle class="dot" cx="278.6" cy="104.0" r="2.6" fill="var(--c-bad)"><title>pulse 5: 188.1 us</title></circle>
+<circle class="dot" cx="212.3" cy="109.4" r="2.6" fill="var(--c-bad)"><title>pulse 6: 175.4 us</title></circle>
+<circle class="dot" cx="510.8" cy="100.0" r="2.6" fill="var(--c-bad)"><title>pulse 7: 232.6 us</title></circle>
+<circle class="dot" cx="534.9" cy="105.3" r="2.6" fill="var(--c-bad)"><title>pulse 8: 237.2 us</title></circle>
+<circle class="dot" cx="607.5" cy="110.8" r="2.6" fill="var(--c-bad)"><title>pulse 9: 251.1 us</title></circle>
+<circle class="dot" cx="231.4" cy="101.3" r="2.6" fill="var(--c-bad)"><title>pulse 10: 179.1 us</title></circle>
+<circle class="dot" cx="253.4" cy="106.7" r="2.6" fill="var(--c-bad)"><title>pulse 11: 183.3 us</title></circle>
+<circle class="dot" cx="257.8" cy="97.2" r="2.6" fill="var(--c-bad)"><title>pulse 12: 184.1 us</title></circle>
+<circle class="dot" cx="284.4" cy="102.7" r="2.6" fill="var(--c-bad)"><title>pulse 13: 189.2 us</title></circle>
+<circle class="dot" cx="245.0" cy="108.0" r="2.6" fill="var(--c-bad)"><title>pulse 14: 181.7 us</title></circle>
+<circle class="dot" cx="516.6" cy="98.6" r="2.6" fill="var(--c-bad)"><title>pulse 15: 233.7 us</title></circle>
+<circle class="dot" cx="242.1" cy="104.0" r="2.6" fill="var(--c-bad)"><title>pulse 16: 181.1 us</title></circle>
+<circle class="dot" cx="233.3" cy="109.4" r="2.6" fill="var(--c-bad)"><title>pulse 17: 179.4 us</title></circle>
+<circle class="dot" cx="614.0" cy="100.0" r="2.6" fill="var(--c-bad)"><title>pulse 18: 252.4 us</title></circle>
+<circle class="dot" cx="555.3" cy="105.3" r="2.6" fill="var(--c-bad)"><title>pulse 19: 241.1 us</title></circle>
+<circle class="dot" cx="518.2" cy="110.8" r="2.6" fill="var(--c-bad)"><title>pulse 20: 234.0 us</title></circle>
+<circle class="dot" cx="238.9" cy="101.3" r="2.6" fill="var(--c-bad)"><title>pulse 21: 180.5 us</title></circle>
+<circle class="dot" cx="576.1" cy="106.7" r="2.6" fill="var(--c-bad)"><title>pulse 22: 245.1 us</title></circle>
+<circle class="dot" cx="580.3" cy="97.2" r="2.6" fill="var(--c-bad)"><title>pulse 23: 245.9 us</title></circle>
+<line class="med" x1="510.8" y1="85.0" x2="510.8" y2="123.0" stroke="var(--c-bad)"/>
+<text class="medlab" x="510.8" y="81.0" text-anchor="middle" fill="var(--c-bad)">233</text>
+<text class="nlab" x="714" y="108.0">n=23</text>
+<text class="rowlab" x="118" y="155.0" text-anchor="end">run 3</text>
+<text class="rowsub" x="118" y="169.0" text-anchor="end">capture truncated</text>
+<line class="axisrow" x1="132" y1="156.0" x2="706" y2="156.0"/>
+<circle class="dot" cx="554.3" cy="149.2" r="2.6" fill="var(--c-bad)"><title>pulse 1: 240.9 us</title></circle>
+<circle class="dot" cx="579.0" cy="154.7" r="2.6" fill="var(--c-bad)"><title>pulse 2: 245.7 us</title></circle>
+<circle class="dot" cx="448.3" cy="160.1" r="2.6" fill="var(--c-bad)"><title>pulse 3: 220.6 us</title></circle>
+<circle class="dot" cx="515.7" cy="150.6" r="2.6" fill="var(--c-bad)"><title>pulse 4: 233.5 us</title></circle>
+<circle class="dot" cx="493.7" cy="156.0" r="2.6" fill="var(--c-bad)"><title>pulse 5: 229.3 us</title></circle>
+<circle class="dot" cx="514.1" cy="161.4" r="2.6" fill="var(--c-bad)"><title>pulse 6: 233.2 us</title></circle>
+<circle class="dot" cx="470.3" cy="151.9" r="2.6" fill="var(--c-bad)"><title>pulse 7: 224.8 us</title></circle>
+<circle class="dot" cx="456.4" cy="157.3" r="2.6" fill="var(--c-bad)"><title>pulse 8: 222.2 us</title></circle>
+<circle class="dot" cx="441.6" cy="162.8" r="2.6" fill="var(--c-bad)"><title>pulse 9: 219.3 us</title></circle>
+<circle class="dot" cx="573.9" cy="153.3" r="2.6" fill="var(--c-bad)"><title>pulse 10: 244.7 us</title></circle>
+<circle class="dot" cx="500.4" cy="158.7" r="2.6" fill="var(--c-bad)"><title>pulse 11: 230.6 us</title></circle>
+<circle class="dot" cx="551.0" cy="149.2" r="2.6" fill="var(--c-bad)"><title>pulse 12: 240.3 us</title></circle>
+<circle class="dot" cx="557.6" cy="154.7" r="2.6" fill="var(--c-bad)"><title>pulse 13: 241.6 us</title></circle>
+<circle class="dot" cx="518.2" cy="160.1" r="2.6" fill="var(--c-bad)"><title>pulse 14: 234.0 us</title></circle>
+<circle class="dot" cx="471.8" cy="150.6" r="2.6" fill="var(--c-bad)"><title>pulse 15: 225.1 us</title></circle>
+<circle class="dot" cx="444.2" cy="156.0" r="2.6" fill="var(--c-bad)"><title>pulse 16: 219.8 us</title></circle>
+<circle class="dot" cx="449.6" cy="161.4" r="2.6" fill="var(--c-bad)"><title>pulse 17: 220.9 us</title></circle>
+<circle class="dot" cx="500.9" cy="151.9" r="2.6" fill="var(--c-bad)"><title>pulse 18: 230.7 us</title></circle>
+<circle class="dot" cx="423.0" cy="157.3" r="2.6" fill="var(--c-bad)"><title>pulse 19: 215.8 us</title></circle>
+<circle class="dot" cx="412.2" cy="162.8" r="2.6" fill="var(--c-bad)"><title>pulse 20: 213.7 us</title></circle>
+<circle class="dot" cx="437.7" cy="153.3" r="2.6" fill="var(--c-bad)"><title>pulse 21: 218.6 us</title></circle>
+<circle class="dot" cx="455.8" cy="158.7" r="2.6" fill="var(--c-bad)"><title>pulse 22: 222.1 us</title></circle>
+<circle class="dot" cx="436.4" cy="149.2" r="2.6" fill="var(--c-bad)"><title>pulse 23: 218.3 us</title></circle>
+<circle class="dot" cx="557.1" cy="154.7" r="2.6" fill="var(--c-bad)"><title>pulse 24: 241.5 us</title></circle>
+<circle class="dot" cx="436.4" cy="160.1" r="2.6" fill="var(--c-bad)"><title>pulse 25: 218.3 us</title></circle>
+<circle class="dot" cx="418.6" cy="150.6" r="2.6" fill="var(--c-bad)"><title>pulse 26: 214.9 us</title></circle>
+<circle class="dot" cx="518.3" cy="156.0" r="2.6" fill="var(--c-bad)"><title>pulse 27: 234.0 us</title></circle>
+<circle class="dot" cx="487.7" cy="161.4" r="2.6" fill="var(--c-bad)"><title>pulse 28: 228.2 us</title></circle>
+<circle class="dot" cx="449.2" cy="151.9" r="2.6" fill="var(--c-bad)"><title>pulse 29: 220.8 us</title></circle>
+<circle class="dot" cx="440.0" cy="157.3" r="2.6" fill="var(--c-bad)"><title>pulse 30: 219.0 us</title></circle>
+<circle class="dot" cx="450.6" cy="162.8" r="2.6" fill="var(--c-bad)"><title>pulse 31: 221.1 us</title></circle>
+<circle class="dot" cx="464.1" cy="153.3" r="2.6" fill="var(--c-bad)"><title>pulse 32: 223.6 us</title></circle>
+<circle class="dot" cx="448.8" cy="158.7" r="2.6" fill="var(--c-bad)"><title>pulse 33: 220.7 us</title></circle>
+<circle class="dot" cx="438.7" cy="149.2" r="2.6" fill="var(--c-bad)"><title>pulse 34: 218.8 us</title></circle>
+<circle class="dot" cx="432.6" cy="154.7" r="2.6" fill="var(--c-bad)"><title>pulse 35: 217.6 us</title></circle>
+<circle class="dot" cx="405.0" cy="160.1" r="2.6" fill="var(--c-bad)"><title>pulse 36: 212.3 us</title></circle>
+<circle class="dot" cx="511.9" cy="150.6" r="2.6" fill="var(--c-bad)"><title>pulse 37: 232.8 us</title></circle>
+<circle class="dot" cx="465.0" cy="156.0" r="2.6" fill="var(--c-bad)"><title>pulse 38: 223.8 us</title></circle>
+<circle class="dot" cx="423.8" cy="161.4" r="2.6" fill="var(--c-bad)"><title>pulse 39: 215.9 us</title></circle>
+<circle class="dot" cx="405.1" cy="151.9" r="2.6" fill="var(--c-bad)"><title>pulse 40: 212.3 us</title></circle>
+<circle class="dot" cx="419.7" cy="157.3" r="2.6" fill="var(--c-bad)"><title>pulse 41: 215.1 us</title></circle>
+<circle class="dot" cx="513.2" cy="162.8" r="2.6" fill="var(--c-bad)"><title>pulse 42: 233.1 us</title></circle>
+<circle class="dot" cx="417.5" cy="153.3" r="2.6" fill="var(--c-bad)"><title>pulse 43: 214.7 us</title></circle>
+<circle class="dot" cx="424.9" cy="158.7" r="2.6" fill="var(--c-bad)"><title>pulse 44: 216.1 us</title></circle>
+<circle class="dot" cx="380.2" cy="149.2" r="2.6" fill="var(--c-bad)"><title>pulse 45: 207.6 us</title></circle>
+<circle class="dot" cx="394.0" cy="154.7" r="2.6" fill="var(--c-bad)"><title>pulse 46: 210.2 us</title></circle>
+<circle class="dot" cx="404.3" cy="160.1" r="2.6" fill="var(--c-bad)"><title>pulse 47: 212.2 us</title></circle>
+<circle class="dot" cx="407.6" cy="150.6" r="2.6" fill="var(--c-bad)"><title>pulse 48: 212.8 us</title></circle>
+<circle class="dot" cx="465.8" cy="156.0" r="2.6" fill="var(--c-bad)"><title>pulse 49: 224.0 us</title></circle>
+<circle class="dot" cx="333.2" cy="161.4" r="2.6" fill="var(--c-bad)"><title>pulse 50: 198.6 us</title></circle>
+<circle class="dot" cx="408.7" cy="151.9" r="2.6" fill="var(--c-bad)"><title>pulse 51: 213.0 us</title></circle>
+<circle class="dot" cx="464.4" cy="157.3" r="2.6" fill="var(--c-bad)"><title>pulse 52: 223.7 us</title></circle>
+<circle class="dot" cx="430.4" cy="162.8" r="2.6" fill="var(--c-bad)"><title>pulse 53: 217.2 us</title></circle>
+<circle class="dot" cx="348.2" cy="153.3" r="2.6" fill="var(--c-bad)"><title>pulse 54: 201.4 us</title></circle>
+<circle class="dot" cx="472.6" cy="158.7" r="2.6" fill="var(--c-bad)"><title>pulse 55: 225.3 us</title></circle>
+<circle class="dot" cx="430.6" cy="149.2" r="2.6" fill="var(--c-bad)"><title>pulse 56: 217.2 us</title></circle>
+<circle class="dot" cx="371.9" cy="154.7" r="2.6" fill="var(--c-bad)"><title>pulse 57: 206.0 us</title></circle>
+<circle class="dot" cx="368.2" cy="160.1" r="2.6" fill="var(--c-bad)"><title>pulse 58: 205.3 us</title></circle>
+<circle class="dot" cx="351.6" cy="150.6" r="2.6" fill="var(--c-bad)"><title>pulse 59: 202.1 us</title></circle>
+<circle class="dot" cx="331.8" cy="156.0" r="2.6" fill="var(--c-bad)"><title>pulse 60: 198.3 us</title></circle>
+<circle class="dot" cx="336.4" cy="161.4" r="2.6" fill="var(--c-bad)"><title>pulse 61: 199.2 us</title></circle>
+<circle class="dot" cx="431.1" cy="151.9" r="2.6" fill="var(--c-bad)"><title>pulse 62: 217.3 us</title></circle>
+<circle class="dot" cx="450.7" cy="157.3" r="2.6" fill="var(--c-bad)"><title>pulse 63: 221.1 us</title></circle>
+<circle class="dot" cx="347.2" cy="162.8" r="2.6" fill="var(--c-bad)"><title>pulse 64: 201.2 us</title></circle>
+<circle class="dot" cx="414.3" cy="153.3" r="2.6" fill="var(--c-bad)"><title>pulse 65: 214.1 us</title></circle>
+<circle class="dot" cx="415.1" cy="158.7" r="2.6" fill="var(--c-bad)"><title>pulse 66: 214.3 us</title></circle>
+<circle class="dot" cx="266.6" cy="149.2" r="2.6" fill="var(--c-bad)"><title>pulse 67: 185.8 us</title></circle>
+<line class="med" x1="440.0" y1="137.0" x2="440.0" y2="175.0" stroke="var(--c-bad)"/>
+<text class="medlab" x="440.0" y="133.0" text-anchor="middle" fill="var(--c-bad)">219</text>
+<text class="nlab" x="714" y="160.0">n=67</text>
+<text class="rowlab" x="118" y="207.0" text-anchor="end">run 4</text>
+<text class="rowsub" x="118" y="221.0" text-anchor="end">115 pulses, 60 s</text>
+<line class="axisrow" x1="132" y1="208.0" x2="706" y2="208.0"/>
+<circle class="dot" cx="229.7" cy="201.2" r="2.6" fill="var(--c-ok)"><title>pulse 1: 178.7 us</title></circle>
+<circle class="dot" cx="267.8" cy="206.7" r="2.6" fill="var(--c-ok)"><title>pulse 2: 186.0 us</title></circle>
+<circle class="dot" cx="240.8" cy="212.1" r="2.6" fill="var(--c-ok)"><title>pulse 3: 180.8 us</title></circle>
+<circle class="dot" cx="236.7" cy="202.6" r="2.6" fill="var(--c-ok)"><title>pulse 4: 180.1 us</title></circle>
+<circle class="dot" cx="217.0" cy="208.0" r="2.6" fill="var(--c-ok)"><title>pulse 5: 176.3 us</title></circle>
+<circle class="dot" cx="226.4" cy="213.4" r="2.6" fill="var(--c-ok)"><title>pulse 6: 178.1 us</title></circle>
+<circle class="dot" cx="221.1" cy="203.9" r="2.6" fill="var(--c-ok)"><title>pulse 7: 177.1 us</title></circle>
+<circle class="dot" cx="218.6" cy="209.3" r="2.6" fill="var(--c-ok)"><title>pulse 8: 176.6 us</title></circle>
+<circle class="dot" cx="236.4" cy="214.8" r="2.6" fill="var(--c-ok)"><title>pulse 9: 180.0 us</title></circle>
+<circle class="dot" cx="212.0" cy="205.3" r="2.6" fill="var(--c-ok)"><title>pulse 10: 175.3 us</title></circle>
+<circle class="dot" cx="218.1" cy="210.7" r="2.6" fill="var(--c-ok)"><title>pulse 11: 176.5 us</title></circle>
+<circle class="dot" cx="209.4" cy="201.2" r="2.6" fill="var(--c-ok)"><title>pulse 12: 174.8 us</title></circle>
+<circle class="dot" cx="235.9" cy="206.7" r="2.6" fill="var(--c-ok)"><title>pulse 13: 179.9 us</title></circle>
+<circle class="dot" cx="202.7" cy="212.1" r="2.6" fill="var(--c-ok)"><title>pulse 14: 173.6 us</title></circle>
+<circle class="dot" cx="269.3" cy="202.6" r="2.6" fill="var(--c-ok)"><title>pulse 15: 186.3 us</title></circle>
+<circle class="dot" cx="259.0" cy="208.0" r="2.6" fill="var(--c-ok)"><title>pulse 16: 184.3 us</title></circle>
+<circle class="dot" cx="224.0" cy="213.4" r="2.6" fill="var(--c-ok)"><title>pulse 17: 177.6 us</title></circle>
+<circle class="dot" cx="297.9" cy="203.9" r="2.6" fill="var(--c-ok)"><title>pulse 18: 191.8 us</title></circle>
+<circle class="dot" cx="215.7" cy="209.3" r="2.6" fill="var(--c-ok)"><title>pulse 19: 176.0 us</title></circle>
+<circle class="dot" cx="272.1" cy="214.8" r="2.6" fill="var(--c-ok)"><title>pulse 20: 186.9 us</title></circle>
+<circle class="dot" cx="180.8" cy="205.3" r="2.6" fill="var(--c-ok)"><title>pulse 21: 169.4 us</title></circle>
+<circle class="dot" cx="210.4" cy="210.7" r="2.6" fill="var(--c-ok)"><title>pulse 22: 175.0 us</title></circle>
+<circle class="dot" cx="242.3" cy="201.2" r="2.6" fill="var(--c-ok)"><title>pulse 23: 181.1 us</title></circle>
+<circle class="dot" cx="241.9" cy="206.7" r="2.6" fill="var(--c-ok)"><title>pulse 24: 181.1 us</title></circle>
+<circle class="dot" cx="225.2" cy="212.1" r="2.6" fill="var(--c-ok)"><title>pulse 25: 177.9 us</title></circle>
+<circle class="dot" cx="246.3" cy="202.6" r="2.6" fill="var(--c-ok)"><title>pulse 26: 181.9 us</title></circle>
+<circle class="dot" cx="235.3" cy="208.0" r="2.6" fill="var(--c-ok)"><title>pulse 27: 179.8 us</title></circle>
+<circle class="dot" cx="285.3" cy="213.4" r="2.6" fill="var(--c-ok)"><title>pulse 28: 189.4 us</title></circle>
+<circle class="dot" cx="241.3" cy="203.9" r="2.6" fill="var(--c-ok)"><title>pulse 29: 180.9 us</title></circle>
+<circle class="dot" cx="238.1" cy="209.3" r="2.6" fill="var(--c-ok)"><title>pulse 30: 180.3 us</title></circle>
+<circle class="dot" cx="212.0" cy="214.8" r="2.6" fill="var(--c-ok)"><title>pulse 31: 175.3 us</title></circle>
+<circle class="dot" cx="259.2" cy="205.3" r="2.6" fill="var(--c-ok)"><title>pulse 32: 184.4 us</title></circle>
+<circle class="dot" cx="265.5" cy="210.7" r="2.6" fill="var(--c-ok)"><title>pulse 33: 185.6 us</title></circle>
+<circle class="dot" cx="253.0" cy="201.2" r="2.6" fill="var(--c-ok)"><title>pulse 34: 183.2 us</title></circle>
+<circle class="dot" cx="232.4" cy="206.7" r="2.6" fill="var(--c-ok)"><title>pulse 35: 179.2 us</title></circle>
+<circle class="dot" cx="232.1" cy="212.1" r="2.6" fill="var(--c-ok)"><title>pulse 36: 179.2 us</title></circle>
+<circle class="dot" cx="218.7" cy="202.6" r="2.6" fill="var(--c-ok)"><title>pulse 37: 176.6 us</title></circle>
+<circle class="dot" cx="234.6" cy="208.0" r="2.6" fill="var(--c-ok)"><title>pulse 38: 179.7 us</title></circle>
+<circle class="dot" cx="254.4" cy="213.4" r="2.6" fill="var(--c-ok)"><title>pulse 39: 183.5 us</title></circle>
+<circle class="dot" cx="302.0" cy="203.9" r="2.6" fill="var(--c-ok)"><title>pulse 40: 192.6 us</title></circle>
+<circle class="dot" cx="240.8" cy="209.3" r="2.6" fill="var(--c-ok)"><title>pulse 41: 180.8 us</title></circle>
+<circle class="dot" cx="195.4" cy="214.8" r="2.6" fill="var(--c-ok)"><title>pulse 42: 172.2 us</title></circle>
+<circle class="dot" cx="250.6" cy="205.3" r="2.6" fill="var(--c-ok)"><title>pulse 43: 182.7 us</title></circle>
+<circle class="dot" cx="215.1" cy="210.7" r="2.6" fill="var(--c-ok)"><title>pulse 44: 175.9 us</title></circle>
+<circle class="dot" cx="262.2" cy="201.2" r="2.6" fill="var(--c-ok)"><title>pulse 45: 185.0 us</title></circle>
+<circle class="dot" cx="244.7" cy="206.7" r="2.6" fill="var(--c-ok)"><title>pulse 46: 181.6 us</title></circle>
+<circle class="dot" cx="230.0" cy="212.1" r="2.6" fill="var(--c-ok)"><title>pulse 47: 178.8 us</title></circle>
+<circle class="dot" cx="236.5" cy="202.6" r="2.6" fill="var(--c-ok)"><title>pulse 48: 180.0 us</title></circle>
+<circle class="dot" cx="260.8" cy="208.0" r="2.6" fill="var(--c-ok)"><title>pulse 49: 184.7 us</title></circle>
+<circle class="dot" cx="251.4" cy="213.4" r="2.6" fill="var(--c-ok)"><title>pulse 50: 182.9 us</title></circle>
+<circle class="dot" cx="253.1" cy="203.9" r="2.6" fill="var(--c-ok)"><title>pulse 51: 183.2 us</title></circle>
+<circle class="dot" cx="239.2" cy="209.3" r="2.6" fill="var(--c-ok)"><title>pulse 52: 180.5 us</title></circle>
+<circle class="dot" cx="225.0" cy="214.8" r="2.6" fill="var(--c-ok)"><title>pulse 53: 177.8 us</title></circle>
+<circle class="dot" cx="224.5" cy="205.3" r="2.6" fill="var(--c-ok)"><title>pulse 54: 177.7 us</title></circle>
+<circle class="dot" cx="230.2" cy="210.7" r="2.6" fill="var(--c-ok)"><title>pulse 55: 178.8 us</title></circle>
+<circle class="dot" cx="197.8" cy="201.2" r="2.6" fill="var(--c-ok)"><title>pulse 56: 172.6 us</title></circle>
+<circle class="dot" cx="238.9" cy="206.7" r="2.6" fill="var(--c-ok)"><title>pulse 57: 180.5 us</title></circle>
+<circle class="dot" cx="186.2" cy="212.1" r="2.6" fill="var(--c-ok)"><title>pulse 58: 170.4 us</title></circle>
+<circle class="dot" cx="268.0" cy="202.6" r="2.6" fill="var(--c-ok)"><title>pulse 59: 186.1 us</title></circle>
+<circle class="dot" cx="268.5" cy="208.0" r="2.6" fill="var(--c-ok)"><title>pulse 60: 186.2 us</title></circle>
+<circle class="dot" cx="217.6" cy="213.4" r="2.6" fill="var(--c-ok)"><title>pulse 61: 176.4 us</title></circle>
+<circle class="dot" cx="242.6" cy="203.9" r="2.6" fill="var(--c-ok)"><title>pulse 62: 181.2 us</title></circle>
+<circle class="dot" cx="213.5" cy="209.3" r="2.6" fill="var(--c-ok)"><title>pulse 63: 175.6 us</title></circle>
+<circle class="dot" cx="219.5" cy="214.8" r="2.6" fill="var(--c-ok)"><title>pulse 64: 176.8 us</title></circle>
+<circle class="dot" cx="262.2" cy="205.3" r="2.6" fill="var(--c-ok)"><title>pulse 65: 185.0 us</title></circle>
+<circle class="dot" cx="232.3" cy="210.7" r="2.6" fill="var(--c-ok)"><title>pulse 66: 179.2 us</title></circle>
+<circle class="dot" cx="238.0" cy="201.2" r="2.6" fill="var(--c-ok)"><title>pulse 67: 180.3 us</title></circle>
+<circle class="dot" cx="250.7" cy="206.7" r="2.6" fill="var(--c-ok)"><title>pulse 68: 182.8 us</title></circle>
+<circle class="dot" cx="258.4" cy="212.1" r="2.6" fill="var(--c-ok)"><title>pulse 69: 184.2 us</title></circle>
+<circle class="dot" cx="225.8" cy="202.6" r="2.6" fill="var(--c-ok)"><title>pulse 70: 178.0 us</title></circle>
+<circle class="dot" cx="213.5" cy="208.0" r="2.6" fill="var(--c-ok)"><title>pulse 71: 175.6 us</title></circle>
+<circle class="dot" cx="239.4" cy="213.4" r="2.6" fill="var(--c-ok)"><title>pulse 72: 180.6 us</title></circle>
+<circle class="dot" cx="254.0" cy="203.9" r="2.6" fill="var(--c-ok)"><title>pulse 73: 183.4 us</title></circle>
+<circle class="dot" cx="223.1" cy="209.3" r="2.6" fill="var(--c-ok)"><title>pulse 74: 177.5 us</title></circle>
+<circle class="dot" cx="250.9" cy="214.8" r="2.6" fill="var(--c-ok)"><title>pulse 75: 182.8 us</title></circle>
+<circle class="dot" cx="262.3" cy="205.3" r="2.6" fill="var(--c-ok)"><title>pulse 76: 185.0 us</title></circle>
+<circle class="dot" cx="242.0" cy="210.7" r="2.6" fill="var(--c-ok)"><title>pulse 77: 181.1 us</title></circle>
+<circle class="dot" cx="248.9" cy="201.2" r="2.6" fill="var(--c-ok)"><title>pulse 78: 182.4 us</title></circle>
+<circle class="dot" cx="259.1" cy="206.7" r="2.6" fill="var(--c-ok)"><title>pulse 79: 184.4 us</title></circle>
+<circle class="dot" cx="242.8" cy="212.1" r="2.6" fill="var(--c-ok)"><title>pulse 80: 181.2 us</title></circle>
+<circle class="dot" cx="236.7" cy="202.6" r="2.6" fill="var(--c-ok)"><title>pulse 81: 180.1 us</title></circle>
+<circle class="dot" cx="232.3" cy="208.0" r="2.6" fill="var(--c-ok)"><title>pulse 82: 179.2 us</title></circle>
+<circle class="dot" cx="254.8" cy="213.4" r="2.6" fill="var(--c-ok)"><title>pulse 83: 183.5 us</title></circle>
+<circle class="dot" cx="245.1" cy="203.9" r="2.6" fill="var(--c-ok)"><title>pulse 84: 181.7 us</title></circle>
+<circle class="dot" cx="200.5" cy="209.3" r="2.6" fill="var(--c-ok)"><title>pulse 85: 173.1 us</title></circle>
+<circle class="dot" cx="219.4" cy="214.8" r="2.6" fill="var(--c-ok)"><title>pulse 86: 176.8 us</title></circle>
+<circle class="dot" cx="236.0" cy="205.3" r="2.6" fill="var(--c-ok)"><title>pulse 87: 179.9 us</title></circle>
+<circle class="dot" cx="208.2" cy="210.7" r="2.6" fill="var(--c-ok)"><title>pulse 88: 174.6 us</title></circle>
+<circle class="dot" cx="267.4" cy="201.2" r="2.6" fill="var(--c-ok)"><title>pulse 89: 185.9 us</title></circle>
+<circle class="dot" cx="204.6" cy="206.7" r="2.6" fill="var(--c-ok)"><title>pulse 90: 173.9 us</title></circle>
+<circle class="dot" cx="195.5" cy="212.1" r="2.6" fill="var(--c-ok)"><title>pulse 91: 172.2 us</title></circle>
+<circle class="dot" cx="234.9" cy="202.6" r="2.6" fill="var(--c-ok)"><title>pulse 92: 179.7 us</title></circle>
+<circle class="dot" cx="269.5" cy="208.0" r="2.6" fill="var(--c-ok)"><title>pulse 93: 186.3 us</title></circle>
+<circle class="dot" cx="331.4" cy="213.4" r="2.6" fill="var(--c-ok)"><title>pulse 94: 198.2 us</title></circle>
+<circle class="dot" cx="255.9" cy="203.9" r="2.6" fill="var(--c-ok)"><title>pulse 95: 183.7 us</title></circle>
+<circle class="dot" cx="226.0" cy="209.3" r="2.6" fill="var(--c-ok)"><title>pulse 96: 178.0 us</title></circle>
+<circle class="dot" cx="249.9" cy="214.8" r="2.6" fill="var(--c-ok)"><title>pulse 97: 182.6 us</title></circle>
+<circle class="dot" cx="218.7" cy="205.3" r="2.6" fill="var(--c-ok)"><title>pulse 98: 176.6 us</title></circle>
+<circle class="dot" cx="296.7" cy="210.7" r="2.6" fill="var(--c-ok)"><title>pulse 99: 191.6 us</title></circle>
+<circle class="dot" cx="243.8" cy="201.2" r="2.6" fill="var(--c-ok)"><title>pulse 100: 181.4 us</title></circle>
+<circle class="dot" cx="237.1" cy="206.7" r="2.6" fill="var(--c-ok)"><title>pulse 101: 180.1 us</title></circle>
+<circle class="dot" cx="264.5" cy="212.1" r="2.6" fill="var(--c-ok)"><title>pulse 102: 185.4 us</title></circle>
+<circle class="dot" cx="276.6" cy="202.6" r="2.6" fill="var(--c-ok)"><title>pulse 103: 187.7 us</title></circle>
+<circle class="dot" cx="285.2" cy="208.0" r="2.6" fill="var(--c-ok)"><title>pulse 104: 189.4 us</title></circle>
+<circle class="dot" cx="222.9" cy="213.4" r="2.6" fill="var(--c-ok)"><title>pulse 105: 177.4 us</title></circle>
+<circle class="dot" cx="260.7" cy="203.9" r="2.6" fill="var(--c-ok)"><title>pulse 106: 184.7 us</title></circle>
+<circle class="dot" cx="263.0" cy="209.3" r="2.6" fill="var(--c-ok)"><title>pulse 107: 185.1 us</title></circle>
+<circle class="dot" cx="261.7" cy="214.8" r="2.6" fill="var(--c-ok)"><title>pulse 108: 184.8 us</title></circle>
+<circle class="dot" cx="267.1" cy="205.3" r="2.6" fill="var(--c-ok)"><title>pulse 109: 185.9 us</title></circle>
+<circle class="dot" cx="239.8" cy="210.7" r="2.6" fill="var(--c-ok)"><title>pulse 110: 180.7 us</title></circle>
+<circle class="dot" cx="240.1" cy="201.2" r="2.6" fill="var(--c-ok)"><title>pulse 111: 180.7 us</title></circle>
+<circle class="dot" cx="197.7" cy="206.7" r="2.6" fill="var(--c-ok)"><title>pulse 112: 172.6 us</title></circle>
+<circle class="dot" cx="248.0" cy="212.1" r="2.6" fill="var(--c-ok)"><title>pulse 113: 182.2 us</title></circle>
+<circle class="dot" cx="240.5" cy="202.6" r="2.6" fill="var(--c-ok)"><title>pulse 114: 180.8 us</title></circle>
+<circle class="dot" cx="231.5" cy="208.0" r="2.6" fill="var(--c-ok)"><title>pulse 115: 179.1 us</title></circle>
+<line class="med" x1="239.2" y1="189.0" x2="239.2" y2="227.0" stroke="var(--c-ok)"/>
+<text class="medlab" x="239.2" y="185.0" text-anchor="middle" fill="var(--c-ok)">181</text>
+<text class="nlab" x="714" y="212.0">n=115</text>
+<text class="rowlab" x="118" y="259.0" text-anchor="end">run 5</text>
+<text class="rowsub" x="118" y="273.0" text-anchor="end">115 pulses, 60 s</text>
+<line class="axisrow" x1="132" y1="260.0" x2="706" y2="260.0"/>
+<circle class="dot" cx="178.5" cy="253.2" r="2.6" fill="var(--c-ok)"><title>pulse 1: 168.9 us</title></circle>
+<circle class="dot" cx="225.5" cy="258.6" r="2.6" fill="var(--c-ok)"><title>pulse 2: 177.9 us</title></circle>
+<circle class="dot" cx="249.2" cy="264.1" r="2.6" fill="var(--c-ok)"><title>pulse 3: 182.5 us</title></circle>
+<circle class="dot" cx="222.9" cy="254.6" r="2.6" fill="var(--c-ok)"><title>pulse 4: 177.4 us</title></circle>
+<circle class="dot" cx="191.6" cy="260.0" r="2.6" fill="var(--c-ok)"><title>pulse 5: 171.4 us</title></circle>
+<circle class="dot" cx="185.5" cy="265.4" r="2.6" fill="var(--c-ok)"><title>pulse 6: 170.3 us</title></circle>
+<circle class="dot" cx="222.5" cy="255.9" r="2.6" fill="var(--c-ok)"><title>pulse 7: 177.3 us</title></circle>
+<circle class="dot" cx="218.5" cy="261.4" r="2.6" fill="var(--c-ok)"><title>pulse 8: 176.6 us</title></circle>
+<circle class="dot" cx="209.3" cy="266.8" r="2.6" fill="var(--c-ok)"><title>pulse 9: 174.8 us</title></circle>
+<circle class="dot" cx="188.3" cy="257.3" r="2.6" fill="var(--c-ok)"><title>pulse 10: 170.8 us</title></circle>
+<circle class="dot" cx="193.0" cy="262.7" r="2.6" fill="var(--c-ok)"><title>pulse 11: 171.7 us</title></circle>
+<circle class="dot" cx="209.1" cy="253.2" r="2.6" fill="var(--c-ok)"><title>pulse 12: 174.8 us</title></circle>
+<circle class="dot" cx="249.5" cy="258.6" r="2.6" fill="var(--c-ok)"><title>pulse 13: 182.5 us</title></circle>
+<circle class="dot" cx="205.9" cy="264.1" r="2.6" fill="var(--c-ok)"><title>pulse 14: 174.2 us</title></circle>
+<circle class="dot" cx="253.8" cy="254.6" r="2.6" fill="var(--c-ok)"><title>pulse 15: 183.3 us</title></circle>
+<circle class="dot" cx="229.6" cy="260.0" r="2.6" fill="var(--c-ok)"><title>pulse 16: 178.7 us</title></circle>
+<circle class="dot" cx="232.5" cy="265.4" r="2.6" fill="var(--c-ok)"><title>pulse 17: 179.3 us</title></circle>
+<circle class="dot" cx="232.6" cy="255.9" r="2.6" fill="var(--c-ok)"><title>pulse 18: 179.3 us</title></circle>
+<circle class="dot" cx="211.8" cy="261.4" r="2.6" fill="var(--c-ok)"><title>pulse 19: 175.3 us</title></circle>
+<circle class="dot" cx="209.6" cy="266.8" r="2.6" fill="var(--c-ok)"><title>pulse 20: 174.9 us</title></circle>
+<circle class="dot" cx="194.1" cy="257.3" r="2.6" fill="var(--c-ok)"><title>pulse 21: 171.9 us</title></circle>
+<circle class="dot" cx="224.0" cy="262.7" r="2.6" fill="var(--c-ok)"><title>pulse 22: 177.6 us</title></circle>
+<circle class="dot" cx="257.9" cy="253.2" r="2.6" fill="var(--c-ok)"><title>pulse 23: 184.1 us</title></circle>
+<circle class="dot" cx="181.7" cy="258.6" r="2.6" fill="var(--c-ok)"><title>pulse 24: 169.5 us</title></circle>
+<circle class="dot" cx="256.5" cy="264.1" r="2.6" fill="var(--c-ok)"><title>pulse 25: 183.9 us</title></circle>
+<circle class="dot" cx="235.3" cy="254.6" r="2.6" fill="var(--c-ok)"><title>pulse 26: 179.8 us</title></circle>
+<circle class="dot" cx="260.0" cy="260.0" r="2.6" fill="var(--c-ok)"><title>pulse 27: 184.5 us</title></circle>
+<circle class="dot" cx="224.6" cy="265.4" r="2.6" fill="var(--c-ok)"><title>pulse 28: 177.7 us</title></circle>
+<circle class="dot" cx="241.5" cy="255.9" r="2.6" fill="var(--c-ok)"><title>pulse 29: 181.0 us</title></circle>
+<circle class="dot" cx="219.5" cy="261.4" r="2.6" fill="var(--c-ok)"><title>pulse 30: 176.8 us</title></circle>
+<circle class="dot" cx="226.4" cy="266.8" r="2.6" fill="var(--c-ok)"><title>pulse 31: 178.1 us</title></circle>
+<circle class="dot" cx="216.2" cy="257.3" r="2.6" fill="var(--c-ok)"><title>pulse 32: 176.1 us</title></circle>
+<circle class="dot" cx="292.7" cy="262.7" r="2.6" fill="var(--c-ok)"><title>pulse 33: 190.8 us</title></circle>
+<circle class="dot" cx="174.1" cy="253.2" r="2.6" fill="var(--c-ok)"><title>pulse 34: 168.1 us</title></circle>
+<circle class="dot" cx="218.5" cy="258.6" r="2.6" fill="var(--c-ok)"><title>pulse 35: 176.6 us</title></circle>
+<circle class="dot" cx="291.3" cy="264.1" r="2.6" fill="var(--c-ok)"><title>pulse 36: 190.5 us</title></circle>
+<circle class="dot" cx="185.0" cy="254.6" r="2.6" fill="var(--c-ok)"><title>pulse 37: 170.2 us</title></circle>
+<circle class="dot" cx="211.6" cy="260.0" r="2.6" fill="var(--c-ok)"><title>pulse 38: 175.3 us</title></circle>
+<circle class="dot" cx="198.0" cy="265.4" r="2.6" fill="var(--c-ok)"><title>pulse 39: 172.6 us</title></circle>
+<circle class="dot" cx="201.3" cy="255.9" r="2.6" fill="var(--c-ok)"><title>pulse 40: 173.3 us</title></circle>
+<circle class="dot" cx="230.3" cy="261.4" r="2.6" fill="var(--c-ok)"><title>pulse 41: 178.8 us</title></circle>
+<circle class="dot" cx="270.0" cy="266.8" r="2.6" fill="var(--c-ok)"><title>pulse 42: 186.4 us</title></circle>
+<circle class="dot" cx="224.6" cy="257.3" r="2.6" fill="var(--c-ok)"><title>pulse 43: 177.7 us</title></circle>
+<circle class="dot" cx="211.0" cy="262.7" r="2.6" fill="var(--c-ok)"><title>pulse 44: 175.1 us</title></circle>
+<circle class="dot" cx="229.3" cy="253.2" r="2.6" fill="var(--c-ok)"><title>pulse 45: 178.6 us</title></circle>
+<circle class="dot" cx="245.8" cy="258.6" r="2.6" fill="var(--c-ok)"><title>pulse 46: 181.8 us</title></circle>
+<circle class="dot" cx="213.7" cy="264.1" r="2.6" fill="var(--c-ok)"><title>pulse 47: 175.7 us</title></circle>
+<circle class="dot" cx="264.3" cy="254.6" r="2.6" fill="var(--c-ok)"><title>pulse 48: 185.4 us</title></circle>
+<circle class="dot" cx="210.5" cy="260.0" r="2.6" fill="var(--c-ok)"><title>pulse 49: 175.1 us</title></circle>
+<circle class="dot" cx="249.8" cy="265.4" r="2.6" fill="var(--c-ok)"><title>pulse 50: 182.6 us</title></circle>
+<circle class="dot" cx="204.2" cy="255.9" r="2.6" fill="var(--c-ok)"><title>pulse 51: 173.8 us</title></circle>
+<circle class="dot" cx="214.4" cy="261.4" r="2.6" fill="var(--c-ok)"><title>pulse 52: 175.8 us</title></circle>
+<circle class="dot" cx="201.1" cy="266.8" r="2.6" fill="var(--c-ok)"><title>pulse 53: 173.2 us</title></circle>
+<circle class="dot" cx="175.2" cy="257.3" r="2.6" fill="var(--c-ok)"><title>pulse 54: 168.3 us</title></circle>
+<circle class="dot" cx="214.4" cy="262.7" r="2.6" fill="var(--c-ok)"><title>pulse 55: 175.8 us</title></circle>
+<circle class="dot" cx="274.2" cy="253.2" r="2.6" fill="var(--c-ok)"><title>pulse 56: 187.2 us</title></circle>
+<circle class="dot" cx="194.7" cy="258.6" r="2.6" fill="var(--c-ok)"><title>pulse 57: 172.0 us</title></circle>
+<circle class="dot" cx="206.8" cy="264.1" r="2.6" fill="var(--c-ok)"><title>pulse 58: 174.3 us</title></circle>
+<circle class="dot" cx="240.2" cy="254.6" r="2.6" fill="var(--c-ok)"><title>pulse 59: 180.7 us</title></circle>
+<circle class="dot" cx="210.5" cy="260.0" r="2.6" fill="var(--c-ok)"><title>pulse 60: 175.0 us</title></circle>
+<circle class="dot" cx="186.7" cy="265.4" r="2.6" fill="var(--c-ok)"><title>pulse 61: 170.5 us</title></circle>
+<circle class="dot" cx="236.0" cy="255.9" r="2.6" fill="var(--c-ok)"><title>pulse 62: 179.9 us</title></circle>
+<circle class="dot" cx="173.3" cy="261.4" r="2.6" fill="var(--c-ok)"><title>pulse 63: 167.9 us</title></circle>
+<circle class="dot" cx="263.6" cy="266.8" r="2.6" fill="var(--c-ok)"><title>pulse 64: 185.2 us</title></circle>
+<circle class="dot" cx="264.0" cy="257.3" r="2.6" fill="var(--c-ok)"><title>pulse 65: 185.3 us</title></circle>
+<circle class="dot" cx="288.7" cy="262.7" r="2.6" fill="var(--c-ok)"><title>pulse 66: 190.0 us</title></circle>
+<circle class="dot" cx="204.0" cy="253.2" r="2.6" fill="var(--c-ok)"><title>pulse 67: 173.8 us</title></circle>
+<circle class="dot" cx="231.1" cy="258.6" r="2.6" fill="var(--c-ok)"><title>pulse 68: 179.0 us</title></circle>
+<circle class="dot" cx="224.2" cy="264.1" r="2.6" fill="var(--c-ok)"><title>pulse 69: 177.7 us</title></circle>
+<circle class="dot" cx="221.7" cy="254.6" r="2.6" fill="var(--c-ok)"><title>pulse 70: 177.2 us</title></circle>
+<circle class="dot" cx="207.4" cy="260.0" r="2.6" fill="var(--c-ok)"><title>pulse 71: 174.4 us</title></circle>
+<circle class="dot" cx="239.8" cy="265.4" r="2.6" fill="var(--c-ok)"><title>pulse 72: 180.7 us</title></circle>
+<circle class="dot" cx="205.5" cy="255.9" r="2.6" fill="var(--c-ok)"><title>pulse 73: 174.1 us</title></circle>
+<circle class="dot" cx="223.3" cy="261.4" r="2.6" fill="var(--c-ok)"><title>pulse 74: 177.5 us</title></circle>
+<circle class="dot" cx="199.2" cy="266.8" r="2.6" fill="var(--c-ok)"><title>pulse 75: 172.9 us</title></circle>
+<circle class="dot" cx="222.8" cy="257.3" r="2.6" fill="var(--c-ok)"><title>pulse 76: 177.4 us</title></circle>
+<circle class="dot" cx="302.0" cy="262.7" r="2.6" fill="var(--c-ok)"><title>pulse 77: 192.6 us</title></circle>
+<circle class="dot" cx="236.5" cy="253.2" r="2.6" fill="var(--c-ok)"><title>pulse 78: 180.0 us</title></circle>
+<circle class="dot" cx="180.5" cy="258.6" r="2.6" fill="var(--c-ok)"><title>pulse 79: 169.3 us</title></circle>
+<circle class="dot" cx="185.6" cy="264.1" r="2.6" fill="var(--c-ok)"><title>pulse 80: 170.3 us</title></circle>
+<circle class="dot" cx="179.1" cy="254.6" r="2.6" fill="var(--c-ok)"><title>pulse 81: 169.0 us</title></circle>
+<circle class="dot" cx="186.3" cy="260.0" r="2.6" fill="var(--c-ok)"><title>pulse 82: 170.4 us</title></circle>
+<circle class="dot" cx="169.1" cy="265.4" r="2.6" fill="var(--c-ok)"><title>pulse 83: 167.1 us</title></circle>
+<circle class="dot" cx="230.8" cy="255.9" r="2.6" fill="var(--c-ok)"><title>pulse 84: 178.9 us</title></circle>
+<circle class="dot" cx="226.5" cy="261.4" r="2.6" fill="var(--c-ok)"><title>pulse 85: 178.1 us</title></circle>
+<circle class="dot" cx="218.1" cy="266.8" r="2.6" fill="var(--c-ok)"><title>pulse 86: 176.5 us</title></circle>
+<circle class="dot" cx="184.8" cy="257.3" r="2.6" fill="var(--c-ok)"><title>pulse 87: 170.1 us</title></circle>
+<circle class="dot" cx="185.4" cy="262.7" r="2.6" fill="var(--c-ok)"><title>pulse 88: 170.2 us</title></circle>
+<circle class="dot" cx="191.2" cy="253.2" r="2.6" fill="var(--c-ok)"><title>pulse 89: 171.3 us</title></circle>
+<circle class="dot" cx="230.2" cy="258.6" r="2.6" fill="var(--c-ok)"><title>pulse 90: 178.8 us</title></circle>
+<circle class="dot" cx="221.4" cy="264.1" r="2.6" fill="var(--c-ok)"><title>pulse 91: 177.1 us</title></circle>
+<circle class="dot" cx="220.5" cy="254.6" r="2.6" fill="var(--c-ok)"><title>pulse 92: 177.0 us</title></circle>
+<circle class="dot" cx="213.4" cy="260.0" r="2.6" fill="var(--c-ok)"><title>pulse 93: 175.6 us</title></circle>
+<circle class="dot" cx="378.0" cy="265.4" r="2.6" fill="var(--c-ok)"><title>pulse 94: 207.1 us</title></circle>
+<circle class="dot" cx="162.6" cy="255.9" r="2.6" fill="var(--c-ok)"><title>pulse 95: 165.9 us</title></circle>
+<circle class="dot" cx="236.0" cy="261.4" r="2.6" fill="var(--c-ok)"><title>pulse 96: 179.9 us</title></circle>
+<circle class="dot" cx="165.4" cy="266.8" r="2.6" fill="var(--c-ok)"><title>pulse 97: 166.4 us</title></circle>
+<circle class="dot" cx="197.2" cy="257.3" r="2.6" fill="var(--c-ok)"><title>pulse 98: 172.5 us</title></circle>
+<circle class="dot" cx="187.9" cy="262.7" r="2.6" fill="var(--c-ok)"><title>pulse 99: 170.7 us</title></circle>
+<circle class="dot" cx="237.5" cy="253.2" r="2.6" fill="var(--c-ok)"><title>pulse 100: 180.2 us</title></circle>
+<circle class="dot" cx="196.2" cy="258.6" r="2.6" fill="var(--c-ok)"><title>pulse 101: 172.3 us</title></circle>
+<circle class="dot" cx="223.5" cy="264.1" r="2.6" fill="var(--c-ok)"><title>pulse 102: 177.5 us</title></circle>
+<circle class="dot" cx="215.8" cy="254.6" r="2.6" fill="var(--c-ok)"><title>pulse 103: 176.1 us</title></circle>
+<circle class="dot" cx="173.8" cy="260.0" r="2.6" fill="var(--c-ok)"><title>pulse 104: 168.0 us</title></circle>
+<circle class="dot" cx="238.4" cy="265.4" r="2.6" fill="var(--c-ok)"><title>pulse 105: 180.4 us</title></circle>
+<circle class="dot" cx="220.3" cy="255.9" r="2.6" fill="var(--c-ok)"><title>pulse 106: 176.9 us</title></circle>
+<circle class="dot" cx="252.9" cy="261.4" r="2.6" fill="var(--c-ok)"><title>pulse 107: 183.2 us</title></circle>
+<circle class="dot" cx="230.6" cy="266.8" r="2.6" fill="var(--c-ok)"><title>pulse 108: 178.9 us</title></circle>
+<circle class="dot" cx="240.8" cy="257.3" r="2.6" fill="var(--c-ok)"><title>pulse 109: 180.9 us</title></circle>
+<circle class="dot" cx="174.4" cy="262.7" r="2.6" fill="var(--c-ok)"><title>pulse 110: 168.1 us</title></circle>
+<circle class="dot" cx="241.4" cy="253.2" r="2.6" fill="var(--c-ok)"><title>pulse 111: 181.0 us</title></circle>
+<circle class="dot" cx="207.7" cy="258.6" r="2.6" fill="var(--c-ok)"><title>pulse 112: 174.5 us</title></circle>
+<circle class="dot" cx="229.4" cy="264.1" r="2.6" fill="var(--c-ok)"><title>pulse 113: 178.7 us</title></circle>
+<circle class="dot" cx="183.1" cy="254.6" r="2.6" fill="var(--c-ok)"><title>pulse 114: 169.8 us</title></circle>
+<circle class="dot" cx="250.6" cy="260.0" r="2.6" fill="var(--c-ok)"><title>pulse 115: 182.7 us</title></circle>
+<line class="med" x1="219.5" y1="241.0" x2="219.5" y2="279.0" stroke="var(--c-ok)"/>
+<text class="medlab" x="219.5" y="237.0" text-anchor="middle" fill="var(--c-ok)">177</text>
+<text class="nlab" x="714" y="264.0">n=115</text>
+<text class="axlab" x="419" y="318" text-anchor="middle">microseconds</text>
+</svg></div>
+  <div class="key">
+    <span><i class="swatch" style="background:var(--c-ok)"></i>normal state</span>
+    <span><i class="swatch" style="background:var(--c-bad)"></i>slower regime</span>
+    <span>each dot is one pulse · bar is the median</span>
+  </div>
+  <figcaption><b>Device-only skew, DLP-IO8 minus FT232H.</b> The host's share has been subtracted
+  pulse by pulse, so this is the hardware difference. Runs 1, 4 and 5 cluster at 177–182 µs;
+  run 3 and the tail of run 1 sit 40–50 µs higher with several times the scatter.</figcaption>
+</figure>
+<div class="tablewrap col" style="max-width:760px">
+<table>
+  <caption>Device-only skew by dataset (µs)</caption>
+  <thead><tr><th>dataset</th><th>n</th><th>median</th><th>sd</th><th>min</th><th>max</th></tr></thead>
+  <tbody>
+    <tr><td>run 1 · first 92 pulses</td><td>92</td><td>181.1</td><td>5.0</td><td>166.1</td><td>193.9</td></tr>
+    <tr><td class="flag">run 1 · last 23 pulses</td><td>23</td><td class="flag">232.6</td><td class="flag">31.7</td><td>175.4</td><td>257.9</td></tr>
+    <tr><td class="flag">run 3 · truncated capture</td><td>67</td><td class="flag">219.0</td><td class="flag">11.9</td><td>185.8</td><td>245.7</td></tr>
+    <tr><td>run 4</td><td>115</td><td>180.5</td><td>4.8</td><td>169.4</td><td>198.2</td></tr>
+    <tr><td>run 5</td><td>115</td><td>176.8</td><td>6.2</td><td>165.9</td><td>207.1</td></tr>
+    <tr class="total"><td>pooled normal state</td><td>322</td><td>179.4</td><td>5.7</td><td>165.9</td><td>207.1</td></tr>
+  </tbody>
+</table>
+</div>
+<div class="col" style="margin-top:30px">
+  <p>Why the DLP-IO8 is the late one is not mysterious. Its write is an ASCII byte that crosses
+  USB to an FTDI bridge, spends 87 µs on a 115200-baud UART, and is then parsed by a PIC that
+  moves the pin. The FT232H write is one MPSSE bulk transfer that sets the pins in hardware.</p>
+  <p>What <em>was</em> counter-intuitive: the FT232H's <code>SetHigh</code> call blocks
+  <span class="num">38.8 µs</span> against the DLP-IO8's <span class="num">26.9 µs</span>, so on
+  host-side cost alone you would predict the opposite ordering. Call duration measures how long
+  the host was blocked handing the write over. It says nothing about when the byte reaches the pin.</p>
+</div>
+</section>
+
+<section>
+<div class="col">
+  <span class="sectnum">Why the host timestamps matter</span>
+  <h2>Four excursions that were never the hardware</h2>
+  <p>Run 5 looked like it had a problem: four pulses beyond 220 µs and a scatter that grew
+  through the run. All four were the scheduler, not the devices.</p>
+</div>
+<figure>
+  <div class="figbox"><svg viewBox="0 0 760 164" role="img" class="fig" preserveAspectRatio="xMidYMid meet">
+<line class="grid" x1="132.0" y1="26" x2="132.0" y2="130"/>
+<text class="tick" x="132.0" y="148" text-anchor="middle">160</text>
+<line class="grid" x1="184.2" y1="26" x2="184.2" y2="130"/>
+<text class="tick" x="184.2" y="148" text-anchor="middle">170</text>
+<line class="grid" x1="236.4" y1="26" x2="236.4" y2="130"/>
+<text class="tick" x="236.4" y="148" text-anchor="middle">180</text>
+<line class="grid" x1="288.5" y1="26" x2="288.5" y2="130"/>
+<text class="tick" x="288.5" y="148" text-anchor="middle">190</text>
+<line class="grid" x1="340.7" y1="26" x2="340.7" y2="130"/>
+<text class="tick" x="340.7" y="148" text-anchor="middle">200</text>
+<line class="grid" x1="392.9" y1="26" x2="392.9" y2="130"/>
+<text class="tick" x="392.9" y="148" text-anchor="middle">210</text>
+<line class="grid" x1="445.1" y1="26" x2="445.1" y2="130"/>
+<text class="tick" x="445.1" y="148" text-anchor="middle">220</text>
+<line class="grid" x1="497.3" y1="26" x2="497.3" y2="130"/>
+<text class="tick" x="497.3" y="148" text-anchor="middle">230</text>
+<line class="grid" x1="549.5" y1="26" x2="549.5" y2="130"/>
+<text class="tick" x="549.5" y="148" text-anchor="middle">240</text>
+<line class="grid" x1="601.6" y1="26" x2="601.6" y2="130"/>
+<text class="tick" x="601.6" y="148" text-anchor="middle">250</text>
+<line class="grid" x1="653.8" y1="26" x2="653.8" y2="130"/>
+<text class="tick" x="653.8" y="148" text-anchor="middle">260</text>
+<line class="grid" x1="706.0" y1="26" x2="706.0" y2="130"/>
+<text class="tick" x="706.0" y="148" text-anchor="middle">270</text>
+<text class="rowlab" x="118" y="51.0" text-anchor="end">as recorded</text>
+<text class="rowsub" x="118" y="65.0" text-anchor="end">wire skew, run 5</text>
+<line class="axisrow" x1="132" y1="52.0" x2="706" y2="52.0"/>
+<circle class="dot" cx="178.3" cy="45.2" r="2.6" fill="var(--c-b)"><title>pulse 1: 168.9 us</title></circle>
+<circle class="dot" cx="225.0" cy="50.6" r="2.6" fill="var(--c-b)"><title>pulse 2: 177.8 us</title></circle>
+<circle class="dot" cx="249.0" cy="56.0" r="2.6" fill="var(--c-b)"><title>pulse 3: 182.4 us</title></circle>
+<circle class="dot" cx="222.2" cy="46.6" r="2.6" fill="var(--c-b)"><title>pulse 4: 177.3 us</title></circle>
+<circle class="dot" cx="191.5" cy="52.0" r="2.6" fill="var(--c-b)"><title>pulse 5: 171.4 us</title></circle>
+<circle class="dot" cx="185.1" cy="57.4" r="2.6" fill="var(--c-b)"><title>pulse 6: 170.2 us</title></circle>
+<circle class="dot" cx="221.7" cy="48.0" r="2.6" fill="var(--c-b)"><title>pulse 7: 177.2 us</title></circle>
+<circle class="dot" cx="218.3" cy="53.4" r="2.6" fill="var(--c-b)"><title>pulse 8: 176.5 us</title></circle>
+<circle class="dot" cx="209.0" cy="58.8" r="2.6" fill="var(--c-b)"><title>pulse 9: 174.8 us</title></circle>
+<circle class="dot" cx="188.1" cy="49.3" r="2.6" fill="var(--c-b)"><title>pulse 10: 170.8 us</title></circle>
+<circle class="dot" cx="192.2" cy="54.7" r="2.6" fill="var(--c-b)"><title>pulse 11: 171.5 us</title></circle>
+<circle class="dot" cx="208.9" cy="45.2" r="2.6" fill="var(--c-b)"><title>pulse 12: 174.7 us</title></circle>
+<circle class="dot" cx="248.5" cy="50.6" r="2.6" fill="var(--c-b)"><title>pulse 13: 182.3 us</title></circle>
+<circle class="dot" cx="205.7" cy="56.0" r="2.6" fill="var(--c-b)"><title>pulse 14: 174.1 us</title></circle>
+<circle class="dot" cx="253.6" cy="46.6" r="2.6" fill="var(--c-b)"><title>pulse 15: 183.3 us</title></circle>
+<circle class="dot" cx="228.9" cy="52.0" r="2.6" fill="var(--c-b)"><title>pulse 16: 178.6 us</title></circle>
+<circle class="dot" cx="233.0" cy="57.4" r="2.6" fill="var(--c-b)"><title>pulse 17: 179.3 us</title></circle>
+<circle class="dot" cx="231.9" cy="48.0" r="2.6" fill="var(--c-b)"><title>pulse 18: 179.1 us</title></circle>
+<circle class="dot" cx="211.6" cy="53.4" r="2.6" fill="var(--c-b)"><title>pulse 19: 175.3 us</title></circle>
+<circle class="dot" cx="209.1" cy="58.8" r="2.6" fill="var(--c-b)"><title>pulse 20: 174.8 us</title></circle>
+<circle class="dot" cx="240.8" cy="49.3" r="2.6" fill="var(--c-b)"><title>pulse 21: 180.8 us</title></circle>
+<circle class="dot" cx="223.1" cy="54.7" r="2.6" fill="var(--c-b)"><title>pulse 22: 177.5 us</title></circle>
+<circle class="dot" cx="257.3" cy="45.2" r="2.6" fill="var(--c-b)"><title>pulse 23: 184.0 us</title></circle>
+<circle class="dot" cx="181.4" cy="50.6" r="2.6" fill="var(--c-b)"><title>pulse 24: 169.5 us</title></circle>
+<circle class="dot" cx="256.4" cy="56.0" r="2.6" fill="var(--c-b)"><title>pulse 25: 183.8 us</title></circle>
+<circle class="dot" cx="235.2" cy="46.6" r="2.6" fill="var(--c-b)"><title>pulse 26: 179.8 us</title></circle>
+<circle class="dot" cx="259.8" cy="52.0" r="2.6" fill="var(--c-b)"><title>pulse 27: 184.5 us</title></circle>
+<circle class="dot" cx="224.0" cy="57.4" r="2.6" fill="var(--c-b)"><title>pulse 28: 177.6 us</title></circle>
+<circle class="dot" cx="241.2" cy="48.0" r="2.6" fill="var(--c-b)"><title>pulse 29: 180.9 us</title></circle>
+<circle class="dot" cx="218.9" cy="53.4" r="2.6" fill="var(--c-b)"><title>pulse 30: 176.7 us</title></circle>
+<circle class="dot" cx="225.4" cy="58.8" r="2.6" fill="var(--c-b)"><title>pulse 31: 177.9 us</title></circle>
+<circle class="dot" cx="215.4" cy="49.3" r="2.6" fill="var(--c-b)"><title>pulse 32: 176.0 us</title></circle>
+<circle class="dot" cx="219.1" cy="54.7" r="2.6" fill="var(--c-b)"><title>pulse 33: 176.7 us</title></circle>
+<circle class="dot" cx="173.7" cy="45.2" r="2.6" fill="var(--c-b)"><title>pulse 34: 168.0 us</title></circle>
+<circle class="dot" cx="218.6" cy="50.6" r="2.6" fill="var(--c-b)"><title>pulse 35: 176.6 us</title></circle>
+<circle class="dot" cx="291.0" cy="56.0" r="2.6" fill="var(--c-b)"><title>pulse 36: 190.5 us</title></circle>
+<circle class="dot" cx="183.9" cy="46.6" r="2.6" fill="var(--c-b)"><title>pulse 37: 170.0 us</title></circle>
+<circle class="dot" cx="211.3" cy="52.0" r="2.6" fill="var(--c-b)"><title>pulse 38: 175.2 us</title></circle>
+<circle class="dot" cx="197.3" cy="57.4" r="2.6" fill="var(--c-b)"><title>pulse 39: 172.5 us</title></circle>
+<circle class="dot" cx="199.8" cy="48.0" r="2.6" fill="var(--c-b)"><title>pulse 40: 173.0 us</title></circle>
+<circle class="dot" cx="230.0" cy="53.4" r="2.6" fill="var(--c-b)"><title>pulse 41: 178.8 us</title></circle>
+<circle class="dot" cx="272.2" cy="58.8" r="2.6" fill="var(--c-b)"><title>pulse 42: 186.9 us</title></circle>
+<circle class="dot" cx="224.4" cy="49.3" r="2.6" fill="var(--c-b)"><title>pulse 43: 177.7 us</title></circle>
+<circle class="dot" cx="210.6" cy="54.7" r="2.6" fill="var(--c-b)"><title>pulse 44: 175.1 us</title></circle>
+<circle class="dot" cx="228.0" cy="45.2" r="2.6" fill="var(--c-b)"><title>pulse 45: 178.4 us</title></circle>
+<circle class="dot" cx="245.2" cy="50.6" r="2.6" fill="var(--c-b)"><title>pulse 46: 181.7 us</title></circle>
+<circle class="dot" cx="212.6" cy="56.0" r="2.6" fill="var(--c-b)"><title>pulse 47: 175.4 us</title></circle>
+<circle class="dot" cx="261.0" cy="46.6" r="2.6" fill="var(--c-b)"><title>pulse 48: 184.7 us</title></circle>
+<circle class="dot" cx="209.3" cy="52.0" r="2.6" fill="var(--c-b)"><title>pulse 49: 174.8 us</title></circle>
+<circle class="dot" cx="490.7" cy="57.4" r="2.6" fill="var(--c-b)"><title>pulse 50: 228.7 us</title></circle>
+<circle class="dot" cx="204.0" cy="48.0" r="2.6" fill="var(--c-b)"><title>pulse 51: 173.8 us</title></circle>
+<circle class="dot" cx="214.2" cy="53.4" r="2.6" fill="var(--c-b)"><title>pulse 52: 175.7 us</title></circle>
+<circle class="dot" cx="201.2" cy="58.8" r="2.6" fill="var(--c-b)"><title>pulse 53: 173.3 us</title></circle>
+<circle class="dot" cx="174.4" cy="49.3" r="2.6" fill="var(--c-b)"><title>pulse 54: 168.1 us</title></circle>
+<circle class="dot" cx="214.5" cy="54.7" r="2.6" fill="var(--c-b)"><title>pulse 55: 175.8 us</title></circle>
+<circle class="dot" cx="273.7" cy="45.2" r="2.6" fill="var(--c-b)"><title>pulse 56: 187.2 us</title></circle>
+<circle class="dot" cx="194.3" cy="50.6" r="2.6" fill="var(--c-b)"><title>pulse 57: 171.9 us</title></circle>
+<circle class="dot" cx="249.7" cy="56.0" r="2.6" fill="var(--c-b)"><title>pulse 58: 182.5 us</title></circle>
+<circle class="dot" cx="240.0" cy="46.6" r="2.6" fill="var(--c-b)"><title>pulse 59: 180.7 us</title></circle>
+<circle class="dot" cx="209.3" cy="52.0" r="2.6" fill="var(--c-b)"><title>pulse 60: 174.8 us</title></circle>
+<circle class="dot" cx="185.6" cy="57.4" r="2.6" fill="var(--c-b)"><title>pulse 61: 170.3 us</title></circle>
+<circle class="dot" cx="235.1" cy="48.0" r="2.6" fill="var(--c-b)"><title>pulse 62: 179.7 us</title></circle>
+<circle class="dot" cx="173.1" cy="53.4" r="2.6" fill="var(--c-b)"><title>pulse 63: 167.9 us</title></circle>
+<circle class="dot" cx="263.2" cy="58.8" r="2.6" fill="var(--c-b)"><title>pulse 64: 185.1 us</title></circle>
+<circle class="dot" cx="263.7" cy="49.3" r="2.6" fill="var(--c-b)"><title>pulse 65: 185.2 us</title></circle>
+<circle class="dot" cx="288.8" cy="54.7" r="2.6" fill="var(--c-b)"><title>pulse 66: 190.1 us</title></circle>
+<circle class="dot" cx="203.8" cy="45.2" r="2.6" fill="var(--c-b)"><title>pulse 67: 173.8 us</title></circle>
+<circle class="dot" cx="425.2" cy="50.6" r="2.6" fill="var(--c-b)"><title>pulse 68: 216.2 us</title></circle>
+<circle class="dot" cx="157.1" cy="56.0" r="2.6" fill="var(--c-b)"><title>pulse 69: 164.8 us</title></circle>
+<circle class="dot" cx="221.6" cy="46.6" r="2.6" fill="var(--c-b)"><title>pulse 70: 177.2 us</title></circle>
+<circle class="dot" cx="206.2" cy="52.0" r="2.6" fill="var(--c-b)"><title>pulse 71: 174.2 us</title></circle>
+<circle class="dot" cx="238.9" cy="57.4" r="2.6" fill="var(--c-b)"><title>pulse 72: 180.5 us</title></circle>
+<circle class="dot" cx="204.3" cy="48.0" r="2.6" fill="var(--c-b)"><title>pulse 73: 173.8 us</title></circle>
+<circle class="dot" cx="222.9" cy="53.4" r="2.6" fill="var(--c-b)"><title>pulse 74: 177.4 us</title></circle>
+<circle class="dot" cx="462.1" cy="58.8" r="2.6" fill="var(--c-b)"><title>pulse 75: 223.3 us</title></circle>
+<circle class="dot" cx="222.7" cy="49.3" r="2.6" fill="var(--c-b)"><title>pulse 76: 177.4 us</title></circle>
+<circle class="dot" cx="301.8" cy="54.7" r="2.6" fill="var(--c-b)"><title>pulse 77: 192.5 us</title></circle>
+<circle class="dot" cx="236.5" cy="45.2" r="2.6" fill="var(--c-b)"><title>pulse 78: 180.0 us</title></circle>
+<circle class="dot" cx="177.7" cy="50.6" r="2.6" fill="var(--c-b)"><title>pulse 79: 168.8 us</title></circle>
+<circle class="dot" cx="185.0" cy="56.0" r="2.6" fill="var(--c-b)"><title>pulse 80: 170.1 us</title></circle>
+<circle class="dot" cx="179.1" cy="46.6" r="2.6" fill="var(--c-b)"><title>pulse 81: 169.0 us</title></circle>
+<circle class="dot" cx="185.5" cy="52.0" r="2.6" fill="var(--c-b)"><title>pulse 82: 170.2 us</title></circle>
+<circle class="dot" cx="168.2" cy="57.4" r="2.6" fill="var(--c-b)"><title>pulse 83: 166.9 us</title></circle>
+<circle class="dot" cx="229.9" cy="48.0" r="2.6" fill="var(--c-b)"><title>pulse 84: 178.8 us</title></circle>
+<circle class="dot" cx="226.3" cy="53.4" r="2.6" fill="var(--c-b)"><title>pulse 85: 178.1 us</title></circle>
+<circle class="dot" cx="218.1" cy="58.8" r="2.6" fill="var(--c-b)"><title>pulse 86: 176.5 us</title></circle>
+<circle class="dot" cx="184.9" cy="49.3" r="2.6" fill="var(--c-b)"><title>pulse 87: 170.1 us</title></circle>
+<circle class="dot" cx="185.2" cy="54.7" r="2.6" fill="var(--c-b)"><title>pulse 88: 170.2 us</title></circle>
+<circle class="dot" cx="190.7" cy="45.2" r="2.6" fill="var(--c-b)"><title>pulse 89: 171.2 us</title></circle>
+<circle class="dot" cx="229.4" cy="50.6" r="2.6" fill="var(--c-b)"><title>pulse 90: 178.7 us</title></circle>
+<circle class="dot" cx="221.3" cy="56.0" r="2.6" fill="var(--c-b)"><title>pulse 91: 177.1 us</title></circle>
+<circle class="dot" cx="220.1" cy="46.6" r="2.6" fill="var(--c-b)"><title>pulse 92: 176.9 us</title></circle>
+<circle class="dot" cx="211.6" cy="52.0" r="2.6" fill="var(--c-b)"><title>pulse 93: 175.3 us</title></circle>
+<circle class="dot" cx="377.0" cy="57.4" r="2.6" fill="var(--c-b)"><title>pulse 94: 206.9 us</title></circle>
+<circle class="dot" cx="162.3" cy="48.0" r="2.6" fill="var(--c-b)"><title>pulse 95: 165.8 us</title></circle>
+<circle class="dot" cx="235.8" cy="53.4" r="2.6" fill="var(--c-b)"><title>pulse 96: 179.9 us</title></circle>
+<circle class="dot" cx="164.1" cy="58.8" r="2.6" fill="var(--c-b)"><title>pulse 97: 166.2 us</title></circle>
+<circle class="dot" cx="195.2" cy="49.3" r="2.6" fill="var(--c-b)"><title>pulse 98: 172.1 us</title></circle>
+<circle class="dot" cx="186.5" cy="54.7" r="2.6" fill="var(--c-b)"><title>pulse 99: 170.4 us</title></circle>
+<circle class="dot" cx="237.8" cy="45.2" r="2.6" fill="var(--c-b)"><title>pulse 100: 180.3 us</title></circle>
+<circle class="dot" cx="530.6" cy="50.6" r="2.6" fill="var(--c-b)"><title>pulse 101: 236.4 us</title></circle>
+<circle class="dot" cx="545.0" cy="56.0" r="2.6" fill="var(--c-b)"><title>pulse 102: 239.1 us</title></circle>
+<circle class="dot" cx="215.4" cy="46.6" r="2.6" fill="var(--c-b)"><title>pulse 103: 176.0 us</title></circle>
+<circle class="dot" cx="173.6" cy="52.0" r="2.6" fill="var(--c-b)"><title>pulse 104: 168.0 us</title></circle>
+<circle class="dot" cx="238.3" cy="57.4" r="2.6" fill="var(--c-b)"><title>pulse 105: 180.4 us</title></circle>
+<circle class="dot" cx="220.1" cy="48.0" r="2.6" fill="var(--c-b)"><title>pulse 106: 176.9 us</title></circle>
+<circle class="dot" cx="251.0" cy="53.4" r="2.6" fill="var(--c-b)"><title>pulse 107: 182.8 us</title></circle>
+<circle class="dot" cx="229.9" cy="58.8" r="2.6" fill="var(--c-b)"><title>pulse 108: 178.8 us</title></circle>
+<circle class="dot" cx="237.6" cy="49.3" r="2.6" fill="var(--c-b)"><title>pulse 109: 180.2 us</title></circle>
+<circle class="dot" cx="174.4" cy="54.7" r="2.6" fill="var(--c-b)"><title>pulse 110: 168.1 us</title></circle>
+<circle class="dot" cx="240.4" cy="45.2" r="2.6" fill="var(--c-b)"><title>pulse 111: 180.8 us</title></circle>
+<circle class="dot" cx="207.1" cy="50.6" r="2.6" fill="var(--c-b)"><title>pulse 112: 174.4 us</title></circle>
+<circle class="dot" cx="228.9" cy="56.0" r="2.6" fill="var(--c-b)"><title>pulse 113: 178.6 us</title></circle>
+<circle class="dot" cx="182.5" cy="46.6" r="2.6" fill="var(--c-b)"><title>pulse 114: 169.7 us</title></circle>
+<circle class="dot" cx="248.5" cy="52.0" r="2.6" fill="var(--c-b)"><title>pulse 115: 182.3 us</title></circle>
+<line class="med" x1="220.1" y1="33.0" x2="220.1" y2="71.0" stroke="var(--c-b)"/>
+<text class="medlab" x="220.1" y="29.0" text-anchor="middle" fill="var(--c-b)">177</text>
+<text class="nlab" x="714" y="56.0">n=115</text>
+<text class="rowlab" x="118" y="103.0" text-anchor="end">host share removed</text>
+<text class="rowsub" x="118" y="117.0" text-anchor="end">same pulses</text>
+<line class="axisrow" x1="132" y1="104.0" x2="706" y2="104.0"/>
+<circle class="dot" cx="178.5" cy="97.2" r="2.6" fill="var(--c-b)"><title>pulse 1: 168.9 us</title></circle>
+<circle class="dot" cx="225.5" cy="102.7" r="2.6" fill="var(--c-b)"><title>pulse 2: 177.9 us</title></circle>
+<circle class="dot" cx="249.2" cy="108.0" r="2.6" fill="var(--c-b)"><title>pulse 3: 182.5 us</title></circle>
+<circle class="dot" cx="222.9" cy="98.6" r="2.6" fill="var(--c-b)"><title>pulse 4: 177.4 us</title></circle>
+<circle class="dot" cx="191.6" cy="104.0" r="2.6" fill="var(--c-b)"><title>pulse 5: 171.4 us</title></circle>
+<circle class="dot" cx="185.5" cy="109.4" r="2.6" fill="var(--c-b)"><title>pulse 6: 170.3 us</title></circle>
+<circle class="dot" cx="222.5" cy="100.0" r="2.6" fill="var(--c-b)"><title>pulse 7: 177.3 us</title></circle>
+<circle class="dot" cx="218.5" cy="105.3" r="2.6" fill="var(--c-b)"><title>pulse 8: 176.6 us</title></circle>
+<circle class="dot" cx="209.3" cy="110.8" r="2.6" fill="var(--c-b)"><title>pulse 9: 174.8 us</title></circle>
+<circle class="dot" cx="188.3" cy="101.3" r="2.6" fill="var(--c-b)"><title>pulse 10: 170.8 us</title></circle>
+<circle class="dot" cx="193.0" cy="106.7" r="2.6" fill="var(--c-b)"><title>pulse 11: 171.7 us</title></circle>
+<circle class="dot" cx="209.1" cy="97.2" r="2.6" fill="var(--c-b)"><title>pulse 12: 174.8 us</title></circle>
+<circle class="dot" cx="249.5" cy="102.7" r="2.6" fill="var(--c-b)"><title>pulse 13: 182.5 us</title></circle>
+<circle class="dot" cx="205.9" cy="108.0" r="2.6" fill="var(--c-b)"><title>pulse 14: 174.2 us</title></circle>
+<circle class="dot" cx="253.8" cy="98.6" r="2.6" fill="var(--c-b)"><title>pulse 15: 183.3 us</title></circle>
+<circle class="dot" cx="229.6" cy="104.0" r="2.6" fill="var(--c-b)"><title>pulse 16: 178.7 us</title></circle>
+<circle class="dot" cx="232.5" cy="109.4" r="2.6" fill="var(--c-b)"><title>pulse 17: 179.3 us</title></circle>
+<circle class="dot" cx="232.6" cy="100.0" r="2.6" fill="var(--c-b)"><title>pulse 18: 179.3 us</title></circle>
+<circle class="dot" cx="211.8" cy="105.3" r="2.6" fill="var(--c-b)"><title>pulse 19: 175.3 us</title></circle>
+<circle class="dot" cx="209.6" cy="110.8" r="2.6" fill="var(--c-b)"><title>pulse 20: 174.9 us</title></circle>
+<circle class="dot" cx="194.1" cy="101.3" r="2.6" fill="var(--c-b)"><title>pulse 21: 171.9 us</title></circle>
+<circle class="dot" cx="224.0" cy="106.7" r="2.6" fill="var(--c-b)"><title>pulse 22: 177.6 us</title></circle>
+<circle class="dot" cx="257.9" cy="97.2" r="2.6" fill="var(--c-b)"><title>pulse 23: 184.1 us</title></circle>
+<circle class="dot" cx="181.7" cy="102.7" r="2.6" fill="var(--c-b)"><title>pulse 24: 169.5 us</title></circle>
+<circle class="dot" cx="256.5" cy="108.0" r="2.6" fill="var(--c-b)"><title>pulse 25: 183.9 us</title></circle>
+<circle class="dot" cx="235.3" cy="98.6" r="2.6" fill="var(--c-b)"><title>pulse 26: 179.8 us</title></circle>
+<circle class="dot" cx="260.0" cy="104.0" r="2.6" fill="var(--c-b)"><title>pulse 27: 184.5 us</title></circle>
+<circle class="dot" cx="224.6" cy="109.4" r="2.6" fill="var(--c-b)"><title>pulse 28: 177.7 us</title></circle>
+<circle class="dot" cx="241.5" cy="100.0" r="2.6" fill="var(--c-b)"><title>pulse 29: 181.0 us</title></circle>
+<circle class="dot" cx="219.5" cy="105.3" r="2.6" fill="var(--c-b)"><title>pulse 30: 176.8 us</title></circle>
+<circle class="dot" cx="226.4" cy="110.8" r="2.6" fill="var(--c-b)"><title>pulse 31: 178.1 us</title></circle>
+<circle class="dot" cx="216.2" cy="101.3" r="2.6" fill="var(--c-b)"><title>pulse 32: 176.1 us</title></circle>
+<circle class="dot" cx="292.7" cy="106.7" r="2.6" fill="var(--c-b)"><title>pulse 33: 190.8 us</title></circle>
+<circle class="dot" cx="174.1" cy="97.2" r="2.6" fill="var(--c-b)"><title>pulse 34: 168.1 us</title></circle>
+<circle class="dot" cx="218.5" cy="102.7" r="2.6" fill="var(--c-b)"><title>pulse 35: 176.6 us</title></circle>
+<circle class="dot" cx="291.3" cy="108.0" r="2.6" fill="var(--c-b)"><title>pulse 36: 190.5 us</title></circle>
+<circle class="dot" cx="185.0" cy="98.6" r="2.6" fill="var(--c-b)"><title>pulse 37: 170.2 us</title></circle>
+<circle class="dot" cx="211.6" cy="104.0" r="2.6" fill="var(--c-b)"><title>pulse 38: 175.3 us</title></circle>
+<circle class="dot" cx="198.0" cy="109.4" r="2.6" fill="var(--c-b)"><title>pulse 39: 172.6 us</title></circle>
+<circle class="dot" cx="201.3" cy="100.0" r="2.6" fill="var(--c-b)"><title>pulse 40: 173.3 us</title></circle>
+<circle class="dot" cx="230.3" cy="105.3" r="2.6" fill="var(--c-b)"><title>pulse 41: 178.8 us</title></circle>
+<circle class="dot" cx="270.0" cy="110.8" r="2.6" fill="var(--c-b)"><title>pulse 42: 186.4 us</title></circle>
+<circle class="dot" cx="224.6" cy="101.3" r="2.6" fill="var(--c-b)"><title>pulse 43: 177.7 us</title></circle>
+<circle class="dot" cx="211.0" cy="106.7" r="2.6" fill="var(--c-b)"><title>pulse 44: 175.1 us</title></circle>
+<circle class="dot" cx="229.3" cy="97.2" r="2.6" fill="var(--c-b)"><title>pulse 45: 178.6 us</title></circle>
+<circle class="dot" cx="245.8" cy="102.7" r="2.6" fill="var(--c-b)"><title>pulse 46: 181.8 us</title></circle>
+<circle class="dot" cx="213.7" cy="108.0" r="2.6" fill="var(--c-b)"><title>pulse 47: 175.7 us</title></circle>
+<circle class="dot" cx="264.3" cy="98.6" r="2.6" fill="var(--c-b)"><title>pulse 48: 185.4 us</title></circle>
+<circle class="dot" cx="210.5" cy="104.0" r="2.6" fill="var(--c-b)"><title>pulse 49: 175.1 us</title></circle>
+<circle class="dot" cx="249.8" cy="109.4" r="2.6" fill="var(--c-b)"><title>pulse 50: 182.6 us</title></circle>
+<circle class="dot" cx="204.2" cy="100.0" r="2.6" fill="var(--c-b)"><title>pulse 51: 173.8 us</title></circle>
+<circle class="dot" cx="214.4" cy="105.3" r="2.6" fill="var(--c-b)"><title>pulse 52: 175.8 us</title></circle>
+<circle class="dot" cx="201.1" cy="110.8" r="2.6" fill="var(--c-b)"><title>pulse 53: 173.2 us</title></circle>
+<circle class="dot" cx="175.2" cy="101.3" r="2.6" fill="var(--c-b)"><title>pulse 54: 168.3 us</title></circle>
+<circle class="dot" cx="214.4" cy="106.7" r="2.6" fill="var(--c-b)"><title>pulse 55: 175.8 us</title></circle>
+<circle class="dot" cx="274.2" cy="97.2" r="2.6" fill="var(--c-b)"><title>pulse 56: 187.2 us</title></circle>
+<circle class="dot" cx="194.7" cy="102.7" r="2.6" fill="var(--c-b)"><title>pulse 57: 172.0 us</title></circle>
+<circle class="dot" cx="206.8" cy="108.0" r="2.6" fill="var(--c-b)"><title>pulse 58: 174.3 us</title></circle>
+<circle class="dot" cx="240.2" cy="98.6" r="2.6" fill="var(--c-b)"><title>pulse 59: 180.7 us</title></circle>
+<circle class="dot" cx="210.5" cy="104.0" r="2.6" fill="var(--c-b)"><title>pulse 60: 175.0 us</title></circle>
+<circle class="dot" cx="186.7" cy="109.4" r="2.6" fill="var(--c-b)"><title>pulse 61: 170.5 us</title></circle>
+<circle class="dot" cx="236.0" cy="100.0" r="2.6" fill="var(--c-b)"><title>pulse 62: 179.9 us</title></circle>
+<circle class="dot" cx="173.3" cy="105.3" r="2.6" fill="var(--c-b)"><title>pulse 63: 167.9 us</title></circle>
+<circle class="dot" cx="263.6" cy="110.8" r="2.6" fill="var(--c-b)"><title>pulse 64: 185.2 us</title></circle>
+<circle class="dot" cx="264.0" cy="101.3" r="2.6" fill="var(--c-b)"><title>pulse 65: 185.3 us</title></circle>
+<circle class="dot" cx="288.7" cy="106.7" r="2.6" fill="var(--c-b)"><title>pulse 66: 190.0 us</title></circle>
+<circle class="dot" cx="204.0" cy="97.2" r="2.6" fill="var(--c-b)"><title>pulse 67: 173.8 us</title></circle>
+<circle class="dot" cx="231.1" cy="102.7" r="2.6" fill="var(--c-b)"><title>pulse 68: 179.0 us</title></circle>
+<circle class="dot" cx="224.2" cy="108.0" r="2.6" fill="var(--c-b)"><title>pulse 69: 177.7 us</title></circle>
+<circle class="dot" cx="221.7" cy="98.6" r="2.6" fill="var(--c-b)"><title>pulse 70: 177.2 us</title></circle>
+<circle class="dot" cx="207.4" cy="104.0" r="2.6" fill="var(--c-b)"><title>pulse 71: 174.4 us</title></circle>
+<circle class="dot" cx="239.8" cy="109.4" r="2.6" fill="var(--c-b)"><title>pulse 72: 180.7 us</title></circle>
+<circle class="dot" cx="205.5" cy="100.0" r="2.6" fill="var(--c-b)"><title>pulse 73: 174.1 us</title></circle>
+<circle class="dot" cx="223.3" cy="105.3" r="2.6" fill="var(--c-b)"><title>pulse 74: 177.5 us</title></circle>
+<circle class="dot" cx="199.2" cy="110.8" r="2.6" fill="var(--c-b)"><title>pulse 75: 172.9 us</title></circle>
+<circle class="dot" cx="222.8" cy="101.3" r="2.6" fill="var(--c-b)"><title>pulse 76: 177.4 us</title></circle>
+<circle class="dot" cx="302.0" cy="106.7" r="2.6" fill="var(--c-b)"><title>pulse 77: 192.6 us</title></circle>
+<circle class="dot" cx="236.5" cy="97.2" r="2.6" fill="var(--c-b)"><title>pulse 78: 180.0 us</title></circle>
+<circle class="dot" cx="180.5" cy="102.7" r="2.6" fill="var(--c-b)"><title>pulse 79: 169.3 us</title></circle>
+<circle class="dot" cx="185.6" cy="108.0" r="2.6" fill="var(--c-b)"><title>pulse 80: 170.3 us</title></circle>
+<circle class="dot" cx="179.1" cy="98.6" r="2.6" fill="var(--c-b)"><title>pulse 81: 169.0 us</title></circle>
+<circle class="dot" cx="186.3" cy="104.0" r="2.6" fill="var(--c-b)"><title>pulse 82: 170.4 us</title></circle>
+<circle class="dot" cx="169.1" cy="109.4" r="2.6" fill="var(--c-b)"><title>pulse 83: 167.1 us</title></circle>
+<circle class="dot" cx="230.8" cy="100.0" r="2.6" fill="var(--c-b)"><title>pulse 84: 178.9 us</title></circle>
+<circle class="dot" cx="226.5" cy="105.3" r="2.6" fill="var(--c-b)"><title>pulse 85: 178.1 us</title></circle>
+<circle class="dot" cx="218.1" cy="110.8" r="2.6" fill="var(--c-b)"><title>pulse 86: 176.5 us</title></circle>
+<circle class="dot" cx="184.8" cy="101.3" r="2.6" fill="var(--c-b)"><title>pulse 87: 170.1 us</title></circle>
+<circle class="dot" cx="185.4" cy="106.7" r="2.6" fill="var(--c-b)"><title>pulse 88: 170.2 us</title></circle>
+<circle class="dot" cx="191.2" cy="97.2" r="2.6" fill="var(--c-b)"><title>pulse 89: 171.3 us</title></circle>
+<circle class="dot" cx="230.2" cy="102.7" r="2.6" fill="var(--c-b)"><title>pulse 90: 178.8 us</title></circle>
+<circle class="dot" cx="221.4" cy="108.0" r="2.6" fill="var(--c-b)"><title>pulse 91: 177.1 us</title></circle>
+<circle class="dot" cx="220.5" cy="98.6" r="2.6" fill="var(--c-b)"><title>pulse 92: 177.0 us</title></circle>
+<circle class="dot" cx="213.4" cy="104.0" r="2.6" fill="var(--c-b)"><title>pulse 93: 175.6 us</title></circle>
+<circle class="dot" cx="378.0" cy="109.4" r="2.6" fill="var(--c-b)"><title>pulse 94: 207.1 us</title></circle>
+<circle class="dot" cx="162.6" cy="100.0" r="2.6" fill="var(--c-b)"><title>pulse 95: 165.9 us</title></circle>
+<circle class="dot" cx="236.0" cy="105.3" r="2.6" fill="var(--c-b)"><title>pulse 96: 179.9 us</title></circle>
+<circle class="dot" cx="165.4" cy="110.8" r="2.6" fill="var(--c-b)"><title>pulse 97: 166.4 us</title></circle>
+<circle class="dot" cx="197.2" cy="101.3" r="2.6" fill="var(--c-b)"><title>pulse 98: 172.5 us</title></circle>
+<circle class="dot" cx="187.9" cy="106.7" r="2.6" fill="var(--c-b)"><title>pulse 99: 170.7 us</title></circle>
+<circle class="dot" cx="237.5" cy="97.2" r="2.6" fill="var(--c-b)"><title>pulse 100: 180.2 us</title></circle>
+<circle class="dot" cx="196.2" cy="102.7" r="2.6" fill="var(--c-b)"><title>pulse 101: 172.3 us</title></circle>
+<circle class="dot" cx="223.5" cy="108.0" r="2.6" fill="var(--c-b)"><title>pulse 102: 177.5 us</title></circle>
+<circle class="dot" cx="215.8" cy="98.6" r="2.6" fill="var(--c-b)"><title>pulse 103: 176.1 us</title></circle>
+<circle class="dot" cx="173.8" cy="104.0" r="2.6" fill="var(--c-b)"><title>pulse 104: 168.0 us</title></circle>
+<circle class="dot" cx="238.4" cy="109.4" r="2.6" fill="var(--c-b)"><title>pulse 105: 180.4 us</title></circle>
+<circle class="dot" cx="220.3" cy="100.0" r="2.6" fill="var(--c-b)"><title>pulse 106: 176.9 us</title></circle>
+<circle class="dot" cx="252.9" cy="105.3" r="2.6" fill="var(--c-b)"><title>pulse 107: 183.2 us</title></circle>
+<circle class="dot" cx="230.6" cy="110.8" r="2.6" fill="var(--c-b)"><title>pulse 108: 178.9 us</title></circle>
+<circle class="dot" cx="240.8" cy="101.3" r="2.6" fill="var(--c-b)"><title>pulse 109: 180.9 us</title></circle>
+<circle class="dot" cx="174.4" cy="106.7" r="2.6" fill="var(--c-b)"><title>pulse 110: 168.1 us</title></circle>
+<circle class="dot" cx="241.4" cy="97.2" r="2.6" fill="var(--c-b)"><title>pulse 111: 181.0 us</title></circle>
+<circle class="dot" cx="207.7" cy="102.7" r="2.6" fill="var(--c-b)"><title>pulse 112: 174.5 us</title></circle>
+<circle class="dot" cx="229.4" cy="108.0" r="2.6" fill="var(--c-b)"><title>pulse 113: 178.7 us</title></circle>
+<circle class="dot" cx="183.1" cy="98.6" r="2.6" fill="var(--c-b)"><title>pulse 114: 169.8 us</title></circle>
+<circle class="dot" cx="250.6" cy="104.0" r="2.6" fill="var(--c-b)"><title>pulse 115: 182.7 us</title></circle>
+<line class="med" x1="219.5" y1="85.0" x2="219.5" y2="123.0" stroke="var(--c-b)"/>
+<text class="medlab" x="219.5" y="81.0" text-anchor="middle" fill="var(--c-b)">177</text>
+<text class="nlab" x="714" y="108.0">n=115</text>
+<text class="axlab" x="419" y="162" text-anchor="middle">microseconds</text>
+</svg></div>
+  <figcaption><b>Run 5, before and after removing the host's share.</b> Host issue skew that run
+  was median −0.07 µs but sd 11.07, with one 64 µs excursion — a firing thread descheduled a
+  handful of times over 60 s. Subtract it per pulse and every apparent device excursion
+  disappears, and sd halves from 12.4 to 6.2 µs.</figcaption>
+</figure>
+<div class="col" style="margin-top:30px">
+  <p>The same subtraction does <em>not</em> rescue run 3 or the tail of run 1. Those survive it,
+  which is how we know the slower regime is real and not a scheduling artefact.</p>
+</div>
+</section>
+
+<section>
+<div class="col">
+  <span class="sectnum">The comparison that matters for experiment code</span>
+  <h2>Firing in sequence costs 24 µs and six times the jitter</h2>
+  <p>Most experiment code that drives two boxes writes to one, then the other. Running the same
+  train that way puts the second device's edge further out — by almost exactly the first device's
+  write-call duration.</p>
+</div>
+<figure>
+  <div class="figbox"><svg viewBox="0 0 760 164" role="img" class="fig" preserveAspectRatio="xMidYMid meet">
+<line class="grid" x1="132.0" y1="26" x2="132.0" y2="130"/>
+<text class="tick" x="132.0" y="148" text-anchor="middle">150</text>
+<line class="grid" x1="195.8" y1="26" x2="195.8" y2="130"/>
+<text class="tick" x="195.8" y="148" text-anchor="middle">180</text>
+<line class="grid" x1="259.6" y1="26" x2="259.6" y2="130"/>
+<text class="tick" x="259.6" y="148" text-anchor="middle">210</text>
+<line class="grid" x1="323.3" y1="26" x2="323.3" y2="130"/>
+<text class="tick" x="323.3" y="148" text-anchor="middle">240</text>
+<line class="grid" x1="387.1" y1="26" x2="387.1" y2="130"/>
+<text class="tick" x="387.1" y="148" text-anchor="middle">270</text>
+<line class="grid" x1="450.9" y1="26" x2="450.9" y2="130"/>
+<text class="tick" x="450.9" y="148" text-anchor="middle">300</text>
+<line class="grid" x1="514.7" y1="26" x2="514.7" y2="130"/>
+<text class="tick" x="514.7" y="148" text-anchor="middle">330</text>
+<line class="grid" x1="578.4" y1="26" x2="578.4" y2="130"/>
+<text class="tick" x="578.4" y="148" text-anchor="middle">360</text>
+<line class="grid" x1="642.2" y1="26" x2="642.2" y2="130"/>
+<text class="tick" x="642.2" y="148" text-anchor="middle">390</text>
+<line class="grid" x1="706.0" y1="26" x2="706.0" y2="130"/>
+<text class="tick" x="706.0" y="148" text-anchor="middle">420</text>
+<text class="rowlab" x="118" y="51.0" text-anchor="end">parallel</text>
+<text class="rowsub" x="118" y="65.0" text-anchor="end">thread per device</text>
+<line class="axisrow" x1="132" y1="52.0" x2="706" y2="52.0"/>
+<circle class="dot" cx="193.1" cy="45.2" r="2.6" fill="var(--c-b)"><title>pulse 1: 178.7 us</title></circle>
+<circle class="dot" cx="208.7" cy="50.6" r="2.6" fill="var(--c-b)"><title>pulse 2: 186.1 us</title></circle>
+<circle class="dot" cx="197.6" cy="56.0" r="2.6" fill="var(--c-b)"><title>pulse 3: 180.9 us</title></circle>
+<circle class="dot" cx="195.9" cy="46.6" r="2.6" fill="var(--c-b)"><title>pulse 4: 180.1 us</title></circle>
+<circle class="dot" cx="188.0" cy="52.0" r="2.6" fill="var(--c-b)"><title>pulse 5: 176.3 us</title></circle>
+<circle class="dot" cx="191.8" cy="57.4" r="2.6" fill="var(--c-b)"><title>pulse 6: 178.1 us</title></circle>
+<circle class="dot" cx="189.6" cy="48.0" r="2.6" fill="var(--c-b)"><title>pulse 7: 177.1 us</title></circle>
+<circle class="dot" cx="188.6" cy="53.4" r="2.6" fill="var(--c-b)"><title>pulse 8: 176.6 us</title></circle>
+<circle class="dot" cx="195.8" cy="58.8" r="2.6" fill="var(--c-b)"><title>pulse 9: 180.0 us</title></circle>
+<circle class="dot" cx="185.9" cy="49.3" r="2.6" fill="var(--c-b)"><title>pulse 10: 175.4 us</title></circle>
+<circle class="dot" cx="188.4" cy="54.7" r="2.6" fill="var(--c-b)"><title>pulse 11: 176.5 us</title></circle>
+<circle class="dot" cx="184.8" cy="45.2" r="2.6" fill="var(--c-b)"><title>pulse 12: 174.9 us</title></circle>
+<circle class="dot" cx="195.7" cy="50.6" r="2.6" fill="var(--c-b)"><title>pulse 13: 179.9 us</title></circle>
+<circle class="dot" cx="182.1" cy="56.0" r="2.6" fill="var(--c-b)"><title>pulse 14: 173.6 us</title></circle>
+<circle class="dot" cx="209.3" cy="46.6" r="2.6" fill="var(--c-b)"><title>pulse 15: 186.4 us</title></circle>
+<circle class="dot" cx="205.6" cy="52.0" r="2.6" fill="var(--c-b)"><title>pulse 16: 184.6 us</title></circle>
+<circle class="dot" cx="190.8" cy="57.4" r="2.6" fill="var(--c-b)"><title>pulse 17: 177.7 us</title></circle>
+<circle class="dot" cx="220.9" cy="48.0" r="2.6" fill="var(--c-b)"><title>pulse 18: 191.8 us</title></circle>
+<circle class="dot" cx="188.0" cy="53.4" r="2.6" fill="var(--c-b)"><title>pulse 19: 176.4 us</title></circle>
+<circle class="dot" cx="210.5" cy="58.8" r="2.6" fill="var(--c-b)"><title>pulse 20: 186.9 us</title></circle>
+<circle class="dot" cx="196.2" cy="49.3" r="2.6" fill="var(--c-b)"><title>pulse 21: 180.2 us</title></circle>
+<circle class="dot" cx="185.5" cy="54.7" r="2.6" fill="var(--c-b)"><title>pulse 22: 175.1 us</title></circle>
+<circle class="dot" cx="198.3" cy="45.2" r="2.6" fill="var(--c-b)"><title>pulse 23: 181.2 us</title></circle>
+<circle class="dot" cx="198.1" cy="50.6" r="2.6" fill="var(--c-b)"><title>pulse 24: 181.1 us</title></circle>
+<circle class="dot" cx="191.3" cy="56.0" r="2.6" fill="var(--c-b)"><title>pulse 25: 177.9 us</title></circle>
+<circle class="dot" cx="199.7" cy="46.6" r="2.6" fill="var(--c-b)"><title>pulse 26: 181.9 us</title></circle>
+<circle class="dot" cx="195.1" cy="52.0" r="2.6" fill="var(--c-b)"><title>pulse 27: 179.7 us</title></circle>
+<circle class="dot" cx="215.8" cy="57.4" r="2.6" fill="var(--c-b)"><title>pulse 28: 189.4 us</title></circle>
+<circle class="dot" cx="197.9" cy="48.0" r="2.6" fill="var(--c-b)"><title>pulse 29: 181.0 us</title></circle>
+<circle class="dot" cx="197.1" cy="53.4" r="2.6" fill="var(--c-b)"><title>pulse 30: 180.6 us</title></circle>
+<circle class="dot" cx="185.9" cy="58.8" r="2.6" fill="var(--c-b)"><title>pulse 31: 175.4 us</title></circle>
+<circle class="dot" cx="205.3" cy="49.3" r="2.6" fill="var(--c-b)"><title>pulse 32: 184.5 us</title></circle>
+<circle class="dot" cx="182.6" cy="54.7" r="2.6" fill="var(--c-b)"><title>pulse 33: 173.8 us</title></circle>
+<circle class="dot" cx="202.7" cy="45.2" r="2.6" fill="var(--c-b)"><title>pulse 34: 183.2 us</title></circle>
+<circle class="dot" cx="194.1" cy="50.6" r="2.6" fill="var(--c-b)"><title>pulse 35: 179.2 us</title></circle>
+<circle class="dot" cx="194.2" cy="56.0" r="2.6" fill="var(--c-b)"><title>pulse 36: 179.3 us</title></circle>
+<circle class="dot" cx="188.6" cy="46.6" r="2.6" fill="var(--c-b)"><title>pulse 37: 176.6 us</title></circle>
+<circle class="dot" cx="195.2" cy="52.0" r="2.6" fill="var(--c-b)"><title>pulse 38: 179.7 us</title></circle>
+<circle class="dot" cx="203.2" cy="57.4" r="2.6" fill="var(--c-b)"><title>pulse 39: 183.5 us</title></circle>
+<circle class="dot" cx="222.6" cy="48.0" r="2.6" fill="var(--c-b)"><title>pulse 40: 192.6 us</title></circle>
+<circle class="dot" cx="197.6" cy="53.4" r="2.6" fill="var(--c-b)"><title>pulse 41: 180.9 us</title></circle>
+<circle class="dot" cx="179.2" cy="58.8" r="2.6" fill="var(--c-b)"><title>pulse 42: 172.2 us</title></circle>
+<circle class="dot" cx="201.5" cy="49.3" r="2.6" fill="var(--c-b)"><title>pulse 43: 182.7 us</title></circle>
+<circle class="dot" cx="187.0" cy="54.7" r="2.6" fill="var(--c-b)"><title>pulse 44: 175.9 us</title></circle>
+<circle class="dot" cx="206.8" cy="45.2" r="2.6" fill="var(--c-b)"><title>pulse 45: 185.2 us</title></circle>
+<circle class="dot" cx="199.3" cy="50.6" r="2.6" fill="var(--c-b)"><title>pulse 46: 181.6 us</title></circle>
+<circle class="dot" cx="193.5" cy="56.0" r="2.6" fill="var(--c-b)"><title>pulse 47: 178.9 us</title></circle>
+<circle class="dot" cx="195.9" cy="46.6" r="2.6" fill="var(--c-b)"><title>pulse 48: 180.1 us</title></circle>
+<circle class="dot" cx="205.8" cy="52.0" r="2.6" fill="var(--c-b)"><title>pulse 49: 184.7 us</title></circle>
+<circle class="dot" cx="201.9" cy="57.4" r="2.6" fill="var(--c-b)"><title>pulse 50: 182.9 us</title></circle>
+<circle class="dot" cx="202.5" cy="48.0" r="2.6" fill="var(--c-b)"><title>pulse 51: 183.2 us</title></circle>
+<circle class="dot" cx="197.7" cy="53.4" r="2.6" fill="var(--c-b)"><title>pulse 52: 180.9 us</title></circle>
+<circle class="dot" cx="191.2" cy="58.8" r="2.6" fill="var(--c-b)"><title>pulse 53: 177.8 us</title></circle>
+<circle class="dot" cx="191.1" cy="49.3" r="2.6" fill="var(--c-b)"><title>pulse 54: 177.8 us</title></circle>
+<circle class="dot" cx="193.3" cy="54.7" r="2.6" fill="var(--c-b)"><title>pulse 55: 178.8 us</title></circle>
+<circle class="dot" cx="180.0" cy="45.2" r="2.6" fill="var(--c-b)"><title>pulse 56: 172.6 us</title></circle>
+<circle class="dot" cx="196.8" cy="50.6" r="2.6" fill="var(--c-b)"><title>pulse 57: 180.5 us</title></circle>
+<circle class="dot" cx="199.7" cy="56.0" r="2.6" fill="var(--c-b)"><title>pulse 58: 181.8 us</title></circle>
+<circle class="dot" cx="209.0" cy="46.6" r="2.6" fill="var(--c-b)"><title>pulse 59: 186.2 us</title></circle>
+<circle class="dot" cx="209.0" cy="52.0" r="2.6" fill="var(--c-b)"><title>pulse 60: 186.2 us</title></circle>
+<circle class="dot" cx="188.7" cy="57.4" r="2.6" fill="var(--c-b)"><title>pulse 61: 176.7 us</title></circle>
+<circle class="dot" cx="198.6" cy="48.0" r="2.6" fill="var(--c-b)"><title>pulse 62: 181.3 us</title></circle>
+<circle class="dot" cx="187.3" cy="53.4" r="2.6" fill="var(--c-b)"><title>pulse 63: 176.0 us</title></circle>
+<circle class="dot" cx="189.0" cy="58.8" r="2.6" fill="var(--c-b)"><title>pulse 64: 176.8 us</title></circle>
+<circle class="dot" cx="206.4" cy="49.3" r="2.6" fill="var(--c-b)"><title>pulse 65: 185.0 us</title></circle>
+<circle class="dot" cx="194.2" cy="54.7" r="2.6" fill="var(--c-b)"><title>pulse 66: 179.3 us</title></circle>
+<circle class="dot" cx="196.5" cy="45.2" r="2.6" fill="var(--c-b)"><title>pulse 67: 180.3 us</title></circle>
+<circle class="dot" cx="201.7" cy="50.6" r="2.6" fill="var(--c-b)"><title>pulse 68: 182.8 us</title></circle>
+<circle class="dot" cx="174.1" cy="56.0" r="2.6" fill="var(--c-b)"><title>pulse 69: 169.8 us</title></circle>
+<circle class="dot" cx="191.5" cy="46.6" r="2.6" fill="var(--c-b)"><title>pulse 70: 178.0 us</title></circle>
+<circle class="dot" cx="186.5" cy="52.0" r="2.6" fill="var(--c-b)"><title>pulse 71: 175.6 us</title></circle>
+<circle class="dot" cx="197.3" cy="57.4" r="2.6" fill="var(--c-b)"><title>pulse 72: 180.7 us</title></circle>
+<circle class="dot" cx="203.0" cy="48.0" r="2.6" fill="var(--c-b)"><title>pulse 73: 183.4 us</title></circle>
+<circle class="dot" cx="190.4" cy="53.4" r="2.6" fill="var(--c-b)"><title>pulse 74: 177.4 us</title></circle>
+<circle class="dot" cx="201.8" cy="58.8" r="2.6" fill="var(--c-b)"><title>pulse 75: 182.8 us</title></circle>
+<circle class="dot" cx="206.4" cy="49.3" r="2.6" fill="var(--c-b)"><title>pulse 76: 185.0 us</title></circle>
+<circle class="dot" cx="198.0" cy="54.7" r="2.6" fill="var(--c-b)"><title>pulse 77: 181.1 us</title></circle>
+<circle class="dot" cx="201.0" cy="45.2" r="2.6" fill="var(--c-b)"><title>pulse 78: 182.4 us</title></circle>
+<circle class="dot" cx="205.2" cy="50.6" r="2.6" fill="var(--c-b)"><title>pulse 79: 184.4 us</title></circle>
+<circle class="dot" cx="198.5" cy="56.0" r="2.6" fill="var(--c-b)"><title>pulse 80: 181.3 us</title></circle>
+<circle class="dot" cx="196.0" cy="46.6" r="2.6" fill="var(--c-b)"><title>pulse 81: 180.1 us</title></circle>
+<circle class="dot" cx="194.2" cy="52.0" r="2.6" fill="var(--c-b)"><title>pulse 82: 179.3 us</title></circle>
+<circle class="dot" cx="203.3" cy="57.4" r="2.6" fill="var(--c-b)"><title>pulse 83: 183.6 us</title></circle>
+<circle class="dot" cx="199.4" cy="48.0" r="2.6" fill="var(--c-b)"><title>pulse 84: 181.7 us</title></circle>
+<circle class="dot" cx="181.2" cy="53.4" r="2.6" fill="var(--c-b)"><title>pulse 85: 173.2 us</title></circle>
+<circle class="dot" cx="189.1" cy="58.8" r="2.6" fill="var(--c-b)"><title>pulse 86: 176.8 us</title></circle>
+<circle class="dot" cx="195.7" cy="49.3" r="2.6" fill="var(--c-b)"><title>pulse 87: 180.0 us</title></circle>
+<circle class="dot" cx="184.4" cy="54.7" r="2.6" fill="var(--c-b)"><title>pulse 88: 174.6 us</title></circle>
+<circle class="dot" cx="208.4" cy="45.2" r="2.6" fill="var(--c-b)"><title>pulse 89: 186.0 us</title></circle>
+<circle class="dot" cx="182.9" cy="50.6" r="2.6" fill="var(--c-b)"><title>pulse 90: 174.0 us</title></circle>
+<circle class="dot" cx="179.1" cy="56.0" r="2.6" fill="var(--c-b)"><title>pulse 91: 172.1 us</title></circle>
+<circle class="dot" cx="195.2" cy="46.6" r="2.6" fill="var(--c-b)"><title>pulse 92: 179.7 us</title></circle>
+<circle class="dot" cx="209.3" cy="52.0" r="2.6" fill="var(--c-b)"><title>pulse 93: 186.4 us</title></circle>
+<circle class="dot" cx="235.3" cy="57.4" r="2.6" fill="var(--c-b)"><title>pulse 94: 198.6 us</title></circle>
+<circle class="dot" cx="203.8" cy="48.0" r="2.6" fill="var(--c-b)"><title>pulse 95: 183.8 us</title></circle>
+<circle class="dot" cx="191.8" cy="53.4" r="2.6" fill="var(--c-b)"><title>pulse 96: 178.1 us</title></circle>
+<circle class="dot" cx="201.3" cy="58.8" r="2.6" fill="var(--c-b)"><title>pulse 97: 182.6 us</title></circle>
+<circle class="dot" cx="188.6" cy="49.3" r="2.6" fill="var(--c-b)"><title>pulse 98: 176.6 us</title></circle>
+<circle class="dot" cx="220.4" cy="54.7" r="2.6" fill="var(--c-b)"><title>pulse 99: 191.6 us</title></circle>
+<circle class="dot" cx="198.9" cy="45.2" r="2.6" fill="var(--c-b)"><title>pulse 100: 181.5 us</title></circle>
+<circle class="dot" cx="196.4" cy="50.6" r="2.6" fill="var(--c-b)"><title>pulse 101: 180.3 us</title></circle>
+<circle class="dot" cx="207.3" cy="56.0" r="2.6" fill="var(--c-b)"><title>pulse 102: 185.4 us</title></circle>
+<circle class="dot" cx="212.3" cy="46.6" r="2.6" fill="var(--c-b)"><title>pulse 103: 187.8 us</title></circle>
+<circle class="dot" cx="216.5" cy="52.0" r="2.6" fill="var(--c-b)"><title>pulse 104: 189.7 us</title></circle>
+<circle class="dot" cx="190.2" cy="57.4" r="2.6" fill="var(--c-b)"><title>pulse 105: 177.4 us</title></circle>
+<circle class="dot" cx="205.7" cy="48.0" r="2.6" fill="var(--c-b)"><title>pulse 106: 184.7 us</title></circle>
+<circle class="dot" cx="206.8" cy="53.4" r="2.6" fill="var(--c-b)"><title>pulse 107: 185.2 us</title></circle>
+<circle class="dot" cx="206.0" cy="58.8" r="2.6" fill="var(--c-b)"><title>pulse 108: 184.8 us</title></circle>
+<circle class="dot" cx="208.3" cy="49.3" r="2.6" fill="var(--c-b)"><title>pulse 109: 185.9 us</title></circle>
+<circle class="dot" cx="197.3" cy="54.7" r="2.6" fill="var(--c-b)"><title>pulse 110: 180.7 us</title></circle>
+<circle class="dot" cx="197.7" cy="45.2" r="2.6" fill="var(--c-b)"><title>pulse 111: 180.9 us</title></circle>
+<circle class="dot" cx="180.2" cy="50.6" r="2.6" fill="var(--c-b)"><title>pulse 112: 172.7 us</title></circle>
+<circle class="dot" cx="200.6" cy="56.0" r="2.6" fill="var(--c-b)"><title>pulse 113: 182.3 us</title></circle>
+<circle class="dot" cx="197.6" cy="46.6" r="2.6" fill="var(--c-b)"><title>pulse 114: 180.8 us</title></circle>
+<circle class="dot" cx="193.9" cy="52.0" r="2.6" fill="var(--c-b)"><title>pulse 115: 179.1 us</title></circle>
+<line class="med" x1="197.1" y1="33.0" x2="197.1" y2="71.0" stroke="var(--c-b)"/>
+<text class="medlab" x="197.1" y="29.0" text-anchor="middle" fill="var(--c-b)">181</text>
+<text class="nlab" x="714" y="56.0">n=115</text>
+<text class="rowlab" x="118" y="103.0" text-anchor="end">sequential</text>
+<text class="rowsub" x="118" y="117.0" text-anchor="end">one thread, in order</text>
+<line class="axisrow" x1="132" y1="104.0" x2="706" y2="104.0"/>
+<circle class="dot" cx="248.6" cy="97.2" r="2.6" fill="var(--c-a)"><title>pulse 1: 204.8 us</title></circle>
+<circle class="dot" cx="244.3" cy="102.7" r="2.6" fill="var(--c-a)"><title>pulse 2: 202.8 us</title></circle>
+<circle class="dot" cx="233.3" cy="108.0" r="2.6" fill="var(--c-a)"><title>pulse 3: 197.7 us</title></circle>
+<circle class="dot" cx="240.2" cy="98.6" r="2.6" fill="var(--c-a)"><title>pulse 4: 200.9 us</title></circle>
+<circle class="dot" cx="277.9" cy="104.0" r="2.6" fill="var(--c-a)"><title>pulse 5: 218.6 us</title></circle>
+<circle class="dot" cx="238.3" cy="109.4" r="2.6" fill="var(--c-a)"><title>pulse 6: 200.0 us</title></circle>
+<circle class="dot" cx="227.1" cy="100.0" r="2.6" fill="var(--c-a)"><title>pulse 7: 194.8 us</title></circle>
+<circle class="dot" cx="274.5" cy="105.3" r="2.6" fill="var(--c-a)"><title>pulse 8: 217.0 us</title></circle>
+<circle class="dot" cx="259.2" cy="110.8" r="2.6" fill="var(--c-a)"><title>pulse 9: 209.8 us</title></circle>
+<circle class="dot" cx="240.2" cy="101.3" r="2.6" fill="var(--c-a)"><title>pulse 10: 200.9 us</title></circle>
+<circle class="dot" cx="285.5" cy="106.7" r="2.6" fill="var(--c-a)"><title>pulse 11: 222.2 us</title></circle>
+<circle class="dot" cx="245.3" cy="97.2" r="2.6" fill="var(--c-a)"><title>pulse 12: 203.3 us</title></circle>
+<circle class="dot" cx="235.4" cy="102.7" r="2.6" fill="var(--c-a)"><title>pulse 13: 198.6 us</title></circle>
+<circle class="dot" cx="260.2" cy="108.0" r="2.6" fill="var(--c-a)"><title>pulse 14: 210.3 us</title></circle>
+<circle class="dot" cx="242.0" cy="98.6" r="2.6" fill="var(--c-a)"><title>pulse 15: 201.7 us</title></circle>
+<circle class="dot" cx="232.2" cy="104.0" r="2.6" fill="var(--c-a)"><title>pulse 16: 197.1 us</title></circle>
+<circle class="dot" cx="247.4" cy="109.4" r="2.6" fill="var(--c-a)"><title>pulse 17: 204.3 us</title></circle>
+<circle class="dot" cx="242.9" cy="100.0" r="2.6" fill="var(--c-a)"><title>pulse 18: 202.2 us</title></circle>
+<circle class="dot" cx="221.5" cy="105.3" r="2.6" fill="var(--c-a)"><title>pulse 19: 192.1 us</title></circle>
+<circle class="dot" cx="295.6" cy="110.8" r="2.6" fill="var(--c-a)"><title>pulse 20: 226.9 us</title></circle>
+<circle class="dot" cx="286.7" cy="101.3" r="2.6" fill="var(--c-a)"><title>pulse 21: 222.8 us</title></circle>
+<circle class="dot" cx="265.3" cy="106.7" r="2.6" fill="var(--c-a)"><title>pulse 22: 212.7 us</title></circle>
+<circle class="dot" cx="243.8" cy="97.2" r="2.6" fill="var(--c-a)"><title>pulse 23: 202.6 us</title></circle>
+<circle class="dot" cx="261.6" cy="102.7" r="2.6" fill="var(--c-a)"><title>pulse 24: 210.9 us</title></circle>
+<circle class="dot" cx="268.8" cy="108.0" r="2.6" fill="var(--c-a)"><title>pulse 25: 214.3 us</title></circle>
+<circle class="dot" cx="254.7" cy="98.6" r="2.6" fill="var(--c-a)"><title>pulse 26: 207.7 us</title></circle>
+<circle class="dot" cx="234.2" cy="104.0" r="2.6" fill="var(--c-a)"><title>pulse 27: 198.1 us</title></circle>
+<circle class="dot" cx="247.1" cy="109.4" r="2.6" fill="var(--c-a)"><title>pulse 28: 204.1 us</title></circle>
+<circle class="dot" cx="228.9" cy="100.0" r="2.6" fill="var(--c-a)"><title>pulse 29: 195.6 us</title></circle>
+<circle class="dot" cx="247.5" cy="105.3" r="2.6" fill="var(--c-a)"><title>pulse 30: 204.3 us</title></circle>
+<circle class="dot" cx="262.2" cy="110.8" r="2.6" fill="var(--c-a)"><title>pulse 31: 211.2 us</title></circle>
+<circle class="dot" cx="240.4" cy="101.3" r="2.6" fill="var(--c-a)"><title>pulse 32: 201.0 us</title></circle>
+<circle class="dot" cx="235.8" cy="106.7" r="2.6" fill="var(--c-a)"><title>pulse 33: 198.8 us</title></circle>
+<circle class="dot" cx="248.1" cy="97.2" r="2.6" fill="var(--c-a)"><title>pulse 34: 204.6 us</title></circle>
+<circle class="dot" cx="263.9" cy="102.7" r="2.6" fill="var(--c-a)"><title>pulse 35: 212.1 us</title></circle>
+<circle class="dot" cx="255.9" cy="108.0" r="2.6" fill="var(--c-a)"><title>pulse 36: 208.3 us</title></circle>
+<circle class="dot" cx="247.2" cy="98.6" r="2.6" fill="var(--c-a)"><title>pulse 37: 204.2 us</title></circle>
+<circle class="dot" cx="239.1" cy="104.0" r="2.6" fill="var(--c-a)"><title>pulse 38: 200.4 us</title></circle>
+<circle class="dot" cx="274.9" cy="109.4" r="2.6" fill="var(--c-a)"><title>pulse 39: 217.2 us</title></circle>
+<circle class="dot" cx="231.6" cy="100.0" r="2.6" fill="var(--c-a)"><title>pulse 40: 196.9 us</title></circle>
+<circle class="dot" cx="313.0" cy="105.3" r="2.6" fill="var(--c-a)"><title>pulse 41: 235.1 us</title></circle>
+<circle class="dot" cx="245.3" cy="110.8" r="2.6" fill="var(--c-a)"><title>pulse 42: 203.3 us</title></circle>
+<circle class="dot" cx="296.0" cy="101.3" r="2.6" fill="var(--c-a)"><title>pulse 43: 227.1 us</title></circle>
+<circle class="dot" cx="251.3" cy="106.7" r="2.6" fill="var(--c-a)"><title>pulse 44: 206.1 us</title></circle>
+<circle class="dot" cx="227.2" cy="97.2" r="2.6" fill="var(--c-a)"><title>pulse 45: 194.8 us</title></circle>
+<circle class="dot" cx="240.7" cy="102.7" r="2.6" fill="var(--c-a)"><title>pulse 46: 201.1 us</title></circle>
+<circle class="dot" cx="232.8" cy="108.0" r="2.6" fill="var(--c-a)"><title>pulse 47: 197.4 us</title></circle>
+<circle class="dot" cx="253.1" cy="98.6" r="2.6" fill="var(--c-a)"><title>pulse 48: 207.0 us</title></circle>
+<circle class="dot" cx="234.2" cy="104.0" r="2.6" fill="var(--c-a)"><title>pulse 49: 198.1 us</title></circle>
+<circle class="dot" cx="237.5" cy="109.4" r="2.6" fill="var(--c-a)"><title>pulse 50: 199.6 us</title></circle>
+<circle class="dot" cx="378.2" cy="100.0" r="2.6" fill="var(--c-a)"><title>pulse 51: 265.8 us</title></circle>
+<circle class="dot" cx="225.5" cy="105.3" r="2.6" fill="var(--c-a)"><title>pulse 52: 194.0 us</title></circle>
+<circle class="dot" cx="266.1" cy="110.8" r="2.6" fill="var(--c-a)"><title>pulse 53: 213.1 us</title></circle>
+<circle class="dot" cx="233.0" cy="101.3" r="2.6" fill="var(--c-a)"><title>pulse 54: 197.5 us</title></circle>
+<circle class="dot" cx="261.0" cy="106.7" r="2.6" fill="var(--c-a)"><title>pulse 55: 210.7 us</title></circle>
+<circle class="dot" cx="236.9" cy="97.2" r="2.6" fill="var(--c-a)"><title>pulse 56: 199.4 us</title></circle>
+<circle class="dot" cx="250.8" cy="102.7" r="2.6" fill="var(--c-a)"><title>pulse 57: 205.9 us</title></circle>
+<circle class="dot" cx="593.8" cy="108.0" r="2.6" fill="var(--c-a)"><title>pulse 58: 367.2 us</title></circle>
+<circle class="dot" cx="259.9" cy="98.6" r="2.6" fill="var(--c-a)"><title>pulse 59: 210.1 us</title></circle>
+<circle class="dot" cx="242.6" cy="104.0" r="2.6" fill="var(--c-a)"><title>pulse 60: 202.0 us</title></circle>
+<circle class="dot" cx="255.3" cy="109.4" r="2.6" fill="var(--c-a)"><title>pulse 61: 208.0 us</title></circle>
+<circle class="dot" cx="244.7" cy="100.0" r="2.6" fill="var(--c-a)"><title>pulse 62: 203.0 us</title></circle>
+<circle class="dot" cx="245.7" cy="105.3" r="2.6" fill="var(--c-a)"><title>pulse 63: 203.5 us</title></circle>
+<circle class="dot" cx="239.5" cy="110.8" r="2.6" fill="var(--c-a)"><title>pulse 64: 200.6 us</title></circle>
+<circle class="dot" cx="242.6" cy="101.3" r="2.6" fill="var(--c-a)"><title>pulse 65: 202.0 us</title></circle>
+<circle class="dot" cx="234.2" cy="106.7" r="2.6" fill="var(--c-a)"><title>pulse 66: 198.1 us</title></circle>
+<circle class="dot" cx="337.8" cy="97.2" r="2.6" fill="var(--c-a)"><title>pulse 67: 246.8 us</title></circle>
+<circle class="dot" cx="239.4" cy="102.7" r="2.6" fill="var(--c-a)"><title>pulse 68: 200.5 us</title></circle>
+<circle class="dot" cx="329.4" cy="108.0" r="2.6" fill="var(--c-a)"><title>pulse 69: 242.9 us</title></circle>
+<circle class="dot" cx="240.4" cy="98.6" r="2.6" fill="var(--c-a)"><title>pulse 70: 201.0 us</title></circle>
+<circle class="dot" cx="255.6" cy="104.0" r="2.6" fill="var(--c-a)"><title>pulse 71: 208.2 us</title></circle>
+<circle class="dot" cx="287.4" cy="109.4" r="2.6" fill="var(--c-a)"><title>pulse 72: 223.1 us</title></circle>
+<circle class="dot" cx="269.6" cy="100.0" r="2.6" fill="var(--c-a)"><title>pulse 73: 214.7 us</title></circle>
+<circle class="dot" cx="232.5" cy="105.3" r="2.6" fill="var(--c-a)"><title>pulse 74: 197.3 us</title></circle>
+<circle class="dot" cx="674.4" cy="110.8" r="2.6" fill="var(--c-a)"><title>pulse 75: 405.1 us</title></circle>
+<circle class="dot" cx="246.7" cy="101.3" r="2.6" fill="var(--c-a)"><title>pulse 76: 204.0 us</title></circle>
+<circle class="dot" cx="242.0" cy="106.7" r="2.6" fill="var(--c-a)"><title>pulse 77: 201.8 us</title></circle>
+<circle class="dot" cx="252.5" cy="97.2" r="2.6" fill="var(--c-a)"><title>pulse 78: 206.7 us</title></circle>
+<circle class="dot" cx="260.6" cy="102.7" r="2.6" fill="var(--c-a)"><title>pulse 79: 210.5 us</title></circle>
+<circle class="dot" cx="249.8" cy="108.0" r="2.6" fill="var(--c-a)"><title>pulse 80: 205.4 us</title></circle>
+<circle class="dot" cx="246.4" cy="98.6" r="2.6" fill="var(--c-a)"><title>pulse 81: 203.8 us</title></circle>
+<circle class="dot" cx="245.1" cy="104.0" r="2.6" fill="var(--c-a)"><title>pulse 82: 203.2 us</title></circle>
+<circle class="dot" cx="267.6" cy="109.4" r="2.6" fill="var(--c-a)"><title>pulse 83: 213.8 us</title></circle>
+<circle class="dot" cx="224.9" cy="100.0" r="2.6" fill="var(--c-a)"><title>pulse 84: 193.7 us</title></circle>
+<circle class="dot" cx="312.2" cy="105.3" r="2.6" fill="var(--c-a)"><title>pulse 85: 234.8 us</title></circle>
+<circle class="dot" cx="224.5" cy="110.8" r="2.6" fill="var(--c-a)"><title>pulse 86: 193.5 us</title></circle>
+<circle class="dot" cx="266.4" cy="101.3" r="2.6" fill="var(--c-a)"><title>pulse 87: 213.2 us</title></circle>
+<circle class="dot" cx="257.1" cy="106.7" r="2.6" fill="var(--c-a)"><title>pulse 88: 208.8 us</title></circle>
+<circle class="dot" cx="253.2" cy="97.2" r="2.6" fill="var(--c-a)"><title>pulse 89: 207.0 us</title></circle>
+<circle class="dot" cx="299.9" cy="102.7" r="2.6" fill="var(--c-a)"><title>pulse 90: 229.0 us</title></circle>
+<circle class="dot" cx="627.1" cy="108.0" r="2.6" fill="var(--c-a)"><title>pulse 91: 382.9 us</title></circle>
+<circle class="dot" cx="236.5" cy="98.6" r="2.6" fill="var(--c-a)"><title>pulse 92: 199.2 us</title></circle>
+<circle class="dot" cx="246.9" cy="104.0" r="2.6" fill="var(--c-a)"><title>pulse 93: 204.1 us</title></circle>
+<circle class="dot" cx="266.6" cy="109.4" r="2.6" fill="var(--c-a)"><title>pulse 94: 213.3 us</title></circle>
+<circle class="dot" cx="238.5" cy="100.0" r="2.6" fill="var(--c-a)"><title>pulse 95: 200.1 us</title></circle>
+<circle class="dot" cx="253.5" cy="105.3" r="2.6" fill="var(--c-a)"><title>pulse 96: 207.2 us</title></circle>
+<circle class="dot" cx="350.7" cy="110.8" r="2.6" fill="var(--c-a)"><title>pulse 97: 252.9 us</title></circle>
+<circle class="dot" cx="259.9" cy="101.3" r="2.6" fill="var(--c-a)"><title>pulse 98: 210.1 us</title></circle>
+<circle class="dot" cx="231.1" cy="106.7" r="2.6" fill="var(--c-a)"><title>pulse 99: 196.6 us</title></circle>
+<circle class="dot" cx="254.7" cy="97.2" r="2.6" fill="var(--c-a)"><title>pulse 100: 207.7 us</title></circle>
+<circle class="dot" cx="246.5" cy="102.7" r="2.6" fill="var(--c-a)"><title>pulse 101: 203.9 us</title></circle>
+<circle class="dot" cx="253.8" cy="108.0" r="2.6" fill="var(--c-a)"><title>pulse 102: 207.3 us</title></circle>
+<circle class="dot" cx="290.8" cy="98.6" r="2.6" fill="var(--c-a)"><title>pulse 103: 224.7 us</title></circle>
+<circle class="dot" cx="304.6" cy="104.0" r="2.6" fill="var(--c-a)"><title>pulse 104: 231.2 us</title></circle>
+<circle class="dot" cx="299.1" cy="109.4" r="2.6" fill="var(--c-a)"><title>pulse 105: 228.6 us</title></circle>
+<circle class="dot" cx="246.0" cy="100.0" r="2.6" fill="var(--c-a)"><title>pulse 106: 203.6 us</title></circle>
+<circle class="dot" cx="270.1" cy="105.3" r="2.6" fill="var(--c-a)"><title>pulse 107: 215.0 us</title></circle>
+<circle class="dot" cx="254.8" cy="110.8" r="2.6" fill="var(--c-a)"><title>pulse 108: 207.8 us</title></circle>
+<circle class="dot" cx="358.8" cy="101.3" r="2.6" fill="var(--c-a)"><title>pulse 109: 256.7 us</title></circle>
+<circle class="dot" cx="247.2" cy="106.7" r="2.6" fill="var(--c-a)"><title>pulse 110: 204.2 us</title></circle>
+<circle class="dot" cx="251.4" cy="97.2" r="2.6" fill="var(--c-a)"><title>pulse 111: 206.2 us</title></circle>
+<circle class="dot" cx="256.0" cy="102.7" r="2.6" fill="var(--c-a)"><title>pulse 112: 208.3 us</title></circle>
+<circle class="dot" cx="268.9" cy="108.0" r="2.6" fill="var(--c-a)"><title>pulse 113: 214.4 us</title></circle>
+<circle class="dot" cx="256.5" cy="98.6" r="2.6" fill="var(--c-a)"><title>pulse 114: 208.6 us</title></circle>
+<circle class="dot" cx="240.7" cy="104.0" r="2.6" fill="var(--c-a)"><title>pulse 115: 201.1 us</title></circle>
+<line class="med" x1="249.8" y1="85.0" x2="249.8" y2="123.0" stroke="var(--c-a)"/>
+<text class="medlab" x="249.8" y="81.0" text-anchor="middle" fill="var(--c-a)">205</text>
+<text class="nlab" x="714" y="108.0">n=115</text>
+<text class="axlab" x="419" y="162" text-anchor="middle">microseconds</text>
+</svg></div>
+  <figcaption><b>Wire skew, parallel against sequential.</b> Sequential firing measured a host
+  issue skew of <b>42.6 µs</b> against the FT232H's own <code>SetHigh</code> cost of
+  <b>42.3 µs</b> — the second write waits for the first to return, and that delay lands on the
+  wire. Note the wider x-scale: the sequential tail reaches 405 µs.</figcaption>
+</figure>
+<div class="tablewrap col" style="max-width:760px">
+<table>
+  <caption>Parallel against sequential, same wiring, minutes apart</caption>
+  <thead><tr><th>measure</th><th>parallel</th><th>sequential</th></tr></thead>
+  <tbody>
+    <tr><td>wire skew, median</td><td>180.6 µs</td><td>205.4 µs</td></tr>
+    <tr><td>wire skew, sd</td><td>4.7 µs</td><td>31.2 µs</td></tr>
+    <tr><td>host issue skew, median</td><td>0.03 µs</td><td>42.6 µs</td></tr>
+    <tr><td>DLP-IO8 SetHigh cost</td><td>26.9 µs</td><td>13.3 µs</td></tr>
+  </tbody>
+</table>
+</div>
+<div class="col" style="margin-top:30px">
+  <p>The last row is a finding in its own right. The DLP-IO8's write costs <em>twice as much</em>
+  when the FT232H write is in flight at the same moment — concurrent writes to two USB devices
+  interfere at the host. It shows on the wire too: device-only skew is 180.5 µs in parallel
+  against 164.6 µs in sequential, so simultaneous firing does cost about 16 µs. That is an order
+  of magnitude less than sequential firing costs, so the trade is still worth making.</p>
+</div>
+</section>
+
+<section>
+<div class="col">
+  <span class="sectnum">A bug the measurement found</span>
+  <h2>The FT232H fired a 51 ms pulse every time it was opened</h2>
+  <p>One channel kept reporting 121 edges against the other's 120. The extra one arrived two
+  seconds before the train, while the program was still printing its wiring table, and it was
+  <span class="num">51.25 ms</span> wide.</p>
+  <p>From the moment MPSSE is enabled the FT232H's pins are inputs on the chip's internal
+  pull-ups, so every AD line sits HIGH until something drives it. <code>NewFT232H</code> only
+  configured the D-bus at the <em>end</em> of initialisation, after a 50 ms settle, a buffer purge
+  and the sync handshake. Into an EEG or MEG amplifier that is a spurious trigger — code 0xFF on
+  all eight lines — on every open.</p>
+</div>
+<div class="tablewrap col" style="max-width:640px">
+<table>
+  <caption>Open-time artefact on AD0, measured on the AD3</caption>
+  <thead><tr><th>build</th><th>run</th><th>width</th></tr></thead>
+  <tbody>
+    <tr><td class="flag">before</td><td>60 s parallel run</td><td class="flag">51.25 ms</td></tr>
+    <tr><td>after</td><td>verification</td><td>0.1229 ms</td></tr>
+    <tr><td>after</td><td>run 3</td><td>0.1197 ms</td></tr>
+    <tr><td>after</td><td>run 4</td><td>0.1243 ms</td></tr>
+    <tr><td>after</td><td>run 5</td><td>0.1226 ms</td></tr>
+  </tbody>
+</table>
+</div>
+<div class="col" style="margin-top:30px">
+  <p>The fix moves <code>SET_BITS_LOW</code> to the first thing after MPSSE is enabled, before the
+  settle rather than after it — the settle is what costs the 50 ms. If the engine is not ready the
+  bytes are discarded and the purge that follows clears the buffer before the sync handshake, so
+  an ignored write costs nothing and a successful one saves 50 ms of signal. Four measurements say
+  the engine does accept it that early.</p>
+  <p>The remaining <span class="num">123 µs</span> cannot be removed in software: the pins are
+  pulled up from the instant the mode is set, and nothing host-side can act sooner than one USB
+  transfer later. An amplifier that latches any edge needs a pull-down resistor on the D-bus.</p>
+</div>
+</section>
+
+<section>
+<div class="col">
+  <span class="sectnum">What is not settled</span>
+  <h2>The slower regime</h2>
+  <div class="callout"><b>Two datasets in six sat 40–50 µs above the baseline</b> — the last
+  quarter of run 1, and all of run 3. Both survive host-skew subtraction, so they are not the
+  scheduler. Neither is explained by the FT232H fix: runs 3, 4 and 5 all used the patched library.
+  Two occurrences is enough to know the regime exists and not enough to characterise it.</div>
+  <p>What moves with it: in those datasets the DLP-IO8's on-wire pulse width also degrades
+  (sd 30 µs and 27 µs, against 11 µs when normal), while the FT232H's is untouched at 10–11 µs
+  throughout. Width and skew degrade together, which points at one effect somewhere downstream of
+  the write syscall on the DLP-IO8's path — USB scheduling, the FTDI bridge, or the firmware.
+  Nothing here distinguishes between those three.</p>
+  <p>Anyone repeating this should also know the analysis has an internal check that passed every
+  time: the AD3-versus-host clock drift, estimated independently from each device, agreed to
+  better than 1 ppm in every run (−16.0 and −16.5 ppm; −17.0 and −17.9; −16.1 and −16.1).</p>
+</div>
+</section>
+
+<section>
+<div class="col">
+  <span class="sectnum">For practice</span>
+  <h2>What to do with this</h2>
+  <ul>
+    <li><b>A 180 µs offset between two boxes is harmless if you know about it.</b> It is a fixed
+    delay in the sense that matters for EEG and MEG — far below one display frame, and an order of
+    magnitude below what the display stack contributes.</li>
+    <li><b>Do not carry a calibration between sessions.</b> Two runs in six sat 40–50 µs off the
+    baseline, on the same bench, minutes apart. Measure in the session you care about.</li>
+    <li><b>Fire from separate threads on a common deadline.</b> It costs about 16 µs of USB
+    contention and saves 24 µs of serialisation plus most of the jitter.</li>
+    <li><b>Record the host's timestamps beside the instrument's.</b> Four of run 5's five worst
+    pulses were the operating system, not the hardware, and nothing in the trace alone would have
+    said so.</li>
+  </ul>
+</div>
+</section>
+
+<section>
+<div class="col">
+  <span class="sectnum">Reproducing it</span>
+  <h2>The commands</h2>
+</div>
+<div class="col" style="max-width:760px">
+<pre><code># record both channels in one acquisition — close WaveForms first,
+# it holds the AD3 exclusively
+ad3-capture --seconds 75 --channels 1,2 --threshold 1.5 \
+            --out ~/goxpy_data/run.npz
+
+# 115 pulses + 5 warm-up at 500 ms = 60 s of train; press Enter at the prompt
+go run ./tests/test_triggers \
+    -device ft232h:pin=1 \
+    -device dlpio8:port=/dev/ttyUSB1,pin=1 \
+    -n 115 -isi-ms 500 -width-ms 5
+
+# the same train issued from one thread, in flag order
+go run ./tests/test_triggers -sequential \
+    -device ft232h:pin=1 -device dlpio8:port=/dev/ttyUSB1,pin=1 \
+    -n 115 -isi-ms 500 -width-ms 5</code></pre>
+</div>
+<div class="col" style="margin-top:26px">
+  <p>One absolute threshold of 1.5 V for both channels, deliberately: the FT232H swings 3.3 V and
+  the DLP-IO8 5 V, so per-channel 50 % levels would sit at 1.65 V and 2.5 V and the difference
+  would land straight in the skew. Grounds common between the devices and the instrument.</p>
+</div>
+</section>
+
+<div class="col foot">
+  <p><b>Data.</b> Five parallel runs and one sequential, 21 August 2026, 16:12–17:03 local.
+  Raw files: <code>ft232h_vs_dlpio8*.npz</code> (AD3 edge times) beside
+  <code>test_triggers_sub-999_date-2026082*.csv</code> and their <code>-info.txt</code> sidecars,
+  which carry the host facts, the mode, and every flag of each run.</p>
+  <p><b>Conditions.</b> Parallel mode unless stated; <code>SCHED_FIFO</code> 50; GC suspended
+  during the train; 5 warm-up pulses excluded from every statistic; pulses with a write error
+  excluded — there were none. Run 2 (sequential) reported 60 810 corrupted samples and a 16 ms
+  gap common to both channels; a common gap cancels in the channel difference, so skew is quoted
+  from it and no per-channel time axis is.</p>
+  <p><b>Code.</b> <code>tests/test_triggers</code> and <code>tests/internal/trigdev</code>;
+  FT232H fix in <code>triggers/ft232h_linux.go</code>.</p>
+</div>
+</div>

@@ -1,0 +1,63 @@
+# --EXPERIMENT INFO
+# e mainfile: test_triggers
+# e cmdline: /home/cp983411/.cache/go-build/ee/ee1fcd41a1d55d488cbfd39f9e70721d10a6c11e417d0bc009a400c40e415c22-d/test_triggers -device ft232h:pin=1 -device dlpio8:port=/dev/ttyUSB1,pin=1 -n 115 -isi-ms 500 -width-ms 5
+# e start_time: 20260821-165538
+# e hostname: is158520
+# e username: cp983411
+# e os: linux/amd64
+# e framework: goxpyriment (devel) --- see http://chrplr.github.io/goxpyriment
+# e framework_author: Christophe Pallier <christophe@pallier.org>
+# --SUBJECT INFO
+# s id: 999
+# #
+# --HOST INFO
+# host machine: Dell Inc. Precision 5490
+# host machine_type: laptop
+# host os: Ubuntu 26.04 LTS
+# host kernel: 7.0.0-30-generic x86_64
+# host desktop: ubuntu:GNOME
+# host cpu: Intel(R) Core(TM) Ultra 7 165H
+# host cpu_topology: 16 cores / 22 threads
+# host cpu_mhz: 1580 (max 4700)
+# host ram: 30.04 GiB (46% used at start)
+# host gpu0: Intel Corporation Meteor Lake-P [Intel Arc Graphics] [driver i915]
+# host gpu1: NVIDIA Corporation AD107GLM [RTX 2000 Ada Generation Laptop GPU] [driver nvidia]
+# host audio_card: sof-soundwire [driver snd_soc_sof_sdw]
+# host audio_server: PipeWire 1.6.2
+# host alsa: k7.0.0-30-generic
+# --TRIGGER COMPARISON
+# t mode: parallel
+# t pulses: 120 (warmup 5 + recorded 115)
+# t isi_ms: 500.0000
+# t width_ms: 5.0000
+# t realtime_priority: 50
+# t gc_during_train: false
+# t device1: ft232h pin=1 line=AD0 role=source spec="ft232h:pin=1"
+# t device2: dlpio8 port=/dev/ttyUSB1 pin=1 role=source spec="dlpio8:port=/dev/ttyUSB1,pin=1"
+# #
+# --- test_triggers report ---
+# 
+# ═══ test_triggers ═══════════════════════════════════════════════════════
+# mode: one locked thread per device, common deadline
+# 115 recorded pulses of 5.000 ms every 500.000 ms; 5 warm-up pulses excluded
+# reference device (skews are measured against it): [1] ft232h:AD0
+# realtime priority: SCHED_FIFO 50 requested;  GC suspended during the train
+# ── host: cost of the SetHigh call (µs) ──────────────────────────────────
+#   [1] ft232h:AD0             n=115  median     44.1  mean     57.7  sd    44.6  min     17.4  p95    184.5  max    236.3
+#   [2] dlpio8:1               n=115  median     32.7  mean     29.1  sd     8.5  min     11.8  p95     39.9  max     43.2
+# 
+# ── host: when the write was ISSUED, against the reference (µs) ──────────
+#   [1] ft232h:AD0             (reference)
+#   [2] dlpio8:1               n=115  median     -0.1  mean      0.2  sd     6.3  min    -24.2  p95      0.2  max     57.8
+# 
+# ── host: realised pulse width, SetHigh call to SetLow call (µs) ─────────
+#   [1] ft232h:AD0             n=115  median   4999.0  mean   4998.7  sd     3.0  min   4974.9  p95   4999.5  max   5011.4
+#   [2] dlpio8:1               n=115  median   4999.1  mean   4998.4  sd     5.7  min   4940.8  p95   4999.5  max   4999.6
+# 
+# ── how to read this ─────────────────────────────────────────────────────
+#   These are HOST-side numbers: when this program issued each write, not when
+#   the edge reached the wire. The instrument's trace is the measurement; the
+#   numbers above say whether a skew seen there came from the device or from
+#   the host having issued the writes late.
+#   Match a scope edge to a row with target_ns: repetition k was scheduled at
+#   k × 500.000 ms after the first pulse.
