@@ -18,10 +18,16 @@
 //
 // A fixation cross is shown whenever no stimulus is on screen.
 //
+// The protocol tables and the stimuli they name are embedded, so the binary
+// runs on its own: double-clicking it opens the session-setup dialog, which
+// carries a protocol selector alongside the subject code, and the default is
+// demo. The selector also lists any *.tsv dropped in a protocols/ directory
+// beside the executable, so a new table needs no rebuild.
+//
 // Usage:
 //
-//	go run . -p demo -w        # windowed, for looking at the stream
-//	go run . -p demo -s 1      # subject 1
+//	go run . -w                # windowed, for looking at the stream
+//	go run . -s 1              # subject 1, the demo protocol
 //	go run . -p demo -skip-wait
 //
 // NOT YET IMPLEMENTED: outgoing hardware triggers. A MEG run needs a TTL per
@@ -40,6 +46,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime/debug"
+	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -108,10 +115,147 @@ type logEntry struct {
 	stim       string // the row's stimuli field, or the key name for a response
 }
 
+// defaultProtocol is the table a session runs when nothing else selects one,
+// so a colleague who has only the executable can double-click it and be
+// presented with a working localizer.
+const defaultProtocol = "demo"
+
+// maxProtocolOptions caps the setup dialog's protocol selector. FieldSelect
+// splits one fixed-width row between its options, so past half a dozen the
+// buttons are too narrow to read; the ones left out stay reachable with -p.
+const maxProtocolOptions = 6
+
+// protocolChoice is one entry of that selector: the name shown on the button,
+// and where its table comes from -- empty for the copy embedded in the binary,
+// otherwise a path on disk.
+type protocolChoice struct {
+	name string
+	path string
+}
+
+// availableProtocols lists what the selector offers: every protocol embedded
+// in the binary, then any *.tsv sitting in a protocols/ directory beside the
+// executable or in the working directory. Dropping a table next to the binary
+// is then enough to run it -- no rebuild and no command line, which is the
+// point of handing someone a single executable.
+//
+// A table on disk takes the place of the embedded copy of the same name: an
+// edited protocols/demo.tsv is what the experimenter meant to run, and losing
+// that edit silently is worse than the rare case of an unrelated demo.tsv in
+// the working directory -- which the "loaded ... from" log line and the
+// protocol_source metadata both make visible. The embedded tables are the
+// fallback for when nothing is on disk, which is how a bare executable runs.
+//
+// The executable's own directory is scanned before the working directory, so
+// tables shipped alongside the binary win if both hold the same name.
+func availableProtocols() []protocolChoice {
+	var out []protocolChoice
+	seen := map[string]int{} // protocol name -> its index in out
+	entries, _ := protocolFS.ReadDir("protocols")
+	for _, e := range entries {
+		n := strings.TrimSuffix(e.Name(), ".tsv")
+		seen[n] = len(out)
+		out = append(out, protocolChoice{name: n})
+	}
+
+	var dirs []string
+	if exe, err := os.Executable(); err == nil {
+		dirs = append(dirs, filepath.Join(filepath.Dir(exe), "protocols"))
+	}
+	if wd, err := os.Getwd(); err == nil {
+		dirs = append(dirs, filepath.Join(wd, "protocols"))
+	}
+	seenDir := map[string]bool{}
+	for _, d := range dirs {
+		abs, err := filepath.Abs(d)
+		if err != nil || seenDir[abs] {
+			continue
+		}
+		seenDir[abs] = true
+		files, _ := filepath.Glob(filepath.Join(abs, "*.tsv"))
+		sort.Strings(files)
+		for _, f := range files {
+			n := strings.TrimSuffix(filepath.Base(f), ".tsv")
+			if i, ok := seen[n]; ok {
+				if out[i].path == "" {
+					out[i].path = f // replaces the embedded copy, keeping its slot
+				} else {
+					log.Printf("ignoring %s: %s was found first", f, out[i].path)
+				}
+				continue
+			}
+			seen[n] = len(out)
+			out = append(out, protocolChoice{name: n, path: f})
+		}
+	}
+	if len(out) > maxProtocolOptions {
+		var dropped []string
+		for _, c := range out[maxProtocolOptions:] {
+			dropped = append(dropped, c.name)
+		}
+		log.Printf("%d protocols found; the dialog offers the first %d, "+
+			"run the others with -p: %s",
+			len(out), maxProtocolOptions, strings.Join(dropped, ", "))
+		out = out[:maxProtocolOptions]
+	}
+	return out
+}
+
+// readProtocol reads the chosen table and reports where it came from: a path
+// for a table on disk, "embedded:..." for a copy compiled into the binary.
+// The source, not the name, is what identifies a schedule -- an edited
+// protocols/demo.tsv on disk and the embedded demo are both called "demo" --
+// so it is logged and written to the session metadata.
+//
+// -dir overrides everything, which is what it is for; otherwise a table found
+// on disk wins and the embedded copy is the fallback.
+func readProtocol(sel, dir string, choices []protocolChoice) (source string, raw []byte, err error) {
+	if dir != "" {
+		path := filepath.Join(dir, "protocols", sel+".tsv")
+		if abs, absErr := filepath.Abs(path); absErr == nil {
+			path = abs
+		}
+		raw, err = os.ReadFile(path)
+		return path, raw, err
+	}
+	for _, c := range choices {
+		if c.name == sel && c.path != "" {
+			raw, err = os.ReadFile(c.path)
+			return c.path, raw, err
+		}
+	}
+	name := "protocols/" + sel + ".tsv"
+	raw, err = protocolFS.ReadFile(name)
+	return "embedded:" + name, raw, err
+}
+
+// flagGiven reports whether a flag was set on the command line rather than
+// left at its default -- the same test control makes for -s, and what lets an
+// explicit -p override what the dialog remembers.
+func flagGiven(name string) bool {
+	given := false
+	flag.Visit(func(f *flag.Flag) {
+		if f.Name == name {
+			given = true
+		}
+	})
+	return given
+}
+
 func main() {
 	// Register experiment-specific flags before NewExperimentFromFlags, which
 	// calls flag.Parse().
-	protocol := flag.String("p", "run1", "protocol to present: instructions, run1, run2, run3, run4")
+	choices := availableProtocols()
+	names := make([]string, len(choices))
+	for i, c := range choices {
+		names[i] = c.name
+	}
+	initial := defaultProtocol
+	if len(names) > 0 && !slices.Contains(names, defaultProtocol) {
+		initial = names[0]
+	}
+	protocol := flag.String("p", initial,
+		"protocol to present, a .tsv table in protocols/: "+strings.Join(names, ", "))
 	assetDir := flag.String("dir", "", "read protocols/ and stimuli/ from this "+
 		"directory instead of the copies embedded in the binary "+
 		"(e.g. -dir . after regenerating them, to avoid a rebuild)")
@@ -120,36 +264,50 @@ func main() {
 
 	// Font size 50 and a white-on-black screen reproduce the defaults of the
 	// gostim2 implementation, which used the same Inconsolata font.
-	exp := control.NewExperimentFromFlags("MEG-localizer", control.Black, control.White, 50)
+	// The protocol selector rides along in the session-setup dialog that opens
+	// when no -s is given -- double-clicking the icon, that is -- so the run
+	// can be chosen without a command line. Its value is remembered across
+	// sessions like the other dialog settings.
+	exp := control.NewExperimentFromFlags("MEG-localizer", control.Black, control.White, 50,
+		control.InfoField{Name: "protocol", Label: "Protocol",
+			Type: control.FieldSelect, Options: names, Default: initial})
 	defer exp.End()
 
-	name := "protocols/" + *protocol + ".tsv"
-	raw, err := readAsset(*assetDir, name)
+	// An explicit -p wins; otherwise the dialog's choice, which is empty
+	// whenever the dialog did not open (-s given, or a browser build) and
+	// leaves the flag default standing.
+	selected := *protocol
+	if !flagGiven("p") {
+		if chosen := strings.TrimSpace(exp.Info["protocol"]); chosen != "" {
+			selected = chosen
+		}
+	}
+
+	source, raw, err := readProtocol(selected, *assetDir, choices)
 	if err != nil {
-		var entries []os.DirEntry
-		if *assetDir == "" {
-			entries, _ = protocolFS.ReadDir("protocols")
-		} else {
-			entries, _ = os.ReadDir(filepath.Join(*assetDir, "protocols"))
-		}
 		var avail []string
-		for _, n := range entries {
-			avail = append(avail, strings.TrimSuffix(n.Name(), ".tsv"))
+		if *assetDir == "" {
+			avail = names
+		} else {
+			entries, _ := os.ReadDir(filepath.Join(*assetDir, "protocols"))
+			for _, n := range entries {
+				avail = append(avail, strings.TrimSuffix(n.Name(), ".tsv"))
+			}
 		}
-		where := "embedded"
+		where := "embedded or beside the executable"
 		if *assetDir != "" {
 			where = *assetDir
 		}
 		log.Fatalf("unknown protocol %q: no %s in %s (available: %s)",
-			*protocol, name, where, strings.Join(avail, ", "))
+			selected, source, where, strings.Join(avail, ", "))
 	}
 
-	rows, err := loadProtocol(name, raw)
+	rows, err := loadProtocol(source, raw)
 	if err != nil {
-		log.Fatalf("cannot parse %s: %v", name, err)
+		log.Fatalf("cannot parse %s: %v", source, err)
 	}
 	lastMs := rows[len(rows)-1].onsetMs + rows[len(rows)-1].totalMs()
-	log.Printf("loaded %d rows from %s (%.1f s)", len(rows), name, float64(lastMs)/1000)
+	log.Printf("loaded %d rows from %s (%.1f s)", len(rows), source, float64(lastMs)/1000)
 
 	// Build and preload every stimulus up front: identical items (the four
 	// checkerboards, a repeated instruction word) are built once and shared, so
@@ -159,7 +317,7 @@ func main() {
 	streams := make([][]stimuli.StreamElement, len(rows))
 	for i := range rows {
 		if streams[i], err = res.build(&rows[i]); err != nil {
-			log.Fatalf("%s line %d: %v", name, rows[i].line, err)
+			log.Fatalf("%s line %d: %v", source, rows[i].line, err)
 		}
 	}
 	log.Printf("preloaded %d images, %d sounds, %d texts",
@@ -185,9 +343,10 @@ func main() {
 	}
 
 	exp.AddDataVariableNames([]string{"intended_ms", "actual_ms", "event", "cond", "stimuli"})
-	exp.AddExperimentInfo("protocol: " + *protocol)
+	exp.AddExperimentInfo("protocol: " + selected)
+	exp.AddExperimentInfo("protocol_source: " + source)
 
-	isRun := *protocol != "instructions"
+	isRun := selected != "instructions"
 
 	// Entries accumulate outside the run closure so a run aborted with ESC
 	// still writes everything recorded up to that point.
@@ -199,7 +358,7 @@ func main() {
 			// Nothing to wait for: the clock starts below, right away.
 		case isRun:
 			if ierr := exp.ShowInstructions(
-				"MEG localizer — " + *protocol + "\n\n" +
+				"MEG localizer — " + selected + "\n\n" +
 					"Please stay still and keep your eyes on the cross.\n\n" +
 					"Operator: press SPACE, then T to start the run."); ierr != nil {
 				return ierr
@@ -438,9 +597,6 @@ func printSummary(entries []logEntry) {
 // which source it came from.
 func readAsset(dir, name string) ([]byte, error) {
 	if dir == "" {
-		if strings.HasPrefix(name, "protocols/") {
-			return protocolFS.ReadFile(name)
-		}
 		return assetFS.ReadFile(name)
 	}
 	return os.ReadFile(filepath.Join(dir, filepath.FromSlash(name)))

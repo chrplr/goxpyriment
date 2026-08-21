@@ -16,13 +16,37 @@ crosshair drawn over every frame.
 Running it
 ----------
 
+The protocol tables and every stimulus they name are embedded in the binary,
+so it runs on its own: double-clicking the executable opens the session-setup
+dialog, which asks for the subject code and carries a **Protocol** selector.
+`demo` is the default, and that is all a colleague needs to start a session.
+
+The selector also lists any `*.tsv` in a `protocols/` directory beside the
+executable or in the working directory, so a new table needs no rebuild. A
+table on disk **takes the place of** the embedded copy of the same name: edit
+`protocols/demo.tsv` and that is what runs, the embedded tables being the
+fallback for a binary with nothing beside it. The executable's own directory is
+read first, so tables shipped with the binary win over the working directory.
+
+Because two sessions can both be labelled `demo` and be different schedules,
+the file that a name resolved to is logged at startup and written to the
+session metadata as `protocol_source` — a path, or `embedded:` for a table
+compiled in.
+
+Past six protocols the buttons stop being readable, so the dialog offers the
+first six and names the rest in the log for `-p`.
+
 From this directory:
 
-    go run . -p demo              # fullscreen, the way a session is run
-    go run . -p demo -w           # windowed, for looking at the stimuli
-    go run . -p demo -s 3         # subject 3
-    go run . -p demo -dir .       # read protocols/ and stimuli/ from disk
-    go run . -p demo -skip-wait   # start at once, no instruction screen
+    go run .                      # fullscreen, the way a session is run
+    go run . -w                   # windowed, for looking at the stimuli
+    go run . -s 3                 # subject 3 — given -s, no dialog opens
+    go run . -p demo              # choose the protocol on the command line
+    go run . -dir .               # read protocols/ and stimuli/ from disk
+    go run . -skip-wait           # start at once, no instruction screen
+
+`-p` wins when it is given; otherwise the dialog's choice applies, and the
+dialog remembers it for the next session.
 
 The run shows an instruction screen, waits for SPACE, then shows a green
 fixation cross and waits for **T** to start. The clock starts at that keypress
@@ -30,7 +54,7 @@ and every onset is measured from it. ESC, or closing the window, aborts.
 
 | Flag | Meaning |
 |---|---|
-| `-p NAME` | protocol table to run, from `protocols/NAME.tsv` |
+| `-p NAME` | protocol table to run, from `protocols/NAME.tsv`; default `demo`, and it overrides the dialog's selector |
 | `-s ID` | subject identifier, recorded in the data file |
 | `-w` | windowed instead of fullscreen |
 | `-d N` | display index |
