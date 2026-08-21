@@ -95,6 +95,34 @@ func carRect(c *Car) (center control.FPoint, w, h float32) {
 	return center, w, h
 }
 
+// stepForPoint maps a click at (x, y) — center-relative screen coordinates —
+// to a one-cell step along the vehicle's axis: the side of the vehicle's
+// midline the click landed on decides the direction. -1 is left (horizontal) or
+// up (vertical), +1 right or down.
+//
+// Splitting on the midline rather than on cell indices matters only for 3-cell
+// vehicles: a cell-index rule leaves their middle cell — a third of their
+// surface — with no direction to give, and so inert. For 2-cell vehicles the
+// midline is the boundary between their two cells, so the two rules agree.
+//
+// The caller has already established that (x, y) is inside this vehicle; a
+// click exactly on the midline (measure zero) yields 0 and moves nothing.
+func stepForPoint(c *Car, x, y float32) int {
+	center, _, _ := carRect(c)
+
+	d := x - center.X // horizontal: right of the midline slides right
+	if !c.Horizontal {
+		d = center.Y - y // vertical: +Y is up, so below the midline slides down
+	}
+	switch {
+	case d > 0:
+		return 1
+	case d < 0:
+		return -1
+	}
+	return 0
+}
+
 // drawBoard renders one frame: grid, exit marker, vehicles, and the status
 // line. It clears the screen but does not flip — the caller decides when to
 // present (Flip inside the trial loop).

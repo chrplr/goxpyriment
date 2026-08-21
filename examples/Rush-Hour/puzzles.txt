@@ -16,7 +16,7 @@
 # Source: the boards were selected from Michael Fogleman's exhaustive Rush Hour
 # database (https://www.michaelfogleman.com/rush/, 2.5 million puzzles), keeping
 # wall-free positions with at least 8 vehicles, then re-scored with the solver in
-# board_test.go. p02 is the board of the original pygame program.
+# solver.go. p02 is the board of the original pygame program.
 
 p01:  3: GBBCCC GIDDEE HIAAMN HJKoMN oJKLMO FFKLoO   # 15 vehicles
 p02:  4: BCCCoo BoooDo oAAEDo oooEoo FFoEoo ooGGGo   #  7 vehicles — the classic pygame board

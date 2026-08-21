@@ -24,7 +24,6 @@
 package main
 
 import (
-	_ "embed"
 	"flag"
 	"fmt"
 	"log"
@@ -33,9 +32,6 @@ import (
 	"github.com/chrplr/goxpyriment/clock"
 	"github.com/chrplr/goxpyriment/control"
 )
-
-//go:embed puzzles.txt
-var puzzleFile string
 
 const (
 	itiMS          = 800  // blank screen between puzzles
@@ -90,12 +86,10 @@ func runTrial(exp *control.Experiment, trial int, p Puzzle, nTrials int) error {
 	onset := clock.GetTime()
 	logRow(exp, trial, p, newRow("trial_start", 0))
 
-	// nMoves counts *slides*, not clicks: consecutive one-cell steps of the
+	// slides counts *slides*, not clicks: consecutive one-cell steps of the
 	// same vehicle in the same direction are one slide, which is the metric
 	// puzzles.txt uses for min_moves. The raw clicks remain one row each.
-	nMoves := 0
-	var lastCar *Car
-	lastStep := 0
+	var slides SlideCounter
 
 	for {
 		state := exp.PollEvents(nil)
@@ -131,17 +125,8 @@ func runTrial(exp *control.Experiment, trial int, p Puzzle, nTrials int) error {
 				r.toR, r.toC = car.Row, car.Col
 
 				if step := stepForPoint(car, mx, my); step != 0 {
-					toR, toC := car.Row, car.Col
-					if car.Horizontal {
-						toC += step
-					} else {
-						toR += step
-					}
-					if b.TryMove(car, toR, toC) {
-						if car != lastCar || step != lastStep {
-							nMoves++
-						}
-						lastCar, lastStep = car, step
+					if b.Step(car, step) {
+						slides.Add(car.ID, step)
 						r.kind = "click_move"
 						r.toR, r.toC = car.Row, car.Col
 					}
@@ -154,7 +139,7 @@ func runTrial(exp *control.Experiment, trial int, p Puzzle, nTrials int) error {
 		if b.Solved() {
 			trialMS := clock.GetTime() - onset
 			r := newRow("trial_end", trialMS)
-			r.nMoves = nMoves
+			r.nMoves = slides.N()
 			r.solved = true
 			r.trialMS = trialMS
 			logRow(exp, trial, p, r)
@@ -168,7 +153,7 @@ func runTrial(exp *control.Experiment, trial int, p Puzzle, nTrials int) error {
 			exp.Audio.PlayCorrect()
 			exp.Wait(solvedFeedback)
 			fmt.Printf("Puzzle %2d (%s) solved in %d moves (optimum %d), %.1f s\n",
-				trial, p.Name, nMoves, p.MinMoves, float64(trialMS)/1000)
+				trial, p.Name, slides.N(), p.MinMoves, float64(trialMS)/1000)
 			return nil
 		}
 
@@ -182,36 +167,8 @@ func runTrial(exp *control.Experiment, trial int, p Puzzle, nTrials int) error {
 	}
 }
 
-// stepForPoint maps a click at (x, y) — center-relative screen coordinates —
-// to a one-cell step along the vehicle's axis: the side of the vehicle's
-// midline the click landed on decides the direction. -1 is left (horizontal) or
-// up (vertical), +1 right or down.
-//
-// Splitting on the midline rather than on cell indices matters only for 3-cell
-// vehicles: a cell-index rule leaves their middle cell — a third of their
-// surface — with no direction to give, and so inert. For 2-cell vehicles the
-// midline is the boundary between their two cells, so the two rules agree.
-//
-// The caller has already established that (x, y) is inside this vehicle; a
-// click exactly on the midline (measure zero) yields 0 and moves nothing.
-func stepForPoint(c *Car, x, y float32) int {
-	center, _, _ := carRect(c)
-
-	d := x - center.X // horizontal: right of the midline slides right
-	if !c.Horizontal {
-		d = center.Y - y // vertical: +Y is up, so below the midline slides down
-	}
-	switch {
-	case d > 0:
-		return 1
-	case d < 0:
-		return -1
-	}
-	return 0
-}
-
 func main() {
-	puzzles, err := ParsePuzzleFile(puzzleFile)
+	puzzles, err := DefaultPuzzles()
 	if err != nil {
 		log.Fatalf("Rush-Hour: %v", err)
 	}

@@ -3,10 +3,7 @@
 
 package main
 
-import (
-	"strings"
-	"testing"
-)
+import "testing"
 
 // The board of the original pygame implementation (rush_hour/rush.py).
 const classic = "BCCCoo BoooDo oAAEDo oooEoo FFoEoo ooGGGo"
@@ -101,7 +98,7 @@ func TestSolvedRequiresRightWall(t *testing.T) {
 // and is actually solvable, and reports the minimum number of moves so the
 // file's difficulty ordering can be verified.
 func TestEmbeddedPuzzles(t *testing.T) {
-	puzzles, err := ParsePuzzleFile(puzzleFile)
+	puzzles, err := ParsePuzzleFile(PuzzleFile)
 	if err != nil {
 		t.Fatalf("ParsePuzzleFile: %v", err)
 	}
@@ -112,7 +109,7 @@ func TestEmbeddedPuzzles(t *testing.T) {
 	prev := 0
 	seen := make(map[string]string, len(puzzles))
 	for _, p := range puzzles {
-		n := minMoves(p.Fresh())
+		n := MinMoves(p.Fresh())
 		if n < 0 {
 			t.Errorf("%s: unsolvable\n%s", p.Name, p.Board.String())
 			continue
@@ -133,68 +130,4 @@ func TestEmbeddedPuzzles(t *testing.T) {
 		}
 		seen[p.Board.String()] = p.Name
 	}
-}
-
-// ── Breadth-first solver, used only by the tests ─────────────────────────────
-
-func encodeState(b *Board) string {
-	var sb strings.Builder
-	for _, c := range b.Cars {
-		sb.WriteByte(byte('0' + c.Row))
-		sb.WriteByte(byte('0' + c.Col))
-	}
-	return sb.String()
-}
-
-func decodeState(b *Board, s string) {
-	for i, c := range b.Cars {
-		c.Row = int(s[2*i] - '0')
-		c.Col = int(s[2*i+1] - '0')
-	}
-}
-
-// minMoves returns the length of the shortest solution, counting each slide of
-// one vehicle (of any distance) as one move. Returns -1 if unsolvable.
-func minMoves(b *Board) int {
-	start := encodeState(b)
-	dist := map[string]int{start: 0}
-	queue := []string{start}
-
-	for len(queue) > 0 {
-		cur := queue[0]
-		queue = queue[1:]
-		d := dist[cur]
-
-		decodeState(b, cur)
-		if b.Solved() {
-			return d
-		}
-
-		for id := range b.Cars {
-			for _, delta := range []int{-1, 1} {
-				for step := 1; step < GridSize; step++ {
-					decodeState(b, cur)
-					car := b.Cars[id]
-					nr, nc := car.Row, car.Col
-					if car.Horizontal {
-						nc += delta * step
-					} else {
-						nr += delta * step
-					}
-					if nr < 0 || nc < 0 || nr >= GridSize || nc >= GridSize {
-						break
-					}
-					if !b.TryMove(car, nr, nc) || car.Row != nr || car.Col != nc {
-						break // wall or vehicle in the way: no longer slide possible
-					}
-					next := encodeState(b)
-					if _, seen := dist[next]; !seen {
-						dist[next] = d + 1
-						queue = append(queue, next)
-					}
-				}
-			}
-		}
-	}
-	return -1
 }
