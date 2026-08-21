@@ -1,12 +1,13 @@
 # Goxpyriment installation instructions
 
-There are three ways to use goxpyriment, depending on what you already
+There are four ways to use goxpyriment, depending on what you already
 have and what you want to do. Find your situation below and jump to the
 matching section — each choice builds on the previous one, so you only
 need to read as far as your goal requires.
 
 | Your situation | What you need | Go to |
 |---|---|---|
+| You want to **try the experiments from the [gallery](GalleryOfExamples.md)** | Nothing | [Pre-built binaries](pre-built-examples.md) |
 | You were given a **ready-to-run app** (a compiled file) and just want to launch it | Nothing | [No installation](#no-installation-is-needed-to-run-a-goxpyriment-app) |
 | You have the **source code** of an experiment (`.go` files) and want to run or build it | Go | [Minimal installation](#minimal-installation-to-execute-a-goxpyriment-source-code) |
 | You want to **write your own experiments** or explore the framework | Go + Git + a code editor | [Full installation](#full-installation) |
