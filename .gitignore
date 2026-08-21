@@ -123,3 +123,17 @@ DebugErc.log
 
 # Python bytecode from the analysis tools in cmd/
 __pycache__/
+
+# --- Build products that were tracked before this list existed --------------
+# Each is rebuilt from a source file sitting next to it, so a clone loses
+# nothing. Note that ignoring them does not untrack them: they stay in the
+# repository until `git rm --cached` removes them, and in the history either
+# way.
+/tests/set_fullscreen/set_fullscreen
+/tests/set_fullscreen/c_example/my_app
+
+# Third-party, and fetched on demand rather than required: if it is missing,
+# examples/installers/build-linux-appimages.sh downloads it from the AppImageKit
+# releases. Keeping an 8 MB copy of someone else's tool in the history buys
+# nothing and redistributes it.
+/examples/installers/appimagetool
