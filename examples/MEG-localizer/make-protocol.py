@@ -52,7 +52,6 @@ IMAGE_CONDITIONS = {
     "equations":  ("equations", "*.png"),
     "faces":      ("faces_kept", "*.png"),
     "houses":     ("houses_kept", "*.png"),
-    "disks":      ("disks", "disk_frame_*.png"),
     "wedges":     ("wedges-rings", "wedge_*.png"),
     "rings":      ("wedges-rings", "ring_*.png"),
 }
@@ -93,6 +92,26 @@ TONES_PER_BLOCK = 4
 TONE_ON_MS = 300
 TONE_GAP_MS = 100
 TONE_STEPS = (1, 2)          # pitch steps that fit four tones in the scale
+
+# Disk sequences, the visual counterpart of the tone sequences. Four disks per
+# block at the ordinary RSVP pace, and the two conditions differ only in the
+# order the positions are visited.
+#
+# The eight frames sit at 22.5 deg + k * 45 deg on one orbit, and sorted file
+# order runs counterclockwise (disk_frame_1 = 22.5 deg ... disk_frame_8 =
+# 337.5 deg). So a regular trial is a constant angular step from a random
+# starting position, in one of the two directions -- the disk rotates left or
+# right -- and, unlike the tone scale, the circle wraps, so no starting point
+# is out of bounds.
+#
+# A random trial draws four distinct positions instead, rejecting the draws
+# that happen to come out as a constant step (in either direction): those are
+# regular trials wearing the wrong label. Distinct positions keep the rule that
+# a block never shows the same item twice.
+DISK_POOL = ("disks", "disk_frame_*.png")
+DISK_CONDITIONS = ("disks_regular", "disks_random")
+DISKS_PER_BLOCK = 4
+DISK_STEP = 1                # 45 deg between successive disks in a regular trial
 
 # The two motor conditions: an instruction to press a button three times,
 # either read word by word or heard. They differ from every other condition in
@@ -148,6 +167,7 @@ def collect():
     STIM.mkdir()
     pools = {}
     catalogue = {**IMAGE_CONDITIONS, **SOUND_CONDITIONS, "tones": TONE_POOL,
+                 "disks": DISK_POOL,
                  "words": SENTENCE_SOURCE, "consonants": CONSONANT_SOURCE,
                  "motor_visual": MOTOR_VISUAL, "motor_audio": MOTOR_AUDIO,
                  "equations_audio": EQUATIONS_AUDIO,
@@ -192,6 +212,17 @@ class Bag:
         return out
 
 
+def constant_step(indices, n):
+    """True if the positions step by a constant angle around the orbit.
+
+    Both directions count, and so does a step of more than one position: what
+    makes a trial regular is that the step never changes, not that it is small
+    or that the angle increases.
+    """
+    steps = {(b - a) % n for a, b in zip(indices, indices[1:])}
+    return len(steps) == 1
+
+
 def order(conditions, blocks, rng):
     """A balanced block order that never repeats a condition back to back.
 
@@ -228,8 +259,12 @@ def main():
     # with frequency (tone_01_220Hz ... tone_09_440Hz), so file order is pitch
     # order and "ascending" is simply sorted order.
     tones = pools["tones"]
+    # Disk files sort by the index in their name, and that index runs with
+    # polar angle, so file order is position order around the orbit.
+    disks = pools["disks"]
     conditions = (list(IMAGE_CONDITIONS) + list(SOUND_CONDITIONS)
-                  + list(TONE_CONDITIONS) + list(MOTOR_CONDITIONS)
+                  + list(TONE_CONDITIONS) + list(DISK_CONDITIONS)
+                  + list(MOTOR_CONDITIONS)
                   + ["sentences", "consonants", "equations_audio",
                      "sentences_audio", "sentences_reversed", REST])
 
@@ -302,6 +337,19 @@ def main():
                         rng.shuffle(chosen)
                 spec = "~".join(f"{n}:{TONE_ON_MS}:{TONE_GAP_MS}" for n in chosen)
                 fh.write(f"{onset}\t{TONE_ON_MS}\tSOUND_STREAM\t{cond}\t{spec}\n")
+            elif cond in DISK_CONDITIONS:
+                n_pos = len(disks)
+                if cond == "disks_regular":
+                    first = rng.randrange(n_pos)
+                    direction = rng.choice((1, -1))
+                    idx = [(first + k * DISK_STEP * direction) % n_pos
+                           for k in range(DISKS_PER_BLOCK)]
+                else:
+                    idx = rng.sample(range(n_pos), DISKS_PER_BLOCK)
+                    while constant_step(idx, n_pos):
+                        idx = rng.sample(range(n_pos), DISKS_PER_BLOCK)
+                spec = "~".join(f"{disks[k]}:{ON_MS}:{GAP_MS}" for k in idx)
+                fh.write(f"{onset}\t{ON_MS}\tIMAGE_STREAM\t{cond}\t{spec}\n")
             elif cond in SOUND_CONDITIONS:
                 item = bags[cond].take(1)[0]
                 # A sound row's duration is how long the row occupies the
@@ -341,6 +389,12 @@ def main():
           f"= {tone_span} ms; four evenly spaced tones (step "
           + " or ".join(str(k) for k in TONE_STEPS)
           + "), regular = played in that order up or down, random = shuffled")
+    disk_span = DISKS_PER_BLOCK * (ON_MS + GAP_MS)
+    print(f"  disk blocks : {DISKS_PER_BLOCK} disks on the orbit, {ON_MS} ms + "
+          f"{GAP_MS} ms blank (SOA {ON_MS + GAP_MS} ms) = {disk_span} ms; "
+          f"regular = a constant {DISK_STEP * 45} deg step from a random "
+          f"start, rotating either way, random = four distinct positions "
+          f"that do not form a constant step")
     print(f"  motor       : {SLOTS['motor_visual'] * BLOCK_MS} ms per trial - "
           f"the instruction, then the rest as the response window")
     print(f"  spoken eqns : {SLOTS['equations_audio'] * BLOCK_MS} ms per trial - "

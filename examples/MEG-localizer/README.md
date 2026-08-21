@@ -48,7 +48,7 @@ stimulus durations did not. `-w` is for looking at stimuli, not for data.
 The conditions
 --------------
 
-`protocols/demo.tsv` runs 17 conditions on a 2 s grid. A trial takes one slot
+`protocols/demo.tsv` runs 18 conditions on a 2 s grid. A trial takes one slot
 unless the participant has something to do after the stimulus — press a button,
 solve a sum — in which case it takes two.
 
@@ -58,7 +58,9 @@ solve a sum — in which case it takes two.
 | `sentences` | the 4 words of one sentence, in order | 1 |
 | `consonants` | the 4 strings matched to one sentence | 1 |
 | `equations` | one written sum, held 1200 ms | 1 |
-| `disks`, `wedges`, `rings` | 4 retinotopic frames, RSVP | 1 |
+| `wedges`, `rings` | 4 retinotopic frames, RSVP | 1 |
+| `disks_regular` | 4 disks stepping 45° round the orbit, one way or the other | 1 |
+| `disks_random` | 4 disk positions in no progression | 1 |
 | `sounds` | one natural sound | 1 |
 | `tones_regular` | 4 evenly spaced tones, rising or falling | 1 |
 | `tones_random` | the same 4 tones, shuffled | 1 |
@@ -81,7 +83,14 @@ Three pairings are deliberate. `consonants` draws the four strings that were
 *generated to match* a specific sentence in item count, length and letter
 frequency, so the contrast with `sentences` is lexicality rather than surface
 form. `tones_random` uses the same four tones as a `tones_regular` trial, so
-the contrast is sequence structure rather than pitch content.
+the contrast is sequence structure rather than pitch content. The disk pair is
+the visual counterpart: a `disks_regular` trial starts at a random position and
+steps a constant 45° clockwise or counterclockwise, wrapping round the orbit,
+while a `disks_random` trial draws four distinct positions that do not form a
+constant step. Unlike the tones, it draws fresh positions rather than reusing a
+regular trial's four — over a run the eight positions come up equally often in
+both conditions, but a single random trial is not the position-matched partner
+of a single regular one.
 `sentences_reversed` is its sentence reversed, which preserves duration and
 long-term spectrum exactly while destroying intelligibility.
 
@@ -123,7 +132,7 @@ Under `assets/`:
 | Script | Produces |
 |---|---|
 | `generate-text-images.py` | `equations/`, `words/`, `consonant-strings/`, `motor-visual/` — Inconsolata 80, white on black |
-| `disks/generate-disks.py` | eight disks on the wedge/ring canvas |
+| `disks/generate-disks.py` | eight disks on the wedge/ring canvas, with the orbit and its cross hair drawn |
 | `wedges-rings/generate-wedges-rings.py` | eight wedges and eight rings |
 | `split-sheets.py` | cuts the AI contact sheets into `faces_kept/`, `houses_kept/` |
 | `tones/generate-tones.py` | nine 300 ms tones, log-spaced 220–440 Hz |
