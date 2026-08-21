@@ -132,7 +132,7 @@ control.ErrCancelled  // returned when the user cancels the dialog
 
 | Function | Description |
 |---|---|
-| `NewExperimentFromFlags(name string, bg, fg Color, fontSize float32) *Experiment` | Creates and fully initializes an experiment from `-w` (windowed 1024×768), `-d N` (display index, -1 = primary), and `-s N` (subject ID) command-line flags. Calls `log.Fatal` on error. **This is the preferred entry point.** |
+| `NewExperimentFromFlags(name string, bg, fg Color, fontSize float32, extra ...InfoField) *Experiment` | Creates and fully initializes an experiment from `-w` (windowed 1024×768), `-d N` (display index, -1 = primary), and `-s N` (subject ID) command-line flags. Calls `log.Fatal` on error. **This is the preferred entry point.** Any `extra` fields are appended to the session-setup dialog that opens when `-s` is absent, and read back from `exp.Info` (nil when the dialog does not open, so keep a flag as the fallback); an extra field named like one of the four built-ins replaces it. |
 | `NewExperiment(name string, width, height int, fullscreen bool, bg, fg Color, fontSize float32) *Experiment` | Lower-level constructor; call `Initialize()` before use. |
 
 ### Lifecycle Methods

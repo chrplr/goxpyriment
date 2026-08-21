@@ -113,6 +113,96 @@ var headlessFlag = flag.Bool("headless", false, "skip the participant info dialo
 // dialog never opens on top of a program's own explicit GetParticipantInfo call.
 var participantInfoCollected bool
 
+// stepFocus returns the field index delta positions along tabOrder from focus,
+// wrapping at either end. An unknown focus (nothing focused yet) starts from
+// the first entry, so the first TAB lands on the second widget and the first
+// Shift-TAB on the last -- what a form does everywhere else.
+func stepFocus(tabOrder []int, focus, delta int) int {
+	if len(tabOrder) == 0 {
+		return -1
+	}
+	at := 0
+	for i, fi := range tabOrder {
+		if fi == focus {
+			at = i
+			break
+		}
+	}
+	return tabOrder[(at+delta+len(tabOrder))%len(tabOrder)]
+}
+
+// cycleValue returns what a widget's value becomes when the keyboard operates
+// it: the option delta places along a select, wrapping, or the other state of
+// a checkbox. Anything else -- a text field -- keeps its value, since there
+// the arrow keys and the space bar belong to the text being typed.
+//
+// A select whose current value is not one of its options starts from the
+// first, so a stale cached value cannot leave the arrows doing nothing.
+func cycleValue(f InfoField, current string, delta int) string {
+	switch f.Type {
+	case FieldSelect:
+		if len(f.Options) == 0 {
+			return current
+		}
+		at := 0
+		for i, opt := range f.Options {
+			if current == opt {
+				at = i
+				break
+			}
+		}
+		return f.Options[(at+delta+len(f.Options))%len(f.Options)]
+	case FieldCheckbox:
+		if current == "true" {
+			return "false"
+		}
+		return "true"
+	}
+	return current
+}
+
+// dialogPresentation maps the fixed-size participant dialog onto a rendering
+// output that is not necessarily the size that was asked for. Where there is no
+// window manager -- a KMSDRM console, an SDL backend that only does fullscreen
+// -- the window covers the whole display, and stretching the dialog across it
+// applies a different factor horizontally and vertically, distorting every
+// glyph.
+//
+// The dialog is therefore shown at its natural size and only ever scaled down.
+// The returned logical size is the output divided by the scale wanted, not the
+// dialog's own size: at scale 1 one logical unit is one output pixel and the
+// dialog draws 1:1, and the viewport centres it. displayScale is the target
+// scale, so a HiDPI panel still shows the dialog at its intended physical size;
+// an output too small for the dialog gets a uniform reduction, which
+// LOGICAL_PRESENTATION_LETTERBOX then applies without changing the aspect
+// ratio. fillsOutput reports whether the dialog covers the whole output, i.e.
+// whether anything of the surrounding area will be seen.
+func dialogPresentation(outW, outH, dialogW, dialogH int32, displayScale float32) (logicalW, logicalH int32, viewport sdl.Rect, fillsOutput bool) {
+	logicalW, logicalH = dialogW, dialogH
+	viewport = sdl.Rect{W: dialogW, H: dialogH}
+	if outW <= 0 || outH <= 0 || dialogW <= 0 || dialogH <= 0 {
+		return logicalW, logicalH, viewport, true
+	}
+	if displayScale <= 0 {
+		displayScale = 1
+	}
+	scale := min(displayScale,
+		float32(outW)/float32(dialogW), float32(outH)/float32(dialogH))
+	if scale <= 0 {
+		return logicalW, logicalH, viewport, true
+	}
+	logicalW = int32(float32(outW) / scale)
+	logicalH = int32(float32(outH) / scale)
+	viewport = sdl.Rect{
+		X: (logicalW - dialogW) / 2,
+		Y: (logicalH - dialogH) / 2,
+		W: dialogW,
+		H: dialogH,
+	}
+	return logicalW, logicalH, viewport,
+		viewport.X == 0 && viewport.Y == 0 && logicalW == dialogW && logicalH == dialogH
+}
+
 // GetParticipantInfo opens a graphical SDL dialog before the experiment starts,
 // lets the experimenter fill in the provided fields, and returns the collected
 // values as a map[field.Name → value].
@@ -127,6 +217,12 @@ var participantInfoCollected bool
 //
 // When the -headless flag is set, the dialog is skipped entirely: each field
 // receives its cached value (or its Default if no cache entry exists).
+//
+// The dialog is fully operable from the keyboard, since a console (a KMSDRM
+// tty, a rig with no mouse on it) may have no pointer at all: TAB and the up
+// and down arrows move between every widget, left and right change the focused
+// select or checkbox, SPACE operates it, ENTER submits, ESCAPE cancels. The
+// focused widget is outlined in blue.
 //
 // Returns ErrCancelled if the user presses Escape, clicks Cancel, or closes
 // the window without confirming.
@@ -261,7 +357,35 @@ func GetParticipantInfo(title string, fields []InfoField) (map[string]string, er
 	}
 	defer window.Destroy()
 	defer renderer.Destroy()
-	renderer.SetLogicalPresentation(int32(winW), int32(winH), sdl.LOGICAL_PRESENTATION_STRETCH)
+
+	// Present the dialog at its natural size, scaling it down only when it
+	// does not fit. The output is not always the size that was asked for: with
+	// no window manager -- a KMSDRM console, an SDL fullscreen backend -- the
+	// window covers the whole display, and stretching a 620-wide dialog across
+	// it applies a different factor horizontally and vertically, which distorts
+	// every glyph.
+	//
+	// So the logical size is the output divided by the scale we want rather
+	// than the dialog's own size: at scale 1 one logical unit is one pixel and
+	// the dialog draws 1:1, and the viewport then centres it. The display's own
+	// scale factor is the target, which is what keeps a HiDPI panel showing the
+	// dialog at its intended physical size; a screen too small for it takes a
+	// uniform LETTERBOX reduction instead.
+	outW, outH, sizeErr := renderer.CurrentOutputSize()
+	if sizeErr != nil {
+		outW, outH = int32(winW), int32(winH) // fall back to what was asked for
+	}
+	displayScale := float32(1)
+	if ds, dsErr := window.DisplayScale(); dsErr == nil && ds > 0 {
+		displayScale = ds
+	}
+	logicalW, logicalH, viewport, fillsOutput :=
+		dialogPresentation(outW, outH, int32(winW), int32(winH), displayScale)
+	renderer.SetLogicalPresentation(logicalW, logicalH, sdl.LOGICAL_PRESENTATION_LETTERBOX)
+	// Drawing is clipped and translated to the dialog, so every coordinate in
+	// the event and draw code below stays in the logical [0,winW]×[0,winH]
+	// space it was written for, wherever the dialog ends up on screen.
+	renderer.SetViewport(&viewport)
 
 	window.StartTextInput()
 	defer window.StopTextInput()
@@ -273,6 +397,16 @@ func GetParticipantInfo(title string, fields []InfoField) (map[string]string, er
 	// between blocks. Show the cursor for the dialog's lifetime and put it back
 	// the way it was on the way out.
 	cursorWasVisible := sdl.CursorVisible()
+	// On a bare TTY (KMS/DRM) there is no compositor to supply a cursor shape,
+	// and SDL draws one only if it has been given one -- ShowCursor on its own
+	// makes "nothing" visible, which is indistinguishable from having no mouse
+	// at all. Giving SDL a shape is what apparatus.NewScreen does for the same
+	// reason; the dialog opens before any Screen exists, so it has to do it too.
+	if cursor, curErr := sdl.CreateSystemCursor(sdl.SYSTEM_CURSOR_DEFAULT); curErr == nil {
+		_ = sdl.SetCursor(cursor)
+	} else {
+		log.Printf("control.GetParticipantInfo: could not create a cursor shape: %v", curErr)
+	}
 	if err := sdl.ShowCursor(); err != nil {
 		log.Printf("control.GetParticipantInfo: could not show the mouse cursor: %v", err)
 	}
@@ -288,6 +422,7 @@ func GetParticipantInfo(title string, fields []InfoField) (map[string]string, er
 	colWhite := sdl.Color{R: 255, G: 255, B: 255, A: 255}
 	colFocus := sdl.Color{R: 0, G: 100, B: 220, A: 255}
 	colBorder := sdl.Color{R: 180, G: 180, B: 180, A: 255}
+	colBackdrop := sdl.Color{R: 60, G: 60, B: 65, A: 255} // around the dialog on a larger screen
 	colGreen := sdl.Color{R: 0, G: 140, B: 0, A: 255}
 	colRed := sdl.Color{R: 180, G: 0, B: 0, A: 255}
 	colCheck := sdl.Color{R: 0, G: 150, B: 0, A: 255}
@@ -346,10 +481,34 @@ func GetParticipantInfo(title string, fields []InfoField) (map[string]string, er
 		X: float32(winW/2 + 20), Y: float32(winH - footerH + 15), W: 100, H: 36,
 	}
 
-	// Start with the first text field focused, if any.
-	focusTI := -1
-	if len(textIdx) > 0 {
-		focusTI = 0
+	// Every widget is reachable from the keyboard, in the order it is drawn.
+	// A console has no pointer -- a KMSDRM tty, a testing rig without a mouse
+	// on it -- and a dialog whose checkboxes and option rows can only be
+	// clicked cannot be filled in at all there.
+	tabOrder := make([]int, 0, len(fields))
+	tabOrder = append(tabOrder, textIdx...)
+	tabOrder = append(tabOrder, selectIdx...)
+	tabOrder = append(tabOrder, checkIdx...)
+
+	// focus indexes fields, not one of the per-type slices, so it can name any
+	// widget. -1 is nothing focused.
+	focus := -1
+	if len(tabOrder) > 0 {
+		focus = tabOrder[0]
+	}
+	moveFocus := func(delta int) { focus = stepFocus(tabOrder, focus, delta) }
+	// operate applies the keyboard to the focused widget: the next or previous
+	// option of a select, the other state of a checkbox.
+	operate := func(delta int) {
+		if focus >= 0 {
+			f := fields[focus]
+			values[f.Name] = cycleValue(f, values[f.Name], delta)
+		}
+	}
+	// editingText reports whether typing goes into the focused widget.
+	editingText := func() bool {
+		return focus >= 0 &&
+			(fields[focus].Type == FieldText || fields[focus].Type == FieldNumber)
 	}
 
 	// invalidFields tracks FieldNumber fields whose current value is not a
@@ -381,16 +540,22 @@ func GetParticipantInfo(title string, fields []InfoField) (map[string]string, er
 
 			case sdl.EVENT_MOUSE_BUTTON_DOWN:
 				me := ev.MouseButtonEvent()
+				// Window coordinates are not the logical ones the widgets are
+				// laid out in as soon as the output size differs from the
+				// dialog size (a KMSDRM console, a HiDPI panel). SDL applies
+				// the logical presentation, the scale and the viewport for us.
 				mx, my := me.X, me.Y
+				if rx, ry, convErr := renderer.RenderCoordinatesFromWindow(me.X, me.Y); convErr == nil {
+					mx, my = rx, ry
+				}
 
 				// Click on a text field → focus it.
-				focusTI = -1
+				focus = -1
 				for ti, fi := range textIdx {
 					y := boxY(ti)
 					if mx >= float32(margin) && mx <= float32(margin+boxW) &&
 						my >= y && my <= y+boxH {
-						focusTI = ti
-						_ = fi
+						focus = fi
 						break
 					}
 				}
@@ -400,6 +565,7 @@ func GetParticipantInfo(title string, fields []InfoField) (map[string]string, er
 					y := cbY(ci)
 					if mx >= float32(margin) && mx <= float32(margin+300) &&
 						my >= y && my <= y+float32(checkRowH) {
+						focus = fi
 						if values[fields[fi].Name] == "true" {
 							values[fields[fi].Name] = "false"
 						} else {
@@ -420,6 +586,7 @@ func GetParticipantInfo(title string, fields []InfoField) (map[string]string, er
 					for oi, opt := range f.Options {
 						bx := float32(margin) + float32(oi)*(btnW+4)
 						if mx >= bx && mx <= bx+btnW && my >= y && my <= y+boxH {
+							focus = fi
 							values[f.Name] = opt
 						}
 					}
@@ -441,10 +608,9 @@ func GetParticipantInfo(title string, fields []InfoField) (map[string]string, er
 				}
 
 			case sdl.EVENT_TEXT_INPUT:
-				if focusTI >= 0 && focusTI < len(textIdx) {
-					fi := textIdx[focusTI]
-					values[fields[fi].Name] += ev.TextInputEvent().Text
-					delete(invalidFields, fields[fi].Name)
+				if editingText() {
+					values[fields[focus].Name] += ev.TextInputEvent().Text
+					delete(invalidFields, fields[focus].Name)
 				}
 
 			case sdl.EVENT_KEY_DOWN:
@@ -460,22 +626,40 @@ func GetParticipantInfo(title string, fields []InfoField) (map[string]string, er
 					}
 
 				case sdl.K_BACKSPACE:
-					if focusTI >= 0 && focusTI < len(textIdx) {
-						fi := textIdx[focusTI]
-						s := values[fields[fi].Name]
+					if editingText() {
+						s := values[fields[focus].Name]
 						if len(s) > 0 {
 							_, size := utf8.DecodeLastRuneInString(s)
-							values[fields[fi].Name] = s[:len(s)-size]
+							values[fields[focus].Name] = s[:len(s)-size]
 						}
 					}
 
 				case sdl.K_TAB:
-					if len(textIdx) > 0 {
-						if ke.Mod&sdl.KMOD_SHIFT != 0 {
-							focusTI = (focusTI - 1 + len(textIdx)) % len(textIdx)
-						} else {
-							focusTI = (focusTI + 1) % len(textIdx)
-						}
+					if ke.Mod&sdl.KMOD_SHIFT != 0 {
+						moveFocus(-1)
+					} else {
+						moveFocus(1)
+					}
+
+				case sdl.K_DOWN:
+					moveFocus(1)
+
+				case sdl.K_UP:
+					moveFocus(-1)
+
+				case sdl.K_RIGHT:
+					operate(1)
+
+				case sdl.K_LEFT:
+					operate(-1)
+
+				case sdl.K_SPACE:
+					// A space belongs to the text being typed; anywhere else it
+					// is the usual "operate this widget" key. EVENT_TEXT_INPUT
+					// delivers the character itself, so this only has to keep
+					// out of the way.
+					if !editingText() {
+						operate(1)
 					}
 				}
 			}
@@ -483,8 +667,22 @@ func GetParticipantInfo(title string, fields []InfoField) (map[string]string, er
 
 		// ── Draw ─────────────────────────────────────────────────────────────
 
-		renderer.SetDrawColor(colBg.R, colBg.G, colBg.B, colBg.A)
+		// Clear ignores the viewport, so this paints the whole output: the
+		// backdrop when the dialog is smaller than the screen, and the dialog's
+		// own background when it is not.
+		if fillsOutput {
+			renderer.SetDrawColor(colBg.R, colBg.G, colBg.B, colBg.A)
+		} else {
+			renderer.SetDrawColor(colBackdrop.R, colBackdrop.G, colBackdrop.B, colBackdrop.A)
+		}
 		renderer.Clear()
+		if !fillsOutput {
+			panel := sdl.FRect{X: 0, Y: 0, W: winW, H: float32(winH)}
+			renderer.SetDrawColor(colBg.R, colBg.G, colBg.B, colBg.A)
+			renderer.RenderFillRect(&panel)
+			renderer.SetDrawColor(colBorder.R, colBorder.G, colBorder.B, colBorder.A)
+			renderer.RenderRect(&panel)
+		}
 
 		// Title
 		renderText(title, float32(margin), 18, colBlack)
@@ -510,7 +708,7 @@ func GetParticipantInfo(title string, fields []InfoField) (map[string]string, er
 			switch {
 			case invalidFields[f.Name]:
 				renderer.SetDrawColor(colRed.R, colRed.G, colRed.B, colRed.A)
-			case focusTI == ti:
+			case focus == fi:
 				renderer.SetDrawColor(colFocus.R, colFocus.G, colFocus.B, colFocus.A)
 			default:
 				renderer.SetDrawColor(colBorder.R, colBorder.G, colBorder.B, colBorder.A)
@@ -531,6 +729,14 @@ func GetParticipantInfo(title string, fields []InfoField) (map[string]string, er
 			y := selY(si)
 			nOpts := len(f.Options)
 			renderText(f.Label+":", float32(margin), y-float32(labelH)-2, colBlack)
+			if focus == fi {
+				// The row has the focus; the filled button inside it is the
+				// current choice. Two different things, so two different marks.
+				ring := sdl.FRect{X: float32(margin) - 4, Y: y - 4,
+					W: float32(boxW) + 8, H: boxH + 8}
+				renderer.SetDrawColor(colFocus.R, colFocus.G, colFocus.B, colFocus.A)
+				renderer.RenderRect(&ring)
+			}
 			if nOpts > 0 {
 				btnW := float32(boxW-(nOpts-1)*4) / float32(nOpts)
 				for oi, opt := range f.Options {
@@ -566,6 +772,11 @@ func GetParticipantInfo(title string, fields []InfoField) (map[string]string, er
 			renderer.RenderFillRect(&box)
 			renderer.SetDrawColor(colBlack.R, colBlack.G, colBlack.B, colBlack.A)
 			renderer.RenderRect(&box)
+			if focus == fi {
+				ring := sdl.FRect{X: float32(margin) - 4, Y: y - 4, W: cs + 8, H: cs + 8}
+				renderer.SetDrawColor(colFocus.R, colFocus.G, colFocus.B, colFocus.A)
+				renderer.RenderRect(&ring)
+			}
 			if checked {
 				mark := sdl.FRect{X: float32(margin) + 4, Y: y + 4, W: cs - 8, H: cs - 8}
 				renderer.SetDrawColor(colCheck.R, colCheck.G, colCheck.B, colCheck.A)

@@ -242,10 +242,25 @@ const DefaultRealTimePriority = 50
 //
 // Cancelling or closing the dialog exits the program cleanly.
 //
+// Extra fields may be appended to that dialog, for a setting the experiment
+// needs before it starts -- which protocol table to run, which response box is
+// plugged in. They are collected with the rest and read back from exp.Info:
+//
+//	exp := control.NewExperimentFromFlags("MEG-localizer", bg, fg, 50,
+//		control.InfoField{Name: "protocol", Label: "Protocol",
+//			Type: control.FieldSelect, Options: names, Default: "demo"})
+//	which := exp.Info["protocol"]   // "" when the dialog did not open
+//
+// An extra field whose Name matches one of the four built-in fields replaces
+// it rather than adding a second row. Like every other value except the
+// subject code, the choice is remembered across sessions. exp.Info is nil
+// whenever the dialog is skipped (-s given, or a browser build), so a program
+// still needs its own default -- normally a flag.
+//
 // The experiment is fully initialized (SDL, audio, font, data file) before
 // being returned. If initialization fails the program exits via log.Fatal.
 // The caller should defer exp.End() immediately after this call.
-func NewExperimentFromFlags(name string, bg, fg sdl.Color, fontSize float32) *Experiment {
+func NewExperimentFromFlags(name string, bg, fg sdl.Color, fontSize float32, extra ...InfoField) *Experiment {
 	windowed := flag.Bool("w", false, "Windowed mode (1024×768 window instead of fullscreen)")
 	display := flag.Int("d", -1, "Display ID: monitor index where the window/fullscreen will open (-1 = primary)")
 	exclusive := flag.String("exclusive-fullscreen", "auto",
@@ -303,6 +318,21 @@ func NewExperimentFromFlags(name string, bg, fg sdl.Color, fontSize float32) *Ex
 			{Name: "display_id", Label: "Display ID (0 = primary monitor)", Default: fmt.Sprintf("%d", screenNumber)},
 			{Name: "fullscreen", Label: "Fullscreen mode", Default: fullscreenDefault, Type: FieldCheckbox},
 			{Name: "output_dir", Label: "Results folder", Default: results.DefaultDataDir()},
+		}
+		// A caller's field replaces the built-in of the same name; anything
+		// else is appended. Two rows keyed alike would both be drawn and the
+		// last one silently win the value.
+		for _, f := range extra {
+			replaced := false
+			for i := range fields {
+				if fields[i].Name == f.Name {
+					fields[i], replaced = f, true
+					break
+				}
+			}
+			if !replaced {
+				fields = append(fields, f)
+			}
 		}
 		gathered, err := GetParticipantInfo(name, fields)
 		if errors.Is(err, ErrCancelled) {

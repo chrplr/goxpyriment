@@ -15,7 +15,7 @@ exp.Run(func() error {
 })
 ```
 
-`NewExperimentFromFlags` handles flag parsing (`-w` windowed mode, `-d N` display index, `-s` subject ID), SDL/TTF init, window creation, audio device, font, and data file in one call. Use the lower-level `NewExperiment(...) + Initialize()` only when you need non-standard initialization order.
+`NewExperimentFromFlags` handles flag parsing (`-w` windowed mode, `-d N` display index, `-s` subject ID), SDL/TTF init, window creation, audio device, font, and data file in one call. It takes optional trailing `InfoField`s, appended to the session-setup dialog it opens when `-s` is absent and returned in `exp.Info` — that is how an experiment asks for one more setting (which protocol to run, which response box) without building its own dialog; `exp.Info` is nil whenever the dialog is skipped. Use the lower-level `NewExperiment(...) + Initialize()` only when you need non-standard initialization order.
 
 **Real-time priority is requested by `Initialize()`, so both paths get it.** It
 used to be requested only inside `NewExperimentFromFlags`, which meant the choice
