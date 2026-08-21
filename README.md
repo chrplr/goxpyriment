@@ -45,6 +45,13 @@ any coding.
 
 The top navigation bar provides access to various documentation guides.
 
+**Everything in one file:
+[goxpyriment-docs.pdf](docs/goxpyriment-docs.pdf)** — every page below as a single
+searchable PDF, one chapter each, with a full table of contents and bookmarks.
+Use it when you want to search the whole documentation at once rather than a
+page at a time. The individual PDFs linked beside each guide are the same
+content, split.
+
 
 **Start here — install and build your first experiment**
 

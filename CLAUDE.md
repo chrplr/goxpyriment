@@ -25,7 +25,10 @@ The docs site is built with [Zensical](https://zensical.org/). Build and preview
 ```bash
 pip install -r docs/requirements.txt   # install Zensical once
 
-make pdfs      # generate docs/*.pdf via pandoc + xelatex
+make pdfs      # generate docs/*.pdf via pandoc + xelatex (one per page)
+make book      # generate docs/goxpyriment-docs.pdf — the whole documentation
+               # as ONE PDF (cmd/gen-book takes the chapter order from
+               # zensical.toml's nav, so the book cannot drift from the site)
 make serve     # live-reload preview at http://127.0.0.1:8000 (zensical serve)
 make docs      # build static HTML → site/ (zensical build --clean)
 make deploy    # generate PDFs + build site locally
@@ -33,7 +36,8 @@ make clean     # remove _build/ and site/
 ```
 
 The generated `docs/*.pdf` files **are tracked in git** — regenerate them with
-`make pdfs` and commit the result when the underlying Markdown changes. The
+`make pdfs` (per page) and `make book` (the single-file edition) and commit the
+result when the underlying Markdown changes. The
 `site/` directory is excluded (see `.gitignore`); it is built locally and the
 push to GitHub Pages is handled by GitHub Actions (`.github/workflows/docs.yml`).
 

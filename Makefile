@@ -1,4 +1,4 @@
-.PHONY: all examples update-examples-gallery readme tests timing-drift pdfs docs serve deploy clean help
+.PHONY: all examples update-examples-gallery readme tests timing-drift pdfs book docs serve deploy clean help
 
 # Discover every directory holding a main.go directly under examples/ or
 # tests/. We use make's built-in $(wildcard)/$(patsubst) rather than `find`
@@ -30,7 +30,8 @@ help:
 	@echo "  tests     Build test binaries"
 	@echo "  wasm-NAME        Build a browser (WASM) bundle of an example to _build/wasm/NAME/"
 	@echo "  wasm-NAME-serve  Build + serve a browser bundle at http://localhost:8080/?s=1"
-	@echo "  pdfs      Generate PDF docs via pandoc + xelatex"
+	@echo "  pdfs      Generate PDF docs via pandoc + xelatex (one per page)"
+	@echo "  book      Generate the whole documentation as one PDF in docs/"
 	@echo "  docs      Build Zensical HTML site to site/"
 	@echo "  serve     Live-reload docs preview at http://127.0.0.1:8000"
 	@echo "  deploy    Generate PDFs and build docs (GitHub Actions pushes to Pages)"
@@ -115,6 +116,12 @@ tests:
 # Requires: pandoc, xelatex  (sudo apt install pandoc texlive-xetex)
 pdfs:
 	bash docs/make_pdfs.sh
+
+# Build the whole documentation as one searchable PDF (output → docs/).
+# Chapter order comes from zensical.toml's nav, so the book cannot drift
+# from the site. Requires the same tools as `pdfs`.
+book:
+	bash docs/make_book.sh
 
 # Build the Zensical HTML site locally (output → site/).
 docs:

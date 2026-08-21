@@ -689,7 +689,7 @@ This sweeps target durations from 1 ms to 50 ms in 1 ms steps and reports
 the actual vs. target duration at each step. Duration errors below 0.5 ms
 across the sweep confirm that VRR is working; large periodic errors confirm
 that VRR is absent or the requested duration is outside the supported range.
-See [TimingTests.md — VRR section](TimingTests.md#vrr-variable-refresh-rate-duration-sweep)
+See [TimingTests.md — VRR section](TimingTests.md#vrr--arbitrary-stimulus-durations)
 for detailed interpretation, including how to read the VRR boundary from the
 output and how to enable FreeSync on Linux.
 

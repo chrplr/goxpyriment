@@ -15,4 +15,9 @@
   \newunicodechar{≈}{\ensuremath{\approx}}%
   \newunicodechar{γ}{\ensuremath{\gamma}}%
   \newunicodechar{✓}{\ensuremath{\checkmark}}%
+  % Emoji the docs use as callout markers. DejaVu has no glyph for either, and
+  % a missing glyph is silent in the PDF — the marker simply vanishes, taking
+  % the "this is a warning" signal with it. Nearest text-mode equivalents.
+  \newunicodechar{⚠}{\textbf{!}}%
+  \newunicodechar{💡}{\textbf{*}}%
 }

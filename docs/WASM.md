@@ -12,7 +12,7 @@ correct browser metadata (`video_driver: emscripten`). See
 > (hand-built `SDL3.js`, an `EXPORTED_FUNCTIONS` list, a custom `index.html`).
 > That workflow is **obsolete**, replaced by the `wasmsdl` bundler described
 > below. A condensed record of the old recipe is kept in the
-> [appendix](#appendix-historical-manual-emscripten-recipe) as a reference for
+> [appendix](#appendix--historical-manual-emscripten-recipe) as a reference for
 > rebuilding the SDL wasm blob.
 
 ## Architecture
