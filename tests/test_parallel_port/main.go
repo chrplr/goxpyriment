@@ -37,10 +37,9 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"os/signal"
-	"syscall"
 	"time"
 
+	"github.com/chrplr/goxpyriment/tests/internal/safeexit"
 	"github.com/chrplr/goxpyriment/triggers"
 )
 
@@ -76,15 +75,15 @@ func main() {
 	// Leave the port LOW however the program exits, including Ctrl-C: a data
 	// line left HIGH keeps whatever is downstream latched, and on a trigger rig
 	// that means the next recording starts with a stuck trigger.
-	stop := make(chan os.Signal, 1)
-	signal.Notify(stop, os.Interrupt, syscall.SIGTERM)
-	go func() {
-		<-stop
+	// Through safeexit, not signal.Notify directly: AllLow and Close are ioctls
+	// on the port, and a port that has stopped answering is exactly when the
+	// operator reaches for Ctrl-C. Catching the signal and then blocking in the
+	// driver leaves no way to stop the program at all — see safeexit's comment.
+	safeexit.OnSignal(0, func() {
 		_ = pp.AllLow()
 		_ = pp.Close()
 		fmt.Println("\nall lines LOW, port closed.")
-		os.Exit(0)
-	}()
+	})
 
 	if *fAll {
 		if err := pp.Send(0xFF); err != nil {

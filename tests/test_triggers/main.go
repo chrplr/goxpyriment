@@ -48,19 +48,18 @@ import (
 	"log"
 	"math"
 	"os"
-	"os/signal"
 	"runtime"
 	"runtime/debug"
 	"sort"
 	"strconv"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
 
 	"github.com/chrplr/goxpyriment/results"
 	"github.com/chrplr/goxpyriment/sysinfo"
 	"github.com/chrplr/goxpyriment/tests/internal/report"
+	"github.com/chrplr/goxpyriment/tests/internal/safeexit"
 	"github.com/chrplr/goxpyriment/tests/internal/trigdev"
 	"github.com/chrplr/goxpyriment/triggers"
 )
@@ -245,14 +244,10 @@ func closeAll(devices []*device) {
 // closeOnSignal drives the lines LOW on Ctrl-C. Deferred functions do not run
 // on a signal, and a device left HIGH keeps driving a recording input.
 func closeOnSignal(devices []*device) {
-	ch := make(chan os.Signal, 1)
-	signal.Notify(ch, os.Interrupt, syscall.SIGTERM)
-	go func() {
-		sig := <-ch
-		log.Printf("\n%v — driving every line low and exiting", sig)
-		closeAll(devices)
-		os.Exit(130)
-	}()
+	// Bounded, because closeAll writes to every device: a USB box that has
+	// stopped answering would otherwise block the handler, and with the signal
+	// caught there would be nothing left that could stop the run.
+	safeexit.OnSignal(0, func() { closeAll(devices) })
 }
 
 // splitWitness separates the -loopback device, if any, from the sources.

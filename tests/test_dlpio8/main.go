@@ -32,13 +32,11 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"os"
-	"os/signal"
-	"syscall"
 	"time"
 
 	"github.com/chrplr/goxpyriment/control"
 	"github.com/chrplr/goxpyriment/stimuli"
+	"github.com/chrplr/goxpyriment/tests/internal/safeexit"
 	"github.com/chrplr/goxpyriment/tests/internal/timingstats"
 	"github.com/chrplr/goxpyriment/triggers"
 )
@@ -110,19 +108,21 @@ func main() {
 
 	// Save data and drop the pin on Ctrl-C. Do not call exp.End here: it reaches
 	// SDL through CGo, and the main goroutine may be inside an SDL call.
-	go func() {
-		ch := make(chan os.Signal, 1)
-		signal.Notify(ch, os.Interrupt, syscall.SIGTERM)
-		<-ch
-		_ = trig.SetLow(triggerLine())
+	//
+	// Bounded by safeexit: SetLow crosses a USB serial link, and a box that has
+	// stopped answering would otherwise block the handler with the signal
+	// already caught — leaving no way to stop the run from the keyboard. The
+	// data file is written first for the same reason: it is the part worth
+	// saving, and it must not queue behind the device.
+	safeexit.OnSignal(0, func() {
 		if exp.Data != nil {
 			exp.Data.WriteEndTime()
 			if err := exp.Data.Save(); err == nil {
 				log.Printf("Results saved in %s", exp.Data.FullPath)
 			}
 		}
-		os.Exit(0)
-	}()
+		_ = trig.SetLow(triggerLine())
+	})
 
 	period := time.Duration(*fPeriodMs * float64(time.Millisecond))
 	highDur := time.Duration(float64(period) * *fDuty / 100.0)
