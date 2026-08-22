@@ -22,7 +22,15 @@ design/       ← trial/block structure and randomization
 clock/        ← timing utilities
 geometry/     ← coordinate conversion helpers
 triggers/     ← hardware trigger devices (EEG sync, etc.)
+staircase/    ← adaptive threshold estimation (up/down, QUEST)
+units/        ← pixels ↔ degrees ↔ cm through a Monitor
+assets_embed/ ← embedded default font and sounds
 ```
+
+Two further packages are infrastructure rather than experiment API and are not
+documented here: `sysinfo/` (the machine snapshot printed by `-sysinfo` and
+written into every `-info.txt`) and `vblank/` (per-platform vblank clocks used
+to anchor flip timestamps; see [Timing tests](TimingTests.md)).
 
 ---
 
@@ -227,7 +235,7 @@ exp.SetGamma(2.2)
 exp.GammaCorrector = apparatus.NewGammaCorrector(2.1, 2.2, 2.3)
 
 // Use in trial loop — specify colors in linear luminance space (0–255)
-disk := stimuli.NewFilledCircle(exp.CorrectColor(control.RGB(128, 128, 128)), radius)
+disk := stimuli.NewCircle(radius, exp.CorrectColor(control.RGB(128, 128, 128)))
 ```
 
 The `apparatus.GammaCorrector` type is also available directly:
@@ -1394,6 +1402,135 @@ status, _ := pp.ReadStatus()                    // Linux only: status register
 ### Null devices
 
 `NullOutputTTLDevice` and `NullInputTTLDevice` are silent no-ops, safe to call without hardware. `AutoDetectDLPIO8` and `AutoDetectFT232H` return a `NullOutputTTLDevice` when no device is found.
+
+---
+
+## Package `staircase`
+
+Import: `github.com/chrplr/goxpyriment/staircase`
+
+Adaptive threshold estimation. Both procedures satisfy one interface, so an
+experiment loop is written once and the method swapped:
+
+```go
+type Staircase interface {
+    Intensity() float64   // intensity for the next trial (stable until Update)
+    Update(correct bool)  // record the response and advance
+    Done() bool           // stopping criterion met
+    Threshold() float64   // current threshold estimate
+    History() []Trial     // every trial so far
+}
+
+type Trial struct {
+    Intensity float64
+    Correct   bool
+    Reversal  bool  // always false for Quest, which has no reversals
+}
+```
+
+### `UpDown` — transformed up/down (Levitt 1971)
+
+```go
+sc := staircase.NewUpDown(staircase.UpDownConfig{
+    StartIntensity:         0.5,
+    MinIntensity:           0.0,
+    MaxIntensity:           1.0,
+    StepUp:                 0.1,
+    StepDown:               0.05,
+    NCorrectDown:           3,    // 3-down/1-up → ~79.4 % correct
+    MaxReversals:           12,
+    MaxTrials:              200,
+    NReversalsForThreshold: 6,    // average the last 6 reversals
+})
+
+for !sc.Done() {
+    correct := presentTrial(sc.Intensity())
+    sc.Update(correct)
+}
+fmt.Println(sc.Threshold(), sc.NReversals(), sc.Reversals())
+```
+
+`Reversals() []float64` and `NReversals() int` are `UpDown`-specific; the rest
+come from the interface.
+
+### `Quest` — Bayesian estimation (Watson & Pelli 1983)
+
+`NewQuest` returns an error, unlike `NewUpDown`, because the prior can be
+mis-specified:
+
+```go
+q, err := staircase.NewQuest(staircase.QuestConfig{
+    TGuess:        0.3,   // prior mode
+    TGuessSd:      0.5,   // prior SD
+    PThreshold:    0.82,  // target proportion correct
+    Beta:          3.5,   // psychometric slope
+    Delta:         0.01,  // lapse rate
+    Gamma:         0.5,   // chance level (0.5 for 2AFC, 0 for yes/no)
+    IntensityMin:  0.0,
+    IntensityMax:  1.0,
+    IntensityStep: 0.01,
+    MaxTrials:     40,
+})
+if err != nil { log.Fatal(err) }
+```
+
+`q.SD()` reports the posterior width — the usual convergence check.
+
+### `Runner` — interleaved staircases
+
+```go
+r := staircase.NewRunner(rng, sc1, sc2, sc3)
+for !r.Done() {
+    sc, err := r.Next()   // picks a not-yet-finished staircase at random
+    if err != nil { break }
+    sc.Update(presentTrial(sc.Intensity()))
+}
+for _, sc := range r.All() { fmt.Println(sc.Threshold()) }
+```
+
+Interleaving prevents participants from tracking a single adaptive sequence.
+
+---
+
+## Package `units`
+
+Import: `github.com/chrplr/goxpyriment/units`
+
+Vision-science unit conversion through a `Monitor` describing the physical
+geometry. All conversions need the viewing distance, so they live on the struct
+rather than being free functions.
+
+```go
+type Monitor struct {
+    WidthCm, HeightCm   float64
+    WidthPx, HeightPx   int
+    DistanceCm          float64  // observer's viewing distance
+}
+
+m := units.NewMonitor(52.7, 29.6, 1920, 1080, 60)          // explicit size
+m := units.NewMonitorFromDiagonal(24, 1920, 1080, 60)      // from the inch rating
+if err := m.Validate(); err != nil { log.Fatal(err) }
+```
+
+| Method | Converts |
+|---|---|
+| `DegToPx(deg)` / `PxToDeg(px)` | visual degrees ↔ pixels (horizontal) |
+| `CmToPx(cm)` / `PxToCm(px)` | centimetres ↔ pixels (horizontal) |
+| `DegToCm(deg)` / `CmToDeg(cm)` | visual degrees ↔ centimetres on the screen |
+| `DegToPxY` / `PxToDegY` / `CmToPxY` / `PxToCmY` | the same, vertically |
+
+The `…Y` variants exist because pixels are not always square.
+`HasSquarePixels()` reports whether they are; when it returns false the
+horizontal and vertical conversions genuinely differ and using the wrong one is
+a silent error.
+
+Descriptive helpers: `PPcmX()`, `PPcmY()`, `PPI()`, `PPD()` (pixels per degree,
+i.e. `DegToPx(1)`), and `String()` for logging the geometry into a data file.
+
+```go
+radiusPx := float32(m.DegToPx(2.5))            // a 2.5° stimulus
+disk := stimuli.NewCircle(radiusPx, control.White)
+```
 
 ---
 

@@ -91,7 +91,7 @@ Most examples accept `-w` for windowed mode (1024×768 window), `-d N` for displ
 
 ### SDL3 is bundled — no system install required
 
-SDL3, SDL3_ttf, and SDL3_image are embedded as gzip-compressed blobs inside the Go binary via `go-sdl3`'s `binsdl`/`binttf`/`binimg` packages (see `vendor/github.com/Zyko0/go-sdl3/bin/`). `control.Initialize()` calls `binsdl.Load()` which decompresses the library to a temp directory and loads it via `dlopen`. No system SDL3 package is needed on the target machine.
+SDL3, SDL3_ttf, and SDL3_image are embedded as gzip-compressed blobs inside the Go binary via `go-sdl3`'s `binsdl`/`binttf`/`binimg` packages (see `vendor/github.com/Zyko0/go-sdl3/bin/`). `Experiment.Initialize()` calls the bundled loader (`binsdl.Load()`) which decompresses the library to a temp directory and loads it via `dlopen`. No system SDL3 package is needed on the target machine.
 
 ### NVIDIA + X11 — fullscreen rendering
 
@@ -152,7 +152,7 @@ Both folders are catalogued in `docs/GalleryOfExamples.md`. Each directory carri
 
 ## Package architecture
 
-The packages form a deliberate layered stack. Each package has its own `CLAUDE.md` with detailed API notes.
+The packages form a deliberate layered stack. Most have their own `CLAUDE.md` with detailed API notes (`assets_embed/`, `vblank/` and `sysinfo/` do not — read their doc comments).
 
 | Package | Role |
 |---|---|
@@ -160,14 +160,16 @@ The packages form a deliberate layered stack. Each package has its own `CLAUDE.m
 | `stimuli/` | All visual and audio stimuli, VSYNC-locked animation loops, RSVP streams |
 | `media/` | Multi-clip `.gv` video playback — `MovieManager`/`Movie` for back-to-back movies; complements the single-clip `stimuli.GvVideo`. See `media/CLAUDE.md` |
 | `apparatus/` | SDL window/renderer (`Screen`), keyboard, mouse, gamepad, gamma corrector, response device abstraction |
-| `results/` | Experiment data file (`.csv` with `#`-prefixed metadata), buffered output file |
+| `results/` | Experiment data file (plain `.csv`; `#`-prefixed metadata goes to a companion `-info.txt`), buffered output file |
 | `design/` | Trial/block structure, randomization utilities, Latin-square counterbalancing |
 | `staircase/` | Adaptive threshold estimation — `UpDown` (Levitt 1971) and `Quest` (Watson & Pelli 1983) |
 | `units/` | Vision-science unit conversions — pixels↔degrees↔cm via a `Monitor` struct |
-| `triggers/` | Hardware trigger interfaces — parallel port, DLP-IO8 USB, generic serial |
+| `triggers/` | Hardware trigger interfaces — parallel port, Linux GPIO, DLP-IO8/DLP-IO20 USB, FT232H, LabJack T4, MEG TTL box, generic serial, plus network markers (EGI NetStation, BEL video recorder) |
 | `clock/` | Timing utilities — `Clock` type with `SleepUntil`, global `GetTime` |
 | `geometry/` | Math helpers — Euclidean distance, polar↔Cartesian, degree→radian |
 | `assets_embed/` | Embedded assets — Inconsolata font, ping/buzzer sounds |
+| `vblank/` | Per-platform vblank clocks (Linux DRM, macOS CVDisplayLink) used to anchor flip timestamps; `media/present` is a thin adapter over it |
+| `sysinfo/` | Machine snapshot — CPU, GPU, memory, audio, scheduling; printed by `-sysinfo` and written into every `-info.txt` |
 
 ### Minimal boilerplate
 

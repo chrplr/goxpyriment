@@ -305,7 +305,7 @@ reading of the mode can recover; kmsdrm derives the rational from the timing and
 is exact. It remains the right tool for the
 job it documents below; it is not a rate reference. The kernel's vblank timestamp
 is — consecutive `DRM_IOCTL_WAIT_VBLANK` stamps on the 5490 give 60.0384 Hz,
-**1.3 ppm** from the photodiode truth, and `media/present/drm_linux.go` already
+**1.3 ppm** from the photodiode truth, and `vblank/drm_linux.go` already
 reads them for the movie player.
 
 `Screen.PacingStats()` reports which branch the presents took — `Blocked`,

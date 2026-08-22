@@ -264,7 +264,7 @@ This script may look a bit intinmidating. This is because especially the lines:
 			0, 0, control.DefaultTextColor)
 	}
 
-Their purpose is to prepare in advanced the images (stimuli.Textline) that will displayed on the screen during the main loop: One image is created for each number and saved in a map associating a number to an image (Go maps are similar to Python's dict). 
+Their purpose is to prepare in advanced the images (`stimuli.TextLine`) that will displayed on the screen during the main loop: One image is created for each number and saved in a map associating a number to an image (Go maps are similar to Python's dict). 
 
 Note: it is a generally a good habit to prepare the stimuli in advance, but we could have written the script without creating the map, and calling NewTextLine in the main loop, like this:
 

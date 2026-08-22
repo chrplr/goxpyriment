@@ -70,9 +70,11 @@ The Pi gray screen was caused by a different bug: `binsdl.Load()` tried to extra
 binsdl: couldn't sdl.LoadLibrary: /tmp/.../libSDL3.so.0: cannot open shared object file
 ```
 
-This was fixed by adding build-tag-selected loader files:
-- `control/sdlload_embedded.go` (`//go:build !linux || !arm64`) — uses `binsdl/binttf/binimg.Load()`
-- `control/sdlload_system.go` (`//go:build linux && arm64`) — calls `sdl.LoadLibrary(sdl.Path())` against the system-installed SDL3
+This was originally worked around with build-tag-selected loader files, one of
+which loaded the *system* SDL3 on linux/arm64. **That workaround is gone**: since
+go-sdl3 v0.1.1 bundles SDL3 for linux/arm64 too, `control/sdlload_embedded.go`
+handles every platform with `binsdl/binttf/binimg.Load()` and carries no build
+tag (removed in commit `53da703`). Nothing needs a system-installed SDL3.
 
 After that fix the Pi works correctly in both windowed and fullscreen — confirming the Pi had no HiDPI issue (pixel density = 1 on a standard monitor).
 

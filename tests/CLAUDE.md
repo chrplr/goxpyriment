@@ -22,8 +22,9 @@ live beside the package, not here.
 ## Conventions
 
 - **Name with a `test_` prefix** and underscores: `test_ft232h`, `test_av_sync`.
-  (Timing/display fixtures like `Timing-Tests` predate this and keep their historic
-  names.)
+  (Three fixtures predate the convention and keep their historic names:
+  `Timing-Tests`, `GvFiles` and `set_fullscreen`. Do not rename them — the docs,
+  the gallery and `run-timing-tests.sh` all refer to them by those names.)
 - **Add a `meta.yaml`** with `category: test`, a one-line `description:`, and
   `reference:` (may be empty). This puts the test in the `tests` table of
   `docs/GalleryOfExamples.md`. Regenerate with `make update-examples-gallery`; the

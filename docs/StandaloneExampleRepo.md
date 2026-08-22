@@ -22,7 +22,7 @@ It is the process used for the two reference repos — copy either as a template
 > ```
 >
 > That exports a standalone *module* (buildable on its own with `go run .`, no
-> workspace) to zip and email — see [`examples/README.md`](../examples/README.md).
+> workspace) to zip and email — see `examples/README.md` in the repository.
 > This guide goes further: it turns that output into a *published repository*
 > with release CI and an optional in-browser build. Start from `share.sh`
 > (Step 1), then add the pieces below.
@@ -187,6 +187,6 @@ for panics — each names the file:line of any still-stubbed binding.
 
 ## See also
 
-- [`examples/README.md`](../examples/README.md) — `make share-NAME` (the zip-and-email path)
+- `examples/README.md` (in the repository) — `make share-NAME` (the zip-and-email path)
 - [WASM.md](WASM.md) — how the browser build works, timing, and known gaps
 - [How_to_package_your_experiment.md](How_to_package_your_experiment.md) — the GoReleaser alternative for native binaries

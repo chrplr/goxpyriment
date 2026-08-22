@@ -655,7 +655,7 @@ media: present backend: vsync-estimated (post-Present FlipTS, no OS integration)
 
 ### 8.1 What Windows users get today
 
-Windows builds compile cleanly (the `media/present/autodetect_other.go`
+Windows builds compile cleanly (the `vblank/autodetect_other.go`
 file matches `!darwin && !linux`) and use the `VsyncEstimated`
 fallback. This means:
 
@@ -681,8 +681,9 @@ but for low-trial-rate studies this is often acceptable.
 ### 8.2 What needs to be done for Windows
 
 To bring Windows up to parity with macOS / Linux, a Stage 5 backend
-needs to be added at `media/present/dxgi_windows.go` (next to the
-existing `cvdisplaylink_darwin.go` and `drm_linux.go`). The most
+needs to be added at `vblank/dxgi_windows.go` (next to the
+existing `vblank/cvdisplaylink_darwin.go` and `vblank/drm_linux.go`;
+`media/present` is a thin adapter over that package). The most
 promising APIs:
 
 | API | Pros | Cons |

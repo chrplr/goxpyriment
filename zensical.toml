@@ -11,7 +11,7 @@ docs_dir = "docs"
 # inline tables. TOML requires each inline table to stay on one line.
 nav = [
   { Home = "index.md" },
-  { "Start here" = [ { Installation = "Installation.md" }, { "Creating Your Own Experiment" = "CreatingYourOwnExperiment.md" }, { "Getting Started" = "GettingStarted.md" } ] },
+  { "Start here" = [ { Installation = "Installation.md" }, { "Installing a Go development environment" = "Installing-a-development-environment.md" }, { "Creating Your Own Experiment" = "CreatingYourOwnExperiment.md" }, { "Getting Started" = "GettingStarted.md" } ] },
   { Gallery = [ { "Gallery of Examples" = "GalleryOfExamples.md" }, { "Pre-built examples" = "pre-built-examples.md" } ] },
   { "User Manual" = "UserManual.md" },
   { API = "API.md" },
