@@ -15,8 +15,8 @@ configurations. On bare Xorg — the stack they actually measured — it is bett
 than all fourteen, by a factor of two, at sd 0.083 ms. The same binary, the
 same machine, the same night.**
 
-**Caveat: We ran out tests on a different machine as the one on which
-the MegaStudy was ran on, so, like the paper's authors, we decline to
+**Caveat: we ran our tests on a different machine from the one the
+mega-study was run on, so, like the paper's authors, we decline to
 generalise across machines.**
 
 The protocol mapping — which flags reproduce their trial structure — lives in
