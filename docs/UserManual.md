@@ -579,17 +579,22 @@ depends on the operating system.
 `_NET_WM_BYPASS_COMPOSITOR` window property when the application enters
 fullscreen mode. Compliant compositing WMs (KWin, Mutter, Compton) respond by
 *unredirecting* the fullscreen window: the application's framebuffer is routed
-directly to the display scan-out pipeline without compositing. Presentation
-latency drops below 1 ms — comparable to a compositor-free session. Nothing
-special needs to be done in goxpyriment; running fullscreen (omit `-w`) is
-sufficient.
+directly to the display scan-out pipeline without compositing. Nothing special
+needs to be done in goxpyriment; running fullscreen (omit `-w`) is sufficient.
+
+This removes the compositor's *variance* but not the pipeline's latency.
+Measured with a photodiode on a bare Xorg session with openbox, trigger-to-light
+was **35.74 ms with a standard deviation of 0.083 ms** — the steadiest
+configuration measured, and also the latest, one whole frame behind KMS/DRM. Do
+not assume "bypass" means sub-millisecond latency; it does not.
 
 **Linux / Wayland (fullscreen).** The Wayland compositor is always the
-intermediary for frame delivery, but modern compositors (KWin 5.21+,
-GNOME Mutter 44+) support *direct scan-out* for fullscreen applications,
-which routes the framebuffer to the display hardware with near-zero overhead.
-In practice the latency is similar to X11 bypass, though this depends on
-the compositor version and GPU driver.
+intermediary for frame delivery, and modern compositors (KWin 5.21+,
+GNOME Mutter 44+) support *direct scan-out* for fullscreen applications. In
+practice this is the **worst** of the three Linux configurations for timing:
+21.75 ms with a standard deviation of **1.344 ms**, sixteen times the scatter of
+a compositor-free session, with 7 % of flips landing more than 1 ms off the
+frame grid. See [Timing tests](TimingTests.md#the-display-stack-is-the-dominant-term).
 
 **Linux / KMS–DRM (no display server).** The lowest-latency configuration on
 Linux is to run without any display server at all, from a virtual terminal
@@ -689,7 +694,7 @@ This sweeps target durations from 1 ms to 50 ms in 1 ms steps and reports
 the actual vs. target duration at each step. Duration errors below 0.5 ms
 across the sweep confirm that VRR is working; large periodic errors confirm
 that VRR is absent or the requested duration is outside the supported range.
-See [TimingTests.md — VRR section](TimingTests.md#vrr--arbitrary-stimulus-durations)
+See [TimingTests.md — VRR section](TimingTests.md#vrr-arbitrary-stimulus-durations)
 for detailed interpretation, including how to read the VRR boundary from the
 output and how to enable FreeSync on Linux.
 
@@ -1288,9 +1293,9 @@ Jitter below ±1 frame (±8–17 ms depending on monitor) is normal and expected
 
 **Linux**
 
-- Without a compositing window manager (e.g. a plain X11 session with no compositor), SDL3's `Present()` blocks until the next VSYNC boundary. Onset jitter is typically **< 1 ms**.
-- With a Wayland compositor or an X11 compositing WM (KWin, Mutter, Picom), the compositor controls buffer swaps. Onset jitter is typically **1–3 ms**; the compositor may add one frame (~17 ms at 60 Hz) of fixed latency.
-- For the most reliable timing on Linux, disable the compositor or use a plain X11 session.
+- Without a compositing window manager, SDL3's `Present()` blocks until the next VSYNC boundary. Measured trigger-to-light scatter: **0.083 ms** on bare Xorg with openbox, **0.113 ms** on a KMS/DRM console (Precision 5490, 60 Hz, ~590 trials each, 2026-08-08).
+- With a Wayland compositor, the compositor controls buffer swaps. Measured on the same machine the same night: **1.344 ms** — sixteen times worse — with 7 % of flips more than 1 ms off the frame grid.
+- For the most reliable timing on Linux, disable the compositor or use a plain X11 session. This is the single largest effect available to you; see [Timing tests](TimingTests.md#the-display-stack-is-the-dominant-term).
 
 **macOS (Metal)**
 
@@ -1980,7 +1985,7 @@ v.PreloadDevice(exp.AudioDevice)   // without this it plays silently
 v.Play()
 ```
 
-Full walkthrough in [15.2](#152-mpeg-1-files--the-convenient-format). Frame
+Full walkthrough in [15.2](#152-mpeg-1-files-the-convenient-format). Frame
 onsets are approximate — fine for instructions and filler, not for measured
 stimuli.
 
@@ -1998,11 +2003,11 @@ events, logs, err := stimuli.PlayGv(exp.Screen, "movie.gv", 0, 0)
 
 `logs` tells you afterwards whether any frame was late. Full walkthrough,
 including how to fire a trigger on a chosen frame, in
-[15.1](#151-gv-files--the-timing-critical-format). If you also need sound, play
+[15.1](#151-gv-files-the-timing-critical-format). If you also need sound, play
 a separate `stimuli.Sound` alongside it — which additionally gives you
 independent control of audio onset (see [Section 11](#11-audio)).
 
-### 15.1 `.gv` files — the timing-critical format
+### 15.1 `.gv` files: the timing-critical format
 
 `.gv` is the *Extreme GPU Friendly Video Format*, originally from
 [ofxExtremeGpuVideo](https://github.com/Ushio/ofxExtremeGpuVideo). Each frame is
@@ -2256,7 +2261,7 @@ session if it exceeds what your paradigm tolerates. A clip that drops frames on
 the experiment machine is a data-quality problem you want to detect during
 piloting, not discover in the analysis.
 
-### 15.2 MPEG-1 files — the convenient format
+### 15.2 MPEG-1 files: the convenient format
 
 `stimuli.Video` decodes MPEG-1 in pure Go via
 [gen2brain/mpeg](https://github.com/gen2brain/mpeg). No ffmpeg, no cgo, no
@@ -2408,7 +2413,7 @@ Then wrap every color with `exp.CorrectColor`:
 ```go
 // Specify colors in linear luminance space (0–255).
 // exp.CorrectColor maps them to the physical digital values.
-disk := stimuli.NewFilledCircle(exp.CorrectColor(control.RGB(128, 128, 128)), radius)
+disk := stimuli.NewCircle(radius, exp.CorrectColor(control.RGB(128, 128, 128)))
 ```
 
 When `SetGamma` has not been called, `CorrectColor` is a no-op that returns the color unchanged, so it is safe to always call it.
@@ -2759,25 +2764,28 @@ On **Linux with X11**, SDL3 automatically sets the
 `_NET_WM_BYPASS_COMPOSITOR` window property when the application enters
 fullscreen mode. Compliant compositors (KWin, Mutter, Compton) respond
 by *unredirecting* the fullscreen window — routing its framebuffer
-directly to the display scan-out pipeline without compositing. The
-result is presentation latency below 1 ms, comparable to a
-compositor-free session. On **Linux with Wayland**, the compositor is
-always the intermediary for frame delivery, but modern compositors
-(KWin 5.21+, GNOME Mutter 44+) support *direct scan-out* for fullscreen
-applications, achieving similar low-latency behavior in practice. The
-best achievable timing on Linux is obtained by running without any
-display server: setting the environment variable
-`SDL_VIDEODRIVER=kmsdrm` before launching the experiment directs SDL3
-to communicate with the Linux KMS/DRM subsystem directly, bypassing X11
-and Wayland entirely. This configuration — typically used from a virtual
-terminal (`Ctrl+Alt+F2`) — is recommended for the most demanding timing
-requirements such as single-frame subliminal stimulation or
-high-frequency RSVP.
+directly to the display scan-out pipeline without compositing. On
+**Linux with Wayland**, the compositor is always the intermediary for
+frame delivery, though modern compositors (KWin 5.21+, GNOME Mutter 44+)
+support *direct scan-out* for fullscreen applications. The best
+achievable timing on Linux is obtained by running without any display
+server: setting the environment variable `SDL_VIDEODRIVER=kmsdrm` before
+launching the experiment directs SDL3 to communicate with the Linux
+KMS/DRM subsystem directly, bypassing X11 and Wayland entirely. This
+configuration — typically used from a virtual terminal (`Ctrl+Alt+F2`) —
+is recommended for the most demanding timing requirements such as
+single-frame subliminal stimulation or high-frequency RSVP.
+
+The difference between these three is large and has been measured: onset
+scatter of 0.113 ms on KMS/DRM, 0.083 ms on bare Xorg, and 1.344 ms in a
+Wayland session, on one machine on one night. Bare Xorg is the steadiest
+and also the latest, one whole frame behind KMS/DRM. See [Timing
+tests](TimingTests.md#the-display-stack-is-the-dominant-term).
 
 On **Windows**, SDL3's fullscreen mode creates an exclusive fullscreen
-surface that bypasses the Desktop Window Manager (DWM), again yielding
-frame-interval jitter typically below 0.3 ms (one standard deviation),
-comparable to Linux.
+surface that bypasses the Desktop Window Manager (DWM). We have no
+photodiode measurements on Windows; run the `display` and `av` sub-tests
+on your own machine rather than assuming it behaves like Linux.
 
 **macOS** is the exception. Apple's Metal rendering pipeline always
 delivers frames to the display through the WindowServer compositor, and

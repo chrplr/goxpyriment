@@ -318,6 +318,10 @@ these tests (TTL→photodiode, scan-out, AV sync) stands as recorded.
 | `-w` | false | Windowed mode — debugging only, never for measurement |
 | `-sysinfo` | false | Print system information and exit |
 | `-gc` | false | Leave the collector running (suspended by default); run twice to measure its effect |
+| `-realtime-priority` | 50 | SCHED_FIFO priority to request (1–99); 0 = normal scheduling |
+| `-exclusive-fullscreen` | `auto` | `auto` \| `on` \| `off`; recorded in the info file as `sys fullscreen_mode` |
+| `-outdir` | `$HOME/goxpy_data` | Where the `.csv` and `-info.txt` are written |
+| `-print-frame-ms` | false | Print only the frame period in ms and exit (honours `-d`) |
 
 ### `av`
 
@@ -330,7 +334,6 @@ these tests (TTL→photodiode, scan-out, AV sync) stands as recorded.
 | `-level-b` | 255 | Bright luminance 0–255 (squares) |
 | `-soa-ms` | 0 | Visual-to-audio SOA; negative = audio first |
 | `-freq-hz` | 1000 | Tone frequency, Hz |
-| `-hz` | 60 | Refresh rate used to derive the tone duration |
 | `-no-sound` | false | Do not play the tone |
 | `-no-ttl` | false | Do not fire the trigger |
 | `-audio-frames` | 0 | Audio buffer, sample frames (0 = SDL default) |
@@ -338,10 +341,12 @@ these tests (TTL→photodiode, scan-out, AV sync) stands as recorded.
 `-audio-frames` sets the floor on audio-onset precision: 256 frames at 44100 Hz
 quantises tone onsets to 5.8 ms steps, 512 frames to 11.6 ms.
 
-Smaller is not automatically better. `run-timing-tests.sh` passes **512**
-(`AUDIO_BUFFSIZE`) because 256 underran repeatedly on the ALSA path, and a
-dropped buffer disturbs tone onsets far more than the coarser quantisation does.
-Lower it only after confirming the underruns are gone.
+Smaller is not automatically better. `run-timing-tests.sh` passes **1024**
+(`AUDIO_BUFFSIZE`): a measured sweep on a Raspberry Pi 4 found 512 and below
+tearing tones outright, while 1024 was clean and its onset scatter matched the
+theoretical `period/sqrt(12)` to 0.2 %. Lower it only after confirming, with
+`pw-top`'s ERR column or an electrical capture, that the underruns are gone.
+See the audio section of [`docs/TimingTests.md`](../../docs/TimingTests.md).
 
 ### Other tests
 
@@ -349,7 +354,7 @@ Lower it only after confirming the underruns are gone.
 |---|---|
 | `display` | `-duration-s` (10) |
 | `latency` | `-freq-hz` (1000), `-drain-reps` (10) |
-| `vrr` | `-vrr-max-ms` (50), `-cycles` |
+| `vrr` | `-vrr-max-ms` (20), `-vrr-reps` (5) |
 | `rt` | `-iti-ms` (1000) — mean ITI, jittered ±50 % |
 
 ---
@@ -375,16 +380,20 @@ rather than as a constant offset that would cancel.
 
 | Device | Path to the pin | Logic | Use when |
 |---|---|---|---|
-| `dlpio8` | USB serial (FTDI) | 5 V | It is the box you have. Set the FTDI latency timer to 1 ms first — see the DLP-IO8 section of [`docs/TimingTests.md`](../../docs/TimingTests.md) |
+| `dlpio8` | USB serial (FTDI) | 5 V | It is the box you have. Set the FTDI latency timer to 1 ms first — see the [DLP-IO8 appendix](../../docs/TriggerJitterForEEGandMEG.md#appendix-the-dlp-io8-g) |
 | `parallel` | `ioctl` on ppdev | 5 V | The machine still has an LPT port — the lowest-latency option on a desktop |
 | `gpio` | `ioctl` on a GPIO chip | **3.3 V** | Raspberry Pi, Rock Pi, or any SBC with a GPIO header |
 | `ft232h` | USB bulk transfer (MPSSE, via usbfs) | **3.3 V** | An Adafruit FT232H breakout is what is wired up; no LPT port and not an SBC |
 | `labjackt4` | Modbus TCP over the network | **3.3 V** | A T4 is the lab's DAQ. The longest path of the five — the write crosses an Ethernet round trip |
 
 The ordering of that table is roughly the ordering of expected flip→TTL latency
-and jitter, but *expected* is the operative word: none of these five has been
-measured against the others on this hardware. Read the TTL channel of the
-recording, not this table.
+and jitter, and two of the five have now been measured against each other on one
+timebase (`tests/test_triggers`, 2026-08-21): the DLP-IO8 lagged an FT232H by
+**179.4 µs** (sd 5.7, n=322) and a parallel port by **185.9 µs** (sd 12.6,
+n=900), with the host's own contribution at 0.03 µs median. That is a 3.9×
+margin against a 1 ms trigger budget, so the USB box is usable — but the two
+`ioctl` paths really are tighter. `gpio` and `labjackt4` remain unmeasured
+against the rest. Read the TTL channel of your own recording, not this table.
 
 `-trigger-pin` is 1–8 for all five but names something different in each, so
 check what the program prints and probe *that* pin:

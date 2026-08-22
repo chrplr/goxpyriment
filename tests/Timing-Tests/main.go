@@ -68,7 +68,6 @@
 //	-level-b int      Bright luminance 0–255 (default 255)
 //	-soa-ms float     Visual-to-audio SOA in ms; negative = audio first (default 0)
 //	-freq-hz float    Tone frequency in Hz (default 1000)
-//	-hz float         Refresh rate used to derive the tone duration (default 60)
 //	-no-sound         Do not play the tone
 //	-no-ttl           Do not fire the TTL trigger
 //	-audio-frames int Audio hardware buffer, sample frames (0 = SDL default).
@@ -972,8 +971,8 @@ func runJitter(exp *control.Experiment) error {
 			estimatedHz = 1000.0 / s.Mean
 			s = timingstats.ComputeStats(intervals, s.Mean) // recompute late counts against actual mean
 		}
-		fmt.Printf("\nEstimated refresh rate: %.3f Hz  (pass -hz %.2f to av so the tone matches a frame)\n",
-			estimatedHz, estimatedHz)
+		fmt.Printf("\nEstimated refresh rate: %.3f Hz  (av derives the tone duration from the display itself)\n",
+			estimatedHz)
 		timingstats.PrintStats("Frame intervals", s, s.Mean)
 		ps := exp.Screen.PacingStats()
 		printPacingStats(ps, exp.Screen.FrameDuration())

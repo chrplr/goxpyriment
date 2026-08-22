@@ -301,14 +301,10 @@ the display, only the software's knowledge of it.
 **It is not a complete fix.** 6.4 % of flips are still late, and 1.32 ms is not
 1.32 µs. Whatever remains is not answered here.
 
-⚠️ **`tests/Timing-Tests` does not request real-time priority**, so its own
-numbers — including the SCHED_OTHER column above — are at normal priority unless
-you launch it under `chrt`. It builds its experiment with
-`control.NewExperiment`, and the elevation lives in
-`control.NewExperimentFromFlags`, so nothing is attempted and nothing is
-logged. Experiments built the normal way, through `NewExperimentFromFlags`, do
-ask. Check `sched_policy` in your data file's header rather than assuming
-either way, and see [Setting priority under
+`tests/Timing-Tests` requests `SCHED_FIFO 50` at startup like any other
+goxpyriment program; `-realtime-priority 0` opts out, which is how the
+SCHED_OTHER column above was produced. Check `sched_policy` in your data file's
+header rather than assuming either way, and see [Setting priority under
 Linux](SettingPriorityUnderLinux.md).
 
 ## Discard the first trials — they are genuinely different
@@ -471,3 +467,117 @@ separates a device that is slow from a program that was late. Its `-sequential`
 mode measures the other thing worth knowing: what a blocking USB write costs the
 device queued behind it, which is what experiment code pulsing two boxes in a row
 actually does.
+
+---
+
+## Appendix: the DLP-IO8-G
+
+Driver: `triggers/dlpio8.go`. Full protocol notes and raw data at
+<https://github.com/chrplr/dlp-io8-g>; the figures below were measured there
+with a Siglent SDS1104X-E and are repeated because they change how you should
+use the device. For how it compares with the other trigger back-ends on one
+timebase, see `tests/test_triggers/` and [Timing
+tests](TimingTests.md#how-much-the-trigger-device-costs).
+
+### Lower the FTDI latency timer before *reading* anything
+
+The DLP-IO8 is an FTDI device, and the `ftdi_sio` driver defaults to a **16 ms
+latency timer**: the chip holds a partly-filled buffer that long before sending
+it to the host. A poll the module answers instantly still takes 16 ms to come
+back.
+
+Measured, n=300 per setting, for an 8-channel read:
+
+| `latency_timer` | round trip | poll rate |
+|---|---|---|
+| **16 (default)** | **15.98 ms** | **63 Hz** |
+| 4 | 3.99 ms | 251 Hz |
+| 1 | 1.01 ms | 995 Hz |
+
+The relationship is exactly `round trip = latency_timer`, so the module's own
+processing is negligible and the whole cost is driver batching. A polling loop
+gets the worst case rather than the average: waiting for each reply
+synchronises the loop to the timer and pays the full 16 ms every iteration.
+
+```bash
+echo 1 | sudo tee /sys/bus/usb-serial/devices/ttyUSB0/latency_timer
+```
+
+That reverts on replug. To make it stick:
+
+```
+# /etc/udev/rules.d/99-ftdi-latency.rules
+SUBSYSTEM=="usb-serial", DRIVERS=="ftdi_sio", ATTR{latency_timer}="1"
+```
+
+The rule applies to every FTDI serial device on the machine, not just this one.
+
+**It does nothing for sending triggers.** Output latency is governed by USB
+frame scheduling. Do not expect this setting to make a trigger arrive sooner.
+
+### A multi-bit code is not atomic
+
+There is no multi-channel command: every command is one ASCII byte affecting one
+line. `Send(mask)` therefore emits eight bytes which the module acts on as they
+arrive, and **the port takes ~610 µs to settle**, showing partly-updated values
+throughout. Measured n=99: 86.2 µs per byte, 609.5 µs from the first line to the
+eighth.
+
+Against a system sampling at 1 kHz that is about 61 % of a sample period, so a
+code change is sampled mid-transition roughly three times in five and recorded
+as a value that was never sent.
+
+**Use one line per event type, pulsed.** A single line is one command byte, so
+there is no skew at all, and eight lines still distinguish eight event types.
+Reserve `Send` for a multi-bit code where the acquisition reads the code
+milliseconds after the onset edge rather than latching it at the edge, or where
+a strobe line is raised last once the code has settled.
+
+### Pulse width is only as good as your scheduling
+
+The device has no pulse timer, so a pulse is two host writes and the width
+inherits host scheduling in full. Measured n=50 per width:
+
+| host state | median error | spread |
+|---|---|---|
+| idle | −10 to −20 µs | ≤ 120 µs |
+| under CPU load | up to +1.85 ms | up to 4.75 ms |
+
+The host's own busy-wait interval degrades by the same amount, tracking the wire
+to within 80 µs — so the cause is the scheduler descheduling the process, not
+the USB path or the device. See [Setting priority under
+Linux](SettingPriorityUnderLinux.md); that is the fix, and it is a different
+mechanism from the latency timer above.
+
+### Parallel port and GPIO alternatives
+
+Both avoid the USB path entirely: a write is one `ioctl`, not a USB serial
+transaction subject to frame scheduling. On hardware that offers either, this is
+the cheapest available improvement to onset-vs-TTL precision.
+
+In the timing tests, select them with `-trigger-device parallel` or
+`-trigger-device gpio`. In your own experiment code:
+
+```go
+// Parallel port (LPT), 5 V. Needs `sudo modprobe ppdev` and the `lp` group.
+p := triggers.NewParallelPort("/dev/parport0")
+if err := p.Open(); err != nil { log.Fatal(err) }
+defer p.Close()
+p.Send(0x01)                      // all 8 data lines at once, D0 = DB25 pin 2
+
+// GPIO character device (Raspberry Pi, Rock Pi, …), 3.3 V. Needs kernel >= 5.10
+// and the `gpio` group. Check which chip owns the header with `gpiodetect`.
+g, err := triggers.NewLinuxGPIOTrigger(
+    triggers.WithGPIOChip("/dev/gpiochip0"),
+    triggers.WithGPIOOutputPins([8]int{17, 27, 22, 5, 6, 13, 19, 26}),
+)
+if err != nil { log.Fatal(err) }
+defer g.Close()
+g.Pulse(0, 5*time.Millisecond)    // line 0 = the first pin in the array = BCM 17
+```
+
+`Send(mask)` sets all 8 lines simultaneously on both — unlike the DLP-IO8, where
+a multi-bit code is written one byte per line and takes ~610 µs to settle.
+
+Note the voltage difference: parallel is 5 V, GPIO is 3.3 V. Confirm your
+acquisition system latches at 3.3 V before relying on the GPIO path.
