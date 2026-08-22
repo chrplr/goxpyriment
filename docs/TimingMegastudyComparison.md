@@ -15,16 +15,15 @@ configurations. On bare Xorg — the stack they actually measured — it is bett
 than all fourteen, by a factor of two, at sd 0.083 ms. The same binary, the
 same machine, the same night.**
 
+**Caveat: We ran out tests on a different machine as the one on which
+the MegaStudy was ran on, so, like the paper's authors, we decline to
+generalise across machines.**
+
 The protocol mapping — which flags reproduce their trial structure — lives in
-`paper/megastudy/megastudy_timing_tests.md`, which is not tracked because that
-directory holds the paper PDF.
+`paper/megastudy/megastudy_timing_tests.md`.
 
 See also [Minimising trigger-to-stimulus jitter](TriggerJitterForEEGandMEG.md),
 which is where the mechanism is worked out in detail.
-
-One machine, one panel, three five-minute runs. Read the caveats at the end
-before quoting any of this: the paper's own authors decline to generalise
-across machines, and so should we.
 
 ## Conditions
 
