@@ -19,17 +19,25 @@ renderer changed the behaviour without anyone understanding why. It was fixed in
 `apparatus.Screen` in July 2026; see the "Never present a frame with no draw
 calls" section of `apparatus/CLAUDE.md`.
 
-To re-test on a Pi:
+**Half-answered on 2026-08-09**: a full `Timing-Tests -test av` run on a Pi 4
+(`tests/Timing-Tests/report-rpi4/`) rendered fullscreen throughout — V3D 4.2.14.0,
+`video_driver: kmsdrm`, `renderer: opengl`, 1920x1080 at 60 Hz — and produced
+photodiode and microphone traces. So fullscreen is not broken on Pi hardware.
+
+But that run had **no compositor**: kmsdrm talks to the display directly, and the
+clear-only-frame bug appears only under a compositor. The original claim was
+Ubuntu 25.10 + GNOME/Wayland, which is exactly the configuration still untested.
+
+What remains, on a Pi running a compositor:
 
 1. `go run ./examples/demo_hello_world` fullscreen, unmodified. If it renders,
    the old claim is stale and nothing further is needed.
 2. `go run ./tests/test_clear_only_frames` — unguarded should fail on an affected
    system, `-guarded` should pass. If unguarded fails on the Pi, the Pi was
    hitting the same bug and the library fix covers it.
-3. `go run ./tests/Timing-Tests -test check` for a display+audio go/no-go.
 
 Record the Pi model, OS version, kernel, and compositor. If a genuine Pi-specific
-fullscreen problem survives all three, document it with that evidence rather than
+fullscreen problem survives both, document it with that evidence rather than
 restoring the old text.
 
 ## Test frame pacing on a 480 Hz monitor
@@ -65,9 +73,10 @@ To test, when one is available:
    experiment under `stress-ng --cpu 0` and look for frame intervals near 50 ms.
    Note that `test_vsync_blocking`'s `short N/M` counter will *not* show them —
    it counts intervals shorter than 0.9x nominal, and a throttle stall makes an
-   interval long, not short. Nothing in `tests/` currently reports a maximum
-   frame interval; adding that to `test_vsync_blocking` alongside the median is
-   the small piece of work this step needs.
+   interval long, not short. The data file has what the summary does not:
+   `test_vsync_blocking` writes every paced interval to the CSV as
+   `frame,paced_interval_ms`, so a 50 ms stall is recoverable by reading the
+   column. Printing its maximum alongside the median would save that step.
 3. If the stalls are real, the fix is not in `paceToFrame` — pick one of
    `sysctl kernel.sched_rt_runtime_us=-1` on that machine, `-no-realtime`, or a
    display mode whose present blocks.
@@ -218,29 +227,6 @@ subsystem.
   provides a synthetic tone-emitting microphone with the permission dialog
   auto-granted, so the CDP harness can exercise the whole chain including
   onset detection.
-
-
-
-## `tests/Timing-Tests` never asks for real-time scheduling
-
-It builds its experiment with `control.NewExperiment` (`main.go:1109`), and the
-`RaiseToRealTime` call lives only in `control.NewExperimentFromFlags`
-(`control/experiment.go:268`). So `-no-realtime` and `-realtime-prio` are
-absent, no elevation is attempted, and — the part that cost real time — no
-warning is printed either, because the code path is skipped rather than failing.
-A five-minute run recorded on 2026-08-08 was at SCHED_OTHER throughout while the
-user's `RLIMIT_RTPRIO` was 50 and available.
-
-Verified with `chrt -p` sampled every 2 s across a whole run: SCHED_OTHER at
-every sample.
-
-The measurement it distorted is now controlled by launching under `chrt -f 50`,
-and the data file records the policy (below), so this is no longer silent. Still
-worth deciding whether the test should elevate itself; if it does, every earlier
-Timing-Tests number becomes non-comparable, so it needs a flag and a note rather
-than a quiet default.
-
-Other tests that call `control.NewExperiment` directly have the same gap.
 
 ## Presentation latency: one to two frames deeper than Psychtoolbox
 
