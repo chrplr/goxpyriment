@@ -264,3 +264,12 @@ whether SDL is being given the chance to page-flip rather than blit.
 
 Do not "fix" it without re-measuring: a change that lowers the mean and raises
 the variance would be a straight loss.
+
+**Someday: see the branch `todo-ptb-swap-completion`.** It records, read from
+the Psychtoolbox sources on 22 August 2026, how their flip manages to return at
+scanout: `glXSwapBuffersMscOML` schedules the swap against a specific future
+vblank, then `glXWaitForSbcOML` blocks until that swap has *completed*. Ours
+returns when the driver will accept the *next* frame, which is the whole
+one-to-two frame difference. The branch also sketches an untested,
+CGo-free way to close it on KMS/DRM using the `DRM_IOCTL_WAIT_VBLANK` reader we
+already have in `vblank/drm_linux.go`.
