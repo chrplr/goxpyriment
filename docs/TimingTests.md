@@ -8,7 +8,9 @@ author: <christophe@pallier.org>
 This document does two things.
 
 **Part 1** shows you how to characterise the timing behaviour of *your* machine
-with the bundled `Timing-Tests` program, and how to read what it prints.
+with the bundled `Timing-Tests` program — both the checks that need no equipment
+and the photodiode/TTL measurement that is the real answer — and how to read
+each of them.
 
 **Part 2** summarises what we have measured on our own machines, so you have
 reference points to compare against. Every figure there names the machine, the
@@ -33,8 +35,23 @@ the comparison against published packages,
 
 ### Read this before you trust any number
 
-**Everything these tests print comes from software timestamps.** They record
-when goxpyriment *believes* a flip happened, not what reached the panel.
+This suite produces **two kinds of output, and they are not equally
+trustworthy.** Keeping them apart is the single most important thing on this
+page.
+
+- **What the program prints to the console** — frame intervals, bright-phase
+  durations, drain times, SOAs — comes entirely from software timestamps, in
+  all six sub-tests without exception. It records when goxpyriment *believes* a
+  flip happened, not what reached the panel.
+- **What an instrument records while `av` runs** — a photodiode on the screen,
+  the TTL line on a second channel, a microphone if you are checking audio — is
+  a measurement of the physical event. This is ground truth.
+
+So the suite *does* measure your hardware properly: that is what `av` is for,
+and `run-timing-tests.sh` can wrap those steps in a `bbtk-capture` recording so
+the stimulus always falls inside the capture window. What it cannot do is tell
+you any of it from the console. **Never read the printed statistics as if they
+were the instrument's.**
 
 This is not a theoretical caveat. A presentation bug on a GNOME/Wayland machine
 once left the display showing stale frames for *seconds at a time* while the
@@ -43,15 +60,15 @@ program's own numbers stayed textbook-perfect: bright-phase duration
 at a problem. It was visible only with a photodiode. (The cause and fix are in
 `apparatus/CLAUDE.md`; the regression test is `tests/test_clear_only_frames`.)
 
-So:
+None of which makes the console output useless — it is the right tool for a
+different job. Software statistics genuinely detect dropped frames, scheduler
+jitter and audio-buffer effects, and `check`, `display` and `latency` need no
+equipment at all, so run them first. They just cannot confirm that light changed
+when you said it would.
 
-- **Software statistics tell you about the software.** They genuinely detect
-  dropped frames, scheduler jitter and audio-buffer effects.
-- **A photodiode and a trigger box tell you about the experiment.** Only they
-  confirm that light actually changed when you said it would.
-
-If you are validating a rig for publication, measure it with hardware. The `av`
-test is built for exactly that.
+If you are validating a rig for publication, take the hardware path: `av` plus a
+photodiode and a trigger box, then [`timing-drift`](#timing-drift-is-the-flip-timestamp-tracking-the-panel)
+to check the two against each other.
 
 ### What the display actually does
 
@@ -380,7 +397,7 @@ Press as fast as you can, or better, use a solenoid — you are characterising t
 machine, and human variability swamps it. The useful number is the SD, not the
 mean.
 
-### `timing-drift` — is the flip timestamp tracking the panel?
+### `timing-drift`: is the flip timestamp tracking the panel?
 
 The two `av` output files each look fine on their own; a drift failure exists
 only *between* them. This tool joins them and reports the slope first:

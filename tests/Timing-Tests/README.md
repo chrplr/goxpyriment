@@ -11,12 +11,19 @@ For background, equipment setup and interpretation see
 
 ## The console numbers are not the answer
 
-Every statistic these tests print comes from software timestamps — when
-goxpyriment *believes* a flip happened. Those stayed textbook-perfect throughout
-a presentation bug that left a panel showing stale frames for seconds at a time.
+This suite gives you two different things, and only one of them is a
+measurement of your hardware.
 
-**Judge timing from a photodiode and TTL recording.** Treat the console output as
-a cross-check on the software side only.
+- **The console output** — from any of the six sub-tests — comes from software
+  timestamps: when goxpyriment *believes* a flip happened. Those stayed
+  textbook-perfect throughout a presentation bug that left a panel showing
+  stale frames for seconds at a time.
+- **The photodiode and TTL recording taken while `av` runs** is the actual
+  measurement. That is what `av` is for, and what `run-timing-tests.sh` wraps
+  in a `bbtk-capture` recording.
+
+**Judge timing from the recording.** Treat the console output as a cross-check
+on the software side only.
 
 The `display` test's **Frame pacing** block is the one part of the console output
 that says how far to trust the rest of it — see below.
