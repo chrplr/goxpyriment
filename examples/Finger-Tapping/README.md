@@ -94,8 +94,8 @@ workspace either way).
 
 ## Output
 
-Data are saved to `goxpy_data/` as a `.csv` file (with a `#`-prefixed metadata
-header). Only the **experiment** phase is recorded — practice trials and aborted
+Data are saved to `goxpy_data/` as a `.csv` file, with the session metadata in a
+companion `-info.txt`. Only the **experiment** phase is recorded — practice trials and aborted
 (errored) runs are discarded. One row per tap:
 
 | Column | Description |

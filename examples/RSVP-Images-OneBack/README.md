@@ -91,8 +91,8 @@ the working path).
 
 ## Output
 
-Data are saved to `goxpy_data/` as a `.csv` file (with a `#`-prefixed metadata
-header). One row per presentation:
+Data are saved to `goxpy_data/` as a `.csv` file, with the session metadata in a
+companion `-info.txt`. One row per presentation:
 
 | Column | Description |
 |--------|-------------|

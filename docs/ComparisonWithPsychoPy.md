@@ -56,12 +56,12 @@ listed below — and most of the advantages.
 | Adaptive procedures | `StairHandler`, `QuestHandler` | `staircase.UpDown` (Levitt 1971) and `staircase.Quest` (Watson & Pelli 1983) — the same two families |
 | Unit conversion | `psychopy.monitors`, `deg`/`cm`/`norm` units | `units` package: pixels ↔ degrees ↔ cm through a `Monitor` struct |
 | Counterbalancing | `CounterbalanceRoutine` (a recent addition) | `design.AddBWSFactor` / `GetPermutedBWSFactorCondition` — Latin-square between-subject assignment, present from the start |
-| Gamma correction | `monitors` calibration | `apparatus.Gamma` |
-| Data output | `.csv` / `.psydat` / Excel | `.csv` with a `#`-prefixed metadata header, written through a buffered output file |
+| Gamma correction | `monitors` calibration | `apparatus.GammaCorrector` — per-channel exponents, `exp.SetGamma` / `exp.CorrectColor` |
+| Data output | `.csv` / `.psydat` / Excel | Plain `.csv` (no comment lines, imports straight into a spreadsheet) plus a companion `-info.txt` holding the session metadata; both written through a buffered output file |
 | System reporting | `psychopy.info` | `sysinfo` package: CPU, GPU, audio, memory, machine — including a WMI path on Windows |
 | Hardware triggers | Parallel, serial, LabJack, Cedrus, EGI, BrainProducts, TriggerBox | Parallel port (Linux LPT), DLP-IO8, FT232H, Linux GPIO (Raspberry Pi and other SBCs), LabJack T4 over Modbus TCP, NeuroSpin MEG TTL box, generic serial |
 | Networked recording control | Egi/`iohub`, `emulator`, MQTT/OSC components | EGI NetStation event markers over TCP/IP (ECI), plus a "BEL_video" participant-video recorder client |
-| Worked examples | A demos folder | ~50 complete paradigms in `examples/`, plus a `tests/` suite of programs whose output is analysed to verify timing and hardware behaviour |
+| Worked examples | A demos folder | over 50 complete paradigms in `examples/` (plus ~30 feature demos), plus a `tests/` suite of programs whose output is analysed to verify timing and hardware behaviour |
 
 The core of an experiment — window, text, images, shapes, gratings, dot fields,
 keyboard and mouse input, sound, trial structure, randomisation, staircases,

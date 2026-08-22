@@ -81,7 +81,7 @@ The fullscreen / windowed choice can also be toggled in the setup dialog.
 
 ## Output
 
-Data are saved to `goxpy_data/` as a `.csv` file with a `#`-prefixed metadata header. One row per trial:
+Data are saved to `goxpy_data/` as a `.csv` file, with the session metadata in a companion `-info.txt`. One row per trial:
 
 | Column | Description |
 |--------|-------------|

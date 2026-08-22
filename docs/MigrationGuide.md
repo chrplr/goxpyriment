@@ -115,7 +115,7 @@ func main() {
 
 **Clock domains.** Expyriment's `exp.clock.time` measures from `control.initialize`. `clock.NewClock()` measures from whenever you create it. For stimulus-onset-locked RT, use `exp.ShowTS` + `exp.Keyboard.GetKeyEventTS` (SDL nanosecond timestamps) rather than the `clock` package — see [UserManual §6](UserManual.md#6-timing-architecture).
 
-**`.csv` files.** The format is compatible: plain CSV with `#`-prefixed metadata lines. Existing Python scripts that read Expyriment data files with `pandas.read_csv(..., comment='#')` will read goxpyriment output without modification.
+**`.csv` files.** goxpyriment keeps the metadata out of the data file: the `.csv` holds a header row and data rows only, and the `#`-prefixed session metadata goes to a companion `-info.txt` with the same basename. Existing Python scripts that read Expyriment data files with `pandas.read_csv(..., comment='#')` still work unchanged — there is simply nothing left for `comment='#'` to skip — and the file now also imports directly into a spreadsheet.
 
 **Adaptive staircases.** Expyriment has no built-in staircase. Goxpyriment provides `staircase.NewUpDown` (Levitt 1971) and `staircase.NewQuest` (Watson & Pelli 1983), including a `Runner` for interleaved designs. Import `github.com/chrplr/goxpyriment/staircase`.
 
@@ -339,7 +339,7 @@ func main() {
 
 **EEG triggers.** PTB sends triggers via `lptwrite` (Windows parallel port). Goxpyriment provides `triggers.NewDLPIO8`, `triggers.NewMEGTTLBox`, and `triggers.NewParallelPort`, all implementing the same `OutputTTLDevice` interface with `Send(mask)`, `Pulse(line, duration)`, and `AllLow()`. For labs that mark the EEG stream over the network instead of with a TTL line, `triggers.NewNetStation(host)` speaks the EGI NetStation ECI protocol (`Synchronize`, `StartRecording`, `SendEvent("STIM")`); and `triggers.NewVideoRecorder(host)` drives the "BEL_video" participant-video recorder (`Start`, `Label("TRL", "001")`, `Stop`). Both are TCP clients — richer than a TTL pulse but bounded by network latency, so keep a `Pulse` for sub-millisecond onset markers. See [UserManual §17](UserManual.md#17-hardware-triggers-and-ttl-devices).
 
-**No Flip scheduling.** PTB's `Screen('Flip', win, when)` allows scheduling a flip at a specific VBL. Goxpyriment does not support scheduled flips; instead, use `clock.SleepUntil(target)` before `exp.Show` to achieve frame-accurate onset scheduling, or use the stream functions (`PresentStreamOfImages`) which handle VSYNC-locked scheduling internally.
+**No Flip scheduling.** PTB's `Screen('Flip', win, when)` allows scheduling a flip at a specific VBL. Goxpyriment does not support scheduled flips; instead, call `SleepUntil(target)` on a `clock.Clock` (there is no package-level `clock.SleepUntil`) before `exp.Show` to achieve frame-accurate onset scheduling, or use the stream functions (`PresentStreamOfImages`) which handle VSYNC-locked scheduling internally.
 
 ---
 
