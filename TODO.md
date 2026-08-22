@@ -264,3 +264,46 @@ whether SDL is being given the chance to page-flip rather than blit.
 
 Do not "fix" it without re-measuring: a change that lowers the mean and raises
 the variance would be a straight loss.
+
+### What Psychtoolbox does differently (read 22 August 2026, not yet tested here)
+
+Read from the PTB sources, so this is their mechanism rather than a guess:
+`PsychSourceGL/Source/Linux/Screen/PsychWindowGlue.c`.
+
+1. `PsychOSScheduleFlipWindowBuffers` schedules the swap with
+   `glXSwapBuffersMscOML(dpy, win, target_msc, divisor, remainder)` -- the GLX
+   `OML_sync_control` extension -- against a *specific future* vblank count,
+   not "swap soon". Target times in the past are clamped up to now so it always
+   locks onto a future vblank.
+2. `PsychOSGetSwapCompletionTimestamp` then calls `glXWaitForSbcOML`, whose
+   header comment (line 2264) says callers must expect it to block until swap
+   completion. So `Screen('Flip')` returns *after* the new framebuffer became
+   the scanout source.
+3. The returned `ust` comes from the kernel/DRM and is converted to PTB's
+   timebase. PTB reports VBLTimestamp (swap, at vblank onset), StimulusOnsetTime
+   (= VBLTimestamp + vblank duration) and FlipTimestamp (end of Flip). The gap
+   between the last two is the OS wakeup jitter, exposed rather than hidden.
+4. It fights buffering explicitly: the file carries several triple-buffering
+   workarounds and notes that switching triple buffering off reliably solves the
+   swap-scheduling failures it saw under Intel DRI2.
+
+**The one-line difference.** PTB waits for *this* swap to complete;
+`SDL_RenderPresent` returns when the driver will accept the *next* frame, which
+is one free buffer -- i.e. roughly one frame -- before ours is scanned out. That
+matches what we measured: one frame early on KMS/DRM, two under X11 Present.
+
+It also explains an apparent contradiction in our own data: the pacing block
+reports `class=blocking` with present blocking for 15.99 ms of a 16.66 ms frame.
+That is real, but it is blocking on the *previous* frame's completion.
+
+**Idea to try, on a branch, someday.** The OML route is GLX-level and would mean
+CGo, which this project avoids. But we already have a pure-Go
+`DRM_IOCTL_WAIT_VBLANK` reader in `vblank/drm_linux.go`. On KMS/DRM, waiting for
+the next vblank after present -- before firing the trigger -- should turn "one
+frame early" into "at scanout", with no new dependency and no CGo. UNTESTED: it
+is consistent with the measurements, nothing more.
+
+Re-read the warning above before acting on this. The offset is currently
+constant to 83 us and subtracts out; the gain would be comparability with the
+Bridges lag column and cross-modal work, not precision, which is already the
+best in their table.
