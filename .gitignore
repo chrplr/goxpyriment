@@ -29,6 +29,7 @@ _build/
 /examples/Attentional-Blink/Attentional-Blink
 /examples/Statistical-Learning-Auditory/Statistical-Learning-Auditory
 /examples/Temporal-Integration-Word-Recognition/Temporal-Integration-Word-Recognition
+/examples/Rush-Hour/Rush-Hour
 
 # General binary patterns
 *.exe
@@ -87,9 +88,9 @@ paper/*.run.xml
 /Perception-of-Temporal-Patterns
 /RSVP-Images
 /RSVP-Images-OneBack
+/Rush-Hour
 /Trubutschek_Unconscious_Working_Memory
 /demo_simple_audio_visual_stim
-/examples/Rush-Hour/Rush-Hour
 
 # --- Editor and session leftovers -------------------------------------------
 .Rhistory
