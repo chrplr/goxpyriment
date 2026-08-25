@@ -87,6 +87,12 @@ func main() {
 		log.Printf("Warning: failed to set logical size: %v", err)
 	}
 
+	// Responses are given by clicking the on-screen buttons, so the pointer
+	// must be visible: Initialize() hides it by default.
+	if err := exp.ShowCursor(); err != nil {
+		log.Printf("Warning: could not show the mouse cursor: %v", err)
+	}
+
 	exp.AddDataVariableNames([]string{"trial", "type", "length", "sequence", "response", "correct"})
 
 	// Staircase lengths for each type

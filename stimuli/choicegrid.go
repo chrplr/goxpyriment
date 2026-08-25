@@ -18,6 +18,7 @@ package stimuli
 
 import (
 	"fmt"
+	"log"
 	"math"
 	"strings"
 	"unicode"
@@ -214,6 +215,23 @@ func keycodeMatchesLabel(key sdl.Keycode, label string) bool {
 // The returned slice preserves selection order. Items may appear more than
 // once if the participant selects the same button multiple times.
 func (cg *ChoiceGrid) Get(screen *apparatus.Screen, kb *apparatus.Keyboard) ([]string, error) {
+	// The buttons are clicked, so the grid needs a pointer whatever the
+	// experiment did to cursor visibility -- control.Initialize() hides it by
+	// default. Show it for the lifetime of the grid and put it back the way it
+	// was on the way out, as control.GetParticipantInfo does for its dialog.
+	// The cursor *shape* is already installed by apparatus.NewScreen (SDL
+	// supplies none on the KMS/DRM backend), and a Screen must exist to get
+	// here, so ShowCursor alone is enough.
+	cursorWasVisible := sdl.CursorVisible()
+	if err := sdl.ShowCursor(); err != nil {
+		log.Printf("stimuli.ChoiceGrid.Get: could not show the mouse cursor: %v", err)
+	}
+	defer func() {
+		if !cursorWasVisible {
+			_ = sdl.HideCursor()
+		}
+	}()
+
 	buttons := cg.buildButtons(screen)
 	response := []string{}
 
