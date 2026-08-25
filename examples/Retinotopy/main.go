@@ -566,7 +566,9 @@ func main() {
 		log.Fatal(err)
 	}
 	defer exp.End()
-	exp.Mouse.ShowCursor(false)
+	if err := exp.HideCursor(); err != nil {
+		log.Printf("Warning: could not hide cursor: %v", err)
+	}
 
 	runErr := exp.Run(func() error {
 		// ── Step 2: compute scaling so max eccentricity = 15° ─────────────────

@@ -210,7 +210,7 @@ func main() {
 		len(puzzles))
 
 	err = exp.Run(func() error {
-		if err := exp.Mouse.ShowCursor(true); err != nil {
+		if err := exp.ShowCursor(); err != nil {
 			log.Printf("Warning: could not show cursor: %v", err)
 		}
 		if err := exp.ShowInstructions(instructions); err != nil {
