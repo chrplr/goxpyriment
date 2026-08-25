@@ -17,7 +17,14 @@ If a security dialog window pops out, click on **More info**, then **Run anyway*
 
 1. Download [`goxpyriment-examples-macos-arm64.zip`](https://github.com/chrplr/goxpyriment/releases/latest/download/goxpyriment-examples-macos-arm64.zip), unzip it and move the folder to the location of your choice, e.g., `$HOME/goxpy`
 
-2. Open a Terminal at that location (`cd $HOME/goxpy`) and remove the protection with `xattr -rd com.apple.quarantine .`, and set the execute bit (`chmod +x *`)  (See [macOS installation and security](https://chrplr.github.io/note-about-macos-unsigned-apps).)
+2. Open a Terminal at that location, move the files out of quarantine and set the execute bit, with the following commandes::
+
+
+        cd $HOME/goxpy   # <- change to the location where you move the content of the unzipped folder 
+        xattr -rd com.apple.quarantine .
+        chmod -R +x *
+
+     (See [macOS installation and security](https://chrplr.github.io/note-about-macos-unsigned-apps).)
 
 
 ### Linux 
