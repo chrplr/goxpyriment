@@ -55,7 +55,7 @@ content, split.
 
 **Start here — install and build your first experiment**
 
-1. **[Install](docs/Installation.md)** Go and build the bundled examples. [[PDF](docs/Installation.pdf)]
+1. Read **[Install](docs/Installation.md)** and build the bundled examples. [[PDF](docs/Installation.pdf)]
 2. **[Creating Your Own Experiment](docs/CreatingYourOwnExperiment.md)** — a
    step-by-step beginner guide from an empty folder to a shareable
    executable.

@@ -1,16 +1,16 @@
 ## Pre-built binaries of examples and tests for goxpyriment
 
-If you prefer not to install Go and compile the [examples](GalleryOfExamples.md) yourself, you can still run them by downloading _pre-built executables_ ready to run on your computer.
+If want to run the [examples](GalleryOfExamples.md) directly, without compiling them, you download _pre-built apps_, bundled together and run them on your computer.
 
 ⚠️  **WARNING** These binaries are unsigned. macOS Gatekeeper and Windows Defender will show security warnings or worse, _misleading messages_ such as 'this program is damaged'. Your antivirus may quarantine the files. Don't let them intimidate you. These warnings pop out because I am not willing to pay third parties to sign the executables. The instructions below explain how to run these programs anyway.
 
 ### Windows (x86-64)
 
 1. Download [`goxpyriment-examples-windows-x86_64.zip`](https://github.com/chrplr/goxpyriment/releases/latest/download/goxpyriment-examples-windows-x86_64.zip);  
-2. Before unzipping it: right-click the downloaded `.zip` → **Properties** → at the bottom of the **General** tab tick **Unblock** → **OK**. (You can achieve the same thing in PowerShell with `Unblock-File .\goxpyriment-examples-windows-x86_64.zip`.)
-3. Unzip it. You should be able to run the `.exe` files directly, either by clicking on them, or from a command line.
+2. Before unzipping it: right-click the downloaded `.zip`, click on **Properties** → at the bottom of the **General** tab tick **Unblock** → **OK**. (You can achieve the same thing in PowerShell with `Unblock-File .\goxpyriment-examples-windows-x86_64.zip`.)
+3. Unzip it. You should be able to run the `.exe` files directly, either by clicking on them, or typing their name from a command line.
 
-If a security dialog window pops out, click on **More info**, then **Run anyway**. You can unblock all the `.exe` files with `Get-ChildItem -Recurse <folder> | Unblock-File`.
+If a security dialog window pops out, you have forgotten to unblock the zip file before unzipping. You can still run the executable by clicking on **More info**, then **Run anyway**. Note: You can unblock all the `.exe` files after unzipping with `Get-ChildItem -Recurse <folder> | Unblock-File`.
 
 ### macOS (Apple Silicon)
 
