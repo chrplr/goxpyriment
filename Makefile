@@ -160,10 +160,18 @@ clean:
 
 WASMSDL := go run github.com/Zyko0/go-sdl3/cmd/wasmsdl
 
+# An example may ship its own launcher page at examples/NAME/web/index.html
+# (see examples/Memory_span/web/). When it does, hand it to the bundler with
+# -html instead of using wasmsdl's bare-canvas default page. The page must
+# load sdl.js, wasm_exec.js and main.wasm, which the bundler writes next to
+# it. Flags have to precede the directory argument: Go's flag package stops
+# parsing at the first non-flag word.
+wasm_html = $(if $(wildcard examples/$(1)/web/index.html),-html examples/$(1)/web/index.html)
+
 wasm-%-serve:
-	$(WASMSDL) serve ./examples/$*
+	$(WASMSDL) serve $(call wasm_html,$*) ./examples/$*
 
 wasm-%:
-	$(WASMSDL) build -out _build/wasm/$* ./examples/$*
+	$(WASMSDL) build $(call wasm_html,$*) -out _build/wasm/$* ./examples/$*
 	@echo "Bundle in _build/wasm/$* — serve it with: make wasm-$*-serve"
 

@@ -1128,7 +1128,7 @@ func (e *Experiment) Initialize() error {
 		// 2026-08-17 on a machine whose USB interface was connected while the
 		// desktop was still routing to the motherboard codec. Name() resolves a
 		// logical device to the physical one behind it.
-		if name, err := e.AudioDevice.Name(); err == nil {
+		if name, err := platformAudioDeviceName(e.AudioDevice); err == nil {
 			sysInfo.AudioDevice = name
 		}
 		if spec, frames, err := e.AudioDevice.Format(); err == nil && spec != nil {

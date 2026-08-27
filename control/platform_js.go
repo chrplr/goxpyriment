@@ -94,3 +94,14 @@ func platformPrepareFlags() {
 // own SDL window and shuts SDL down afterwards, neither of which works in a
 // single-canvas page. Session settings come from URL parameters instead.
 func platformInteractiveSetup() bool { return false }
+
+// platformAudioDeviceName reports the browser's audio path instead of querying
+// SDL. There is no physical device to name — the Emscripten backend routes
+// everything through one Web Audio context — and go-sdl3's js binding for
+// SDL_GetAudioDeviceName is still a panic-stub, so calling AudioDeviceID.Name
+// here aborts the program during Initialize rather than returning an error the
+// caller can ignore. That panic killed every browser experiment before its
+// first frame.
+func platformAudioDeviceName(sdl.AudioDeviceID) (string, error) {
+	return "Web Audio (browser)", nil
+}

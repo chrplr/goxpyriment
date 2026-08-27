@@ -86,6 +86,45 @@ WASM cannot be loaded from `file://` URLs; for the `build` output any static
 server works (`python3 -m http.server`), but plain servers don't send the
 COOP/COEP headers — timestamps then tick at ~100 µs instead of ~5 µs.
 
+### Per-example launcher pages
+
+By default the bundle gets wasmsdl's page: a bare canvas that starts the
+experiment the moment the wasm loads. An example can ship its own landing page
+instead by adding `examples/NAME/web/index.html`; the `wasm-%` targets detect
+it and pass it to the bundler with `-html`. The bundler writes `sdl.js`,
+`sdl.wasm`, `wasm_exec.js` and `main.wasm` alongside it, which is all the page
+has to load.
+
+`examples/Memory_span/web/` is the worked example (see its README). The same
+`web/index.html` path is what `docs/StandaloneExampleRepo.md` expects when an
+example is split out into its own repo with a GitHub Pages build, so a launcher
+written here travels with the example. A launcher page is worth writing when
+the experiment needs any of:
+
+- **A participant-ID field.** `GetParticipantInfo` cannot run on js, and typing
+  a URL parameter is not something to ask a participant to do. The page writes
+  the field back as `?s=<id>` with `history.replaceState` before starting Go,
+  which is where `platformPrepareFlags` reads it from.
+- **A user gesture before the first sound.** Browsers create the AudioContext
+  suspended. A Start button doubles as the gesture that resumes it.
+- **Instructions in HTML**, so the participant reads them before the canvas
+  takes over the window.
+
+Two things such a page must get right:
+
+- **Start Go from a fresh task** (`setTimeout(…, 0)`), not from inside the
+  click handler or a `requestAnimationFrame` callback. The experiment blocks
+  its main goroutine for the whole session, and the wasm scheduler can only
+  park it — returning to the JS event loop so DOM events keep reaching SDL —
+  when it is not nested inside another callback's stack.
+- **Do not resize the canvas with CSS after SDL has sized its window**, unless
+  the aspect ratio is preserved. Emscripten maps pointer events through
+  `getBoundingClientRect`, so a uniform `transform: scale()` is safe (and is
+  how Memory_span's page fits the canvas into a short viewport), but
+  `object-fit: contain` is not: it letterboxes the bitmap inside an element box
+  that Emscripten still assumes the bitmap fills, and every click lands off
+  target.
+
 ### Session settings via URL parameters
 
 There is no command line in a browser. On `GOOS=js`,
@@ -139,6 +178,13 @@ file:line, which tells you exactly what to un-stub next.
 - Audio playback: the buzzer/feedback sounds, `PlaySync`/`PlayAsync`, and
   `Tone` all work (see "Audio in the browser" below); confirmed by ear in an
   interactive session, not just headlessly.
+- Mouse-driven responses: `examples/Memory_span` runs in the browser with its
+  on-screen button grid, including `Renderer.RenderCoordinatesFromWindow`
+  mapping window pixels into a `SetLogicalSize` letterboxed space (verified
+  2026-08-27 by driving headless Chrome over the DevTools protocol: sequence
+  presentation, click responses, correct/incorrect feedback, and the staircase
+  all behave). The end-of-session CSV download was verified for
+  `parity_decision`, not re-verified for a full 30-trial Memory_span run.
 
 ### The key design points
 
@@ -167,6 +213,15 @@ removed, `GOOS=js` builds in CI via `.github/workflows/go-build.yml`).
 
 **Open decision:** PR the fork's js/wasm work upstream to `Zyko0/go-sdl3`, or
 keep maintaining the fork.
+
+**Fixed since:** `Experiment.Initialize` recorded the audio device name via
+`AudioDeviceID.Name()`, whose js binding is still a panic-stub — so every
+browser experiment aborted during initialization, before its first frame, with
+`panic: not implemented on js`. The call now goes through a build-tagged
+`platformAudioDeviceName` (`control/platform_js.go`) that reports
+`"Web Audio (browser)"` instead; there is no physical device to name when SDL
+routes everything through one Web Audio context. (Fixed 2026-08-27. The stub
+itself is still worth un-stubbing in the fork, but nothing depends on it now.)
 
 **Known gaps:**
 

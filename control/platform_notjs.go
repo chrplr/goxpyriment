@@ -32,3 +32,9 @@ func platformPrepareFlags() {}
 // platformInteractiveSetup reports whether the session-setup dialog may be
 // opened when -s is absent. Always true on desktop.
 func platformInteractiveSetup() bool { return true }
+
+// platformAudioDeviceName resolves a logical audio device to the physical one
+// behind it, for the session metadata.
+func platformAudioDeviceName(dev sdl.AudioDeviceID) (string, error) {
+	return dev.Name()
+}

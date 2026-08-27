@@ -19,11 +19,11 @@ A sequence of items is presented one at a time on screen. After the last item, t
 ## Running
 
 ```bash
-# Fullscreen, participant 1
-go run main.go -s 1
+# Fullscreen, participant 1 (run from the repo root)
+go run ./examples/Memory_span -s 1
 
 # Windowed (development / testing)
-go run main.go -s 1 -w
+go run ./examples/Memory_span -s 1 -w
 ```
 
 ### Flags
@@ -33,6 +33,20 @@ go run main.go -s 1 -w
 | `-s` | `0` | Participant ID (integer) |
 | `-w` | off | Windowed mode (1024×768 window instead of fullscreen) |
 | `-d N` | -1 | Display ID: monitor index where window/fullscreen opens (-1 = primary) |
+
+### In a web browser
+
+This experiment also runs in the browser as WebAssembly. From the repo root:
+
+```bash
+make wasm-Memory_span-serve      # build + serve, then open http://localhost:8080
+```
+
+That serves the launcher page in [`web/`](web/) — task description, participant-ID
+field, and a Start button — instead of a bare canvas. See [`web/README.md`](web/README.md)
+for what the page does and why, and `docs/WASM.md` for browser timing caveats.
+Responses here are mouse clicks and the timing that matters is the 1 s-per-item
+presentation, both of which the browser handles well.
 
 ---
 
