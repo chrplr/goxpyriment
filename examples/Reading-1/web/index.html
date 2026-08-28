@@ -1,0 +1,323 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Reading-1 — goxpyriment</title>
+    <style>
+      :root {
+        --bg: #1a1a1a;
+        --panel: #242424;
+        --fg: #e8e8e8;
+        --muted: #9a9a9a;
+        --accent: #4a9eff;
+        --border: #3a3a3a;
+      }
+      html, body {
+        margin: 0;
+        height: 100%;
+        background: var(--bg);
+        color: var(--fg);
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      }
+      body {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+
+      /* The launcher panel: shown until the participant presses Start. */
+      #launcher {
+        max-width: 40rem;
+        padding: 2rem 2.5rem;
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        line-height: 1.5;
+      }
+      #launcher h1 { margin: 0 0 .25rem; font-size: 1.6rem; }
+      #launcher .sub { margin: 0 0 1.5rem; color: var(--muted); font-size: .9rem; }
+      #launcher h2 { font-size: 1rem; margin: 1.5rem 0 .5rem; }
+      #launcher ul { margin: .5rem 0; padding-left: 1.2rem; color: var(--muted); font-size: .9rem; }
+      #launcher li { margin: .3rem 0; }
+      kbd {
+        padding: .05em .4em;
+        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+        font-size: .9em;
+        color: var(--fg);
+        background: #1a1a1a;
+        border: 1px solid var(--border);
+        border-radius: 4px;
+      }
+
+      .field { display: flex; align-items: center; gap: .75rem; margin: 1.5rem 0 1rem; }
+      .field label { font-size: .95rem; }
+      .field input {
+        width: 7rem;
+        padding: .5rem .6rem;
+        font: inherit;
+        color: var(--fg);
+        background: #1a1a1a;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+      }
+      button {
+        padding: .6rem 1.4rem;
+        font: inherit;
+        font-weight: 600;
+        color: #08121f;
+        background: var(--accent);
+        border: 0;
+        border-radius: 6px;
+        cursor: pointer;
+      }
+      button:disabled { background: #3a4550; color: var(--muted); cursor: default; }
+
+      #status { margin-top: 1rem; min-height: 1.2em; font-size: .85rem; color: var(--muted); }
+      #status.error { color: #ff7a7a; }
+      .warn {
+        margin-top: 1rem;
+        padding: .6rem .8rem;
+        font-size: .85rem;
+        color: #ffd48a;
+        background: #2e2717;
+        border: 1px solid #4a3d1c;
+        border-radius: 6px;
+      }
+
+      /* SDL's web backend takes the window size from the canvas CSS layout
+         size, so the canvas must be laid out (not display:none) by the time
+         the Go program creates its window. It is hidden with visibility
+         until then, and the launcher is removed from the flow on start. */
+      #canvas { display: block; outline: none; }
+      body.running #launcher { display: none; }
+      body:not(.running) #canvas { position: absolute; visibility: hidden; }
+
+      /* Once running, shrink the canvas to fit a short viewport instead of
+         letting the page scroll: a scrollbar over an experiment means part
+         of the stimulus is off-screen. --fit is computed in JS after SDL has
+         created its window, so the window size SDL derives from the canvas
+         CSS box is never affected; a transform only changes how the finished
+         canvas is painted. */
+      body.running { overflow: hidden; }
+      body.running #canvas { transform: scale(var(--fit, 1)); }
+
+      /* Keyboard-only task: if the canvas loses focus, keys stop reaching SDL
+         and the experiment looks frozen. Say so instead. */
+      #focusHint {
+        display: none;
+        position: fixed;
+        left: 50%;
+        bottom: 1.5rem;
+        transform: translateX(-50%);
+        padding: .6rem 1rem;
+        font-size: .9rem;
+        color: #08121f;
+        background: var(--accent);
+        border-radius: 6px;
+        cursor: pointer;
+      }
+      body.running.unfocused #focusHint { display: block; }
+    </style>
+  </head>
+  <body>
+    <div id="launcher">
+      <h1>Reading-1</h1>
+      <p class="sub">Lexical decision with per-letter visibility sampling &mdash; built with
+        <a href="https://github.com/chrplr/goxpyriment" style="color: var(--accent)">goxpyriment</a>,
+        running in your browser via WebAssembly.</p>
+
+      <p>On each trial a string of five letters is flashed for about a fifth of a
+        second, then replaced by <code>#####</code>. Some of the letters are
+        faint, and <em>which</em> ones are faint keeps changing during the flash
+        &mdash; that is intentional, so just report what you saw.</p>
+
+      <p>Decide whether the string was a real English word:
+        press <kbd>F</kbd> if it <strong>was</strong> a word,
+        <kbd>J</kbd> if it was <strong>not</strong>. There are 8 practice trials
+        (with feedback) and then 100 test trials.</p>
+
+      <div class="field">
+        <label for="subject">Participant ID</label>
+        <input id="subject" type="text" inputmode="numeric" value="1" autocomplete="off" />
+        <button id="start" disabled>Loading&hellip;</button>
+      </div>
+
+      <div id="status">Loading the SDL runtime&hellip;</div>
+
+      <h2>Before you start</h2>
+      <ul>
+        <li>Use a <strong>focused, foreground tab</strong>: browsers throttle
+          background tabs and frame timing degrades.</li>
+        <li>This task is <strong>keyboard-only</strong> &mdash; <kbd>SPACE</kbd>
+          to move past each instruction screen, then <kbd>F</kbd> / <kbd>J</kbd>
+          to answer. Keep the canvas focused; click it if a key seems ignored.</li>
+        <li>Work in a dimmed room if you can. The faint letters are drawn at
+          25&nbsp;% of full luminance, and a bright screen or a strong reflection
+          washes out exactly the manipulation being measured.</li>
+        <li>When the 100 trials are over, your browser downloads two files:
+          <code>Reading-1_sub-&lt;id&gt;_date-&lt;date&gt;-&lt;time&gt;.csv</code>
+          with one row per trial &mdash; including the 20 per-letter visibility
+          values &mdash; and a matching <code>-info.txt</code> with the session
+          metadata.</li>
+        <li>Press <kbd>ESC</kbd> at any time to abort.</li>
+      </ul>
+
+      <h2>A note on timing</h2>
+      <ul>
+        <li>The stimulus is built from four 50&nbsp;ms windows, which is
+          <strong>three display refreshes each at 60&nbsp;Hz</strong>. The browser
+          paces frames through <code>requestAnimationFrame</code>, so a dropped
+          frame lengthens a window rather than being reported. The measured
+          duration of every trial is written to the CSV as
+          <code>stim_dur_ms</code> &mdash; check it before trusting a session.</li>
+        <li>On a display that is not 60&nbsp;Hz, a 50&nbsp;ms window is rounded
+          to the nearest whole number of refreshes (7 at 144&nbsp;Hz =
+          48.6&nbsp;ms). The <code>-info.txt</code> records what was actually
+          used.</li>
+        <li>For results that depend on exact stimulus onset, run the native
+          build instead. See <code>docs/WASM.md</code>.</li>
+      </ul>
+    </div>
+
+    <canvas id="canvas" tabindex="0" oncontextmenu="event.preventDefault()"></canvas>
+    <div id="focusHint">Click here to give the experiment keyboard focus</div>
+
+    <script>
+      const canvasElement = document.getElementById('canvas');
+      const startButton = document.getElementById('start');
+      const subjectField = document.getElementById('subject');
+      const statusLine = document.getElementById('status');
+      const launcher = document.getElementById('launcher');
+      const focusHint = document.getElementById('focusHint');
+
+      function setStatus(text, isError) {
+        statusLine.textContent = text;
+        statusLine.classList.toggle('error', !!isError);
+      }
+
+      // Pre-fill the participant ID from the URL, so ?s=7 still works and the
+      // field shows what the experiment will actually record.
+      const initialSubject = new URLSearchParams(location.search).get('s');
+      if (initialSubject !== null) subjectField.value = initialSubject;
+
+      // Cross-origin isolation is what gives the page performance.now() at its
+      // full resolution, which SDL timestamps (and therefore reaction times)
+      // inherit: ~5 us isolated, ~100 us otherwise. `make wasm-Reading-1-serve`
+      // sends the required COOP/COEP headers; other static servers usually
+      // don't, so say so rather than silently recording coarser RTs.
+      if (!window.crossOriginIsolated) {
+        const warning = document.createElement('div');
+        warning.className = 'warn';
+        warning.innerHTML = 'This page is <strong>not cross-origin isolated</strong>: ' +
+          'timestamps tick at ~100&nbsp;µs instead of ~5&nbsp;µs. Serve it with ' +
+          '<code>make wasm-Reading-1-serve</code>, or send the ' +
+          '<code>Cross-Origin-Opener-Policy: same-origin</code> and ' +
+          '<code>Cross-Origin-Embedder-Policy: require-corp</code> headers.';
+        launcher.appendChild(warning);
+      }
+
+      canvasElement.addEventListener('webglcontextlost', (e) => {
+        e.preventDefault();
+        setStatus('The WebGL context was lost. Reload the page to restart.', true);
+      }, false);
+
+      // Emscripten module hosting SDL3 (+ttf, +image, +mixer). MODULARIZE=0,
+      // so `Module` is the global the sdl.js blob configures itself from.
+      var Module = {
+        print(...args) { console.log(...args); },
+        printErr(...args) { console.error(...args); },
+        canvas: canvasElement,
+        onRuntimeInitialized() { sdlReady = true; maybeEnableStart(); },
+      };
+
+      let sdlReady = false;
+      let goReady = false;
+
+      function maybeEnableStart() {
+        if (!sdlReady || !goReady) return;
+        startButton.disabled = false;
+        startButton.textContent = 'Start';
+        setStatus('Ready.');
+      }
+    </script>
+
+    <script src="sdl.js"></script>
+    <script src="wasm_exec.js"></script>
+    <script>
+      if (!WebAssembly.instantiateStreaming) {
+        WebAssembly.instantiateStreaming = async (resp, importObject) => {
+          const source = await (await resp).arrayBuffer();
+          return await WebAssembly.instantiate(source, importObject);
+        };
+      }
+
+      const go = new Go();
+      let goInstance = null;
+
+      WebAssembly.instantiateStreaming(fetch('main.wasm'), go.importObject)
+        .then((result) => { goInstance = result.instance; goReady = true; maybeEnableStart(); })
+        .catch((err) => {
+          console.error(err);
+          setStatus('Could not load main.wasm: ' + err +
+            ' (WebAssembly cannot be loaded from a file:// URL — use a web server.)', true);
+        });
+
+      startButton.addEventListener('click', () => {
+        startButton.disabled = true;
+
+        // The Go side reads its flags from location.search at startup
+        // (control.platformPrepareFlags), so write the participant ID there
+        // before running. replaceState changes the query without a reload.
+        const params = new URLSearchParams(location.search);
+        params.set('s', subjectField.value.trim() || '0');
+        history.replaceState(null, '', location.pathname + '?' + params.toString());
+
+        // Lay the canvas out and focus it: SDL takes the window size from the
+        // canvas CSS box, and keyboard events only reach it when it has focus.
+        document.body.classList.add('running');
+        canvasElement.focus();
+        void canvasElement.offsetWidth; // force layout before SDL measures it
+
+        // Run on a fresh task rather than inside this click handler: the Go
+        // program blocks its main goroutine for the whole session, and the
+        // wasm scheduler can only park it (returning to the JS event loop, so
+        // that DOM events keep firing and SDL keeps seeing them) when it is
+        // not nested inside another callback's stack.
+        setTimeout(() => go.run(goInstance), 0);
+      });
+
+      // Every response in this task is a keypress, and keys only reach SDL
+      // while the canvas has focus. Losing it (an alt-tab, a stray click)
+      // otherwise looks like the experiment has hung, so surface it and offer
+      // a way back rather than leaving the participant pressing F at nothing.
+      function trackFocus() {
+        const focused = document.activeElement === canvasElement;
+        document.body.classList.toggle('unfocused', !focused);
+      }
+      canvasElement.addEventListener('blur', trackFocus);
+      canvasElement.addEventListener('focus', trackFocus);
+      window.addEventListener('blur', trackFocus);
+      focusHint.addEventListener('click', () => { canvasElement.focus(); trackFocus(); });
+
+      // Shrink the canvas only when the window is too small to show it whole.
+      // Runs after the SDL window exists, so it never influences its size.
+      function fitCanvas() {
+        if (!document.body.classList.contains('running')) return;
+        const w = canvasElement.width || canvasElement.clientWidth;
+        const h = canvasElement.height || canvasElement.clientHeight;
+        if (!w || !h) return;
+        const fit = Math.min(1, window.innerWidth / w, window.innerHeight / h);
+        document.documentElement.style.setProperty('--fit', fit.toFixed(4));
+      }
+      window.addEventListener('resize', fitCanvas);
+      setInterval(fitCanvas, 500);
+      setInterval(trackFocus, 500);
+
+      // Enter in the ID field starts the experiment too.
+      subjectField.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !startButton.disabled) startButton.click();
+      });
+    </script>
+  </body>
+</html>

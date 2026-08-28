@@ -1,0 +1,3 @@
+category: experiment
+description: Lexical decision on a 5-letter string flashed for 200 ms in four 50 ms windows, with each letter's contrast sampled independently in every window (5 positions x 4 windows = 20 randomised visibility values per trial)
+reference: ""
