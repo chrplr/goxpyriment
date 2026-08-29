@@ -18,10 +18,22 @@
 #   goxpyriment-examples-macos-arm64.zip
 #   goxpyriment-examples-linux-x86_64.tar.gz
 #   goxpyriment-examples-linux-arm64.tar.gz
+#
+# Optional environment hooks (used by the Cloudflare R2 publishing workflow and
+# for local dry runs -- default behaviour is unchanged when both are unset):
+#   KEEP_STAGE=1   keep the per-platform staging directories instead of
+#                  deleting them, so package-per-app.sh can zip each app
+#                  individually from them.
+#   ONLY=<name>    build only the example or test directory called <name>.
+#                  Turns a ~15-minute full cross-compile into seconds when
+#                  checking the packaging pipeline by hand.
 
 set -euo pipefail
 
 export CGO_ENABLED=0
+
+KEEP_STAGE="${KEEP_STAGE:-0}"
+ONLY="${ONLY:-}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 EXAMPLES_DIR="${SCRIPT_DIR%/installers}"
@@ -57,6 +69,7 @@ example_dirs() {
     local name
     name="$(basename "$dir")"
     is_skipped "$name" && continue
+    [[ -n "${ONLY}" && "$name" != "${ONLY}" ]] && continue
     [[ -f "${dir}/main.go" ]] || continue
     echo "$dir"
   done
@@ -68,6 +81,7 @@ test_dirs() {
     local name
     name="$(basename "$dir")"
     is_skipped_test "$name" && continue
+    [[ -n "${ONLY}" && "$name" != "${ONLY}" ]] && continue
     [[ -f "${dir}/main.go" ]] || continue
     echo "$dir"
   done
@@ -243,7 +257,15 @@ echo "  -> ${ARM64_TARBALL}"
 # =============================================================================
 # Cleanup staging directories
 # =============================================================================
-rm -rf "${WIN_STAGE}" "${MAC_STAGE}" "${X86_STAGE}" "${ARM64_STAGE}"
+if [[ "${KEEP_STAGE}" == "1" ]]; then
+  echo "KEEP_STAGE=1 -- keeping staging directories:"
+  echo "  ${WIN_STAGE}"
+  echo "  ${MAC_STAGE}"
+  echo "  ${X86_STAGE}"
+  echo "  ${ARM64_STAGE}"
+else
+  rm -rf "${WIN_STAGE}" "${MAC_STAGE}" "${X86_STAGE}" "${ARM64_STAGE}"
+fi
 
 echo ""
 echo "Done. Artifacts in ${OUT_DIR}:"

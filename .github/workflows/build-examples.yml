@@ -11,6 +11,10 @@ jobs:
     runs-on: ubuntu-latest
     env:
       CGO_ENABLED: 0
+      # The secrets context cannot be used in an `if:` directly, so the
+      # presence of R2 credentials is hoisted into an env var. Forks and runs
+      # made before the secrets exist simply skip the publishing steps.
+      HAS_R2: ${{ secrets.R2_ACCESS_KEY_ID != '' }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -22,6 +26,9 @@ jobs:
 
       - name: Build all platforms
         run: bash examples/installers/build-all-platforms.sh
+        env:
+          # Keep the staging directories so each app can be zipped on its own.
+          KEEP_STAGE: "1"
 
       - name: Upload Windows zip artifact
         uses: actions/upload-artifact@v4
@@ -46,6 +53,42 @@ jobs:
         with:
           name: linux-arm64
           path: examples/installers/goxpyriment-examples-linux-arm64.tar.gz
+
+      # --- individual downloads on downloads.pallier.org ---------------------
+      # A visitor who wants one experiment should not have to fetch a ~500 MB
+      # bundle containing 113 others. These steps repackage the binaries the
+      # job has already built, so they cost transfer time but no build time.
+
+      - name: Package each app individually
+        if: env.HAS_R2 == 'true'
+        run: bash examples/installers/package-per-app.sh
+
+      - name: Generate the download pages
+        if: env.HAS_R2 == 'true'
+        run: |
+          # On a workflow_dispatch from a branch, GITHUB_REF_NAME is a branch
+          # name, which the page must not label as a release.
+          TAG=""
+          if [ "${GITHUB_REF_TYPE}" = "tag" ]; then TAG="${GITHUB_REF_NAME}"; fi
+          go run ./cmd/gen-download-index \
+            -root _build/r2 \
+            -commit "${GITHUB_SHA}" \
+            -tag "${TAG}"
+          go run ./cmd/gen-download-index \
+            -redirect "${GITHUB_SHA}" \
+            -out _build/redirect.html
+
+      - name: Publish to Cloudflare R2
+        if: env.HAS_R2 == 'true'
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          COMMIT_SHA: ${{ github.sha }}
+          # A build is ~4.8 GB (per-app zips plus the bundle archives), so
+          # only the newest is retained: 4.8 GB of R2's 10 GB free tier,
+          # peaking near 9.6 GB while a new build uploads.
+          KEEP: "1"
+        run: bash examples/installers/publish-to-r2.sh
 
   create-release:
     runs-on: ubuntu-latest

@@ -5,6 +5,7 @@ xpd_results/
 octin_college_font/
 gvassets/
 /tmp/
+./docs/copy_apps_to_cloudflare_R2.md
 
 # Compiled binaries
 _build/
@@ -138,3 +139,12 @@ __pycache__/
 # releases. Keeping an 8 MB copy of someone else's tool in the history buys
 # nothing and redistributes it.
 /examples/installers/appimagetool
+
+# build-all-platforms.sh outputs: the four collection archives, plus the
+# per-platform staging directories it leaves behind when run with KEEP_STAGE=1.
+/examples/installers/goxpyriment-examples-*.zip
+/examples/installers/goxpyriment-examples-*.tar.gz
+/examples/installers/win-stage/
+/examples/installers/mac-stage/
+/examples/installers/x86-stage/
+/examples/installers/arm64-stage/
