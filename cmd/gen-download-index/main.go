@@ -152,6 +152,7 @@ type app struct {
 	Description string
 	Reference   string
 	Downloads   []download // one per entry of platforms, in the same order
+	RunURL      string     // browser version, empty if this app has none
 }
 
 // renderSection is a section paired with the apps that belong to it.
@@ -169,15 +170,16 @@ type bundleLink struct {
 
 // pageData is the template input.
 type pageData struct {
-	Commit    string
-	ShortSHA  string
-	Tag       string
-	Built     string
-	CanonURL  string
-	Sections  []renderSection
-	Bundles   []bundleLink
-	Platforms []platform
-	NumApps   int
+	NumBrowser int
+	Commit     string
+	ShortSHA   string
+	Tag        string
+	Built      string
+	CanonURL   string
+	Sections   []renderSection
+	Bundles    []bundleLink
+	Platforms  []platform
+	NumApps    int
 }
 
 // humanSize formats a byte count for display, e.g. "5.2 MB".
@@ -223,6 +225,30 @@ func scan(root string) (map[string]map[string]int64, error) {
 		}
 	}
 	return found, nil
+}
+
+// scanBrowser returns the set of apps that have a browser (WASM) version,
+// i.e. a wasm/<app>/index.html under root. Like scan, it reports what is
+// actually there rather than trusting a list.
+func scanBrowser(root string) map[string]bool {
+	found := make(map[string]bool)
+	entries, err := os.ReadDir(filepath.Join(root, "wasm"))
+	if err != nil {
+		if !os.IsNotExist(err) {
+			log.Printf("WARNING: reading the wasm directory: %v", err)
+		}
+		return found
+	}
+	for _, e := range entries {
+		// _runtime holds the shared SDL runtime, not an app.
+		if !e.IsDir() || strings.HasPrefix(e.Name(), "_") {
+			continue
+		}
+		if _, err := os.Stat(filepath.Join(root, "wasm", e.Name(), "index.html")); err == nil {
+			found[e.Name()] = true
+		}
+	}
+	return found
 }
 
 // lookupMeta finds a program's metadata by looking in examples/ then tests/.
@@ -286,11 +312,16 @@ func main() {
 		return strings.ToLower(names[i]) < strings.ToLower(names[j])
 	})
 
+	browser := scanBrowser(*root)
+
 	// Bucket the apps by category.
 	byCategory := make(map[string][]app)
 	for _, name := range names {
 		m := lookupMeta(name)
 		a := app{Name: name, Description: m.description, Reference: m.reference}
+		if browser[name] {
+			a.RunURL = linkTo(*base, "wasm/"+name+"/")
+		}
 		for _, p := range platforms {
 			size, ok := found[name][p.Dir]
 			if !ok {
@@ -329,14 +360,15 @@ func main() {
 		short = short[:12]
 	}
 	data := pageData{
-		Commit:    *commit,
-		ShortSHA:  short,
-		Tag:       *tag,
-		Built:     time.Now().UTC().Format("2006-01-02 15:04 MST"),
-		Sections:  rendered,
-		Bundles:   bl,
-		Platforms: platforms,
-		NumApps:   len(names),
+		NumBrowser: len(browser),
+		Commit:     *commit,
+		ShortSHA:   short,
+		Tag:        *tag,
+		Built:      time.Now().UTC().Format("2006-01-02 15:04 MST"),
+		Sections:   rendered,
+		Bundles:    bl,
+		Platforms:  platforms,
+		NumApps:    len(names),
 	}
 	if *commit != "" {
 		data.CanonURL = "https://downloads.pallier.org/builds/" + *commit + "/index.html"

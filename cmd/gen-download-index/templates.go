@@ -47,6 +47,9 @@ td.dl .size { display: block; color: var(--muted); font-size: .78rem; }
 td.none { color: var(--muted); }
 .name { font-weight: 600; }
 .ref { color: var(--muted); font-style: italic; font-size: .86rem; }
+.lede { background: var(--panel); border: 1px solid var(--rule); border-radius: 6px;
+        padding: .75rem 1rem; margin: 1rem 0; }
+a.run { font-weight: 600; }
 .notes { margin-top: 2.5rem; padding-top: 1rem; border-top: 1px solid var(--rule); font-size: .92rem; }
 .notes li { margin-bottom: .5rem; }
 .center { text-align: center; margin-top: 18vh; }
@@ -66,6 +69,12 @@ var indexTmpl = template.Must(template.New("index").Parse(`<!DOCTYPE html>
 
 <h1>goxpyriment &mdash; ready-to-run programs</h1>
 <p class="muted">{{.NumApps}} program{{if ne .NumApps 1}}s{{end}}, built for four platforms. Pick one, or take the whole collection below.</p>
+{{if .NumBrowser}}
+<p class="lede">{{.NumBrowser}} of them also <strong>run directly in your browser</strong> &mdash;
+no download, no install. Use a focused, foreground tab; results arrive as a single
+<code>.zip</code> when the session ends. Paradigms needing sub-millisecond stimulus
+onset (rapid RSVP, subliminal priming) should still be run natively.</p>
+{{end}}
 
 <div class="build">
   <dl>
@@ -104,6 +113,7 @@ are kept indefinitely.</p>
 <thead>
 <tr>
   <th>Program</th>
+  <th>Run in<br>browser</th>
   {{range $.Platforms}}<th>{{.OS}}<br>{{.Arch}}</th>{{end}}
 </tr>
 </thead>
@@ -115,6 +125,8 @@ are kept indefinitely.</p>
     {{if .Description}}<div>{{.Description}}</div>{{end}}
     {{if .Reference}}<div class="ref">{{.Reference}}</div>{{end}}
   </td>
+  {{if .RunURL}}<td class="dl"><a class="run" href="{{.RunURL}}">Run &rarr;</a></td>
+  {{else}}<td class="dl none">&mdash;</td>{{end}}
   {{range .Downloads}}
     {{if .Present}}<td class="dl"><a href="{{.URL}}">Download</a><span class="size">{{.Size}}</span></td>
     {{else}}<td class="dl none">&mdash;</td>{{end}}

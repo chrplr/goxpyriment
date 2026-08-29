@@ -1,0 +1,23 @@
+# Examples that cannot run in a browser, and are therefore not bundled by
+# build-wasm-apps.sh. One name per line; everything after '#' is a comment.
+#
+# The browser has no filesystem, so any program that reads its stimuli from a
+# path fails at run time -- it still *compiles* for GOOS=js, which is why this
+# list exists rather than relying on the build to reject them.
+#
+# Fixing one is mechanical: replace the path-based loader with //go:embed plus
+# the in-memory constructor (examples/demo_spritesheet/main.go:25 is the model,
+# and 20 example files already do it). Then delete the line from this file.
+
+demo_sync_two_gv_movies          # imports triggers/ (serial port): fails to compile for js
+demo_images                      # filepath.Glob("pictures/*.png")
+demo_stream_images               # filepath.Glob("assets/*.png")
+demo_play_videos                 # os.ReadDir("assets")
+demo_play_two_videos             # os.ReadDir("assets")
+demo_play_two_gvvideos           # os.ReadDir("assets")
+demo_play_gv_videos              # -f defaults to a .gv path on disk
+demo_bouncing_gv_movies          # os.Stat on .gv paths
+RSVP-Images                      # os.Open(path)
+RSVP-Images-OneBack              # filepath.Glob("images/...")
+Language-Localizer-French-audio  # requires a stimulus CSV as a positional argument
+Mental-Rotation-3D               # generates its stimuli onto disk (os.MkdirAll/os.WriteFile)

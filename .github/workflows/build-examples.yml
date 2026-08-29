@@ -63,6 +63,10 @@ jobs:
         if: env.HAS_R2 == 'true'
         run: bash examples/installers/package-per-app.sh
 
+      - name: Build browser (WASM) bundles
+        if: env.HAS_R2 == 'true'
+        run: bash examples/installers/build-wasm-apps.sh
+
       - name: Generate the download pages
         if: env.HAS_R2 == 'true'
         run: |

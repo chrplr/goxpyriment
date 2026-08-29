@@ -1,7 +1,8 @@
 ## Pre-built binaries of examples and tests for goxpyriment
 
-If want to run the [examples](GalleryOfExamples.md) directly, without compiling them, you download _pre-built apps_ and run them on your computer. There are two ways to get them:
+If want to run the [examples](GalleryOfExamples.md) directly, without compiling them, you download _pre-built apps_ and run them on your computer. There are three ways to get them:
 
+* **Run it in your browser** — no download, no install: 79 of the examples run directly from [**downloads.pallier.org/builds/latest/**](https://downloads.pallier.org/builds/latest/) via WebAssembly. Follow the **Run** link beside a program. Use a focused, foreground tab; your results arrive as a single `.zip` when the session ends. Paradigms needing sub-millisecond stimulus onset (rapid RSVP, subliminal priming) should still be run natively.
 * **One program at a time** — browse [**downloads.pallier.org/builds/latest/**](https://downloads.pallier.org/builds/latest/), find the program you want, and download just that one (a few MB) for your platform. Every experiment, demonstration and technical test is listed there with its description.
 * **The whole collection** — download one archive holding every program for your platform, using the links below. These come from the [GitHub releases](https://github.com/chrplr/goxpyriment/releases/latest) page.
 

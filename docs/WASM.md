@@ -41,11 +41,13 @@ The Go side talks to the Emscripten side through `go-sdl3`'s js bindings
 goxpyriment's `go.mod` pins the fork with a line of the form
 
 ```
-replace github.com/Zyko0/go-sdl3 => github.com/chrplr/go-sdl3-wasm v0.1.2-0.<timestamp>-<hash>
+replace github.com/Zyko0/go-sdl3 => github.com/chrplr/go-sdl3-wasm v0.1.2
 ```
 
-(the authoritative, current pseudo-version is the one in `go.mod` at the repo
-root — it is bumped whenever the fork changes).
+(the authoritative version is whatever `go.mod` at the repo root says — it is
+bumped whenever the fork changes. It is a released tag today; while the fork is
+being developed between tags it is a pseudo-version of the form
+`v0.1.2-0.<timestamp>-<hash>` instead.)
 
 Go applies `replace` directives **only in the main module**, so a project that
 imports goxpyriment as a dependency does *not* inherit this line. Such a
@@ -154,6 +156,42 @@ google-chrome --headless=new --use-gl=swiftshader --no-sandbox \
 Go panics (with full stack traces) appear as `INFO:CONSOLE` lines; the
 screenshot shows what rendered. Each remaining stub panics with its binding's
 file:line, which tells you exactly what to un-stub next.
+
+## Publishing to downloads.pallier.org
+
+Every tagged release publishes 79 of the 91 examples as browser builds, served
+from the Cloudflare R2 bucket. A visitor follows a **Run** link on
+<https://downloads.pallier.org/builds/latest/> and the experiment starts — no
+download, no install, no Gatekeeper.
+
+```
+builds/{sha}/wasm/_runtime/{sdl.js,sdl.wasm,wasm_exec.js}   shared, 5.3 MB
+builds/{sha}/wasm/{app}/index.html                          launcher page
+builds/{sha}/wasm/{app}/main.wasm                           the experiment
+```
+
+`examples/installers/build-wasm-apps.sh` drives it, and `cmd/gen-wasm-launcher`
+writes the pages. Three things about that pipeline are worth knowing:
+
+- **The runtime is shared.** `wasmsdl` writes five files per bundle, but three
+  of them are byte-identical everywhere. They are published once and every page
+  loads them from `../_runtime/`, which requires setting Emscripten's
+  `Module.locateFile` — the glue fetches `sdl.wasm` by name, not through a tag,
+  so without that line a page loads and then cannot find its runtime. Sharing
+  saves ~415 MB per build.
+- **An example may keep its own launcher.** When `examples/NAME/web/index.html`
+  exists it is used as the base and only the runtime paths are rewritten, so
+  `Memory_span` and `Reading-1` keep their bespoke instructions. Everything else
+  gets a page generated from the example's `meta.yaml`.
+- **12 examples are excluded**, listed with reasons in
+  `examples/installers/wasm-skip.txt`. They read stimuli from disk, which
+  compiles for js and fails at run time — so the list is maintained by hand
+  rather than inferred from a build. Converting one to `//go:embed` and deleting
+  its line publishes it.
+
+The bucket sends the COOP/COEP headers through a Cloudflare response-header
+rule, so published experiments get the ~5 µs clock; see
+`docs/copy_apps_to_cloudflare_R2.md` for the rule and the storage budget.
 
 ## What works today (verified 2026-07-13)
 
@@ -269,8 +307,10 @@ itself is still worth un-stubbing in the fork, but nothing depends on it now.)
   always opens 1024×768 (or the requested size). A "resize canvas to
   viewport" option would be nicer for participants.
 - Less-common APIs are still stubbed (gamepad/joystick enumeration, audio
-  recording, `WaitEvent`/`WaitEventTimeout`, `SetRenderLogicalPresentation`,
-  video playback). They panic with a clear console message when hit.
+  recording, `WaitEvent`/`WaitEventTimeout`, video playback). They panic with a
+  clear console message when hit. (`SetRenderLogicalPresentation` used to be on
+  this list; it is implemented in the vendored fork and present in
+  `wasm/exported_functions.json`.)
 - `GetParticipantInfo` (the SDL dialog) cannot run on js; experiments that
   call it directly need an HTML-form alternative or URL parameters.
 
