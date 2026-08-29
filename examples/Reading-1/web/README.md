@@ -66,7 +66,8 @@ lengthens a window instead of being reported as an error. Two consequences:
 For results that depend on exact stimulus onset, run the native build. See
 `docs/WASM.md` for what browser timing does and does not guarantee.
 
-At the end of the session the browser downloads the two files `results` normally
-writes to disk: `Reading-1_sub-<NNN>_date-<date>-<time>.csv`, one row per trial
-including the 20 per-letter visibility values, and the matching `-info.txt` with
-the session metadata.
+At the end of the session the browser downloads a single archive,
+`Reading-1_sub-<NNN>_date-<date>-<time>.zip`, holding the two files `results`
+normally writes to disk: the `.csv` with one row per trial including the 20
+per-letter visibility values, and the matching `-info.txt` with the session
+metadata. It is one download on purpose — see `docs/WASM.md`.

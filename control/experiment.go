@@ -163,7 +163,7 @@ func (e *Experiment) finalizeData() {
 			}
 			e.Data.WriteEndTime()
 			if err := e.Data.Finalize(); err == nil {
-				log.Printf("Results saved in %s (info: %s)", e.Data.FullPath, e.Data.InfoFile.FullPath)
+				log.Printf("Results saved in %s", platformDataDestination(e.Data))
 			}
 		}
 	})

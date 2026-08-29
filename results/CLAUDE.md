@@ -81,7 +81,9 @@ f.WriteComment(text)    // "#" + text + EOL
 f.Save()                // flush to disk
 ```
 
-`Save()` is defined in `output_file_desktop.go` (build tag: non-wasm). A WASM stub triggers a browser download in `output_file_wasm.go`.
+`Save()` is defined in `output_file_desktop.go` (build tag: non-wasm). In the browser it is a no-op that keeps buffering, and `output_file_wasm.go` triggers a download at the end of the session instead.
+
+`DataFile.Finalize()` is split the same way: `data_desktop.go` flushes the CSV and the info file to disk, while `data_wasm.go` packs both into a **single** `.zip` download. That is load-bearing — two downloads fired in a row lose the second one whenever the browser asks where to save each file, which silently cost every browser session its results file between July and August 2026. See "Why the results arrive as a .zip" in `docs/WASM.md` before touching this path.
 
 ## Version
 

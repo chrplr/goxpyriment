@@ -9,6 +9,7 @@ import (
 	"fmt"
 
 	"github.com/Zyko0/go-sdl3/sdl"
+	"github.com/chrplr/goxpyriment/results"
 )
 
 func platformSDLInitFlags() sdl.InitFlags {
@@ -37,4 +38,10 @@ func platformInteractiveSetup() bool { return true }
 // behind it, for the session metadata.
 func platformAudioDeviceName(dev sdl.AudioDeviceID) (string, error) {
 	return dev.Name()
+}
+
+// platformDataDestination names what Finalize just wrote, for the log line at
+// the end of a session: on desktop, the two files it flushed to disk.
+func platformDataDestination(d *results.DataFile) string {
+	return fmt.Sprintf("%s (info: %s)", d.FullPath, d.InfoFile.FullPath)
 }

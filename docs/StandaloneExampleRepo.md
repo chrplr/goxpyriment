@@ -45,6 +45,15 @@ need sub-millisecond onset control (rapid RSVP, subliminal priming). See
   the js `Save()` no-op (one download at the end, not per block) and the mouse
   path fix (`RenderCoordinatesFromWindow`). Earlier releases crash or spam
   downloads in the browser.
+- **Pin a release that delivers the session as a single `.zip`.** Until
+  2026-08-29 the browser build fired two downloads (the `.csv` and the
+  `-info.txt`) milliseconds apart, and browsers set to *ask where to save each
+  file* silently dropped the second one — sessions arrived with their metadata
+  and no results. See ["Why the results arrive as a
+  .zip"](WASM.md#why-the-results-arrive-as-a-zip). Check which release you are
+  pinning before you publish anything that will collect real data, and make sure
+  your `web/index.html` describes the download the pinned version actually
+  produces.
 
 ## Step 1 — Generate the standalone module
 
@@ -62,6 +71,11 @@ bash examples/share.sh Rush-Hour v0.12.5 ~/00_git
 writes a fresh `go.mod` requiring the *published* goxpyriment, and runs
 `go mod tidy`. The result builds on its own with `go build .`.
 
+> **`share.sh` starts with `rm -rf` on its destination.** Point the third
+> argument at a parent directory where `<ExampleName>/` does **not** yet exist.
+> Re-running it over a repository you have already started would delete the
+> `.git` directory and everything you added in the steps below.
+
 `make share-<ExampleName>` is the convenient wrapper, but it always writes to
 `_build/share/<ExampleName>/`; call `share.sh` directly with the third argument
 when you want the module created straight where the repo will live (e.g.
@@ -77,6 +91,21 @@ rm -rf .claude meta.yaml description.md   # gallery/agent metadata, not needed s
 ```
 
 Keep the `.go` sources, embedded assets, tests, and `README.md`.
+
+If the example ships its own launcher page (`web/index.html`, as
+`examples/Reading-1` and `examples/Memory_span` do), `share.sh` has copied it
+along with everything else — you do **not** need Rush-Hour's bare page. But it
+was written for the monorepo, so grep it and `web/README.md` for references that
+no longer resolve:
+
+- `make wasm-<Name>-serve` — that target exists only in the goxpyriment repo.
+- `docs/WASM.md` and other relative doc links — repoint them at
+  <https://chrplr.github.io/goxpyriment/WASM/>.
+- comparisons to sibling examples ("unlike `Memory_span/web`, …").
+
+While you are in there, add a link back to the published repository: a demo page
+with no way to reach the source or the desktop build is a dead end for anyone
+who wants to actually run the experiment.
 
 ## Step 3 — Add the repo scaffolding
 
@@ -96,8 +125,13 @@ Add these files (copy and adapt from the reference repos):
   to `go run .`, and add "Binaries" (Releases) and, if applicable, "Play in your
   browser" sections. The reference READMEs include the standard notes about
   unsigned macOS/Windows binaries.
-- For a **browser** build only: **`web/index.html`** (copy Rush-Hour's; it wires
-  the canvas, `sdl.js`, `wasm_exec.js`, and `main.wasm`).
+- For a **browser** build only: **`web/index.html`** — if the example already
+  had one, `share.sh` copied it and Step 2 tells you what to rewrite in it;
+  otherwise copy Rush-Hour's, which wires the canvas, `sdl.js`, `wasm_exec.js`
+  and `main.wasm` and nothing else. A page that asks for a participant ID before
+  starting (`examples/Reading-1/web/index.html`) is the fuller template: it
+  writes the ID back as `?s=<id>` with `history.replaceState`, which is how the
+  Go side receives it.
 
 ## Step 4 — Add the CI workflows
 
@@ -127,6 +161,31 @@ work (copy Rush-Hour's file and change nothing but the repo name in comments):
 > uncommitted fork edit) will **not** reach your repo's browser build until it is
 > committed and pushed to `wasm-render-fixes`. This is the trap that broke
 > Rush-Hour's first deploy.
+
+## Building the browser bundle locally
+
+CI is not the only way to get a bundle, and you should get one before you
+publish — a Pages deploy is a slow way to discover that the page is broken. The
+standalone repo needs the same two ingredients the workflow uses:
+
+```bash
+cd ~/00_git/<ExampleName>
+git clone -b wasm-render-fixes https://github.com/chrplr/go-sdl3-wasm ../go-sdl3-wasm
+go mod edit -replace github.com/Zyko0/go-sdl3=../go-sdl3-wasm   # NEVER commit this
+(cd ../go-sdl3-wasm && go run ./cmd/wasmsdl serve \
+    -html "$PWD/../<ExampleName>/web/index.html" "$PWD/../<ExampleName>")
+# → http://localhost:8080/?s=1, with the COOP/COEP headers
+go mod edit -dropreplace github.com/Zyko0/go-sdl3                # before committing
+```
+
+Use `wasmsdl build -out _build/wasm …` instead of `serve` to inspect the bundle.
+It is about 10 MB (roughly half `sdl.wasm`, half `main.wasm`), which is why
+neither reference repo commits it: the workflow rebuilds it on every push, and
+committing 10 MB per rebuild would bloat the history fast. Make sure `.gitignore`
+covers wherever you put it.
+
+Verify the `replace` is gone before you commit — `git diff go.mod` — or the
+published module will point at a path that exists only on your machine.
 
 ## Step 5 — Create the GitHub repo and enable Pages
 
@@ -180,10 +239,24 @@ make wasm-<ExampleName>-serve      # http://localhost:8080/?s=1
 # or the built standalone repo's Pages URL after deploy
 ```
 
-Sanity checks: the experiment renders and responds; a normal end triggers **one**
-`.csv` + `-info.txt` download (not one per block); on a crash you see the error
-overlay and **no** download (see [WASM.md](WASM.md)). Check the browser console
-for panics — each names the file:line of any still-stubbed binding.
+Sanity checks: the experiment renders and responds; a normal end triggers
+exactly **one** download, a `.zip` holding the `.csv` and the `-info.txt` (not
+one download per block, and not two files); on a crash you see the error overlay
+and **no** download (see [WASM.md](WASM.md)). Check the browser console for
+panics — each names the file:line of any still-stubbed binding.
+
+Two things that will mislead you while checking by hand:
+
+- **An unfocused window throttles `requestAnimationFrame` to ~1 Hz.** goxpyriment
+  notices and logs `WARNING: measured refresh 1.00 Hz differs from nominal
+  60.00 Hz`. A session driven from a background window is not a timing test, and
+  a canvas that looks frozen is usually just being throttled.
+- **A download that has not appeared is not necessarily lost.** If the browser
+  asks where to save each file, the file lands only when the dialog is answered;
+  Chrome's own record is in the `downloads` table of
+  `~/.config/google-chrome/Default/History` (copy it first — it is locked while
+  Chrome runs), where `state=2` with `interrupt_reason=40` and an empty
+  `target_path` means the dialog was never answered.
 
 ## See also
 

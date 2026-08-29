@@ -33,7 +33,7 @@ The Go side talks to the Emscripten side through `go-sdl3`'s js bindings
 |---|---|
 | go-sdl3 fork with the js/wasm target | [`github.com/chrplr/go-sdl3-wasm`](https://github.com/chrplr/go-sdl3-wasm), branch **`wasm-render-fixes`** (local clone: `~/00_git/go-sdl3-wasm`). The module path is unchanged (`github.com/Zyko0/go-sdl3`), and goxpyriment's `go.mod` has a `replace` pointing at a pinned pseudo-version of the fork; `vendor/` is kept in sync with `GOWORK=off go mod vendor` |
 | Prebuilt `sdl.js` / `sdl.wasm` + bundler | `cmd/wasmsdl` in the fork — embeds the blobs and an `index.html`, and builds/serves a complete browser bundle. Rebuild recipe: `.docker/emscripten-build/Dockerfile` in the fork |
-| goxpyriment js platform code | `control/platform_js.go` (URL-parameter flags, no dialog, audio device open), `apparatus/screen_newscreen_js.go` (canvas window), `apparatus/screen_present_js.go` (RAF-synced flips), `results/output_file_wasm.go` (CSV → browser download) — all build tag `js` |
+| goxpyriment js platform code | `control/platform_js.go` (URL-parameter flags, no dialog, audio device open), `apparatus/screen_newscreen_js.go` (canvas window), `apparatus/screen_present_js.go` (RAF-synced flips), `results/output_file_wasm.go` + `results/data_wasm.go` (session → one .zip download) — all build tag `js` |
 | Export-list generator | `cmd/gen-wasm-exports` — scans go-sdl3's js bindings + goxpyriment's own calls **as compiled for `GOOS=js`** (files excluded by build constraints, and `triggers/`, are not counted), emits `wasm/exported_functions.json` for `emcc -sEXPORTED_FUNCTIONS=@…`, and **lists the go-sdl3 calls whose js bindings are still panic-stubs** (the remaining-work list) |
 
 ### The go-sdl3 replace — what dependents need to know
@@ -173,8 +173,10 @@ file:line, which tells you exactly what to un-stub next.
   (`HasEvent`/`GetKeyboardState`).
 - Keyboard events reach SDL from the canvas; RTs come back as plausible
   millisecond values (timestamp *granularity* not yet measured — see below).
-- `results` output: at experiment end the browser downloads the `.csv` and
-  `-info.txt` files (verified: files land in the download directory intact).
+- `results` output: at experiment end the browser downloads **one** archive
+  holding the `.csv` and the `-info.txt` (verified: the files land intact and
+  unzip to what a native run writes). It must stay one download — see
+  "Why the results arrive as a .zip" below.
 - Audio playback: the buzzer/feedback sounds, `PlaySync`/`PlayAsync`, and
   `Tone` all work (see "Audio in the browser" below); confirmed by ear in an
   interactive session, not just headlessly.
@@ -183,8 +185,46 @@ file:line, which tells you exactly what to un-stub next.
   mapping window pixels into a `SetLogicalSize` letterboxed space (verified
   2026-08-27 by driving headless Chrome over the DevTools protocol: sequence
   presentation, click responses, correct/incorrect feedback, and the staircase
-  all behave). The end-of-session CSV download was verified for
+  all behave). The end-of-session download was verified for
   `parity_decision`, not re-verified for a full 30-trial Memory_span run.
+
+### Why the results arrive as a .zip
+
+`results.DataFile.Finalize` writes **one** file in the browser: a `.zip`
+containing the `.csv` and the `-info.txt` under the names the desktop build
+gives them. Unzipping a browser session yields byte-for-byte what a native run
+writes, so nothing downstream has to know where the data came from.
+
+This is not packaging convenience — it is a correctness fix. Until 2026-08-29
+the browser build fired the two downloads back to back, and the second one was
+routinely lost: browser sessions arrived with their metadata and no results.
+
+The mechanism, measured against Chrome's own `downloads` table
+(`~/.config/google-chrome/Default/History`): when the browser is set to *ask
+where to save each file*, two downloads requested milliseconds apart are
+serialized into two modal Save-As dialogs, and only the first is shown. The
+second stays queued, and is cancelled the moment the page goes away — which is
+precisely what a participant does when the session ends. Chrome records the
+casualty as `state=CANCELLED`, `interrupt_reason=USER_CANCELED`, `0` bytes
+received and no chosen filename. Because `Finalize` wrote the info file first,
+the metadata always survived and the results never did.
+
+Two things that look like the cause are not, and were each disproven by
+experiment before this fix landed:
+
+- **The wasm instance exiting.** A probe that kept the module alive for two
+  minutes after `Experiment.End()` behaved no differently from one that exited
+  immediately: in the immediate case the Save-As dialog still appeared and the
+  file still completed 34 s *after* the Go program had returned from `main`.
+  What cancels a pending download is the **document** being destroyed
+  (navigating away, closing the tab), not the Go program finishing.
+- **Revoking the object URL right after `click()`.** It looks like the classic
+  antipattern. A controlled test (one download pair per page load, no user
+  gesture) delivered 5/5 with the immediate revoke and 3/5 with a deferred one.
+  The revoke stays where it is.
+
+So: **never add a second download to the browser path.** If a future experiment
+needs to hand back another artefact, add it to the archive.
 
 ### The key design points
 

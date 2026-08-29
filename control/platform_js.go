@@ -14,6 +14,7 @@ import (
 	"syscall/js"
 
 	"github.com/Zyko0/go-sdl3/sdl"
+	"github.com/chrplr/goxpyriment/results"
 )
 
 // SDL_INIT_JOYSTICK/GAMEPAD fail in most browser environments; video,
@@ -104,4 +105,11 @@ func platformInteractiveSetup() bool { return false }
 // first frame.
 func platformAudioDeviceName(sdl.AudioDeviceID) (string, error) {
 	return "Web Audio (browser)", nil
+}
+
+// platformDataDestination names what Finalize just wrote, for the log line at
+// the end of a session: in the browser, the single archive the participant is
+// handed, holding both files (see results/data_wasm.go).
+func platformDataDestination(d *results.DataFile) string {
+	return d.ZipFilename()
 }

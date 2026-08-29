@@ -53,6 +53,8 @@ that matters is the 1 s-per-item presentation — both fine in a browser. See
 `docs/WASM.md` for what browser timing does and does not guarantee; anything
 needing sub-millisecond stimulus onset should be run natively.
 
-At the end of the 30 trials the browser downloads the two files `results`
-normally writes to disk: `Memory Span_sub-<NNN>_date-<date>-<time>.csv` with one
-row per trial, and the matching `-info.txt` with the session metadata.
+At the end of the 30 trials the browser downloads a single archive,
+`Memory Span_sub-<NNN>_date-<date>-<time>.zip`, holding the two files `results`
+normally writes to disk: the `.csv` with one row per trial and the matching
+`-info.txt` with the session metadata. It is one download on purpose — see
+`docs/WASM.md`.

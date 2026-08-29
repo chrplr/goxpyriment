@@ -33,6 +33,11 @@ func (o *OutputFile) Save() error {
 
 // Finalize triggers a browser download of everything buffered so far. It is
 // called by Experiment.End; on desktop the equivalent simply flushes to disk.
+//
+// Experiment data does not come through here: DataFile.Finalize packs the CSV
+// and the info file into one archive instead, because two downloads in a row
+// lose the second one (see data_wasm.go). This path remains for a standalone
+// OutputFile — a log, say — of which an experiment produces at most one.
 func (o *OutputFile) Finalize() error {
 	if len(o.Buffer) == 0 {
 		return nil
@@ -41,36 +46,42 @@ func (o *OutputFile) Finalize() error {
 	content := strings.Join(o.Buffer, "")
 	o.Buffer = make([]string, 0)
 
-	// Log to console for debugging
-	log.Printf("Saving experiment results to %s...", o.Filename)
+	log.Printf("Saving %s...", o.Filename)
+	return downloadBytes(o.Filename, []byte(content), "text/plain")
+}
 
-	// Use syscall/js to trigger a download in the browser
+// downloadBytes hands the participant a file, by wrapping the bytes in a Blob
+// and clicking a hidden <a download>. It is the only way a wasm program can
+// write anything the participant keeps.
+//
+// Call it once per session. The browser may be configured to ask where to save
+// each file, in which case every call queues a modal dialog and only the first
+// is shown; a second file requested before the first dialog is answered is
+// cancelled outright when the page goes away.
+func downloadBytes(filename string, data []byte, mime string) error {
 	document := js.Global().Get("document")
 	if document.IsUndefined() {
 		log.Println("Warning: js document is undefined; cannot trigger download.")
 		return nil
 	}
 
-	// Create a Blob from the content
-	blob := js.Global().Get("Blob").New([]any{content}, map[string]any{
-		"type": "text/plain",
-	})
+	// Copy into a JS-owned buffer: a Go []byte is not addressable from JS, and
+	// Blob accepts a typed array directly.
+	buf := js.Global().Get("Uint8Array").New(len(data))
+	js.CopyBytesToJS(buf, data)
+	blob := js.Global().Get("Blob").New([]any{buf}, map[string]any{"type": mime})
 
-	// Create a URL for the Blob
 	url := js.Global().Get("URL").Call("createObjectURL", blob)
 
-	// Create a hidden <a> element
 	a := document.Call("createElement", "a")
 	a.Set("href", url)
-	a.Set("download", o.Filename)
+	a.Set("download", filename)
 	a.Get("style").Set("display", "none")
 
-	// Append to body, click, and remove
 	document.Get("body").Call("appendChild", a)
 	a.Call("click")
 	document.Get("body").Call("removeChild", a)
 
-	// Revoke the URL to free memory
 	js.Global().Get("URL").Call("revokeObjectURL", url)
 
 	return nil
