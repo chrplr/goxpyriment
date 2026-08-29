@@ -78,14 +78,17 @@ var indexTmpl = template.Must(template.New("index").Parse(`<!DOCTYPE html>
 
 {{if .Bundles}}
 <h2>Download everything</h2>
-<p>One archive with every program for a given platform.</p>
+<p>One archive with every program for a given platform, from the
+<a href="https://github.com/chrplr/goxpyriment/releases/latest">latest release</a>
+on GitHub. These are several hundred MB each, and unlike the links below they
+are kept indefinitely.</p>
 <div class="scroll">
 <table>
 <tbody>
 {{range .Bundles}}
 <tr>
   <td class="name">{{.Label}}</td>
-  <td class="dl"><a href="{{.URL}}">Download</a><span class="size">{{.Size}}</span></td>
+  <td class="dl"><a href="{{.URL}}">Download</a></td>
 </tr>
 {{end}}
 </tbody>

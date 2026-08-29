@@ -58,6 +58,10 @@ var platforms = []platform{
 }
 
 // bundle is one whole-collection archive, for people who want everything.
+//
+// These are NOT mirrored into the bucket. They are byte-for-byte the same
+// binaries as the per-app zips, so hosting both would double the storage for
+// no gain; the GitHub release already serves them and keeps them indefinitely.
 type bundle struct {
 	File  string
 	Label string
@@ -69,6 +73,10 @@ var bundles = []bundle{
 	{"goxpyriment-examples-linux-x86_64.tar.gz", "Linux x86-64"},
 	{"goxpyriment-examples-linux-arm64.tar.gz", "Linux arm64"},
 }
+
+// releaseDownloadURL is where the collection archives are served from. The
+// "latest" alias resolves to the most recent published release.
+const releaseDownloadURL = "https://github.com/chrplr/goxpyriment/releases/latest/download"
 
 // section groups apps by meta.yaml category, in the order they are rendered.
 type section struct {
@@ -157,7 +165,6 @@ type renderSection struct {
 type bundleLink struct {
 	Label string
 	URL   string
-	Size  string
 }
 
 // pageData is the template input.
@@ -311,15 +318,10 @@ func main() {
 		rendered = append(rendered, renderSection{Title: s.Title, Blurb: s.Blurb, Apps: byCategory[s.Category]})
 	}
 
-	// The whole-collection archives, listed only if they were copied in.
+	// The whole-collection archives, served from the GitHub release.
 	var bl []bundleLink
 	for _, b := range bundles {
-		info, err := os.Stat(filepath.Join(*root, b.File))
-		if err != nil {
-			log.Printf("WARNING: bundle %s not found — omitted from the page", b.File)
-			continue
-		}
-		bl = append(bl, bundleLink{Label: b.Label, URL: linkTo(*base, b.File), Size: humanSize(info.Size())})
+		bl = append(bl, bundleLink{Label: b.Label, URL: releaseDownloadURL + "/" + b.File})
 	}
 
 	short := *commit

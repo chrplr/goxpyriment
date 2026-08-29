@@ -5,7 +5,7 @@ xpd_results/
 octin_college_font/
 gvassets/
 /tmp/
-./docs/copy_apps_to_cloudflare_R2.md
+docs/tokens.txt
 
 # Compiled binaries
 _build/

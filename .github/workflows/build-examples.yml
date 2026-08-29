@@ -84,10 +84,10 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           COMMIT_SHA: ${{ github.sha }}
-          # A build is ~4.8 GB (per-app zips plus the bundle archives), so
-          # only the newest is retained: 4.8 GB of R2's 10 GB free tier,
-          # peaking near 9.6 GB while a new build uploads.
-          KEEP: "1"
+          # A build is ~2.4 GB of per-app zips (the collection archives live
+          # on the GitHub release, not here), so two fit in R2's 10 GB free
+          # tier: 4.8 GB steady, peaking near 7.2 GB while a new build lands.
+          KEEP: "2"
         run: bash examples/installers/publish-to-r2.sh
 
   create-release:

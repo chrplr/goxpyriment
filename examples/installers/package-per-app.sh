@@ -11,6 +11,10 @@
 # Run from the repo root OR from examples/installers/:
 #   bash examples/installers/package-per-app.sh
 #
+# Only the individual apps go to R2. The four whole-collection archives are
+# served from the GitHub release instead -- they are the same bytes, GitHub
+# keeps them indefinitely, and mirroring them here would double the bucket.
+#
 # Outputs (relative to the repo root):
 #   _build/r2/Windows_x86_64/<app>.zip     containing <app>.exe
 #   _build/r2/MacOS_arm64/<app>.zip        containing <app>.app/ (a bundle)
@@ -98,23 +102,6 @@ for target in "${TARGETS[@]}"; do
     exit 1
   fi
   package_stage "${stage}" "${osarch}"
-done
-
-# The four whole-collection archives ship alongside the individual apps, for
-# people who would rather download everything at once.
-echo "=== Copying the bundle archives ==="
-for bundle in \
-  goxpyriment-examples-windows-x86_64.zip \
-  goxpyriment-examples-macos-arm64.zip \
-  goxpyriment-examples-linux-x86_64.tar.gz \
-  goxpyriment-examples-linux-arm64.tar.gz
-do
-  if [[ -f "${SCRIPT_DIR}/${bundle}" ]]; then
-    cp "${SCRIPT_DIR}/${bundle}" "${OUT_DIR}/${bundle}"
-    echo "  ${bundle}"
-  else
-    echo "  WARNING: ${bundle} not found -- skipped" >&2
-  fi
 done
 
 echo ""

@@ -18,13 +18,11 @@
 # Then deletes every builds/<sha>/ beyond the KEEP most recent, ranked by the
 # last-modified time of each folder's index.html.
 #
-# One build is about 4.8 GB: 2.4 GB of per-app zips plus the four bundle
-# archives, which hold the same binaries again. KEEP=1 therefore settles at
-# 4.8 GB of R2's 10 GB free tier. Note the transient peak: the prune runs after
-# the upload, so while a new build lands the bucket briefly holds both, about
-# 9.6 GB. That fits, but with little margin -- if the programs grow, lower the
-# retention further or stop mirroring the bundle archives here (they are also
-# on the GitHub releases page, and kept there indefinitely).
+# One build is about 2.4 GB of per-app zips. The whole-collection archives are
+# not mirrored here -- they are the same bytes and the GitHub release keeps them
+# indefinitely -- which is what leaves room to retain two builds: 4.8 GB of R2's
+# 10 GB free tier. The prune runs after the upload, so while a new build lands
+# the bucket briefly holds three, about 7.2 GB. That still fits.
 #
 # Required environment:
 #   AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY   R2 API token (Object Read & Write)
@@ -32,14 +30,14 @@
 # Optional environment:
 #   R2_BUCKET    (default: christophe-pallier-apps)
 #   R2_ENDPOINT  (default: the account endpoint below)
-#   KEEP         (default: 1)   number of builds to retain
+#   KEEP         (default: 2)   number of builds to retain
 #   DRY_RUN=1                   print what would happen, change nothing
 
 set -euo pipefail
 
 R2_BUCKET="${R2_BUCKET:-christophe-pallier-apps}"
 R2_ENDPOINT="${R2_ENDPOINT:-https://ce24dc0e8bb587a06d4cfdcf226ccfa9.r2.cloudflarestorage.com}"
-KEEP="${KEEP:-1}"
+KEEP="${KEEP:-2}"
 DRY_RUN="${DRY_RUN:-0}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
