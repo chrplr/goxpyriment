@@ -133,4 +133,4 @@ fi
 
 echo ""
 echo "Published: https://downloads.pallier.org/builds/${COMMIT_SHA}/index.html"
-echo "Latest:    https://downloads.pallier.org/builds/latest/index.html"
+echo "Latest:    https://downloads.pallier.org/builds/latest/"

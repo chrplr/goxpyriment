@@ -9,7 +9,7 @@ as **one zip per program per platform** in a Cloudflare R2 bucket.
 * Bucket: `christophe-pallier-apps`
 * Endpoint: `https://ce24dc0e8bb587a06d4cfdcf226ccfa9.r2.cloudflarestorage.com`
 * Public URL: <https://downloads.pallier.org>
-* Entry point: <https://downloads.pallier.org/builds/latest/index.html>
+* Entry point: <https://downloads.pallier.org/builds/latest/>
 
 ## Layout in the bucket
 
@@ -61,8 +61,7 @@ of each folder's `index.html`; a folder without one is a failed upload and is
 deleted first. The script refuses to prune the build it has just uploaded.
 
 Because only two builds are retained, a commit-pinned URL survives one further
-release and then stops working. Documentation should link
-`builds/latest/index.html`.
+release and then stops working. Documentation should link `builds/latest/`.
 
 ## The pieces
 
@@ -107,17 +106,25 @@ COMMIT_SHA=$(git rev-parse HEAD) DRY_RUN=1 bash examples/installers/publish-to-r
 
 ## Custom-domain directory index
 
-An R2 custom domain does **not** serve `index.html` for a bare directory URL:
-`downloads.pallier.org/builds/latest/` returns 404, while
-`downloads.pallier.org/builds/latest/index.html` works. **Always link the
-explicit `index.html`** — every link in the documentation does.
+An R2 custom domain does **not** serve `index.html` for a bare directory URL, so
+`downloads.pallier.org/builds/latest/` would 404 on its own. A **Cloudflare
+redirect rule** on the `pallier.org` zone supplies the missing behaviour by
+appending `index.html` to any path ending in `/`:
 
-This can be fixed with a Cloudflare Transform Rule on the `pallier.org` zone,
-which was attempted but not deployed (the dashboard flow was uncooperative):
+```
+GET /builds/latest/  →  301  →  /builds/latest/index.html  →  200
+```
 
-* **Rules → Transform Rules → Rewrite URL**, named `R2 directory index`
-* Match: `(http.host eq "downloads.pallier.org" and ends_with(http.request.uri.path, "/"))`
-* Rewrite *Path* dynamically to: `concat(http.request.uri.path, "index.html")`
+Verified working for `builds/`, `builds/latest/` and `builds/{commit_sha}/`, in
+one hop and with no loops. File URLs are left alone — `…/Linux_x86_64/Foo.zip`
+still returns `200 application/zip` — because the rule matches only paths ending
+in a slash.
 
-If it is ever deployed, the bare form starts working and the links can be
-shortened; nothing breaks either way.
+A Transform Rule (*Rules → Transform Rules → Rewrite URL*) with the match
+`(http.host eq "downloads.pallier.org" and ends_with(http.request.uri.path, "/"))`
+rewriting *Path* to `concat(http.request.uri.path, "index.html")` achieves the
+same thing internally, without the extra round trip and without changing the
+address bar. Either is fine.
+
+**If a bare directory URL ever starts returning 404 again, this rule is the
+first thing to check.**

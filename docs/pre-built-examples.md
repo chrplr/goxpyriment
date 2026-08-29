@@ -2,10 +2,10 @@
 
 If want to run the [examples](GalleryOfExamples.md) directly, without compiling them, you download _pre-built apps_ and run them on your computer. There are two ways to get them:
 
-* **One program at a time** — browse [**downloads.pallier.org/builds/latest/index.html**](https://downloads.pallier.org/builds/latest/index.html), find the program you want, and download just that one (a few MB) for your platform. Every experiment, demonstration and technical test is listed there with its description.
+* **One program at a time** — browse [**downloads.pallier.org/builds/latest/**](https://downloads.pallier.org/builds/latest/), find the program you want, and download just that one (a few MB) for your platform. Every experiment, demonstration and technical test is listed there with its description.
 * **The whole collection** — download one archive holding every program for your platform, using the links below. These come from the [GitHub releases](https://github.com/chrplr/goxpyriment/releases/latest) page.
 
-The download site keeps only the two most recent builds, so a commit-pinned link such as `downloads.pallier.org/builds/<commit>/` eventually stops working — always link `builds/latest/index.html`. The GitHub release archives linked below are kept indefinitely.
+The download site keeps only the two most recent builds, so a commit-pinned link such as `downloads.pallier.org/builds/<commit>/` eventually stops working — always link `builds/latest/`. The GitHub release archives linked below are kept indefinitely.
 
 ⚠️  **WARNING** These binaries are unsigned. macOS Gatekeeper and Windows Defender will show security warnings or worse, _misleading messages_ such as 'this program is damaged'. Your antivirus may quarantine the files. Don't let them intimidate you. These warnings pop out because I am not willing to pay third parties to sign the executables. The instructions below explain how to run these programs anyway.
 
