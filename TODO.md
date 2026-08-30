@@ -127,6 +127,38 @@ the same model.
 - Eyelink 1000
 - Tobii
 
+## Fix the COOP/COEP response-header rule on Cloudflare
+
+`downloads.pallier.org` does not send `Cross-Origin-Opener-Policy: same-origin`
+and `Cross-Origin-Embedder-Policy: require-corp`, so the published browser
+experiments are **not cross-origin isolated**: SDL timestamps tick at ~100 µs
+instead of ~5 µs. Nothing is broken by this — 100 µs is still far finer than any
+behavioural response, and each launcher page shows a banner saying so — but the
+published RTs are coarser than they need to be.
+
+A rule was created on 2026-08-29 and is not taking effect. Verified absent on
+every path, including `/builds/{sha}/index.html` and the `.wasm` files, with
+`cf-cache-status: DYNAMIC` — so it is not path scoping and not stale cache:
+
+```
+curl -sI https://downloads.pallier.org/builds/latest/index.html | grep -i cross-origin
+```
+
+Candidates, in order of likelihood:
+
+1. **Wrong rule list.** *Modify Response Header* lives under Rules → Overview →
+   **Response** Header Transform Rules, a different list from the Redirect Rules
+   where the working directory-index rule sits. A request-header rule would set
+   the headers on the way to the origin, where they do nothing.
+2. **The expression never matches.** Loosen it to just
+   `http.host eq "downloads.pallier.org"` with no path condition; if the headers
+   then appear, it is the expression.
+3. **Saved but not deployed** — Cloudflare keeps a draft until Deploy is hit.
+
+The intended rule is recorded in `docs/copy_apps_to_cloudflare_R2.md` under
+"Cross-origin isolation for the browser builds". Once it works, the banner on
+any experiment page disappears, which is the quickest visual confirmation.
+
 ## Browser/WASM port
 
 The port is **complete** (2026-07-13): goxpyriment experiments build with
