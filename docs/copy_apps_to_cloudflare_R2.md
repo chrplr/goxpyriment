@@ -16,6 +16,7 @@ as **one zip per program per platform** in a Cloudflare R2 bucket.
 ```
 builds/index.html                                     redirect to the newest build
 builds/latest/index.html                              redirect to the newest build
+builds/latest/wasm/{app}/index.html                   redirect to that experiment
 builds/{commit_sha}/index.html                        generated download page
 builds/{commit_sha}/wasm/_runtime/sdl.js              ┐ the SDL runtime, shared
 builds/{commit_sha}/wasm/_runtime/sdl.wasm            │ by every browser build
@@ -39,10 +40,17 @@ both would double the bucket for no gain. The page's "Download everything"
 section links `github.com/chrplr/goxpyriment/releases/latest/download/…`
 instead, where they are kept indefinitely.
 
-`latest` is a **~2 KB redirect page, not a copy** of the newest build. A full
-mirror would add another 3.0 GB; the redirect costs nothing and still gives the
-documentation a stable URL to link. The trade-off is that the actual download
-links are commit-pinned, so they go stale when that build is pruned.
+`latest` is **redirect pages, not a copy** of the newest build — the whole tree
+is ~640 KB against the 3.0 GB it points at. Besides the download page there is
+one stub per browser experiment, so
+`downloads.pallier.org/builds/latest/wasm/Stroop_task/` is a link you can hand
+someone directly. Without those stubs it would 404: the Run links on the
+download page are relative and resolve fine once the browser has followed the
+top-level redirect, but nobody expects a URL they can read to not exist.
+
+The trade-off of redirecting rather than copying is that the final download
+links are commit-pinned, so a link that has been followed goes stale when that
+build is pruned. `builds/latest/…` itself never does.
 
 ## Browser versions
 

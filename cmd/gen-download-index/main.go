@@ -23,7 +23,7 @@
 // what makes builds/index.html and builds/latest/index.html stable entry
 // points without duplicating gigabytes of binaries:
 //
-//	go run ./cmd/gen-download-index -redirect "$GITHUB_SHA" -out _build/redirect.html
+//	go run ./cmd/gen-download-index -redirect "$GITHUB_SHA" -root _build/r2 -out-tree _build/latest
 //
 // Links in the index are relative by default, so the generated file is correct
 // wherever it is uploaded. Pass -base to emit absolute URLs instead.
@@ -275,19 +275,20 @@ func linkTo(base, path string) string {
 func main() {
 	var (
 		root     = flag.String("root", "_build/r2", "directory holding the packaged <OS_ARCH>/<app>.zip tree")
-		out      = flag.String("out", "", "output file (default: <root>/index.html, or required with -redirect)")
+		out      = flag.String("out", "", "output file (default: <root>/index.html)")
+		outTree  = flag.String("out-tree", "", "with -redirect: write the whole builds/latest/ tree here")
 		commit   = flag.String("commit", "", "commit SHA this build was made from")
 		tag      = flag.String("tag", "", "git tag this build was made from, if any")
 		base     = flag.String("base", "", "URL prefix for links (default: empty, i.e. relative links)")
-		redirect = flag.String("redirect", "", "redirect mode: write a page forwarding to ../<SHA>/index.html")
+		redirect = flag.String("redirect", "", "redirect mode: write forwarding pages pointing at build <SHA>")
 	)
 	flag.Parse()
 
 	if *redirect != "" {
-		if *out == "" {
-			log.Fatal("-redirect requires -out")
+		if *outTree == "" {
+			log.Fatal("-redirect requires -out-tree")
 		}
-		writeRedirect(*out, *redirect)
+		writeLatestTree(*outTree, *root, *redirect)
 		return
 	}
 
@@ -391,9 +392,18 @@ func main() {
 	fmt.Printf("Wrote %s — %d programs across %d platforms.\n", outPath, len(names), len(platforms))
 }
 
-// writeRedirect emits the small forwarding page used for builds/index.html and
-// builds/latest/index.html.
-func writeRedirect(outPath, sha string) {
+// redirectData is the input to redirectTmpl. Target is relative, so the page
+// works wherever it is uploaded; Canonical is the absolute equivalent.
+type redirectData struct {
+	Title     string
+	What      string
+	Target    string
+	Canonical string
+	ShortSHA  string
+}
+
+// writeRedirect emits one forwarding page.
+func writeRedirect(outPath string, d redirectData) {
 	if err := os.MkdirAll(filepath.Dir(outPath), 0o755); err != nil {
 		log.Fatalf("creating output directory: %v", err)
 	}
@@ -401,16 +411,53 @@ func writeRedirect(outPath, sha string) {
 	if err != nil {
 		log.Fatalf("create %s: %v", outPath, err)
 	}
-	short := sha
-	if len(short) > 12 {
-		short = short[:12]
-	}
-	err = redirectTmpl.Execute(f, struct{ SHA, ShortSHA string }{sha, short})
-	if err != nil {
+	if err := redirectTmpl.Execute(f, d); err != nil {
 		log.Fatalf("rendering %s: %v", outPath, err)
 	}
 	if err := f.Close(); err != nil {
 		log.Fatalf("close %s: %v", outPath, err)
 	}
-	fmt.Printf("Wrote %s — redirects to ../%s/index.html\n", outPath, sha)
+}
+
+// short abbreviates a commit SHA for display.
+func short(sha string) string {
+	if len(sha) > 12 {
+		return sha[:12]
+	}
+	return sha
+}
+
+// writeLatestTree builds the whole builds/latest/ tree: the download page's
+// forwarding stub, plus one per browser experiment.
+//
+// builds/latest/ holds no real files — it is redirects only, which is what lets
+// a 3 GB build be reachable through a stable URL without a second copy of it.
+// The per-app stubs exist because the alternative surprises people: the Run
+// links on the download page are relative and resolve correctly once the
+// browser has followed the top-level redirect, but a hand-written
+// .../builds/latest/wasm/Stroop_task/ would 404 without these.
+func writeLatestTree(outDir, root, sha string) {
+	const base = "https://downloads.pallier.org/builds/"
+
+	writeRedirect(filepath.Join(outDir, "index.html"), redirectData{
+		Title:     "goxpyriment downloads",
+		What:      "the download page",
+		Target:    "../" + sha + "/index.html",
+		Canonical: base + sha + "/index.html",
+		ShortSHA:  short(sha),
+	})
+	n := 1
+
+	for app := range scanBrowser(root) {
+		// From builds/latest/wasm/<app>/ back up to builds/, then down.
+		writeRedirect(filepath.Join(outDir, "wasm", app, "index.html"), redirectData{
+			Title:     app + " — goxpyriment",
+			What:      app,
+			Target:    "../../../" + sha + "/wasm/" + app + "/index.html",
+			Canonical: base + sha + "/wasm/" + app + "/index.html",
+			ShortSHA:  short(sha),
+		})
+		n++
+	}
+	fmt.Printf("Wrote %s — %d forwarding page(s) to build %s.\n", outDir, n, short(sha))
 }

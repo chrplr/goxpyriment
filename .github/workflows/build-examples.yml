@@ -80,7 +80,8 @@ jobs:
             -tag "${TAG}"
           go run ./cmd/gen-download-index \
             -redirect "${GITHUB_SHA}" \
-            -out _build/redirect.html
+            -root _build/r2 \
+            -out-tree _build/latest
 
       - name: Publish to Cloudflare R2
         if: env.HAS_R2 == 'true'

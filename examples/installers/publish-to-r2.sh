@@ -7,13 +7,14 @@
 #
 # Expects the tree produced by package-per-app.sh and the pages produced by
 # cmd/gen-download-index:
-#   _build/r2/            the per-app zips, the bundle archives and index.html
-#   _build/redirect.html  the forwarding page for builds/ and builds/latest/
+#   _build/r2/      the per-app zips, the browser bundles and index.html
+#   _build/latest/  the forwarding pages for builds/ and builds/latest/
 #
 # Uploads to:
 #   builds/<COMMIT_SHA>/  the whole build
-#   builds/index.html     redirect to the build just uploaded
-#   builds/latest/index.html  the same redirect
+#   builds/index.html         redirect to the build just uploaded
+#   builds/latest/…           the same redirect, plus one per browser
+#                             experiment at builds/latest/wasm/<app>/
 #
 # Then deletes every builds/<sha>/ beyond the KEEP most recent, ranked by the
 # last-modified time of each folder's index.html.
@@ -43,13 +44,13 @@ DRY_RUN="${DRY_RUN:-0}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 R2_DIR="${R2_DIR:-${REPO_ROOT}/_build/r2}"
-REDIRECT_FILE="${REDIRECT_FILE:-${REPO_ROOT}/_build/redirect.html}"
+LATEST_DIR="${LATEST_DIR:-${REPO_ROOT}/_build/latest}"
 
 : "${COMMIT_SHA:?COMMIT_SHA must be set}"
 
 [[ -d "${R2_DIR}" ]] || { echo "error: ${R2_DIR} not found — run package-per-app.sh first" >&2; exit 1; }
 [[ -f "${R2_DIR}/index.html" ]] || { echo "error: ${R2_DIR}/index.html not found — run gen-download-index first" >&2; exit 1; }
-[[ -f "${REDIRECT_FILE}" ]] || { echo "error: ${REDIRECT_FILE} not found — run gen-download-index -redirect first" >&2; exit 1; }
+[[ -f "${LATEST_DIR}/index.html" ]] || { echo "error: ${LATEST_DIR}/index.html not found — run gen-download-index -redirect first" >&2; exit 1; }
 command -v aws >/dev/null 2>&1 || { echo "error: the AWS CLI is not installed" >&2; exit 1; }
 
 # R2 rejects some of the integrity headers recent AWS CLI v2 builds send by
@@ -83,11 +84,15 @@ s3 s3 cp "${R2_DIR}/index.html" "${DEST}/index.html" \
 # the "latest" links aimed at a half-built folder.
 
 echo "=== Updating the redirect pages ==="
-for key in "builds/index.html" "builds/latest/index.html"; do
-  s3 s3 cp "${REDIRECT_FILE}" "s3://${R2_BUCKET}/${key}" \
-    --content-type "${HTML_TYPE}" --cache-control "public, max-age=60" \
-    --no-progress "${DRYFLAG[@]}"
-done
+# --delete keeps builds/latest/ free of experiments that no longer exist. The
+# whole tree is redirects, a few hundred KB, so this is cheap.
+s3 s3 sync "${LATEST_DIR}" "s3://${R2_BUCKET}/builds/latest" --delete \
+  --content-type "${HTML_TYPE}" --cache-control "public, max-age=60" \
+  --no-progress "${DRYFLAG[@]}"
+
+s3 s3 cp "${LATEST_DIR}/index.html" "s3://${R2_BUCKET}/builds/index.html" \
+  --content-type "${HTML_TYPE}" --cache-control "public, max-age=60" \
+  --no-progress "${DRYFLAG[@]}"
 
 # --- 3. prune old builds -----------------------------------------------------
 #
@@ -134,3 +139,4 @@ fi
 echo ""
 echo "Published: https://downloads.pallier.org/builds/${COMMIT_SHA}/index.html"
 echo "Latest:    https://downloads.pallier.org/builds/latest/"
+echo "Browser:   https://downloads.pallier.org/builds/latest/wasm/<app>/"
