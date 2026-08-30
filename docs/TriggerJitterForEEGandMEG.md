@@ -104,17 +104,26 @@ have always been good.
 ```go
 onset, err := exp.ShowTS(stim)   // presents and timestamps the flip
 if err != nil { return err }
-trig.SetHigh(line)               // next statement, same thread, nothing between
+triggers.FireTriggerSync(trig, line, 5*time.Millisecond)
 ```
 
-Measured this way the gap between the flip timestamp and the trigger write is
-**25 µs**. Launching the same call as `go triggers.FireTrigger(...)` hands it to
-the Go scheduler instead; at normal priority under CPU load that path has been
-measured at **+0.73 ms with about 1 ms of spread**. That is forty times the
-synchronous figure, for no benefit at the scale that matters here.
+`FireTriggerSync` raises on the calling goroutine — the next statement, same
+thread, nothing between — and defers only the falling edge, which carries no
+information. Measured this way the gap between the flip timestamp and the
+trigger write is **25 µs** (p50 34 µs, max 37 µs at `SCHED_FIFO` 50 in a later
+campaign).
 
-`tests/Timing-Tests` fires from a goroutine deliberately, to keep its own
-measurement loop unblocked. Do not copy that pattern into an experiment.
+Do not reach for `go triggers.FireTrigger(...)` instead. `FireTrigger` blocks
+for the whole pulse, so a frame loop can only call it from a goroutine — and
+that hands the *rising* edge to the Go scheduler, which at normal priority under
+CPU load has been measured at **+0.73 ms with about 1 ms of spread**. Forty
+times the synchronous figure, for no benefit at the scale that matters here.
+`FireTrigger` is still the right call for a marker whose timing is not the
+measurement: a block boundary, an end-of-run flag.
+
+`tests/Timing-Tests` splits the edges exactly this way in its `av` loop, for
+exactly this reason; its `rt` loop still uses the goroutine form, where the
+trigger is not the quantity being measured.
 
 ## What is left, and why it is quantised
 

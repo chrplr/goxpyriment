@@ -79,12 +79,21 @@ type InputTTLDevice interface {
 	Close() error
 }
 
-// FireTrigger pulses line HIGH for dur then LOW, silently discarding errors.
-// It has no return value so it can be launched directly as a goroutine
-// immediately after a VSYNC flip, keeping the frame loop free of blocking
-// serial I/O:
+// FireTrigger pulses line HIGH for dur then LOW, logging failures rather than
+// returning them.
 //
-//	go triggers.FireTrigger(trig, pin, 5*time.Millisecond)
+// It blocks for the whole pulse, so a frame loop cannot call it inline without
+// adding dur to the frame. The obvious fix -- launching it as a goroutine -- is
+// the one to avoid whenever the RISING edge is the event marker. Measured at
+// normal priority under load, dispatching the raise through a goroutine put the
+// edge +0.73 ms after the flip with about 1 ms of spread; the same raise issued
+// synchronously on the flip thread at SCHED_FIFO 50 lands at p50 34 µs, max
+// 37 µs. Use [FireTriggerSync] for that case: it raises here and defers only
+// the falling edge. See docs/TriggerJitterForEEGandMEG.md.
+//
+// FireTrigger stays the right call where the pulse timing does not carry the
+// measurement -- a block marker, an end-of-run flag -- or from a goroutine that
+// is not the flip thread.
 //
 // The pulse duration is controlled by precisionSleep, which busy-spins the
 // last 500 µs to eliminate OS scheduling overshoot from time.Sleep alone.
@@ -103,6 +112,46 @@ func FireTrigger(d OutputTTLDevice, line int, dur time.Duration) {
 	if err := d.SetLow(line); err != nil {
 		log.Printf("triggers.FireTrigger: lowering line %d: %v", line, err)
 	}
+}
+
+// FireTriggerSync raises line on the CALLING goroutine and returns at once,
+// lowering it dur later from a separate one. Use it for a trigger whose rising
+// edge marks a stimulus onset: call it on the statement after the flip, with
+// nothing in between.
+//
+//	flipTS, err := exp.ShowTS(stim)
+//	triggers.FireTriggerSync(trig, pin, 5*time.Millisecond)
+//
+// Only the rising edge is timed. On the flip thread at SCHED_FIFO 50 the gap
+// from the flip timestamp to the raise is p50 34 µs, max 37 µs, against
+// +0.73 ms with about 1 ms of spread when the raise itself is dispatched through
+// a goroutine ([FireTrigger]) at normal priority under load. The falling edge
+// carries no information, so it is deferred and may drift freely.
+//
+// Two constraints follow from deferring it. dur must be shorter than the
+// interval to the next call on the same device: the output implementations are
+// not internally synchronised, so an overlapping raise and lower would race on
+// the port. And failures are logged, not returned -- a trigger that never fires
+// looks exactly like one the recording equipment missed, and the run is only
+// found to be worthless afterwards.
+//
+// This does NOT make the edge coincide with the photons. SDL_RenderPresent
+// returns when the driver will accept the next frame, so the flip leads the
+// panel by one to three frames depending on the display stack. That offset is
+// constant per rig -- 83 to 113 µs of scatter off a compositor -- and is meant
+// to be measured once, recorded, and subtracted in analysis. See
+// docs/TimingTests.md.
+func FireTriggerSync(d OutputTTLDevice, line int, dur time.Duration) {
+	if err := d.SetHigh(line); err != nil {
+		log.Printf("triggers.FireTriggerSync: raising line %d: %v", line, err)
+		return
+	}
+	go func() {
+		precisionSleep(dur)
+		if err := d.SetLow(line); err != nil {
+			log.Printf("triggers.FireTriggerSync: lowering line %d: %v", line, err)
+		}
+	}()
 }
 
 // precisionSleep sleeps for approximately dur with sub-millisecond accuracy.

@@ -27,6 +27,39 @@ type InputTTLDevice interface {
 
 `NullOutputTTLDevice` and `NullInputTTLDevice` are silent no-ops.
 
+## Firing a trigger on a stimulus onset
+
+Use **`FireTriggerSync`**, on the statement after the flip, with nothing in
+between:
+
+```go
+flipTS, err := exp.ShowTS(stim)
+triggers.FireTriggerSync(trig, pin, 5*time.Millisecond)
+```
+
+It raises on the calling goroutine and defers only the falling edge, which
+carries no information. `FireTrigger` blocks for the whole pulse, so the only
+way to call it from a frame loop is `go triggers.FireTrigger(...)` — and
+dispatching the *raise* through a goroutine is what costs the measurement:
+
+| how the rising edge is issued | gap from the flip |
+|---|---|
+| synchronously on the flip thread (`FireTriggerSync`) | **p50 34 µs, max 37 µs** at `SCHED_FIFO` 50 |
+| through a goroutine (`go FireTrigger(...)`) | **+0.73 ms, ~1 ms spread** at normal priority under load |
+
+`dur` must be shorter than the interval to the next call on the same device —
+the implementations are not internally synchronised, so an overlapping raise and
+lower would race on the port.
+
+Neither call makes the edge coincide with the photons. `SDL_RenderPresent`
+returns when the driver will accept the *next* frame, so the flip leads the
+panel by one to three frames depending on the display stack (measured: kmsdrm
+18.91 ms sd 0.113, Wayland 21.75 ms sd 1.344, bare Xorg 35.74 ms sd 0.083 at
+60 Hz). That offset is constant per rig and is measured once, recorded and
+subtracted in analysis — the library never adjusts a timestamp. See
+[docs/TimingTests.md](../docs/TimingTests.md) and
+[docs/TriggerJitterForEEGandMEG.md](../docs/TriggerJitterForEEGandMEG.md).
+
 ## DLPIO8 (DLP-IO8-G, USB-CDC)
 
 Implements both interfaces. ASCII protocol at 115200 baud.
