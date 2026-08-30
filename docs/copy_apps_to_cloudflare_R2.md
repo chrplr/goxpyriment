@@ -113,6 +113,7 @@ release and then stops working. Documentation should link `builds/latest/`.
 | `examples/installers/package-per-app.sh` | Zips each staged program into `_build/r2/<OS_ARCH>/<app>.zip`. Fails loudly if a name is used by both an example and a test. |
 | `cmd/gen-download-index` | Generates `index.html` by scanning `_build/r2/`, taking each program's description from its `meta.yaml` (the same files that feed `GalleryOfExamples.md`). `-redirect <sha>` emits the small forwarding page instead. |
 | `examples/installers/build-wasm-apps.sh` | Bundles every eligible example for the browser into `_build/r2/wasm/`, sharing one copy of the SDL runtime. Reports every failure at the end rather than stopping at the first. `ONLY=<name>` builds one. |
+| `cmd/gen-gallery` | Also injects the "Try it without building" block into each `examples/<app>/README.md` and the ▶ Run links into `docs/GalleryOfExamples.md`, from the same `wasm-skip.txt`. Run it with `make update-examples-gallery`. |
 | `cmd/gen-wasm-launcher` | Writes each app's launcher page — generated from its `meta.yaml`, or adapted from the example's own `web/index.html` when it has one. |
 | `examples/installers/publish-to-r2.sh` | Uploads, repoints the redirects, prunes old builds (`KEEP`, default 2). `DRY_RUN=1` changes nothing. |
 | `.github/workflows/build-examples.yml` | Runs all of the above in the existing `build-all` job, on `v*` tags and on `workflow_dispatch`. |
