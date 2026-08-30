@@ -148,7 +148,7 @@ The distinction is **what you do with the output**, and it maps to the two folde
 
 Rule of thumb: *demonstrates how to use a function* → `demo` in `examples/`; *measures whether something performs* → `test` in `tests/`.
 
-Both folders are catalogued in `docs/GalleryOfExamples.md`. Each directory carries a `meta.yaml` (`category:` is `experiment`, `demo`, or `test`; plus `description:` and `reference:`). `make update-examples-gallery` (runs `cmd/gen-gallery`) scans both `examples/` and `tests/` and regenerates the tables between the `<!-- BEGIN:experiments -->`, `<!-- BEGIN:demos -->`, and `<!-- BEGIN:tests -->` sentinels. Add a `meta.yaml` to any new example or test so it appears in the gallery (the generator warns about directories that lack one).
+Both folders are catalogued in `docs/GalleryOfExamples.md`. Each directory carries a `meta.yaml` (`category:` is `experiment`, `demo`, or `test`; plus `description:` and `reference:`). `make update-examples-gallery` (runs `cmd/gen-gallery`) scans both `examples/` and `tests/` and regenerates the tables between the `<!-- BEGIN:experiments -->`, `<!-- BEGIN:demos -->`, and `<!-- BEGIN:tests -->` sentinels. The same command also refreshes the "Try it without building" block between the `<!-- BEGIN:links -->` sentinels in every `examples/<name>/README.md` — the ▶ Run-in-browser link is emitted for any example *not* listed in `examples/installers/wasm-skip.txt`. A CI guard (`.github/workflows/gallery-sync.yml`) fails if any of this is out of date, so run the target after touching a `meta.yaml`, a `README.md`, or the skip list. Add a `meta.yaml` to any new example or test so it appears in the gallery (the generator warns about directories that lack one).
 
 ## Package architecture
 

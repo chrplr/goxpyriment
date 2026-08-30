@@ -1,0 +1,45 @@
+name: Gallery and example READMEs in sync
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    paths:
+      - examples/*/meta.yaml
+      - tests/*/meta.yaml
+      - examples/*/README.md
+      - examples/installers/wasm-skip.txt
+      - docs/GalleryOfExamples.md
+      - cmd/gen-gallery/**
+      - .github/workflows/gallery-sync.yml
+  workflow_dispatch: {}
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.25.x"
+
+      - name: Regenerate the gallery and the per-example README blocks
+        run: go run ./cmd/gen-gallery/
+
+      # --porcelain covers untracked files too, which plain `git diff` would
+      # miss: gen-gallery creates a README for an example that has none, so a
+      # new example would otherwise slip through this check.
+      - name: Fail if anything generated is out of date
+        run: |
+          changed="$(git status --porcelain -- docs/GalleryOfExamples.md 'examples/*/README.md')"
+          if [ -n "$changed" ]; then
+            echo "$changed"
+            echo "::error::Generated files are out of date. Run 'make update-examples-gallery' and commit the result."
+            git diff -- docs/GalleryOfExamples.md 'examples/*/README.md' | head -100
+            exit 1
+          fi
+          echo "Gallery and example READMEs are up to date."
