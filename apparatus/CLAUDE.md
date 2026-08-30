@@ -360,6 +360,25 @@ startup and writes both rates into the data file (`sys refresh_nominal_hz`,
 `sys refresh_measured_hz`), warning on the log if they disagree by >10%.
 `tests/test_vsync_blocking` reports all three numbers interactively.
 
+### A correct cadence is not a correct absolute onset
+
+Everything above is about *cadence* — that consecutive flip timestamps advance at
+the panel's own rate, validated to sub-ppm against photons. It says nothing about
+*when* a flip's photons appear, and the two are far apart.
+
+`SDL_RenderPresent` returns when the driver will accept the **next** frame, not
+when the frame just drawn is scanned out. So `FlipTS` leads the photons by one to
+three frames depending on the display stack — measured at 60 Hz: kmsdrm 18.91 ms
+(sd 0.113), Wayland 21.75 ms (sd 1.344), bare Xorg exclusive fullscreen 35.74 ms
+(sd 0.083). `paceToFrame` cannot detect this: a present blocking on the previous
+frame's completion and one blocking on yours look identical from inside.
+
+That offset is constant per rig off a compositor, so it subtracts out in
+analysis — but it has to be measured there, and the library never adjusts a
+timestamp on its own. See
+[docs/TimingTests.md](../docs/TimingTests.md#what-a-returning-sdl_renderpresent-actually-means)
+and `TODO.md` under "Presentation latency".
+
 ## Never present a frame with no draw calls
 
 A frame whose entire content is a clear — `Renderer.Clear()` then present, with no

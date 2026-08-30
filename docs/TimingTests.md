@@ -516,6 +516,23 @@ parameter, and the header records which one the window opened on.
 
 ### Improving timing on your system
 
+**If you need a sub-millisecond spec, in order of what it is worth.** Every
+figure is measured on this page or in
+[Minimising trigger jitter](TriggerJitterForEEGandMEG.md):
+
+| # | do this | worth |
+|---|---|---|
+| 1 | Get off the compositor — `SDL_VIDEODRIVER=kmsdrm` from a VT, or a non-compositing WM with exclusive fullscreen | **16×** (sd 1.344 → 0.083–0.113 ms) |
+| 2 | Run at `SCHED_FIFO` 50 | **1.8×** (sd 2.342 → 1.320 ms) |
+| 3 | CPU governor `performance` | drift +11.8 → **+0.41 ppm** |
+| 4 | Count frames, never sleep, for stimulus durations and ISIs (`ShowFrames`/`BlankFrames`) | trigger→light spread 14.1 → **3.4 ms** |
+| 5 | Raise the trigger synchronously on the flip thread (`triggers.FireTriggerSync`), not `go FireTrigger(...)` | 0.73 ms → **34 µs** |
+| 6 | Discard warm-up trials — the display settles | sd 1.127 → **0.384 ms** over the first 10 |
+| 7 | Measure the flip→photons offset once on this rig, record it, subtract it in analysis | it is constant to 83–113 µs; see below |
+
+Steps 1–3 are the display and the scheduler, 4–6 are how the experiment is
+written, and 7 is the one thing no setting can remove.
+
 **Linux**
 
 - **Get off the compositor.** By far the largest single improvement, and it is
@@ -631,6 +648,41 @@ behaves the same way on both machines and the latency is upstream of it.
 `class=blocking`, sub-ppm drift against the panel, and frame intervals with
 sub-millisecond scatter. An experiment quoting an absolute onset would be 32 ms
 wrong under X11 with no way to know.
+
+### What a returning `SDL_RenderPresent` actually means
+
+The tables above raise an obvious question: if the present blocks on VSYNC, why
+are the photons one to three frames later?
+
+Because it does not block on *your* frame. `SDL_RenderPresent` returns when the
+driver will accept the **next** frame — i.e. when a buffer slot frees, which
+happens as an *earlier* page flip completes. The frame just drawn becomes the
+scanout source at a later vblank. This is true even on bare KMS/DRM with no
+display server; it is a property of the swap chain, not of the compositor.
+
+Psychtoolbox gets scanout semantics deliberately: it schedules the swap against
+a specific future vblank with `glXSwapBuffersMscOML`, then blocks in
+`glXWaitForSbcOML` until *that* swap has completed. Hence its 4.53 ms in Bridges
+et al. (2020) against our 18.91 ms on the equivalent stack.
+
+**This also explains an apparent contradiction in the numbers above.** The
+pacing block reports `class=blocking`, with present covering 15.99 ms of a
+16.66 ms frame. That is real — it is simply blocking on the *previous* frame's
+completion. Nothing inside the process can tell the two cases apart, which is
+why an experiment quoting an absolute onset can be 32 ms wrong with no
+indication.
+
+**So a correct cadence and a multi-frame absolute offset are not in conflict.**
+The flip timestamps track the panel to sub-ppm (next section) *and* lead the
+photons by one to three frames. The first makes durations and intervals exact;
+the second is a constant that has to be measured per rig and subtracted. Both
+are true at once, and only the second needs a photodiode.
+
+The arithmetic closes: subtracting the queue depth from the archived
+flip→photons figures leaves 4.9–6.0 ms on one panel across two machines and two
+stacks — inside the 2.35–7.10 ms band Bridges et al. report for every Linux and
+Windows package they tested. The workings, and the limitation that the diode
+position was not recorded, are in `TODO.md` under "Presentation latency".
 
 ### Flip timestamps track the panel
 

@@ -291,3 +291,92 @@ returns when the driver will accept the *next* frame, which is the whole
 one-to-two frame difference. The branch also sketches an untested,
 CGo-free way to close it on KMS/DRM using the `DRM_IOCTL_WAIT_VBLANK` reader we
 already have in `vblank/drm_linux.go`.
+
+**A third route, cheaper than both, and we have never tried it: SDL's own
+`SDL_VIDEO_DOUBLE_BUFFER` hint.** Its documented purpose is exactly the frame at
+issue -- the default triple-buffer scheme "wastes no CPU time on waiting for
+vsync after issuing a flip, but introduces a frame of latency". No CGo, no new
+dependency, no code of ours in the path: it is an environment variable, or one
+`sdl.SetHint` next to the `HINT_RENDER_DRIVER` call in
+`apparatus/screen_newscreen_notjs.go`. Verified 30 August 2026: `DOUBLE_BUFFER`
+appears nowhere in this repository outside `vendor/`, and the only two `SetHint`
+calls we make are the Vulkan render driver and the audio sample frames.
+
+It is likely to be live on the stack we measured. The archived kmsdrm captures
+record `sys renderer: opengl` with `video driver: kmsdrm` -- so despite the
+Vulkan hint those runs came out on SDL's KMSDRM **GLES** swap path, which is the
+one that reads this hint. The string is present in the bundled SDL3
+(`vendor/github.com/Zyko0/go-sdl3/bin/binsdl/assets/sdl_amd64.so.gz`) and KMSDRM
+is built in. What is *not* established is that SDL3's KMSDRM path still consults
+it the way SDL2's did -- `strings` on the blob cannot show that.
+
+**How to settle it:** two arms of `tests/test_photodiode_latency` on the bare
+console, differing only by `SDL_VIDEO_DOUBLE_BUFFER=1` in the environment.
+`-diode topleft -s 1 -no-prompt`, `SCHED_FIFO 50`, AD3 capture. Prediction: the
+double-buffered arm is about one frame lower, landing near the 4.9-6.0 ms
+residual below. Report `PacingStats` and the frame-interval distribution for both
+arms -- double buffering makes a dropped frame cost a whole frame of throughput,
+and the warning above applies: a change that lowers the mean and raises the
+variance would be a straight loss.
+
+### Desk check: subtracting the queue depth (30 August 2026)
+
+Arithmetic on Table `tab:onset` in `paper/goxpyriment_paper.tex`, no new
+measurement. If the mechanism above is right, then
+
+    flip -> photons  =  n x frame  +  residual
+
+where `n` is the presentation queue depth in frames and the residual is
+everything below the page flip: scanout from the top of the panel down to the
+diode's row, plus the panel's rise to the 10 % criterion. The residual is a
+property of the *panel and the diode position*, so it should be the same for
+two runs that share both, whatever the stack above does.
+
+Shared Dell 1905FP, nominal 60.0197 Hz -> 16.6612 ms:
+
+| run | flip->photons | n | residual |
+|---|---|---|---|
+| W5700, kmsdrm | 22.61 ms | 1 | 5.95 ms |
+| 5490, kmsdrm | 22.28 ms | 1 | 5.62 ms |
+| W5700, X11 | 54.85 ms | 3 | 4.87 ms |
+| 5490, Wayland | 25.25 ms | 1 | 8.59 ms |
+
+**The two kmsdrm rows agree to 0.33 ms across two different machines and GPUs on
+one panel.** That is the load-bearing result, and 0.33 ms is smaller than the
+panel's own session-to-session variation: the same monitor rose (10-90 %) in
+16.8 ms in one of these sessions and 10.1 ms in the other
+(`app:panel`), which moves the 10 % criterion by about 0.7 ms on its own.
+
+**Within a machine the panel and the diode cancel exactly**, so those
+differences are the cleanest test of the frame counting:
+
+    W5700   X11     - kmsdrm =  32.24 ms = 1.935 frames
+    5490    Wayland - kmsdrm =   2.97 ms = 0.178 frames
+
+X11 costs two whole frames, 1.08 ms short of exactly two -- and the W5700
+kmsdrm run is the one measured before the panel had settled, its rise climbing
+0.6 ms across the run, so a shortfall of that size is expected rather than
+anomalous. **Wayland does not cost a whole frame**, which the queue-depth
+picture alone would not predict: a mailbox present can hand the buffer to the
+compositor part-way through a frame. So "each stack layer costs a frame" holds
+for X11 and does not hold for Wayland, where the cost is a fraction of a frame
+plus most of the jitter.
+
+**What it implies.** Subtracting the queue depth puts the onset at 4.9-6.0 ms
+on this panel -- inside the 2.35-7.10 ms band Bridges et al. (2020) report for
+every Linux and Windows package they tested, and beside PsychToolbox's 4.53 ms.
+That is the quantitative version of the claim above: what separates us from PTB
+is the queue depth and nothing else. It is not evidence that closing it is
+worth doing -- see the warning about variance above -- only that the accounting
+closes.
+
+**Limitation, and it is a real one.** The diode position is not recorded for any
+row of `tab:onset`, and the raw captures for those runs are **not in this
+repository**: the three archived report directories are 2560x1600, 1536x960 and
+1920x1080 render areas, none of them the 1905FP's 1280x1024. `Timing-Tests -test
+av` paints five squares (four corners and the centre) and the operator chooses
+which one to tape the diode over, so position is an unrecorded free variable
+worth up to a full frame (16.7 ms at 60 Hz) -- larger than everything this check
+resolves. The agreement between the two kmsdrm rows is therefore the *only*
+evidence that the positions matched, which makes this a consistency check and
+not a confirmation. Anyone repeating it should record the square.
