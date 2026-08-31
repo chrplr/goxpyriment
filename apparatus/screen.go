@@ -46,12 +46,18 @@ type BlendMode = sdl.BlendMode
 // Common pixel format / texture access / blend mode constants.
 const (
 	PIXELFORMAT_RGBA32      PixelFormat   = sdl.PIXELFORMAT_RGBA32
+	TEXTUREACCESS_STATIC    TextureAccess = sdl.TEXTUREACCESS_STATIC
 	TEXTUREACCESS_STREAMING TextureAccess = sdl.TEXTUREACCESS_STREAMING
 	BLENDMODE_BLEND         BlendMode     = sdl.BLENDMODE_BLEND
 )
 
 // CreateSurfaceFrom allocates a Surface backed by existing pixel data.
 // This wraps sdl.CreateSurfaceFrom so callers can avoid importing go-sdl3 directly.
+//
+// It does not work under GOOS=js: the pixel pointer is a Go-heap address, which
+// is meaningless in Emscripten's separate linear memory, and the js binding
+// passes it as a BigInt to an import expecting an i32 — which throws before SDL
+// is reached. Use [Screen.TextureFromRGBA] to upload pixels on every target.
 func CreateSurfaceFrom(width, height int, format PixelFormat, pixels []byte, pitch int) (*Surface, error) {
 	return sdl.CreateSurfaceFrom(width, height, format, pixels, pitch)
 }
@@ -418,6 +424,34 @@ func (s *Screen) DisplayInfo() DisplayInfo {
 func (s *Screen) Size() (int32, int32, error) {
 	w, h, err := s.Renderer.RenderOutputSize()
 	return w, h, err
+}
+
+// TextureFromRGBA uploads raw RGBA pixel data to a GPU texture.
+//
+// It replaces the CreateSurfaceFrom → CreateTextureFromSurface pair, which
+// cannot work in the browser (see [CreateSurfaceFrom]). Update copies the
+// pixels into SDL's own memory, so this path is valid on every target.
+//
+// pitch is the number of bytes per row — w*4 for a full-width image.RGBA.
+//
+// The texture is created with BLENDMODE_BLEND, preserving what
+// CreateTextureFromSurface did for a surface carrying an alpha channel;
+// harmless for opaque pixels (alpha=255). Access is STATIC: these uploads
+// happen once, not per frame. The caller owns the texture and must Destroy it.
+func (s *Screen) TextureFromRGBA(w, h int, pixels []byte, pitch int) (*Texture, error) {
+	texture, err := s.Renderer.CreateTexture(PIXELFORMAT_RGBA32, TEXTUREACCESS_STATIC, w, h)
+	if err != nil {
+		return nil, fmt.Errorf("apparatus.Screen.TextureFromRGBA: creating texture: %w", err)
+	}
+	if err := texture.Update(nil, pixels, int32(pitch)); err != nil {
+		texture.Destroy()
+		return nil, fmt.Errorf("apparatus.Screen.TextureFromRGBA: uploading pixels: %w", err)
+	}
+	if err := texture.SetBlendMode(BLENDMODE_BLEND); err != nil {
+		texture.Destroy()
+		return nil, fmt.Errorf("apparatus.Screen.TextureFromRGBA: setting blend mode: %w", err)
+	}
+	return texture, nil
 }
 
 // Clear clears the screen with the background color.

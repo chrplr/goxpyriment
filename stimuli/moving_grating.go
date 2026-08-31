@@ -17,8 +17,8 @@ package stimuli
 //     a static alpha look-up table.
 //   - Every frame only needs to evaluate cos(spatialArg[i] + phase(t)) per
 //     pixel — no per-frame memory allocation. The pixel buffer ([]byte, RGBA)
-//     is allocated once and reused; sdl.CreateSurfaceFrom wraps it without
-//     copying, then CreateTextureFromSurface uploads to GPU.
+//     is allocated once and reused, and a single streaming texture is
+//     re-uploaded with Texture.Update every frame.
 //   - phase(t) = 2π × temporalFreq × elapsed_seconds, giving smooth continuous
 //     drift independent of frame rate.
 //

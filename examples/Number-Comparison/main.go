@@ -139,16 +139,11 @@ func generateDotImage(n int, rng *rand.Rand) *image.RGBA {
 	return img
 }
 
-// rgbaToTexture uploads an *image.RGBA to a GPU texture via the SDL surface API.
+// rgbaToTexture uploads an *image.RGBA to a GPU texture.
 // The caller is responsible for calling Destroy() on the returned texture.
 func rgbaToTexture(screen *gxio.Screen, img *image.RGBA) (*gxio.Texture, error) {
 	b := img.Bounds()
-	surface, err := gxio.CreateSurfaceFrom(b.Dx(), b.Dy(), gxio.PIXELFORMAT_RGBA32, img.Pix, b.Dx()*4)
-	if err != nil {
-		return nil, err
-	}
-	defer surface.Destroy()
-	return screen.Renderer.CreateTextureFromSurface(surface)
+	return screen.TextureFromRGBA(b.Dx(), b.Dy(), img.Pix, b.Dx()*4)
 }
 
 // renderTexCentered renders tex centred at (cx,cy) in centre-based coordinates.

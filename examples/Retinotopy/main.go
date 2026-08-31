@@ -286,13 +286,7 @@ func (r *Retinotopy) loadTextureFromBytes(data []byte) (*apparatus.Texture, erro
 		}
 	}
 
-	surface, err := apparatus.CreateSurfaceFrom(w, h, apparatus.PIXELFORMAT_RGBA32, rgba.Pix, w*4)
-	if err != nil {
-		return nil, err
-	}
-	defer surface.Destroy()
-
-	return r.Exp.Screen.Renderer.CreateTextureFromSurface(surface)
+	return r.Exp.Screen.TextureFromRGBA(w, h, rgba.Pix, w*4)
 }
 
 func loadRawRGB(path string) ([]byte, error) {

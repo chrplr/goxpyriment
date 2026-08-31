@@ -86,19 +86,11 @@ func (gp *GaborPatch) preload(screen *apparatus.Screen) error {
 		}
 	}
 
-	surface, err := sdl.CreateSurfaceFrom(w, h, sdl.PIXELFORMAT_RGBA32, img.Pix, w*4)
+	// TextureFromRGBA rather than a surface: the per-pixel alpha carries the
+	// Gaussian envelope, and it already applies BLENDMODE_BLEND.
+	texture, err := screen.TextureFromRGBA(w, h, img.Pix, w*4)
 	if err != nil {
-		return fmt.Errorf("stimuli.GaborPatch: creating surface: %w", err)
-	}
-	defer surface.Destroy()
-
-	texture, err := screen.Renderer.CreateTextureFromSurface(surface)
-	if err != nil {
-		return fmt.Errorf("stimuli.GaborPatch: creating texture: %w", err)
-	}
-	if err := texture.SetBlendMode(sdl.BLENDMODE_BLEND); err != nil {
-		texture.Destroy()
-		return fmt.Errorf("stimuli.GaborPatch: setting blend mode: %w", err)
+		return fmt.Errorf("stimuli.GaborPatch: %w", err)
 	}
 	gp.Texture = texture
 	return nil

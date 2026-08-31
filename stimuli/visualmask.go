@@ -59,16 +59,10 @@ func (vm *VisualMask) preload(screen *apparatus.Screen) error {
 		draw.Draw(img, image.Rect(x, y, x+dw, y+dh), &image.Uniform{dot}, image.Point{}, draw.Src)
 	}
 
-	// Convert image.RGBA to sdl.Surface
-	surface, err := sdl.CreateSurfaceFrom(w, h, sdl.PIXELFORMAT_RGBA32, img.Pix, w*4)
+	// Upload image.RGBA straight to a texture.
+	texture, err := screen.TextureFromRGBA(w, h, img.Pix, w*4)
 	if err != nil {
-		return fmt.Errorf("stimuli.VisualMask: creating surface: %w", err)
-	}
-	defer surface.Destroy()
-
-	texture, err := screen.Renderer.CreateTextureFromSurface(surface)
-	if err != nil {
-		return fmt.Errorf("stimuli.VisualMask: creating texture: %w", err)
+		return fmt.Errorf("stimuli.VisualMask: %w", err)
 	}
 	vm.Texture = texture
 	return nil
