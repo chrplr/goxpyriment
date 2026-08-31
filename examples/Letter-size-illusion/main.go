@@ -88,6 +88,31 @@ func fontPt(targetPx float32, lc bool) float32 {
 	return targetPx / float32(r)
 }
 
+// ─── Departures from the original geometry ────────────────────────────────────
+
+// New et al. presented small stimuli near the fovea: 0.28° tall at 2.75°
+// eccentricity in Exp 1. These two factors scale what is derived from the
+// paper's numbers, for a rig where that is too small to be comfortable.
+//
+// sizeScale multiplies BOTH letter heights, so the small/tall ratio — the
+// manipulation the whole illusion rests on, 0.28 vs 0.30 in Exp 1 — comes
+// through unchanged. eccScale moves both stimuli toward the centre.
+//
+// Setting sizeScale to 1 restores the published letter heights. eccScale is 1
+// here, but that does NOT restore the published layout: the paper's
+// eccentricity is applied as the gap from the cross to each stimulus's inner
+// edge rather than to its centre (see runTrial), which is what keeps the words
+// of Exp 2 off the fixation cross. Any replication claim has to state both
+// departures.
+const (
+	sizeScale = 4.0
+	eccScale  = 1.0
+)
+
+// fixCrossSize is the full extent of the fixation cross in pixels; it spans
+// ±fixCrossSize/2 about the centre, which is what the gap has to clear.
+const fixCrossSize float32 = 15
+
 // ─── Comparison (control) types ────────────────────────────────────────────────
 const (
 	compLetter  = 0 // same text, no flip
@@ -292,7 +317,7 @@ type trialResult struct {
 // If feedback is true, correct/wrong is shown after each response (training).
 func runTrial(exp *control.Experiment, t Trial,
 	cache map[string]*texPair,
-	eccPx float32, stimMs int,
+	gapPx float32, stimMs int,
 	fix *stimuli.FixCross, feedback bool) (trialResult, error) {
 
 	// 1. Fixation cross 200 ms.
@@ -302,22 +327,46 @@ func runTrial(exp *control.Experiment, t Trial,
 	clock.Wait(200)
 	exp.Keyboard.Clear() // discard any stale keys before the stimulus appears
 
-	// 2. Two stimuli presented simultaneously for stimMs.
+	// 2. Two stimuli presented simultaneously for stimMs, with the fixation
+	// cross still on screen: it stays up for every frame of the trial, so the
+	// participant has something to hold fixation on while the stimuli are
+	// judged, and there is no transient at stimulus onset from the cross
+	// disappearing.
 	lt := pickTex(cache[t.LeftText], t.LeftSmall)
 	rt := pickTex(cache[t.RightText], t.RightSmall)
 	exp.Screen.Clear()
-	if err := drawTex(exp, lt, -eccPx, 0, flipFor(t.LeftType)); err != nil {
+	if err := fix.Draw(exp.Screen); err != nil {
 		return trialResult{}, err
 	}
-	if err := drawTex(exp, rt, eccPx, 0, flipFor(t.RightType)); err != nil {
+	// gapPx is the distance from the fixation cross to the NEAREST edge of each
+	// stimulus, so the two words always sit one on each side of the cross with
+	// a clear gap, whatever they happen to spell. drawTex centres a texture on
+	// the point it is given, so each word is pushed out by its own half-width —
+	// its own, not a shared one, because the left and right strings differ in
+	// length and a shared offset would centre the pair off-fixation.
+	//
+	// Passing gapPx straight to drawTex is what the code used to do, and it
+	// treats the gap as the word's CENTRE: a word wider than 2*gapPx then
+	// reaches across the fixation cross and collides with its partner. At the
+	// published geometry that was already true of Exp 2 (CAMION is 79 px wide
+	// at 0.9° eccentricity, which is 30 px), and it is true of everything once
+	// sizeScale is raised.
+	if err := drawTex(exp, lt, -(gapPx + lt.w/2), 0, flipFor(t.LeftType)); err != nil {
+		return trialResult{}, err
+	}
+	if err := drawTex(exp, rt, gapPx+rt.w/2, 0, flipFor(t.RightType)); err != nil {
 		return trialResult{}, err
 	}
 	exp.Screen.Update()
 	clock.Wait(stimMs)
 
-	// 3. Clear screen then collect response — no Keyboard.Clear() here so that
-	// presses made just as the screen blanks are never lost.
+	// 3. Remove the stimuli, keep the cross, then collect the response — no
+	// Keyboard.Clear() here so that presses made just as the stimuli vanish are
+	// never lost.
 	exp.Screen.Clear()
+	if err := fix.Draw(exp.Screen); err != nil {
+		return trialResult{}, err
+	}
 	exp.Screen.Update()
 
 	responseKeys := []sdl.Keycode{control.K_LEFT, control.K_RIGHT, control.K_DOWN}
@@ -345,10 +394,15 @@ func runTrial(exp *control.Experiment, t Trial,
 		}
 	}
 
-	// 4. Inter-trial interval 750 ms.
-	if err := exp.Blank(750); err != nil {
+	// 4. Inter-trial interval 750 ms, cross still up.
+	exp.Screen.Clear()
+	if err := fix.Draw(exp.Screen); err != nil {
 		return trialResult{}, err
 	}
+	if err := exp.Screen.Update(); err != nil {
+		return trialResult{}, err
+	}
+	clock.Wait(750)
 
 	return trialResult{key: key, rtMs: rtMs, correct: correct}, nil
 }
@@ -359,7 +413,7 @@ func runTrial(exp *control.Experiment, t Trial,
 // pairs only) with immediate feedback until the participant reaches 80 % accuracy.
 func runTraining(exp *control.Experiment,
 	trainAnchors []string, cache map[string]*texPair,
-	eccPx float32, stimMs int, fix *stimuli.FixCross) error {
+	gapPx float32, stimMs int, fix *stimuli.FixCross) error {
 
 	// Training uses only compLetter pairs (no mirror/pseudo/nonword).
 	trials := generateTrials(trainAnchors, nil, []int{compLetter})
@@ -369,7 +423,7 @@ func runTraining(exp *control.Experiment,
 
 		nCorr := 0
 		for _, t := range trials {
-			r, err := runTrial(exp, t, cache, eccPx, stimMs, fix, true)
+			r, err := runTrial(exp, t, cache, gapPx, stimMs, fix, true)
 			if err != nil {
 				return err
 			}
@@ -420,7 +474,7 @@ func waitSpace(exp *control.Experiment, text string) error {
 // runExperiment runs the main trial loop, saving data and offering breaks.
 func runExperiment(exp *control.Experiment,
 	trials []Trial, cache map[string]*texPair,
-	eccPx float32, stimMs, breakEvery int,
+	gapPx float32, stimMs, breakEvery int,
 	fix *stimuli.FixCross) error {
 
 	total := len(trials)
@@ -435,7 +489,7 @@ func runExperiment(exp *control.Experiment,
 			}
 		}
 
-		r, err := runTrial(exp, t, cache, eccPx, stimMs, fix, false)
+		r, err := runTrial(exp, t, cache, gapPx, stimMs, fix, false)
 		if err != nil {
 			return err
 		}
@@ -531,12 +585,19 @@ func main() {
 	}
 
 	// ── Derived geometric parameters ─────────────────────────────────────────
-	smallPt := fontPt(vaToPx(smallDeg), isLC)
-	tallPt := fontPt(vaToPx(tallDeg), isLC)
-	eccPx := eccToPx(eccDeg)
+	smallPt := fontPt(vaToPx(smallDeg)*sizeScale, isLC)
+	tallPt := fontPt(vaToPx(tallDeg)*sizeScale, isLC)
+	// The paper's eccentricity becomes the GAP between the fixation cross and
+	// the inner edge of each stimulus (see runTrial), which is the quantity
+	// that has to stay positive for the two words to remain separated.
+	gapPx := eccToPx(eccDeg) * eccScale
+	if fixHalf := fixCrossSize / 2; gapPx <= fixHalf {
+		log.Printf("WARNING: gap %.1fpx does not clear the fixation cross (half-arm %.1fpx); "+
+			"raise eccScale or shrink the cross", gapPx, fixHalf)
+	}
 
-	log.Printf("Exp %d: small=%.2fpt, tall=%.2fpt, ecc=%.1fpx",
-		*expNum, smallPt, tallPt, eccPx)
+	log.Printf("Exp %d: small=%.2fpt, tall=%.2fpt, gap=%.1fpx to each stimulus edge (size x%.2f, ecc x%.2f)",
+		*expNum, smallPt, tallPt, gapPx, sizeScale, eccScale)
 
 	// ── Run ───────────────────────────────────────────────────────────────────
 	err := exp.Run(func() error {
@@ -581,14 +642,14 @@ func main() {
 		defer font.Close()
 
 		// ── Fixation cross ───────────────────────────────────────────────────
-		fix := stimuli.NewFixCross(15, 2, control.Black)
+		fix := stimuli.NewFixCross(fixCrossSize, 2, control.Black)
 
 		// ── Training phase ───────────────────────────────────────────────────
 		trainCache := make(map[string]*texPair, len(trainAnchors))
 		for _, a := range trainAnchors {
 			trainCache[a] = cache[a]
 		}
-		if err := runTraining(exp, trainAnchors, trainCache, eccPx, stimMs, fix); err != nil {
+		if err := runTraining(exp, trainAnchors, trainCache, gapPx, stimMs, fix); err != nil {
 			return err
 		}
 
@@ -614,7 +675,7 @@ func main() {
 		log.Printf("Starting main experiment: %d trials", len(allTrials))
 
 		// ── Main experiment ──────────────────────────────────────────────────
-		if err := runExperiment(exp, allTrials, cache, eccPx, stimMs, breakEvery, fix); err != nil {
+		if err := runExperiment(exp, allTrials, cache, gapPx, stimMs, breakEvery, fix); err != nil {
 			return err
 		}
 
