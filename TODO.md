@@ -122,10 +122,89 @@ the same model.
   progressively from the disk in a goroutine, if possible (but beware lz4
   compression).
 
-## Add support for Eyetrackers
+## Eye tracking: run the EyeLink bridge against real hardware
 
-- Eyelink 1000
-- Tobii
+The `eyetracker/` package and `eyetracker/bridge/eyelink_bridge.py` were written
+on 2026-08-31 and have never seen a tracker. Everything below is the first
+session with the Host PC.
+
+**Why there is a bridge at all.** SR Research publishes no network protocol: the
+only supported API is the C library, wrapped as pylink. Rather than take on CGo
+for one device, the SDK runs in its own process and speaks line-delimited JSON
+over loopback. See `eyetracker/CLAUDE.md`.
+
+### Do these in order
+
+1. **Confirm pylink imports on the Display PC.** This is the step that can waste
+   the whole session, so it comes first:
+
+       python3 eyetracker/bridge/eyelink_bridge.py --check --tracker-host 100.1.1.1
+
+   It reports whether pylink is importable and whether the Host answers, then
+   exits. If pylink is missing, install the EyeLink Developer Kit before
+   anything else.
+
+2. **Wire a TTL output line to the Host PC's parallel port**, and check the Host
+   is configured to keep `INPUT` events in the EDF. The bridge asks for this at
+   open (`file_event_filter` includes `INPUT`), but that request has never been
+   verified against a Host. If the edges do not appear in the EDF, this is the
+   first thing to look at.
+
+3. **Run the test**, bridge in one terminal and experiment in another:
+
+       python3 eyetracker/bridge/eyelink_bridge.py --tracker-host 100.1.1.1
+       go run ./tests/test_eyelink -s 999 -trigger parport -device /dev/parport0 \
+           -trials 50 -fetch /tmp/goxtest.edf
+
+4. **Read the EDF.** `edf2asc /tmp/goxtest.edf`, then compare each `INPUT` line
+   against the `MSG` that follows it. Each trial fires a TTL on the flip thread
+   immediately after the onset flip, then sends the same event as a message
+   through the bridge. Both land in the same file on the Host's clock, so the
+   gap between them *is* the bridge's latency, measured rather than inferred.
+   Record it: it is the number that decides whether a message can ever time a
+   stimulus, and the expected answer is no.
+
+### What to expect, and what would be surprising
+
+The only figures so far are against the simulator on this machine, 5 trials,
+windowed, with no TTL device attached: flip to TTL raise 7.9 us median (call
+overhead, nothing more), bridge round trip 219 us median. Both should be worse
+against hardware. A bridge round trip in the low milliseconds is normal and
+harmless; a `MSG`-minus-`INPUT` gap in the EDF of more than a frame is the
+result that matters, and it is the argument for never marking onsets over the
+link.
+
+`Sync` is called before and after the run, so the change in offset over the
+session gives the tracker-versus-local clock drift. If it is large enough to
+matter, alignment has to be interpolated rather than applied as a constant.
+
+### Known gaps, in the order they will bite
+
+**The pylink calls are unexercised.** `EyeLinkTracker` in the bridge is written
+from the documented API and has never run. It is the part to distrust when
+something fails; the Go side is covered by tests, including one that drives the
+real script in `--simulate` (`TestAgainstPythonBridge`).
+
+**Calibration graphics.** `doTrackerSetup` needs somewhere to draw its targets,
+pylink's built-in graphics are not available everywhere, and goxpyriment owns
+the display. `-calibrate` reports the problem and carries on rather than opening
+a second window or hanging on a blank screen. Gaze *positions* are then
+meaningless; every timing figure above is unaffected, since none of them depends
+on where the eye is. The fix is a calibration routine drawn with `stimuli/` that
+reports target positions back over the protocol -- not written.
+
+**Nothing is wired into `control`.** There is no `exp.Tracker`, and the data file
+gets the bridge identity and the clock offsets only because
+`tests/test_eyelink` writes them itself. Worth doing once the hardware path is
+known to work, not before.
+
+### Other trackers
+
+`Tracker` is deliberately vendor-neutral and the protocol is not
+EyeLink-specific, so a second tracker is a new bridge script rather than a new Go
+package. GazePoint (Open Gaze, XML over TCP) and Pupil Labs both publish socket
+protocols and could be pure-Go clients with no bridge process at all. Tobii Pro
+is SDK-only, like the EyeLink, and would need the same treatment.
 
 ## Fix the COOP/COEP response-header rule on Cloudflare
 

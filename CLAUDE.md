@@ -164,6 +164,7 @@ The packages form a deliberate layered stack. Most have their own `CLAUDE.md` wi
 | `design/` | Trial/block structure, randomization utilities, Latin-square counterbalancing |
 | `staircase/` | Adaptive threshold estimation — `UpDown` (Levitt 1971) and `Quest` (Watson & Pelli 1983) |
 | `units/` | Vision-science unit conversions — pixels↔degrees↔cm via a `Monitor` struct |
+| `eyetracker/` | Gaze tracking — vendor-neutral `Tracker` interface, a socket client for trackers behind a C SDK (EyeLink via `bridge/eyelink_bridge.py`), and a mouse-driven simulator. See `eyetracker/CLAUDE.md` |
 | `triggers/` | Hardware trigger interfaces — parallel port, Linux GPIO, DLP-IO8/DLP-IO20 USB, FT232H, LabJack T4, MEG TTL box, generic serial, plus network markers (EGI NetStation, BEL video recorder) |
 | `clock/` | Timing utilities — `Clock` type with `SleepUntil`, global `GetTime` |
 | `geometry/` | Math helpers — Euclidean distance, polar↔Cartesian, degree→radian |
