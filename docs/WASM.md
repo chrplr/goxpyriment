@@ -143,6 +143,22 @@ participant-info dialog never opens in the browser (it needs its own SDL
 window); when `s` is absent the subject ID defaults to 0, exactly like
 `-headless`.
 
+Programs that call `control.GetParticipantInfo` directly are answered from the
+same query string, by `platformParticipantInfo` in `control/platform_js.go`.
+Each field is looked up by its own `Name`, falling back to the cached value and
+then to its `Default`:
+
+```
+?subject_id=3&level=2&fullscreen=false
+```
+
+`subject_id` also accepts the short `s` that works everywhere else. A
+`FieldSelect` takes either the exact option text or a **1-based index** into its
+options — the escape hatch for options like `"Level 2 — Name"`, which are
+miserable to type into a URL. A `FieldCheckbox` takes `true`/`false`/`1`/`0`/
+`yes`/`no`, and a bare key means true. Every resolved value is logged to the
+console, since there is no dialog to read the settings back off afterwards.
+
 ### Headless verification (no display needed)
 
 ```bash
@@ -311,8 +327,13 @@ itself is still worth un-stubbing in the fork, but nothing depends on it now.)
   clear console message when hit. (`SetRenderLogicalPresentation` used to be on
   this list; it is implemented in the vendored fork and present in
   `wasm/exported_functions.json`.)
-- `GetParticipantInfo` (the SDL dialog) cannot run on js; experiments that
-  call it directly need an HTML-form alternative or URL parameters.
+- `GetParticipantInfo` never opens its dialog on js — it cannot, needing its own
+  SDL window and an `sdl.Quit()` afterwards — and is answered from URL
+  parameters instead (see "Session settings via URL parameters"). Until
+  2026-08-31 there was no such check, and all eleven examples that call it
+  directly died in the browser inside the dialog at
+  `Renderer.CurrentOutputSize`, a panic-stub, showing the participant a black
+  page after they pressed Start.
 
 ## Audio in the browser
 

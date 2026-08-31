@@ -123,3 +123,54 @@ func TestCycleValue(t *testing.T) {
 		}
 	}
 }
+
+func TestDefaultInfoValues(t *testing.T) {
+	fields := []InfoField{
+		{Name: "subject_id", Label: "Subject ID", Default: ""},
+		{Name: "level", Label: "Level", Type: FieldSelect,
+			Options: []string{"one", "two", "three"}},
+		{Name: "fullscreen", Label: "Fullscreen", Type: FieldCheckbox, Default: "true"},
+		{Name: "note", Label: "Note", Default: "hello"},
+	}
+
+	got := defaultInfoValues(fields)
+
+	if got["note"] != "hello" {
+		t.Errorf("note = %q, want the field Default", got["note"])
+	}
+	if got["fullscreen"] != "true" {
+		t.Errorf("fullscreen = %q, want true", got["fullscreen"])
+	}
+	// A select with no Default must land on its first option rather than the
+	// empty string, which no branch of an experiment's switch would match.
+	if got["level"] != "one" {
+		t.Errorf("level = %q, want the first option", got["level"])
+	}
+	if _, ok := got["subject_id"]; !ok {
+		t.Error("subject_id missing from the returned map")
+	}
+}
+
+func TestNormaliseSelectsForcesAValidOption(t *testing.T) {
+	fields := []InfoField{
+		{Name: "level", Type: FieldSelect, Options: []string{"one", "two"}},
+		{Name: "free", Type: FieldText},
+	}
+	values := map[string]string{"level": "nonsense", "free": "nonsense"}
+
+	normaliseSelects(fields, values)
+
+	if values["level"] != "one" {
+		t.Errorf("level = %q, want the first option after normalising", values["level"])
+	}
+	// A text field is not a select and must be left exactly as it was.
+	if values["free"] != "nonsense" {
+		t.Errorf("free = %q, want it untouched", values["free"])
+	}
+
+	values["level"] = "two"
+	normaliseSelects(fields, values)
+	if values["level"] != "two" {
+		t.Errorf("level = %q, a valid option must survive normalising", values["level"])
+	}
+}

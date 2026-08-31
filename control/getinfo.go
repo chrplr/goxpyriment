@@ -203,6 +203,50 @@ func dialogPresentation(outW, outH, dialogW, dialogH int32, displayScale float32
 		viewport.X == 0 && viewport.Y == 0 && logicalW == dialogW && logicalH == dialogH
 }
 
+// defaultInfoValues resolves every field to its cached value, or its Default
+// when there is no cache entry, and guarantees that a FieldSelect ends up
+// holding one of its own options. subject_id is never taken from the cache: it
+// must be entered fresh each session, and silently reusing the previous
+// participant's number is the one mistake that cannot be found afterwards.
+//
+// It is what -headless returns, and the starting point the browser overlays URL
+// parameters onto.
+func defaultInfoValues(fields []InfoField) map[string]string {
+	cache := loadInfoCache()
+	values := make(map[string]string, len(fields))
+	for _, f := range fields {
+		if cached, ok := cache[f.Name]; ok && f.Name != "subject_id" {
+			values[f.Name] = cached
+		} else {
+			values[f.Name] = f.Default
+		}
+	}
+	normaliseSelects(fields, values)
+	return values
+}
+
+// normaliseSelects forces every FieldSelect value to be one of its options,
+// falling back to the first. A select holding something that is not on its own
+// list reaches the experiment as an unmatched string and lands in whatever the
+// program's final else branch happens to be.
+func normaliseSelects(fields []InfoField, values map[string]string) {
+	for _, f := range fields {
+		if f.Type != FieldSelect || len(f.Options) == 0 {
+			continue
+		}
+		valid := false
+		for _, opt := range f.Options {
+			if values[f.Name] == opt {
+				valid = true
+				break
+			}
+		}
+		if !valid {
+			values[f.Name] = f.Options[0]
+		}
+	}
+}
+
 // GetParticipantInfo opens a graphical SDL dialog before the experiment starts,
 // lets the experimenter fill in the provided fields, and returns the collected
 // values as a map[field.Name → value].
@@ -231,34 +275,21 @@ func GetParticipantInfo(title string, fields []InfoField) (map[string]string, er
 	// NewExperimentFromFlags does not also open its automatic setup dialog.
 	participantInfoCollected = true
 
+	// The browser gets its answers from the page URL and never opens the
+	// dialog. It cannot: the dialog creates its own SDL window and shuts SDL
+	// down again on the way out, and a page has one canvas and no way to
+	// restart SDL in it. Before this check, every program that called
+	// GetParticipantInfo died in the browser on the first renderer call whose
+	// js binding is still a panic-stub, leaving a black page. See
+	// platformParticipantInfo in platform_js.go.
+	if values, handled := platformParticipantInfo(fields); handled {
+		return values, nil
+	}
+
 	// Headless mode: return defaults (+ cache) without opening any window.
 	// SDL is not loaded here; Initialize() will load it normally.
 	if *headlessFlag {
-		cache := loadInfoCache()
-		values := make(map[string]string, len(fields))
-		for _, f := range fields {
-			if cached, ok := cache[f.Name]; ok && f.Name != "subject_id" {
-				values[f.Name] = cached
-			} else {
-				values[f.Name] = f.Default
-			}
-		}
-		// Ensure FieldSelect values are valid options.
-		for _, f := range fields {
-			if f.Type == FieldSelect && len(f.Options) > 0 {
-				valid := false
-				for _, opt := range f.Options {
-					if values[f.Name] == opt {
-						valid = true
-						break
-					}
-				}
-				if !valid {
-					values[f.Name] = f.Options[0]
-				}
-			}
-		}
-		return values, nil
+		return defaultInfoValues(fields), nil
 	}
 
 	// Load SDL/TTF dylibs once and cache them for reuse by Initialize().

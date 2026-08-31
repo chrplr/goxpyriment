@@ -45,3 +45,10 @@ func platformAudioDeviceName(dev sdl.AudioDeviceID) (string, error) {
 func platformDataDestination(d *results.DataFile) string {
 	return fmt.Sprintf("%s (info: %s)", d.FullPath, d.InfoFile.FullPath)
 }
+
+// platformParticipantInfo is the desktop no-op: GetParticipantInfo opens its
+// dialog normally. The browser overrides this (platform_js.go), where no dialog
+// can be opened at all.
+func platformParticipantInfo(_ []InfoField) (map[string]string, bool) {
+	return nil, false
+}
