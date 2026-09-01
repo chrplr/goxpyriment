@@ -73,7 +73,7 @@ func main() {
 	fCalibrate := flag.Bool("calibrate", false, "run the tracker's calibration before recording")
 	fPoints := flag.Int("points", 9, "calibration points (with -calibrate)")
 	fGaze := flag.Bool("gaze", false, "before the trials, show a live gaze dot until a key is pressed")
-	fTrigger := flag.String("trigger", "none", `TTL device: "none", "parport", "dlpio8" or "dlpio20"`)
+	fTrigger := flag.String("trigger", "none", `TTL device: "none", "parport", "dlpio8", "dlpio20" or "megttl"`)
 	fDevice := flag.String("device", "", "device path for -trigger (empty: auto-detect where supported)")
 	fLine := flag.Int("line", 0, "TTL output line to pulse (0-7)")
 	fPulse := flag.Duration("pulse", 5*time.Millisecond, "TTL pulse width")
@@ -246,12 +246,13 @@ type trialRow struct {
 	gazeX     float64
 	gazeY     float64
 	gazeValid bool
+	nSamples  int // samples drained during this trial: the link's own pulse
 }
 
 func runTrials(exp *control.Experiment, tracker *eyetracker.Bridge, trig triggers.OutputTTLDevice, cfg config) ([]trialRow, error) {
 	exp.AddDataVariableNames([]string{
 		"trial", "flip_ns", "ttl_gap_us", "mark_rtt_us",
-		"tracker_ms", "gaze_x", "gaze_y", "gaze_valid", "dropped",
+		"tracker_ms", "gaze_x", "gaze_y", "gaze_valid", "n_samples", "dropped",
 	})
 
 	patch := stimuli.NewRectangle(0, 0, 240, 240, control.White)
@@ -307,6 +308,14 @@ func runTrials(exp *control.Experiment, tracker *eyetracker.Bridge, trig trigger
 			ttlGapUS:  float64(afterTTL-flipNS) / 1000,
 			markRTTUS: float64(markEnd-markStart) / 1000,
 		}
+		// Drain the sample buffer every trial. Nothing here needs the samples
+		// themselves — the EDF on the Host is the authoritative record — but
+		// the buffer is a fixed-size ring, so leaving it to fill would report
+		// a huge "dropped" count that measures only this loop's failure to
+		// empty it. Drained per trial, a non-zero count means something real.
+		// Latest() is kept for the gaze: it tracks the newest sample
+		// independently of the ring, so it is correct either way.
+		row.nSamples = len(tracker.DrainSamples())
 		if s, ok := tracker.Latest(); ok {
 			row.trackerMs = s.TrackerMs
 			row.gazeX, row.gazeY, row.gazeValid = s.X, s.Y, s.Valid
@@ -319,7 +328,7 @@ func runTrials(exp *control.Experiment, tracker *eyetracker.Bridge, trig trigger
 			fmt.Sprintf("%.1f", row.trackerMs),
 			fmt.Sprintf("%.1f", row.gazeX),
 			fmt.Sprintf("%.1f", row.gazeY),
-			row.gazeValid, tracker.Dropped())
+			row.nSamples, tracker.Dropped())
 
 		fmt.Printf("trial %3d  ttl %+7.1f µs  mark %8.1f µs  gaze (%7.1f, %7.1f) %v\n",
 			row.trial, row.ttlGapUS, row.markRTTUS, row.gazeX, row.gazeY, row.gazeValid)
@@ -396,16 +405,34 @@ func summarise(rows []trialRow, tracker *eyetracker.Bridge) {
 	sort.Float64s(ttl)
 	sort.Float64s(mark)
 
+	counts := make([]int, 0, len(rows))
+	totalSamples := 0
+	for _, r := range rows {
+		counts = append(counts, r.nSamples)
+		totalSamples += r.nSamples
+	}
+	sort.Ints(counts)
+
 	fmt.Printf("\n%d trials\n", len(rows))
 	fmt.Printf("  flip → TTL raise : median %.1f µs, max %.1f µs\n", median(ttl), ttl[len(ttl)-1])
 	fmt.Printf("  bridge round trip: median %.1f µs, max %.1f µs\n", median(mark), mark[len(mark)-1])
 	fmt.Printf("  samples with valid gaze: %d/%d\n", valid, len(rows))
+	fmt.Printf("  samples received: %d (median %d per trial)\n", totalSamples, medianInt(counts))
 	if d := tracker.Dropped(); d > 0 {
-		fmt.Printf("  WARNING: %d samples dropped — the record has holes\n", d)
+		fmt.Printf("  WARNING: %d samples overflowed THIS PROGRAM's buffer between\n"+
+			"    drains — the EDF on the Host PC is complete and unaffected.\n"+
+			"    Expect this only if a trial outran the buffer; check the link.\n", d)
 	}
 	fmt.Println("\nThe TTL figure is measured on this machine and says when the edge was")
 	fmt.Println("issued, not when the Host recorded it. The number that matters is in the")
 	fmt.Println("EDF: the gap between each INPUT event and the MSG that follows it.")
+}
+
+func medianInt(sorted []int) int {
+	if len(sorted) == 0 {
+		return 0
+	}
+	return sorted[len(sorted)/2]
 }
 
 func median(sorted []float64) float64 {
@@ -454,6 +481,16 @@ func openTrigger(kind, device string) (triggers.OutputTTLDevice, string, error) 
 		}
 		return d, "DLP-IO8 on " + device, nil
 
+	case "megttl":
+		if device == "" {
+			device = "/dev/ttyACM0"
+		}
+		d, err := triggers.NewMEGTTLBox(device)
+		if err != nil {
+			return nil, "", err
+		}
+		return d, "MEG TTL box on " + device, nil
+
 	case "dlpio20":
 		if device == "" {
 			d, port, err := triggers.AutoDetectDLPIO20()
@@ -468,5 +505,5 @@ func openTrigger(kind, device string) (triggers.OutputTTLDevice, string, error) 
 		}
 		return d, "DLP-IO20 on " + device, nil
 	}
-	return nil, "", fmt.Errorf("unknown -trigger %q (none, parport, dlpio8, dlpio20)", kind)
+	return nil, "", fmt.Errorf("unknown -trigger %q (none, parport, dlpio8, dlpio20, megttl)", kind)
 }

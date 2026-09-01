@@ -56,17 +56,33 @@ Then, from the repo root:
 # no TTL device — exercises the bridge only
 go run ./tests/test_eyelink -w -s 999
 
-# the real measurement
+# the real measurement, through a parallel port
 go run ./tests/test_eyelink -s 999 -trigger parport -device /dev/parport0 \
+    -trials 50 -fetch /tmp/goxtest.edf
+
+# or through the MEG TTL box (Arduino-based, /dev/ttyACM0 by default)
+go run ./tests/test_eyelink -s 999 -trigger megttl -device /dev/ttyACM0 \
     -trials 50 -fetch /tmp/goxtest.edf
 
 # see the gaze on screen first, to confirm the stream and the calibration
 go run ./tests/test_eyelink -w -s 999 -gaze
 ```
 
-Useful flags: `-trigger none|parport|dlpio8|dlpio20`, `-device`, `-line`,
+Useful flags: `-trigger none|parport|dlpio8|dlpio20|megttl`, `-device`, `-line`,
 `-pulse`, `-trials`, `-isi`, `-calibrate`, `-points`, `-fetch`, `-sync`.
 `-w` runs windowed, `-s` sets the subject ID. Escape aborts between trials.
+
+## Samples, and what "dropped" means
+
+The trial loop drains the sample buffer every trial and records `n_samples`,
+which is the link's own pulse: a trial that receives far fewer samples than the
+tracker's rate times the ISI means the stream stalled.
+
+A non-zero `dropped` count refers to **this program's** ring buffer overflowing
+between drains. The EDF on the Host PC is written by the Host and is complete
+regardless. Nothing in this test reads gaze from the buffer for timing, so a
+drop never affects a figure reported here — it is a symptom to explain, not a
+hole in the data.
 
 ## Reading the results
 

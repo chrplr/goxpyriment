@@ -24,6 +24,7 @@ const DefaultBridgeAddr = "127.0.0.1:5010"
 
 // defaultBufferSize is how many samples are held between drains. At an
 // EyeLink 1000's top rate of 1000 Hz binocular this is eight seconds of data,
+// and about four at an EyeLink 1000 Plus / CL running 2000 Hz monocular,
 // which is a comfortable margin for a per-trial drain and small enough that the
 // buffer is never the reason a machine swaps.
 const defaultBufferSize = 8192
