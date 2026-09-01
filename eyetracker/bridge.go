@@ -353,7 +353,9 @@ func (b *Bridge) Calibrate(opts CalibrationOptions) error {
 	b.calMessage = msg
 	b.calVerified = verified
 	b.mu.Unlock()
-	if !verified {
+	// A simulated tracker has nothing to confirm, and warning there would teach
+	// the operator to ignore the warning that matters.
+	if !verified && !b.Simulated() {
 		// The bridge could not read the result back. That is not proof of
 		// failure, so it is not an error -- but it must not read as success.
 		log.Printf("eyetracker: the tracker did not confirm a stored calibration; " +
