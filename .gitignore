@@ -148,3 +148,6 @@ __pycache__/
 /examples/installers/mac-stage/
 /examples/installers/x86-stage/
 /examples/installers/arm64-stage/
+
+# Publisher PDFs kept locally for reference, not redistributed
+examples/Retinotopy-multifocal/*.pdf
