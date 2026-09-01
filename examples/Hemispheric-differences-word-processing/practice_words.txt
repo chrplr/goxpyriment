@@ -1,0 +1,44 @@
+# Practice pool: proper names.
+#
+# Federmeier & Benjamin (2005) gave "a short practice list (using proper
+# names)" before the experimental run, to acclimate participants to the
+# procedure and let the experimenter check that they could suppress saccades
+# to the lateralized items. Proper names keep the practice items out of the
+# experimental word pool.
+#
+# Same format as words.txt: one uppercase name per line, 4-6 letters, distinct.
+
+ALICE
+ANDRE
+ANITA
+BORIS
+CARLA
+CLARA
+DAVID
+DIEGO
+ELENA
+EMILY
+FIONA
+FRANK
+GRACE
+HELEN
+HUGO
+IRENE
+JACOB
+JAMES
+JULIA
+KAREN
+LAURA
+LEWIS
+LUCAS
+MARIA
+NADIA
+OSCAR
+PABLO
+PETER
+RENEE
+SIMON
+SONIA
+TOMAS
+VICKY
+WANDA
