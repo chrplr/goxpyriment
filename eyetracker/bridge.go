@@ -63,6 +63,9 @@ type Bridge struct {
 	haveOne bool
 	dropped int
 
+	calMessage  string // the tracker's summary of the last calibration
+	calVerified bool   // whether the tracker confirmed it stored one
+
 	readerDone chan struct{}
 	helloCh    chan *message
 	closeOnce  sync.Once
@@ -324,6 +327,14 @@ func (b *Bridge) Recording() bool {
 
 // Calibrate runs the tracker's own calibration procedure and BLOCKS until the
 // operator finishes it. There is no request timeout on this call.
+//
+// It returns an error unless the tracker confirms it stored a usable
+// calibration. The tracker's setup routine exits the same way whether or not
+// anything was calibrated, so "the operator closed the window" is not evidence
+// of success — and a session recorded against an absent or stale calibration
+// looks entirely normal until the gaze is analysed. [Bridge.CalibrationMessage]
+// carries the tracker's own summary, including the validation error when the
+// operator ran one.
 func (b *Bridge) Calibrate(opts CalibrationOptions) error {
 	if opts.Skip {
 		return nil
@@ -332,8 +343,31 @@ func (b *Bridge) Calibrate(opts CalibrationOptions) error {
 	if opts.Points > 0 {
 		args["points"] = opts.Points
 	}
-	_, err := b.do("calibrate", args, 0)
-	return err
+	res, err := b.do("calibrate", args, 0)
+	if err != nil {
+		return err
+	}
+	msg, _ := res["message"].(string)
+	verified, _ := res["verified"].(bool)
+	b.mu.Lock()
+	b.calMessage = msg
+	b.calVerified = verified
+	b.mu.Unlock()
+	if !verified {
+		// The bridge could not read the result back. That is not proof of
+		// failure, so it is not an error -- but it must not read as success.
+		log.Printf("eyetracker: the tracker did not confirm a stored calibration; " +
+			"check it on the Host before trusting any gaze position")
+	}
+	return nil
+}
+
+// CalibrationMessage returns the tracker's own summary of the last calibration,
+// such as its validation error. It is empty until [Bridge.Calibrate] succeeds.
+func (b *Bridge) CalibrationMessage() (string, bool) {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+	return b.calMessage, b.calVerified
 }
 
 // StartRecording opens the tracker's data file and starts the sample stream.

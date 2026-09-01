@@ -177,13 +177,18 @@ func run(exp *control.Experiment, cfg config) error {
 		before.DeltaMs, before.BestRTT, before.Samples))
 
 	if cfg.calibrate {
-		fmt.Println("calibrating — the tracker owns the screen until the operator is done")
+		fmt.Println("calibrating — the tracker owns the screen until the operator is done.")
+		fmt.Println("  C calibrate, V validate, Enter accept a target, Esc leave setup.")
+		fmt.Println("  Targets advance by themselves once the eye holds still, so an")
+		fmt.Println("  empty chair will sit on target 1 for ever: seat the participant first.")
 		if err := tracker.Calibrate(eyetracker.CalibrationOptions{Points: cfg.points}); err != nil {
-			// Calibration graphics are the known gap in this bridge. Saying so
-			// and carrying on is more useful than dying: everything the test
-			// actually measures works uncalibrated.
-			fmt.Printf("calibration unavailable: %v\ncontinuing without it — "+
+			// Carrying on is deliberate: every figure this test reports is
+			// independent of where the eye is pointing, so an uncalibrated run
+			// still measures what it exists to measure.
+			fmt.Printf("calibration failed: %v\ncontinuing without it — "+
 				"gaze positions will be wrong, timing will not\n", err)
+		} else if msg, ok := tracker.CalibrationMessage(); ok {
+			fmt.Printf("calibration stored: %s\n", msg)
 		}
 	}
 

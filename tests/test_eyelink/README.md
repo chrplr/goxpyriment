@@ -99,10 +99,37 @@ grep -E '^(INPUT|MSG)' /tmp/goxtest.asc | head -20
 Each `INPUT` should be followed by the `MSG` for the same trial. The difference
 between their timestamps is the bridge latency on the Host clock.
 
-## Known gap
+## Calibration
 
-Calibration graphics. `-calibrate` asks the tracker to run its own setup, which
-needs somewhere to draw the targets; pylink's built-in graphics are not
-available everywhere and goxpyriment owns the display here. The test reports
-this and carries on — gaze *positions* are then meaningless, but every timing
-figure above is unaffected, since none of them depends on where the eye is.
+`-calibrate` asks the tracker to run its own setup routine. pylink draws the
+targets from the **bridge process**, so they appear over whatever goxpyriment
+has on screen; the tracker owns the display until the operator leaves setup.
+
+| Key | Action |
+|---|---|
+| `C` | start calibration |
+| `V` | start validation |
+| `Enter` | accept the current target |
+| `Esc` | leave setup and hand control back to the experiment |
+
+The bridge enables automatic pacing, so targets advance on their own once the
+eye holds still. That also means **an empty chair sits on target 1 for ever** —
+there is no fixation to accept. Seat the participant before calibrating.
+
+Calibrating against a windowed (`-w`) screen is only useful for checking that
+the mechanism runs. Gaze coordinates are meaningless unless the calibration and
+the experiment used the same display geometry, so calibrate fullscreen.
+
+The tracker's setup routine exits identically whether or not anything was
+calibrated, so the bridge asks it afterwards what it actually stored and fails
+if the answer is "nothing". The tracker's own summary, including the validation
+error when the operator ran one, is printed and is available from
+`Bridge.CalibrationMessage`. Confirm it in the EDF too — a completed
+calibration writes `!CAL` records:
+
+```bash
+grep '!CAL' /tmp/goxtest.asc
+```
+
+No `!CAL` lines means no calibration was stored, whatever the screen appeared
+to show.

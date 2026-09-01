@@ -177,11 +177,19 @@ class EyeLinkTracker:
     def calibrate(self, points):
         if points:
             self.el.sendCommand("calibration_type = HV%d" % points)
+        # Let the targets advance on their own once the eye holds still.
+        # Without this the operator must accept every point by hand, and with
+        # no eye in front of the camera the sequence stops on target 1 with no
+        # indication of why.
+        try:
+            self.el.enableAutoCalibration()
+            self.el.setAutoCalibrationPacing(1000)
+        except Exception as exc:  # older pylink; hand pacing still works
+            log("automatic calibration pacing unavailable: %s" % exc)
+
         # doTrackerSetup needs somewhere to draw the targets. pylink ships a
-        # built-in graphics environment on some platforms and not others, and
-        # goxpyriment owns the display in this configuration, so there is no
-        # good answer here yet: report it plainly rather than opening a second
-        # window on top of the experiment or hanging with a blank screen.
+        # built-in graphics environment on some platforms and not others, so
+        # report a missing one plainly rather than hanging with a blank screen.
         if not hasattr(self.pylink, "openGraphics"):
             raise RuntimeError(
                 "calibration graphics are not available in this bridge: pylink "
@@ -195,7 +203,28 @@ class EyeLinkTracker:
             self.el.doTrackerSetup()
         finally:
             self.pylink.closeGraphics()
-        return {"points": points or 9}
+
+        # doTrackerSetup returns whenever the operator leaves setup, whether or
+        # not anything was calibrated, so its return is no evidence. Ask the
+        # tracker what it actually stored: a session recorded against an absent
+        # or stale calibration looks entirely normal until the gaze is
+        # analysed, which is far too late to notice.
+        try:
+            result = self.el.getCalibrationResult()
+            message = (self.el.getCalibrationMessage() or "").strip()
+        except Exception as exc:
+            log("cannot read the calibration result: %s" % exc)
+            return {"points": points or 9, "verified": False, "message": ""}
+        if result != 0:
+            raise RuntimeError(
+                "no usable calibration was stored (result %s%s). The operator "
+                "left setup without completing one, or every target was "
+                "rejected. Recording now would produce gaze positions that "
+                "mean nothing." % (result, ": " + message if message else "")
+            )
+        log("calibration stored: %s" % (message or "(no message)"))
+        return {"points": points or 9, "verified": True,
+                "result": result, "message": message}
 
     def start_recording(self):
         # (file_samples, file_events, link_samples, link_events)
