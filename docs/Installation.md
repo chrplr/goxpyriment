@@ -137,6 +137,38 @@ Then:
    [Viewing the documentation locally](ViewingDocsLocally.md).
 
 
+### If a program fails to build on Windows
+
+A build that stops on a line like
+
+```
+github.com/chrplr/goxpyriment/example/Language-Localizer: open
+C:\Users\...\AppData\Local\Temp\go-build2331601842\b001\exe\a.out.exe:
+The process cannot access the file because it is being used by another process.
+```
+
+is **not** a problem with the code. The Go toolchain links the program into a
+temporary `a.out.exe` and then copies it into `_build/`; real-time antivirus
+opens that freshly written `.exe` to scan it, and while it is held open the copy
+fails. It is a race, so it hits a different program — and usually only one or
+two out of sixty — on each run.
+
+`build-all.sh` retries such a build twice before giving up, and lists at the end
+any programs that did not build. If some are still missing:
+
+1. Run `./build-all.sh` again. Everything that already succeeded is cached, so
+   only the missing programs are rebuilt and the second attempt normally works.
+2. If it keeps happening, exclude the Go build directories from real-time
+   scanning (Windows Security → Virus & threat protection → Manage settings →
+   Exclusions): `%LOCALAPPDATA%\Temp`, the folder printed by `go env GOCACHE`,
+   and the `goxpyriment` folder itself. Alternatively point Go's temporary
+   directory at a folder you have excluded, before running the script:
+
+    ```
+    mkdir -p /c/go-tmp
+    export GOTMPDIR=/c/go-tmp
+    ```
+
 ### One extra step on a Linux machine used for data collection
 
 Nothing above requires special privileges, and you can write and run
