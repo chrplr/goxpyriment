@@ -29,22 +29,17 @@ is the measurement.
 """
 
 import argparse
-import json
-import queue
-import socket
 import sys
-import threading
 import time
 
-PROTO = 1
+# The transport lives in bridgelib so that every bridge speaks the same wire
+# format from the same code. sys.path[0] is this script's own directory when it
+# is run by path, which is how the Go tests launch it.
+from bridgelib import log, serve_forever
 
 # EyeLink's missing-data sentinel. It is a plausible-looking number, which is
 # exactly why every coordinate is checked against it before being sent.
 MISSING = -32768.0
-
-
-def log(msg):
-    print("[bridge] %s" % msg, file=sys.stderr, flush=True)
 
 
 # --------------------------------------------------------------------------
@@ -385,135 +380,6 @@ class EyeLinkTracker:
 # --------------------------------------------------------------------------
 
 
-class Session:
-    """One connected client. Commands on one thread, samples on another."""
-
-    def __init__(self, conn, tracker, verbose=False):
-        self.conn = conn
-        self.tracker = tracker
-        self.verbose = verbose
-        self.out = queue.Queue(maxsize=100000)
-        self.running = True
-        self.polling = False
-
-    # -- writing ----------------------------------------------------------
-
-    def send(self, obj):
-        try:
-            self.out.put_nowait(obj)
-        except queue.Full:
-            # Dropping is better than blocking the sample pump on a slow
-            # client, but it must never be silent.
-            log("output queue full; dropped a message")
-
-    def writer(self):
-        f = self.conn.makefile("w", encoding="utf-8", newline="\n")
-        while self.running:
-            try:
-                obj = self.out.get(timeout=0.2)
-            except queue.Empty:
-                continue
-            try:
-                f.write(json.dumps(obj) + "\n")
-                f.flush()
-            except Exception as exc:
-                log("write failed: %s" % exc)
-                self.running = False
-                return
-
-    def pump(self):
-        while self.running:
-            if not self.polling:
-                time.sleep(0.005)
-                continue
-            try:
-                for ev in self.tracker.poll():
-                    self.send(ev)
-            except Exception as exc:
-                log("poll failed: %s" % exc)
-                self.send({"ev": "log", "level": "error", "msg": "poll: %s" % exc})
-                self.polling = False
-
-    # -- commands ---------------------------------------------------------
-
-    def handle(self, req):
-        cmd = req.get("cmd", "")
-        args = req.get("args") or {}
-        t = self.tracker
-
-        if cmd == "open":
-            return t.open(
-                args.get("host", ""),
-                args.get("edf", ""),
-                int(args.get("width", 1920)),
-                int(args.get("height", 1080)),
-            )
-        if cmd == "calibrate":
-            return t.calibrate(int(args.get("points", 0)))
-        if cmd == "start_recording":
-            t.start_recording()
-            self.polling = True
-            return {}
-        if cmd == "stop_recording":
-            self.polling = False
-            t.stop_recording()
-            return {}
-        if cmd == "mark":
-            t.mark(str(args.get("text", "")))
-            return {}
-        if cmd == "tracker_time":
-            return {"time": t.tracker_time()}
-        if cmd == "receive_file":
-            self.polling = False
-            return t.receive_file(str(args.get("path", "")))
-        if cmd == "close":
-            self.polling = False
-            t.close()
-            self.running = False
-            return {}
-        raise ValueError("unknown command %r" % cmd)
-
-    def serve(self):
-        threading.Thread(target=self.writer, daemon=True).start()
-        threading.Thread(target=self.pump, daemon=True).start()
-
-        self.send(
-            {
-                "ev": "hello",
-                "bridge": self.tracker.name,
-                "proto": PROTO,
-                "simulated": self.tracker.simulated,
-            }
-        )
-
-        f = self.conn.makefile("r", encoding="utf-8")
-        for line in f:
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                req = json.loads(line)
-            except Exception as exc:
-                log("undecodable request: %s" % exc)
-                continue
-            rid = req.get("id", 0)
-            if self.verbose:
-                log("<- %s" % line)
-            try:
-                result = self.handle(req)
-                self.send({"id": rid, "ok": True, "result": result or {}})
-            except Exception as exc:
-                log("%s failed: %s" % (req.get("cmd"), exc))
-                self.send({"id": rid, "ok": False, "error": str(exc)})
-            if not self.running:
-                break
-        # Give the writer a moment to flush the final response before the
-        # socket goes away, so a client waiting on the reply to `close` sees it
-        # rather than a connection reset.
-        time.sleep(0.1)
-        self.running = False
-
-
 def make_tracker(args):
     if args.simulate:
         return SimTracker()
@@ -574,37 +440,11 @@ def main():
     if args.check:
         sys.exit(check(args))
 
-    srv = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    srv.bind((args.host, args.port))
-    srv.listen(1)
-    log(
-        "listening on %s:%d (%s)"
-        % (args.host, args.port, "SIMULATED" if args.simulate else args.tracker_host)
+    serve_forever(
+        args,
+        make_tracker,
+        "SIMULATED" if args.simulate else args.tracker_host,
     )
-
-    while True:
-        conn, addr = srv.accept()
-        # Nagle would coalesce samples into ~40 ms bursts, which is invisible
-        # in the data and fatal for a gaze-contingent loop.
-        conn.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-        log("client connected from %s:%d" % addr)
-        tracker = make_tracker(args)
-        session = Session(conn, tracker, args.verbose)
-        try:
-            session.serve()
-        except Exception as exc:
-            log("session ended: %s" % exc)
-        finally:
-            session.running = False
-            try:
-                tracker.close()
-            except Exception:
-                pass
-            conn.close()
-            log("client disconnected")
-        if args.once:
-            return
 
 
 if __name__ == "__main__":
