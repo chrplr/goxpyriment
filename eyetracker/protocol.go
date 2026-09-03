@@ -24,6 +24,39 @@ package eyetracker
 // requests. The bridge must echo it back. Commands may be pipelined; the bridge
 // may answer out of order.
 //
+// # Client to bridge: stepwise calibration
+//
+// Optional, and only for a tracker whose SDK draws no calibration targets, so
+// that the client must draw them itself — a Tobii. A bridge that does not
+// support these rejects them by name, which is the answer an experiment driving
+// the wrong tracker needs to see.
+//
+//	{"id":2,"cmd":"calibration_enter"}
+//	{"id":3,"cmd":"calibration_collect","args":{"x":0.5,"y":0.5}}
+//	{"id":4,"cmd":"calibration_discard","args":{"x":0.5,"y":0.5}}
+//	{"id":5,"cmd":"calibration_compute"}
+//	{"id":6,"cmd":"calibration_leave"}
+//
+// x and y are NORMALIZED on the tracker's active display area — (0,0) top-left,
+// (1,1) bottom-right — not the tracker pixels that samples use, and not
+// goxpyriment's centre-origin coordinates.
+//
+// calibration_collect blocks in the bridge while the tracker samples, up to
+// about ten seconds, so the client sends it with no request timeout. The target
+// must already be on screen and fixated when it is sent; that ordering is the
+// whole point of driving calibration from the client, since it puts the target
+// onset on the client's flip clock.
+//
+// calibration_compute answers with the tracker's own verdict and per-target
+// counts, so that a target the participant never looked at can be named:
+//
+//	{"id":5,"ok":true,"result":{"status":"calibration_status_success",
+//	 "points":[{"x":0.5,"y":0.5,"samples":30,"used":57}]}}
+//
+// These commands are additive: a bridge and a client that both speak protocol 1
+// interoperate whether or not either knows about them, so they do not bump
+// protoVersion.
+//
 // # Bridge to client: responses
 //
 //	{"id":1,"ok":true,"result":{...}}
@@ -40,9 +73,15 @@ package eyetracker
 //	{"ev":"log","level":"warning","msg":"link data lost"}
 //
 // A sample with missing data (blink, lost track) carries "valid":false and
-// leaves x and y at whatever the tracker reported; the client must not use
-// them. The EyeLink reports -32768 for missing coordinates, which is a
-// plausible-looking number in the wrong hands.
+// OMITS x and y; the client marks any sample without both of them invalid. The
+// EyeLink reports -32768 for missing coordinates, which is a plausible-looking
+// number in the wrong hands, and a Tobii reports nan — which json.dumps writes
+// as a bare NaN that Go's encoding/json rejects outright, so a bridge that
+// forwarded it would drop the connection on the first blink.
+//
+// "pa" is pupil size in WHATEVER UNIT THE TRACKER USES: area in arbitrary units
+// from an EyeLink, diameter in millimetres from a Tobii. See [Sample] — the
+// bridge reports its unit at open, and it belongs in the data file.
 //
 // # Ordering and liveness
 //

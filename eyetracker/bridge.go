@@ -372,6 +372,84 @@ func (b *Bridge) CalibrationMessage() (string, bool) {
 	return b.calMessage, b.calVerified
 }
 
+// CalibrationEnter puts the tracker into calibration mode. It implements
+// [StepwiseCalibrator]; see that interface before calling any of these four
+// directly, and prefer control.Experiment.CalibrateTracker, which draws the
+// targets.
+func (b *Bridge) CalibrationEnter() error {
+	_, err := b.do("calibration_enter", nil, b.reqTimeout)
+	return err
+}
+
+// CalibrationCollect samples the target at normalized (nx, ny), which must
+// already be on screen and fixated.
+//
+// There is no request timeout: the tracker blocks while it collects, for up to
+// about ten seconds on a Tobii, and a timeout here would abandon a request the
+// bridge is still working on.
+func (b *Bridge) CalibrationCollect(nx, ny float64) error {
+	_, err := b.do("calibration_collect", map[string]any{"x": nx, "y": ny}, 0)
+	return err
+}
+
+// CalibrationDiscard throws away the data collected for one target.
+func (b *Bridge) CalibrationDiscard(nx, ny float64) error {
+	_, err := b.do("calibration_discard", map[string]any{"x": nx, "y": ny}, 0)
+	return err
+}
+
+// CalibrationCompute computes a calibration from the collected targets and
+// applies it to the tracker.
+//
+// It also records the result for [Bridge.CalibrationMessage], so a stepwise
+// calibration reports itself through the same accessor as an EyeLink's own
+// setup routine and an experiment does not need to know which it ran.
+func (b *Bridge) CalibrationCompute() (CalibrationResult, error) {
+	res, err := b.do("calibration_compute", nil, 0)
+	if err != nil {
+		return CalibrationResult{}, err
+	}
+	out := CalibrationResult{}
+	out.Status, _ = res["status"].(string)
+	// JSON numbers decode into float64, so every count has to come back
+	// through one: an int assertion here silently yields zero for all of them.
+	if pts, ok := res["points"].([]any); ok {
+		for _, raw := range pts {
+			m, ok := raw.(map[string]any)
+			if !ok {
+				continue
+			}
+			p := CalibrationPoint{}
+			p.NX, _ = m["x"].(float64)
+			p.NY, _ = m["y"].(float64)
+			if v, ok := m["samples"].(float64); ok {
+				p.Samples = int(v)
+			}
+			if v, ok := m["used"].(float64); ok {
+				p.Used = int(v)
+			}
+			out.Points = append(out.Points, p)
+		}
+	}
+	b.mu.Lock()
+	b.calMessage = out.Summary()
+	b.calVerified = out.OK()
+	b.mu.Unlock()
+	if !out.OK() {
+		return out, fmt.Errorf("eyetracker: the tracker stored no usable "+
+			"calibration (%s). Recording now would produce gaze positions "+
+			"that mean nothing", out.Summary())
+	}
+	return out, nil
+}
+
+// CalibrationLeave leaves calibration mode. Call it on the error paths too: a
+// tracker left in calibration mode will not record.
+func (b *Bridge) CalibrationLeave() error {
+	_, err := b.do("calibration_leave", nil, b.reqTimeout)
+	return err
+}
+
 // StartRecording opens the tracker's data file and starts the sample stream.
 func (b *Bridge) StartRecording() error {
 	if _, err := b.do("start_recording", nil, b.reqTimeout); err != nil {

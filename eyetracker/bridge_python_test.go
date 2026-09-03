@@ -59,7 +59,10 @@ func TestAgainstPythonBridge(t *testing.T) {
 	// Retry Open rather than probing the port with a throwaway connection:
 	// the bridge serves one client at a time, so a probe that dials and hangs
 	// up is a whole session spent proving the socket exists.
-	b := openWithRetry(t, addr, &stderr)
+	b := openWithRetry(t, addr, &stderr,
+		WithGeometry(Geometry{WidthPx: 1280, HeightPx: 800}),
+		WithEDF("gotest.edf"),
+	)
 
 	// The bridge must admit it is faking. A simulated run that passes for a
 	// real one is the worst outcome available here.
@@ -174,18 +177,17 @@ func freePort(t *testing.T) string {
 }
 
 // openWithRetry dials the bridge until the interpreter has started and bound
-// its port, or the deadline passes.
-func openWithRetry(t *testing.T, addr string, stderr *strings.Builder) *Bridge {
+// its port, or the deadline passes. opts are the client options; the timeouts
+// and the silent logger are added for every caller.
+func openWithRetry(t *testing.T, addr string, stderr *strings.Builder, opts ...Option) *Bridge {
 	t.Helper()
 	deadline := time.Now().Add(30 * time.Second)
 	var lastErr error
 	for time.Now().Before(deadline) {
-		b := NewBridge(addr,
-			WithGeometry(Geometry{WidthPx: 1280, HeightPx: 800}),
-			WithEDF("gotest.edf"),
+		b := NewBridge(addr, append(opts,
 			WithTimeouts(10*time.Second, 10*time.Second),
 			WithLogger(func(string, ...any) {}),
-		)
+		)...)
 		if err := b.Open(); err == nil {
 			return b
 		} else {

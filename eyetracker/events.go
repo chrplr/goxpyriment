@@ -69,12 +69,22 @@ func ParseEye(s string) Eye {
 // LocalNs includes the transport delay: the tracker's link, the bridge process,
 // the socket, and the decode. It is a receipt time, not an acquisition time.
 // To relate the two clocks properly, use [Sync].
+//
+// # Pupil size
+//
+// PupilArea's unit is whatever the tracker reports, and the two makes do not
+// agree: an EyeLink reports pupil AREA in its own arbitrary units, in the
+// thousands; a Tobii reports pupil DIAMETER in millimetres, around 2 to 8.
+// Nothing in the type can catch a confusion between them, so each bridge states
+// its unit at open — the Tobii bridge returns pupil_units, and writes it into
+// the header of its own gaze file — and it belongs in the run's -info.txt.
+// Comparing pupil sizes across makes without converting is meaningless.
 type Sample struct {
 	TrackerMs float64 // tracker's own clock, milliseconds
 	LocalNs   int64   // experiment machine's clock at decode, nanoseconds
 	Eye       Eye
 	X, Y      float64 // gaze position, screen pixels, origin top-left, +Y down
-	PupilArea float64 // pupil size in the tracker's arbitrary units (0 if absent)
+	PupilArea float64 // pupil size — UNITS DEPEND ON THE TRACKER, see below
 	Valid     bool    // false when the tracker reported missing data (blink, lost track)
 }
 

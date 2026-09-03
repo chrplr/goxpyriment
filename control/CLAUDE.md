@@ -67,6 +67,35 @@ When `-s` is **absent** (e.g. the binary was launched by double-clicking its ico
 - `exp.PollEvents(handler)` — Drains SDL queue; `handler` may be nil. Returns `EventState`.
 - `exp.HandleEvents()` — Returns `(lastKey, lastMouseButton, error)`. Prefer `PollEvents` for new code.
 
+## Calibrating a gaze tracker (eyetracker_calib.go)
+
+```go
+err := exp.CalibrateTracker(tracker, eyetracker.CalibrationOptions{Points: 9})
+```
+
+One call for both shapes of vendor API, so an experiment need not know which
+make it has:
+
+- A tracker that runs its own setup routine (an EyeLink, through pylink) is
+  simply asked to. Its Host PC's calibration screen is better tested than
+  anything we can draw.
+- A tracker implementing `eyetracker.StepwiseCalibrator` (a Tobii, whose SDK
+  draws *nothing*) is driven target by target from here: each target goes up
+  with `ShowTS`, is held for `opts.DwellMs` (default 700), and only then is the
+  tracker told to sample it. That ordering is the point — the target onset is on
+  goxpyriment's own flip clock, in its own window, on one machine.
+
+It **blocks**, for seconds per target, and it draws — so it must run on the
+`exp.Run` goroutine like every other SDL call, and never inside a frame loop.
+Esc ends the run as it does everywhere else (see `Wait`); the tracker is taken
+out of calibration mode on the way out regardless, because one left in it will
+not record.
+
+The result, including any target that yielded no usable data, goes into the
+run's `-info.txt`. A monocular partial success is logged as a warning: a run
+quietly recorded on one eye and later analysed as binocular is the failure that
+warning exists to prevent. See `eyetracker/CLAUDE.md`.
+
 ## EventState
 
 Returned by `PollEvents`. Summarises the current SDL queue drain:

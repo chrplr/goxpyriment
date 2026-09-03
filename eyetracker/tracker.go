@@ -38,10 +38,20 @@
 //
 // # Implementations
 //
-//   - [Bridge]      — a tracker behind a bridge process (EyeLink via pylink)
+//   - [Bridge]      — a tracker behind a bridge process: an EyeLink via pylink
+//     (eyetracker/bridge/eyelink_bridge.py), or a Tobii Pro via the Tobii Pro
+//     SDK (eyetracker/bridge/tobii_bridge.py)
 //   - [Simulated]   — a fake tracker driven by any position function, typically
 //     the mouse; for developing without hardware
 //   - [NullTracker] — silent no-op, so calling code never needs a nil check
+//
+// # Calibration
+//
+// Two shapes, because the vendors differ. pylink runs the EyeLink's whole setup
+// routine itself, so [Tracker.Calibrate] hands it the screen and blocks. The
+// Tobii SDK draws nothing at all, so the client must put each target up itself
+// through [StepwiseCalibrator] — use control.Experiment.CalibrateTracker, which
+// handles both and draws the targets on goxpyriment's own flip clock.
 package eyetracker
 
 import "time"
@@ -126,6 +136,15 @@ type CalibrationOptions struct {
 	// script can be run end-to-end without a participant, without the caller
 	// growing an if.
 	Skip bool
+
+	// DwellMs is how long each target stays on screen before the tracker is
+	// told to sample it, for a [StepwiseCalibrator] where the client draws the
+	// targets. Zero means the default, 700 ms.
+	//
+	// It has to cover a saccade to the target plus a stable fixation, so
+	// shortening it trades calibration quality for operator time. It has no
+	// effect on a tracker that runs its own setup routine, which paces itself.
+	DwellMs int
 }
 
 // Offset is the measured relationship between the tracker's clock and the
@@ -188,4 +207,10 @@ var (
 	_ Tracker = NullTracker{}
 	_ Tracker = (*Bridge)(nil)
 	_ Tracker = (*Simulated)(nil)
+
+	// A bridged tracker can also be calibrated step by step, which is the
+	// only way to calibrate a Tobii. Whether the bridge on the other end
+	// actually supports it is a runtime question: one that does not rejects
+	// the commands by name.
+	_ StepwiseCalibrator = (*Bridge)(nil)
 )
