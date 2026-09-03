@@ -202,9 +202,119 @@ known to work, not before.
 
 `Tracker` is deliberately vendor-neutral and the protocol is not
 EyeLink-specific, so a second tracker is a new bridge script rather than a new Go
-package. GazePoint (Open Gaze, XML over TCP) and Pupil Labs both publish socket
-protocols and could be pure-Go clients with no bridge process at all. Tobii Pro
-is SDK-only, like the EyeLink, and would need the same treatment.
+package. **Tobii Pro now exists** (see the next section), and adding it needed no
+new Go package, which is the first real test of that claim. GazePoint (Open Gaze,
+XML over TCP) and Pupil Labs both publish socket protocols and could be pure-Go
+clients with no bridge process at all.
+
+## Eye tracking: run the Tobii bridge against real hardware
+
+`eyetracker/bridge/tobii_bridge.py` and `tests/test_tobii` were written on
+2026-09-03 and have never seen a tracker. The Go client, the protocol and the
+Python are covered by `TestAgainstTobiiBridge`, which drives the real script in
+`--simulate`; the `tobii_research` calls are not covered by anything.
+
+**Warn the participant/operator before each of these — they drive the rig.**
+
+### Do these in order
+
+1. **Confirm the SDK imports and the tracker is found.** This is the step that
+   can waste the whole session, so it comes first:
+
+       python3 eyetracker/bridge/tobii_bridge.py --check
+
+   It prints model, serial, firmware, current and available sample rates, eye
+   tracking modes, display area and capabilities, then exits.
+
+   The SDK is a native extension and is **not** pip-installed, but it is already
+   importable here: `~/.bashrc:227` puts `~/tobii_eyetracker_pythonlib` on
+   `PYTHONPATH`, and it loads under the system `python3` (3.12) — it does *not*
+   need the 3.10 `~/eyelink/` venv that pylink uses. Verified 2026-09-03:
+   `tobii_research: importable, SDK version 2.1.0.1`, then `no eye tracker
+   found` with nothing attached. On another machine, set `PYTHONPATH` yourself.
+
+2. **Settle the coordinate origin.** The conversion is `x_px = nx*width`,
+   `y_px = ny*height`, which assumes normalized (0,0) is the display area's
+   TOP-LEFT. Tobii's published documentation says so; the headers shipped with
+   the SDK do not, so it is an assumption:
+
+       python3 eyetracker/bridge/tobii_bridge.py --edf-dir /tmp     # terminal 1
+       go run ./tests/test_tobii -s 999 -calibrate -corners         # terminal 2
+
+   It shows a target in each corner and the centre, averages the gaze during
+   each, and prints the measured normalized position beside the expected one —
+   then compares the residual against a mirrored expectation and states the
+   verdict. **Put its output in the commit that closes this**, and update the
+   note in `eyetracker/CLAUDE.md` and the module docstring, which both currently
+   say "assumed". If Y comes back mirrored, fix `gaze_events` and the
+   `_row` pixel columns in `tobii_bridge.py` before trusting any recording.
+
+3. **A calibrated run.** goxpyriment draws the targets — the Tobii SDK draws
+   nothing:
+
+       go run ./tests/test_tobii -s 999 -calibrate -gaze -trials 50 \
+           -fetch /tmp/goxtest_tobii.tsv
+
+   Check: the live gaze dot tracks the eye and is not mirrored; the calibration
+   summary in the `-info.txt` names no target with `used == 0`; and the status
+   is `calibration_status_success` rather than a `_left_eye`/`_right_eye`
+   monocular partial, which the program warns about because a run analysed as
+   binocular afterwards would be wrong.
+
+4. **Measured sample rate.** The program counts sample events over a measured
+   interval and reports the count and the duration with the rate. Compare with
+   `get_gaze_output_frequency()` from step 1, remembering that the bridge emits
+   one event **per eye**, so a 600 Hz binocular tracker gives ~1200 events/s.
+   `Dropped()` must be 0: at 1200 Hz binocular the socket carries 2400 events/s
+   against a client buffer of 8192 samples, i.e. about 3.4 s, so draining once
+   per trial is fine and once per block is not.
+
+5. **Clock offset and drift.** `Sync(20)` before and after. Report `DeltaMs`
+   with `BestRTT/2` as its uncertainty, and the change across the session as the
+   drift.
+
+### The clock question this is really testing
+
+`tr.get_system_time_stamp()` is `CLOCK_MONOTONIC` in microseconds — measured on
+this machine, mean offset −3.2 µs against `clock_gettime(CLOCK_MONOTONIC)`,
+n=2000, min −19.8, max +4.7 µs. `CLOCK_REALTIME`, `CLOCK_MONOTONIC_RAW` and
+`CLOCK_BOOTTIME` are each off by a large constant.
+
+If `sdl.TicksNS()` is also `CLOCK_MONOTONIC`, then with the bridge on the display
+machine the tracker clock and goxpyriment's clock are the same counter with
+different origins: the offset is a *constant*, measurable to sub-µs by one call
+pair, with no round trip and no drift term. That would be a strictly better
+timing story than the EyeLink's two free-running oscillators.
+
+**Which clock SDL uses here is not measured, and this must not be assumed.**
+`CLOCK_MONOTONIC_RAW` drifted against `CLOCK_MONOTONIC` by 662 µs over that same
+2000-call run — NTP slewing, and enough to matter over a session. So the
+measurement to make is: after `Initialize()`, interleave `control.TicksNS()`
+with `clock_gettime(CLOCK_MONOTONIC)` and `(..._RAW)` a few thousand times and
+report mean and spread against each, with n. Until that is done, quote `Sync`'s
+offset with its `BestRTT/2` uncertainty exactly as for the EyeLink. A result
+agreeing with the prediction above needs the same scrutiny as one that does not.
+
+### Known gaps, in the order they will bite
+
+**The `tobii_research` calls are unexercised.** `TobiiTracker` is written from
+the SDK source read on this machine and has never run against a device. It is
+the part to distrust when something fails.
+
+**No TTL input.** `EYETRACKER_EXTERNAL_SIGNAL` is Tobii's TTL stream and it
+timestamps the edge *at the tracker*, which makes it the right way to mark a
+stimulus onset — the same argument as the EyeLink Host PC's parallel-port
+`INPUT` events, and the reason `Mark` must never carry an onset whose timestamp
+is the measurement. Not wired, not measured.
+
+**Not wired into `control` beyond calibration.** `Experiment.CalibrateTracker`
+exists, but there is still no `exp.Tracker`: the data file gets the bridge
+identity, the pupil unit and the clock offsets only because `tests/test_tobii`
+writes them itself.
+
+**Eye images, user position guide, notifications, time-sync data and eye
+openness are all unimplemented.** The subscription constants are listed in
+`eyetracker/CLAUDE.md`; none is needed to record gaze.
 
 ## Fix the COOP/COEP response-header rule on Cloudflare
 

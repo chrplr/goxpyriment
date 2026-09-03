@@ -1,0 +1,3 @@
+category: test
+description: Checks a Tobii Pro tracker through the Python bridge, and measures the coordinate origin, sample rate and clock offset
+reference: ""
