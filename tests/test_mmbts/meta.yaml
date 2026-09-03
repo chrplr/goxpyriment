@@ -1,0 +1,3 @@
+category: test
+description: Exercises a NEUROSPEC MMBT-S interface box as an 8-bit TTL trigger device over USB-CDC serial — whole-port patterns, per-line writes, pulses, and a square wave.
+reference: https://www.neurospec.com

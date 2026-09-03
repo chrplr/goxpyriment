@@ -59,7 +59,7 @@ listed below — and most of the advantages.
 | Gamma correction | `monitors` calibration | `apparatus.GammaCorrector` — per-channel exponents, `exp.SetGamma` / `exp.CorrectColor` |
 | Data output | `.csv` / `.psydat` / Excel | Plain `.csv` (no comment lines, imports straight into a spreadsheet) plus a companion `-info.txt` holding the session metadata; both written through a buffered output file |
 | System reporting | `psychopy.info` | `sysinfo` package: CPU, GPU, audio, memory, machine — including a WMI path on Windows |
-| Hardware triggers | Parallel, serial, LabJack, Cedrus, EGI, BrainProducts, TriggerBox | Parallel port (Linux LPT), DLP-IO8, FT232H, Linux GPIO (Raspberry Pi and other SBCs), LabJack T4 over Modbus TCP, NeuroSpin MEG TTL box, generic serial |
+| Hardware triggers | Parallel, serial, LabJack, Cedrus, EGI, BrainProducts, TriggerBox | Parallel port (Linux LPT), DLP-IO8, FT232H, Linux GPIO (Raspberry Pi and other SBCs), LabJack T4 over Modbus TCP, NeuroSpin MEG TTL box, NEUROSPEC MMBT-S, generic serial |
 | Networked recording control | Egi/`iohub`, `emulator`, MQTT/OSC components | EGI NetStation event markers over TCP/IP (ECI), plus a "BEL_video" participant-video recorder client |
 | Worked examples | A demos folder | over 50 complete paradigms in `examples/` (plus ~30 feature demos), plus a `tests/` suite of programs whose output is analysed to verify timing and hardware behaviour |
 

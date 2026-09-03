@@ -2625,6 +2625,37 @@ per line and the 8 lines change over ~3.5 ms rather than together — use
 **untested on real hardware**: it was written from the datasheet, so verify it
 with `tests/test_dlpio20` before an experiment depends on it.
 
+### NEUROSPEC MMBT-S (USB-CDC serial)
+
+An output-only box: 8 TTL lines on a D-Sub 25 socket with the standard LPT
+pinout (bit N → pin N+2, ground on pins 20–25, 5 V HIGH). It is a USB virtual
+COM port, and one byte at 9600 baud sets all 8 lines at once.
+
+```go
+box, err := triggers.NewMMBTS("/dev/ttyACM0")   // mode p, the factory setting
+defer box.Close()
+
+box.Send(0b00000011)
+box.Pulse(0, 5*time.Millisecond)
+```
+
+Two things about this box do not follow the pattern of the other devices.
+
+Its **runtime mode is a hardware switch**, marked `P`/`S` next to the USB-C
+socket, read at reset and invisible to software. In `P` — the factory setting,
+and the driver's default — the firmware clears the port 8 ms after each byte, so
+**every trigger is 8 ms wide** whatever duration `Pulse` or `FireTriggerSync` is
+given, and codes issued closer together than 8 ms are queued and delayed. Set
+the switch to `S` and pass `triggers.WithMMBTSMode(triggers.MMBTSSimpleMode)` to
+time the width from the host. If the option and the switch disagree, nothing
+fails — the lines simply behave differently from the code.
+
+And there is **no auto-detection**: the box never answers on the serial line, and
+it enumerates as a generic Arduino Micro, so it cannot be distinguished from any
+other Arduino-based box. Name the port. The green LED beside the socket follows
+bit 1 and lights on odd codes, which is enough to confirm the link without an
+amplifier; `tests/test_mmbts` drives the patterns to watch it with.
+
 ### Supported devices
 
 | Device | Type | Output | Input | Connection | Notes |
@@ -2632,6 +2663,7 @@ with `tests/test_dlpio20` before an experiment depends on it.
 | DLP-IO8-G | `DLPIO8` | ✓ | ✓ | USB-CDC serial | ASCII protocol |
 | DLP-IO20 | `DLPIO20` | ✓ | ✓ | USB-CDC serial | Packet protocol; 17 digital channels via 8-line windows; 5 V; untested on hardware |
 | NeuroSpin MEGTTLBox | `MEGTTLBox` | ✓ | ✓ | USB serial | Arduino Mega; binary protocol; fORP input |
+| NEUROSPEC MMBT-S | `MMBTS` | ✓ | — | USB-CDC serial | D-Sub 25 LPT pinout; 9600 baud only; 8 ms fixed pulse in the factory Pulse mode |
 | Adafruit FT232H | `FT232HTrigger` | ✓ | ✓ | USB (usbfs) | Linux only; no libftdi needed |
 | Linux GPIO | `LinuxGPIOTrigger` | ✓ | ✓ | GPIO pins | Any Linux SBC; kernel ≥ 5.10 |
 | LabJack T4 | `LabJackT4` | ✓ | ✓ | Ethernet (Modbus TCP) | No SDK needed |

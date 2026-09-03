@@ -46,6 +46,9 @@ const Usage = `Device spec: KIND[:key=value,key=value,...]
   dlpio8    port=/dev/ttyUSB0   (empty or omitted → auto-detect)
   dlpio20   port=/dev/ttyUSB1   (empty or omitted → auto-detect)
   megttlbox port=/dev/ttyACM0   (required)
+  mmbts     port=/dev/ttyACM0[,mode=p|s]  (port required; mode defaults to p,
+             the box's factory setting. In mode p the width is 8 ms, fixed in
+             firmware, whatever duration the program asks for)
   parallel  port=/dev/parport0  (empty or omitted → first accessible port)
   gpio      chip=/dev/gpiochip0 pins=17+27+22+5+6+13+19+26
   ft232h    (no parameters)
@@ -58,7 +61,7 @@ device's terminal block (default 1). On gpio, pin=N selects the Nth entry of
 pins=, not a BCM number.`
 
 // Kinds lists the accepted device kinds, in the order they are documented.
-var Kinds = []string{"dlpio8", "dlpio20", "megttlbox", "parallel", "gpio", "ft232h", "labjackt4", "null"}
+var Kinds = []string{"dlpio8", "dlpio20", "megttlbox", "mmbts", "parallel", "gpio", "ft232h", "labjackt4", "null"}
 
 // allowedParams is the set of parameter keys each kind accepts, beyond "pin"
 // which every kind accepts. An unlisted key is an error rather than a silent
@@ -68,6 +71,7 @@ var allowedParams = map[string][]string{
 	"dlpio8":    {"port"},
 	"dlpio20":   {"port"},
 	"megttlbox": {"port"},
+	"mmbts":     {"port", "mode"},
 	"parallel":  {"port"},
 	"gpio":      {"chip", "pins"},
 	"ft232h":    {},
@@ -143,11 +147,19 @@ func ParseSpec(s string) (Spec, error) {
 	}
 
 	// Required parameters. Auto-detection exists for the DLP boxes and the
-	// parallel port; the other two have nothing to probe for.
+	// parallel port; the others have nothing to probe for — the MMBT-S never
+	// replies on its serial line, so it cannot even be recognised once opened.
 	switch kind {
 	case "megttlbox":
 		if spec.Params["port"] == "" {
 			return Spec{}, fmt.Errorf("device %q: megttlbox needs port=, e.g. megttlbox:port=/dev/ttyACM0", raw)
+		}
+	case "mmbts":
+		if spec.Params["port"] == "" {
+			return Spec{}, fmt.Errorf("device %q: mmbts needs port=, e.g. mmbts:port=/dev/ttyACM0", raw)
+		}
+		if _, err := parseMMBTSMode(spec.Params["mode"]); err != nil {
+			return Spec{}, fmt.Errorf("device %q: %w", raw, err)
 		}
 	case "labjackt4":
 		if spec.Params["host"] == "" {
@@ -266,6 +278,8 @@ func Open(spec Spec) (Opened, error) {
 		return openDLPIO20(spec)
 	case "megttlbox":
 		return openMEGTTLBox(spec)
+	case "mmbts":
+		return openMMBTS(spec)
 	case "parallel":
 		return openParallel(spec)
 	case "gpio":
@@ -366,6 +380,51 @@ func openMEGTTLBox(spec Spec) (Opened, error) {
 // megOutputPin maps a 0-indexed output line to the Arduino Mega pin the box
 // wires it to: line 0 is D30, line 7 is D37.
 func megOutputPin(line int) int { return 30 + line }
+
+// parseMMBTSMode maps the mode= parameter onto the runtime mode set by the
+// box's P/S switch. Empty means the factory setting, Pulse.
+func parseMMBTSMode(s string) (triggers.MMBTSMode, error) {
+	switch strings.ToLower(s) {
+	case "", "p", "pulse":
+		return triggers.MMBTSPulseMode, nil
+	case "s", "simple":
+		return triggers.MMBTSSimpleMode, nil
+	}
+	return 0, fmt.Errorf("mmbts mode=%q: choose p (pulse, the factory setting) or s (simple)", s)
+}
+
+func openMMBTS(spec Spec) (Opened, error) {
+	port := spec.Params["port"]
+	mode, err := parseMMBTSMode(spec.Params["mode"])
+	if err != nil {
+		return Opened{}, err
+	}
+	box, err := triggers.NewMMBTS(port, triggers.WithMMBTSMode(mode))
+	if err != nil {
+		return Opened{}, fmt.Errorf("MMBT-S on %s: %w "+
+			"(rw access to the port is needed: sudo usermod -aG dialout $USER, then log in again)", port, err)
+	}
+	// Bit N of the byte drives D-Sub 25 pin N+2, so the connector pin is the
+	// line index + 2. The line index is what the API takes; the D-Sub pin is
+	// what the probe clips onto, and confusing the two is a silent miswiring.
+	line := spec.Line()
+	notes := []string{
+		fmt.Sprintf("probe D-Sub 25 pin %d (= bit %d) on the MMBT-S (%s); ground is any of pins 20-25", line+2, spec.Pin, port),
+		"5 V logic; every write crosses a USB-CDC serial link at 9600 baud",
+		fmt.Sprintf("runtime mode %s — CHECK THE P/S SWITCH on the box: the driver cannot read it", mode),
+	}
+	if mode == triggers.MMBTSPulseMode {
+		notes = append(notes,
+			fmt.Sprintf("in pulse mode the firmware fixes the width at %v and ignores the requested duration; "+
+				"codes closer together than that are delayed", box.PulseWidth()))
+	}
+	return Opened{
+		Spec: spec, Device: box, Line: line,
+		Label: fmt.Sprintf("mmbts:D%d", line+2),
+		Desc:  fmt.Sprintf("mmbts port=%s pin=%d dsub25=%d mode=%s", port, spec.Pin, line+2, mode),
+		Notes: notes,
+	}, nil
+}
 
 func openParallel(spec Spec) (Opened, error) {
 	device := spec.Params["port"]

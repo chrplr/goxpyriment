@@ -1296,6 +1296,48 @@ triggers.FORPRightGreen  // 6
 triggers.FORPRightRed    // 7
 ```
 
+### MMBTS (NEUROSPEC MMBT-S interface box)
+
+Implements `OutputTTLDevice` only — the box has 8 TTL output lines on a D-Sub 25
+socket and no inputs. It is a USB-CDC virtual COM port: one byte at 9600 baud
+sets all 8 lines, bit N driving line N. Bit N (0-indexed) is D-Sub 25 pin N+2;
+ground is pins 20–25; 5 V HIGH, 0 V LOW.
+
+```go
+box, err := triggers.NewMMBTS("/dev/ttyACM0",
+    triggers.WithMMBTSMode(triggers.MMBTSPulseMode),  // default: the factory switch setting
+)
+defer box.Close()
+
+box.Send(0b00000011)               // both lines in one byte
+box.SetHigh(0)                     // rewrites the whole mask from the driver's shadow
+box.Pulse(0, 5*time.Millisecond)   // width honoured in simple mode only
+```
+
+The runtime mode is chosen by a **hardware P/S switch** on the box, read at
+reset and not queryable over the serial link — `WithMMBTSMode` tells the driver
+what the switch is set to, it does not set it:
+
+| Constant | Switch | Behaviour |
+|---|---|---|
+| `triggers.MMBTSPulseMode` (default) | `P`, the factory setting | The firmware clears the port 8 ms after each byte, so **every trigger is 8 ms wide** whatever duration is requested, and codes closer together than that are delayed. |
+| `triggers.MMBTSSimpleMode` | `S` | A byte latches until the next is written; `0` pulls all lines LOW. The host controls the width. |
+
+```go
+func triggers.NewMMBTS(portPath string, opts ...triggers.MMBTSOption) (*triggers.MMBTS, error)
+func triggers.WithMMBTSMode(m triggers.MMBTSMode) triggers.MMBTSOption
+func triggers.WithMMBTSPulseWidth(d time.Duration) triggers.MMBTSOption
+func (b *triggers.MMBTS) Mode() triggers.MMBTSMode
+func (b *triggers.MMBTS) PulseWidth() time.Duration
+```
+
+Errors: `ErrMMBTSNotOpen`, `ErrMMBTSBadLine`, `ErrMMBTSBadMode`.
+
+There is no auto-detection: the box never replies, and it enumerates as a
+generic Arduino Micro, so it cannot be told apart from another Arduino-based
+box. Name the port. The baud rate is fixed at 9600 and deliberately not exposed
+— opening the port at 1200 baud resets the box into its bootloader.
+
 ### FT232HTrigger (Adafruit FT232H, Linux)
 
 Implements both `OutputTTLDevice` and `InputTTLDevice`. Pure-Go driver via Linux usbfs — no libftdi or D2XX installation required.
