@@ -196,8 +196,12 @@ Two paths exist today for the EyeLink and neither is ours:
   bridge on another host draws the calibration on that host's screen), its
   window competes with goxpyriment's fullscreen one — closing it hands focus to
   whatever the window manager finds next, which is why `CalibrateTracker` and
-  `tests/test_eyelink` call `Experiment.ReclaimDisplay` afterwards — and target
-  onsets are on pylink's clock rather than flip-locked.
+  `tests/test_eyelink` call `Experiment.ReclaimDisplay` afterwards. Raising is
+  all an application may do: GNOME refuses self-focus, and under Wayland it
+  cannot even ask, so `ReclaimDisplay` ends by flashing the window and waiting
+  (`Experiment.WaitForFocus`) for the operator to click it — SDL delivers keys
+  only to the focused window, so trials run before that click record no
+  responses. Target onsets are also on pylink's clock rather than flip-locked.
 - **The bridge refuses instead.** Where `pylink.openGraphics` is absent, the
   bridge raises an error naming the problem rather than hanging on a blank
   screen, and the operator calibrates from the SR Research display software.

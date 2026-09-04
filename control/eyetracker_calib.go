@@ -6,6 +6,7 @@ package control
 import (
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/Zyko0/go-sdl3/sdl"
 	"github.com/chrplr/goxpyriment/apparatus"
@@ -179,11 +180,77 @@ func (e *Experiment) ReclaimDisplay() {
 			"refused to raise it", before)
 	}
 
+	// Raising is not the whole job: keystrokes go to whatever holds keyboard
+	// focus, so an experiment that carries on unfocused drops every response
+	// into another window.
+	e.WaitForFocus(FocusWaitTimeout)
+
 	// What a covered window holds is not guaranteed, so repaint: the next
 	// thing on screen should be ours, not whatever survived underneath.
 	if err := e.Screen.ClearAndUpdate(); err != nil {
 		log.Printf("control: repainting after calibration: %v", err)
 	}
+}
+
+// FocusWaitTimeout bounds [Experiment.WaitForFocus]. It is long enough for an
+// operator to walk back to the keyboard and short enough that an unattended
+// script finishes rather than hanging until someone notices.
+const FocusWaitTimeout = 60 * time.Second
+
+// WaitForFocus blocks until this experiment's window holds keyboard focus, or
+// until timeout, and reports whether it got it.
+//
+// It exists because a modern desktop will not let an application focus itself.
+// GNOME's window manager refuses the request outright (focus-stealing
+// prevention), and under Wayland an application cannot even ask without an
+// activation token handed to it by a user action — so after another process
+// has owned the display, only a click can give focus back. What software can
+// do is flash the window so the click is discoverable, say so in the terminal,
+// and refuse to continue in the meantime.
+//
+// Waiting is the point. SDL delivers key events only to the focused window, so
+// trials run before the click record no responses at all, and nothing about
+// the data file afterwards says why.
+//
+// It returns true immediately on a system where the question does not arise —
+// a bare X server with no window manager, or KMSDRM — because there the window
+// already has focus.
+func (e *Experiment) WaitForFocus(timeout time.Duration) bool {
+	if e.Screen == nil || e.Screen.Window == nil {
+		return false
+	}
+	w := e.Screen.Window
+	if w.Flags()&sdl.WINDOW_INPUT_FOCUS != 0 {
+		return true
+	}
+
+	// FLASH_UNTIL_FOCUSED marks the window as demanding attention, which is
+	// what makes its icon stand out in the dash or the task bar.
+	if err := w.Flash(sdl.FLASH_UNTIL_FOCUSED); err != nil {
+		log.Printf("control: flashing the window for attention: %v", err)
+	}
+	log.Printf("control: the experiment window does NOT have keyboard focus — "+
+		"click it (its icon is flashing) to give it back. Waiting up to %v; "+
+		"keys pressed before then go to whatever window has focus, not to the "+
+		"experiment.", timeout)
+
+	start := time.Now()
+	for time.Since(start) < timeout {
+		sdl.PumpEvents()
+		if w.Flags()&sdl.WINDOW_INPUT_FOCUS != 0 {
+			// Everything queued while another window had focus belongs to that
+			// window, and the click that focused ours is not a response.
+			sdl.FlushEvents(sdl.EVENT_KEY_DOWN, sdl.EVENT_TEXT_INPUT)
+			sdl.FlushEvents(sdl.EVENT_MOUSE_BUTTON_DOWN, sdl.EVENT_MOUSE_BUTTON_UP)
+			log.Printf("control: keyboard focus regained after %v",
+				time.Since(start).Round(time.Millisecond))
+			return true
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+	log.Printf("control: WARNING: still no keyboard focus after %v — continuing "+
+		"anyway. Responses will be lost until the window is clicked.", timeout)
+	return false
 }
 
 // calibrateStepwise drives a calibration whose targets we have to draw.
