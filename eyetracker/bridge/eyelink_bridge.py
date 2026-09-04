@@ -29,6 +29,7 @@ is the measurement.
 """
 
 import argparse
+import math
 import sys
 import time
 
@@ -102,8 +103,6 @@ class SimTracker:
         t = self.tracker_time()
         # A Lissajous path, so the simulated gaze moves in a way that is
         # obviously synthetic on screen and never sits still.
-        import math
-
         x = self.width / 2 + 0.3 * self.width * math.sin(t / 900.0)
         y = self.height / 2 + 0.3 * self.height * math.sin(t / 1330.0)
         time.sleep(1.0 / self.rate)
@@ -218,16 +217,26 @@ class EyeLinkTracker:
         except Exception as exc:
             log("cannot read the calibration result: %s" % exc)
             return {"points": points or 9, "verified": False, "message": ""}
-        if result != 0:
-            raise RuntimeError(
-                "no usable calibration was stored (result %s%s). The operator "
-                "left setup without completing one, or every target was "
-                "rejected. Recording now would produce gaze positions that "
-                "mean nothing." % (result, ": " + message if message else "")
-            )
-        log("calibration stored: %s" % (message or "(no message)"))
-        return {"points": points or 9, "verified": True,
-                "result": result, "message": message}
+        # The result codes come from the EyeLink C API. OK_RESULT is 0.
+        # NO_REPLY is 1000 and means "the tracker has no result pending" — NOT
+        # that the calibration failed: doTrackerSetup consumes the reply of the
+        # last operation, so a session that ends with a good validation returns
+        # here with nothing left to report. Reading 1000 as a failure rejected
+        # calibrations that had just validated at 0.47 deg average error.
+        # The message is then the evidence, and it names what was run.
+        no_reply = getattr(self.pylink, "NO_REPLY", 1000)
+        low = message.lower()
+        by_message = "validation_result" in low or "calibration_result" in low
+        if result == 0 or (result == no_reply and by_message):
+            log("calibration stored: %s (result %s)" % (message or "(no message)", result))
+            return {"points": points or 9, "verified": True,
+                    "result": result, "message": message}
+        raise RuntimeError(
+            "no usable calibration was stored (result %s%s). The operator "
+            "left setup without completing one, or every target was "
+            "rejected. Recording now would produce gaze positions that "
+            "mean nothing." % (result, ": " + message if message else "")
+        )
 
     def _close_graphics(self, quiet=False):
         """Tear down pylink's graphics environment, tolerating its absence.
@@ -367,23 +376,37 @@ class EyeLinkTracker:
             return None
         ev = {"ev": name, "eye": self._eye_of(e)}
 
+        # Every conversion is inside the try, not just the call. pylink's
+        # getters are not uniform — getAmplitude() returns a PAIR of degrees,
+        # one per axis, where getPeakVelocity() returns a number — and a
+        # float() against the wrong shape propagated out of poll(), where
+        # bridgelib stops the sample pump. One saccade then ended gaze
+        # streaming for the rest of the session:
+        #
+        #   [bridge] poll failed: float() argument must be a string or a real
+        #   number, not 'tuple'
+        #
+        # A field that will not convert is dropped and named; the stream is
+        # worth more than any one of them.
         def put(key, fn, *idx):
             try:
                 v = fn()
-            except Exception:
-                return
-            if v is None:
-                return
-            if idx:
-                try:
-                    a, b = v
-                except Exception:
+                if v is None:
                     return
-                if a > MISSING and b > MISSING:
-                    ev[idx[0]] = float(a)
-                    ev[idx[1]] = float(b)
-                return
-            ev[key] = float(v)
+                if idx:
+                    a, b = v
+                    if a > MISSING and b > MISSING:
+                        ev[idx[0]] = float(a)
+                        ev[idx[1]] = float(b)
+                    return
+                if isinstance(v, (tuple, list)):
+                    # An amplitude given per axis; report the magnitude, which
+                    # is what "saccade amplitude" means everywhere else.
+                    ev[key] = math.hypot(float(v[0]), float(v[1]))
+                    return
+                ev[key] = float(v)
+            except Exception as exc:
+                log("dropping %s from a %s event: %s" % (key or idx, name, exc))
 
         put("start", e.getStartTime)
         if name.endswith("_end"):

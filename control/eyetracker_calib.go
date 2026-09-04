@@ -128,13 +128,57 @@ func (e *Experiment) ReclaimDisplay() {
 	if e.Screen == nil || e.Screen.Window == nil {
 		return
 	}
-	// Show before Raise: a window that was unmapped cannot be raised.
-	if err := e.Screen.Window.Show(); err != nil {
+	w := e.Screen.Window
+	before := w.Flags()
+
+	// Restore before Show before Raise. A window the window manager iconified
+	// cannot be raised, and Show does not un-iconify it.
+	if err := w.Restore(); err != nil {
+		log.Printf("control: restoring the window after calibration: %v", err)
+	}
+	if err := w.Show(); err != nil {
 		log.Printf("control: showing the window after calibration: %v", err)
 	}
-	if err := e.Screen.Window.Raise(); err != nil {
+	if err := w.Raise(); err != nil {
 		log.Printf("control: raising the window after calibration: %v", err)
 	}
+	// These reach the screen through the window manager, which answers when it
+	// chooses; Sync waits for it and PumpEvents lets SDL see the answer.
+	sdl.PumpEvents()
+	if err := w.Sync(); err != nil {
+		log.Printf("control: syncing the window state after calibration: %v", err)
+	}
+
+	// Most X11 window managers refuse a raise from an application that does
+	// not hold focus — the anti-focus-stealing rule — and the terminal the
+	// experiment was launched from is what holds it once the tracker's window
+	// closes. Asking for _NET_WM_STATE_ABOVE and dropping it again restacks
+	// the window without asking for focus, which is honoured where a bare
+	// raise is not. It is a no-op with no window manager at all (KMSDRM).
+	if w.Flags()&sdl.WINDOW_INPUT_FOCUS == 0 {
+		if err := w.SetAlwaysOnTop(true); err != nil {
+			log.Printf("control: putting the window on top after calibration: %v", err)
+		}
+		sdl.PumpEvents()
+		_ = w.Sync()
+		if err := w.SetAlwaysOnTop(false); err != nil {
+			log.Printf("control: releasing always-on-top after calibration: %v", err)
+		}
+		sdl.PumpEvents()
+		_ = w.Sync()
+	}
+
+	// Say what happened. A window manager that refuses every one of the calls
+	// above does so silently, and the alternative to this line is guessing
+	// from the other side of the room which of them it ignored.
+	if after := w.Flags(); after != before {
+		log.Printf("control: reclaimed the display (window flags %#x -> %#x)", before, after)
+	} else {
+		log.Printf("control: window flags unchanged at %#x after reclaiming the "+
+			"display; if the experiment is not in front, the window manager "+
+			"refused to raise it", before)
+	}
+
 	// What a covered window holds is not guaranteed, so repaint: the next
 	// thing on screen should be ours, not whatever survived underneath.
 	if err := e.Screen.ClearAndUpdate(); err != nil {

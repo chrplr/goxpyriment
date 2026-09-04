@@ -81,6 +81,11 @@ CALIBRATION_COMMANDS = (
 )
 
 
+# How many consecutive poll() failures end the sample stream. One bad event
+# must not, and a back end that cannot poll at all must not spin for ever.
+POLL_FAILURE_LIMIT = 50
+
+
 def log(msg):
     print("[bridge] %s" % msg, file=sys.stderr, flush=True)
 
@@ -122,6 +127,12 @@ class Session:
                 return
 
     def pump(self):
+        # A poll that raises used to end the stream then and there. One
+        # malformed field in one event therefore cost a whole session's gaze,
+        # silently as far as the experiment could tell. Tolerate failures and
+        # give up only when they will not stop: a back end that raises on every
+        # call is broken, one that raises on a single event is not.
+        failures = 0
         while self.running:
             if not self.polling:
                 time.sleep(0.005)
@@ -129,10 +140,23 @@ class Session:
             try:
                 for ev in self.tracker.poll():
                     self.send(ev)
+                failures = 0
             except Exception as exc:
-                log("poll failed: %s" % exc)
+                failures += 1
+                if failures <= 3 or failures % 100 == 0:
+                    log("poll failed (%d in a row): %s" % (failures, exc))
                 self.send({"ev": "log", "level": "error", "msg": "poll: %s" % exc})
-                self.polling = False
+                if failures >= POLL_FAILURE_LIMIT:
+                    log("giving up on the sample stream after %d failures in a row"
+                        % failures)
+                    self.send({"ev": "log", "level": "error",
+                               "msg": "sample stream stopped after %d poll failures"
+                                      % failures})
+                    self.polling = False
+                    failures = 0
+                else:
+                    # Do not spin on a back end that fails instantly.
+                    time.sleep(0.005)
 
     # -- commands ---------------------------------------------------------
 
