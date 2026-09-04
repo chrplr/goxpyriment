@@ -193,11 +193,19 @@ class EyeLinkTracker:
                 "where pylink's graphics work. Everything else (recording, "
                 "markers, sample streaming) is unaffected."
             )
+        # A graphics environment may still be up from an earlier calibration:
+        # this bridge outlives any one run of the experiment, and a run
+        # interrupted while pylink owned the display leaves its window behind.
+        # pylink then refuses the next openGraphics with "unable to use
+        # OpenGraphics when a previous Core Graphics is active", and the
+        # calibration is silently skipped for the rest of the bridge's life.
+        # Closing first costs nothing when nothing is open.
+        self._close_graphics(quiet=True)
         self.pylink.openGraphics()
         try:
             self.el.doTrackerSetup()
         finally:
-            self.pylink.closeGraphics()
+            self._close_graphics()
 
         # doTrackerSetup returns whenever the operator leaves setup, whether or
         # not anything was calibrated, so its return is no evidence. Ask the
@@ -220,6 +228,22 @@ class EyeLinkTracker:
         log("calibration stored: %s" % (message or "(no message)"))
         return {"points": points or 9, "verified": True,
                 "result": result, "message": message}
+
+    def _close_graphics(self, quiet=False):
+        """Tear down pylink's graphics environment, tolerating its absence.
+
+        A failure here must not replace whatever exception is already on its
+        way out of doTrackerSetup, and must not stop the bridge: the next
+        openGraphics is the thing that would notice, and it now closes first.
+        """
+        close = getattr(self.pylink, "closeGraphics", None)
+        if close is None:
+            return
+        try:
+            close()
+        except Exception as exc:
+            if not quiet:
+                log("closeGraphics failed: %s (continuing)" % exc)
 
     def start_recording(self):
         # (file_samples, file_events, link_samples, link_events)
