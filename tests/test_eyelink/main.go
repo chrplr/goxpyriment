@@ -204,7 +204,13 @@ func run(exp *control.Experiment, cfg config) error {
 		fmt.Println("  C calibrate, V validate, Enter accept a target, Esc leave setup.")
 		fmt.Println("  Targets advance by themselves once the eye holds still, so an")
 		fmt.Println("  empty chair will sit on target 1 for ever: seat the participant first.")
-		if err := tracker.Calibrate(eyetracker.CalibrationOptions{Points: cfg.points}); err != nil {
+		err := tracker.Calibrate(eyetracker.CalibrationOptions{Points: cfg.points})
+		// pylink's window closed with that call, and closing it hands focus to
+		// whatever the window manager finds next — the terminal this was
+		// launched from. Ours has to be raised again or the trials run behind
+		// it, visible only as lines scrolling past in that terminal.
+		exp.ReclaimDisplay()
+		if err != nil {
 			// Carrying on is deliberate: every figure this test reports is
 			// independent of where the eye is pointing, so an uncalibrated run
 			// still measures what it exists to measure.

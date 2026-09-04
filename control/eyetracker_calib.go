@@ -86,10 +86,48 @@ func (e *Experiment) CalibrateTracker(t eyetracker.Tracker,
 
 	sc, ok := t.(eyetracker.StepwiseCalibrator)
 	if !ok {
-		// The tracker draws its own targets. Nothing for us to do but ask.
-		return t.Calibrate(opts)
+		// The tracker draws its own targets, in its own window: pylink opens
+		// one from the bridge process and closes it when the operator leaves
+		// setup. Nothing for us to do but ask — and then take the display
+		// back, because that window's closing hands focus to whatever the
+		// window manager finds next, usually the terminal the experiment was
+		// launched from, leaving our fullscreen window behind it. The run
+		// carries on invisibly: trials scroll past in the terminal and the
+		// participant sees nothing.
+		err := t.Calibrate(opts)
+		e.ReclaimDisplay()
+		return err
 	}
 	return e.calibrateStepwise(t, sc, opts)
+}
+
+// ReclaimDisplay puts this experiment's window back in front after another
+// process has owned the display, and repaints it.
+//
+// [Experiment.CalibrateTracker] calls it for a tracker that draws its own
+// targets. Call it directly after anything else that puts a foreign window on
+// screen — notably eyetracker.Bridge.Calibrate on an EyeLink, where pylink
+// opens and closes a window of its own from the bridge process.
+//
+// Every step is best-effort and reported rather than returned: whatever the
+// caller was doing owns the outcome, and a window manager that refuses to raise
+// a window must not turn a good calibration into a failure.
+func (e *Experiment) ReclaimDisplay() {
+	if e.Screen == nil || e.Screen.Window == nil {
+		return
+	}
+	// Show before Raise: a window that was unmapped cannot be raised.
+	if err := e.Screen.Window.Show(); err != nil {
+		log.Printf("control: showing the window after calibration: %v", err)
+	}
+	if err := e.Screen.Window.Raise(); err != nil {
+		log.Printf("control: raising the window after calibration: %v", err)
+	}
+	// What a covered window holds is not guaranteed, so repaint: the next
+	// thing on screen should be ours, not whatever survived underneath.
+	if err := e.Screen.ClearAndUpdate(); err != nil {
+		log.Printf("control: repainting after calibration: %v", err)
+	}
 }
 
 // calibrateStepwise drives a calibration whose targets we have to draw.

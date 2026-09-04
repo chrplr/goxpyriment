@@ -155,12 +155,28 @@ onset of the patch.
 targets from the **bridge process**, so they appear over whatever goxpyriment
 has on screen; the tracker owns the display until the operator leaves setup.
 
+The keys are the EyeLink's own standard set, handled by pylink and not by
+goxpyriment:
+
 | Key | Action |
 |---|---|
 | `C` | start calibration |
-| `V` | start validation |
-| `Enter` | accept the current target |
-| `Esc` | leave setup and hand control back to the experiment |
+| `V` | start validation (after a calibration) |
+| `D` | drift check / correct |
+| `A` | auto-threshold the pupil |
+| `Enter` | accept the current target during calibration; toggle the camera image in setup |
+| `Esc` | leave setup — **the run starts recording immediately** |
+
+Between operations the screen shows the camera image, the eye video. That is
+where the routine sits when it is not drawing targets, so a calibration and then
+a validation each end by returning there: seeing the eye again is the normal
+"done" state, not a failure. **Press Esc to leave.** There is no second keypress
+to start the acquisition — the bridge reads back what was stored, the program
+starts the recording and the first trial's blank ISI follows at once.
+
+That Esc goes to pylink, not to goxpyriment, and does not abort the run — unlike
+Esc everywhere else in the framework, including `control.CalibrateTracker`,
+which is the path a tracker whose SDK draws nothing (a Tobii) takes.
 
 The bridge enables automatic pacing, so targets advance on their own once the
 eye holds still. That also means **an empty chair sits on target 1 for ever** —
