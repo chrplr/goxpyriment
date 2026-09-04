@@ -122,11 +122,13 @@ the same model.
   progressively from the disk in a goroutine, if possible (but beware lz4
   compression).
 
-## Eye tracking: run the EyeLink bridge against real hardware
+## Eye tracking: the EyeLink bridge against real hardware
 
 The `eyetracker/` package and `eyetracker/bridge/eyelink_bridge.py` were written
-on 2026-08-31 and have never seen a tracker. Everything below is the first
-session with the Host PC.
+on 2026-08-31 and first ran against a tracker on 2026-09-01: an EYELINK CL 4.51
+at 100.1.1.1, sampling at 2000 Hz. Connect, open the EDF, record, `MSG` marks,
+the sample stream, calibration and the EDF fetch all work end to end. What
+follows is the routine for a session, and the checks that are still open.
 
 **Why there is a bridge at all.** SR Research publishes no network protocol: the
 only supported API is the C library, wrapped as pylink. Rather than take on CGo
@@ -144,35 +146,43 @@ over loopback. See `eyetracker/CLAUDE.md`.
    exits. If pylink is missing, install the EyeLink Developer Kit before
    anything else.
 
-2. **Wire a TTL output line to the Host PC's parallel port**, and check the Host
-   is configured to keep `INPUT` events in the EDF. The bridge asks for this at
-   open (`file_event_filter` includes `INPUT`), but that request has never been
-   verified against a Host. If the edges do not appear in the EDF, this is the
-   first thing to look at.
+2. **Decide where the TTL goes.** On the MEG rig it goes to the acquisition's
+   STI channel, where it meets the gaze the Host PC sends to the MISC channels
+   as analog X/Y/pupil — so the two are aligned in the MEG file, not in the EDF.
+   Nothing is wired to the Host's parallel-port *input*: holding 0x00 and then
+   0xFF on all eight lines both read `INPUT 127`, the idle value of an
+   unconnected port. Wiring a TTL line to the Host's DB25 as well would put the
+   edges in the EDF and enable the Host-clock measurement in step 4; the bridge
+   already asks for `INPUT` events at open (`file_event_filter` includes
+   `INPUT`), though that request has never been verified against a Host that
+   receives any.
 
 3. **Run the test**, bridge in one terminal and experiment in another:
 
        python3 eyetracker/bridge/eyelink_bridge.py --tracker-host 100.1.1.1
-       go run ./tests/test_eyelink -s 999 -trigger parport -device /dev/parport0 \
+       go run ./tests/test_eyelink -s 999 -device parallel:port=/dev/parport0,pin=1 \
            -trials 50 -fetch /tmp/goxtest.edf
 
-4. **Read the EDF.** `edf2asc /tmp/goxtest.edf`, then compare each `INPUT` line
-   against the `MSG` that follows it. Each trial fires a TTL on the flip thread
-   immediately after the onset flip, then sends the same event as a message
-   through the bridge. Both land in the same file on the Host's clock, so the
-   gap between them *is* the bridge's latency, measured rather than inferred.
-   Record it: it is the number that decides whether a message can ever time a
-   stimulus, and the expected answer is no.
+4. **Read the results.** The CSV holds the per-trial flip → TTL gap and the
+   full bridge round trip, both measured on this machine; the round trip is an
+   upper bound on the one-way latency of a `MSG`, and it is the number that
+   decides whether a message can ever time a stimulus (the answer is no).
+   `edf2asc /tmp/goxtest.edf` then confirms every trial's `MSG` is in the EDF,
+   and the MEG STI channel confirms the pulses. With a cable to the Host's DB25
+   (step 2) the better measurement becomes available: the gap between each
+   `INPUT` and the `MSG` that follows it, on the tracker's own clock, measured
+   rather than inferred.
 
 ### What to expect, and what would be surprising
 
-The only figures so far are against the simulator on this machine, 5 trials,
-windowed, with no TTL device attached: flip to TTL raise 7.9 us median (call
-overhead, nothing more), bridge round trip 219 us median. Both should be worse
-against hardware. A bridge round trip in the low milliseconds is normal and
-harmless; a `MSG`-minus-`INPUT` gap in the EDF of more than a frame is the
-result that matters, and it is the argument for never marking onsets over the
-link.
+Against the simulator on this machine, 5 trials, windowed, with no TTL device
+attached: flip to TTL raise 7.9 us median (call overhead, nothing more), bridge
+round trip 219 us median. Against the real Host on the MEG rig, three runs of
+10-20 trials: round trip 600-719 us median, 1207 us worst. A round trip in the
+low milliseconds is normal and harmless in itself; what it rules out is timing a
+stimulus with a `MSG`, since a frame is 8.3 ms at 120 Hz. With the Host's DB25
+wired, the `MSG`-minus-`INPUT` gap in the EDF would settle that on the tracker's
+clock instead of this one.
 
 `Sync` is called before and after the run, so the change in offset over the
 session gives the tracker-versus-local clock drift. If it is large enough to
@@ -180,23 +190,27 @@ matter, alignment has to be interpolated rather than applied as a constant.
 
 ### Known gaps, in the order they will bite
 
-**The pylink calls are unexercised.** `EyeLinkTracker` in the bridge is written
-from the documented API and has never run. It is the part to distrust when
-something fails; the Go side is covered by tests, including one that drives the
-real script in `--simulate` (`TestAgainstPythonBridge`).
+**Calibration success is inferred, not verified.** `doTrackerSetup` works —
+pylink draws its targets from the bridge process, over whatever goxpyriment has
+on screen, and the tracker owns the display until the operator presses Esc. But
+the routine exits identically whether or not anything was stored, so the bridge
+asks `getCalibrationResult()` afterwards and treats 0 as success. That reading
+has never been checked against a *successful* calibration. If a good calibration
+is reported as "no usable calibration was stored", the check is wrong, not the
+calibration; `grep '!CAL'` on the converted EDF is the authority. (Trackers whose
+SDK draws nothing — a Tobii — are calibrated by `control.CalibrateTracker`
+instead, which draws the targets with `stimuli/` and flips them itself.)
 
-**Calibration graphics.** `doTrackerSetup` needs somewhere to draw its targets,
-pylink's built-in graphics are not available everywhere, and goxpyriment owns
-the display. `-calibrate` reports the problem and carries on rather than opening
-a second window or hanging on a blank screen. Gaze *positions* are then
-meaningless; every timing figure above is unaffected, since none of them depends
-on where the eye is. The fix is a calibration routine drawn with `stimuli/` that
-reports target positions back over the protocol -- not written.
+**pylink installation is a trap.** `sr-research-pylink` in a venv, separate from
+the EyeLink Developers Kit: 3.10 on the dev PC, 3.11 on the stim PC. Plain
+`pip install pylink` fetches an unrelated SEGGER J-Link wrapper that imports
+cleanly and then fails confusingly.
 
 **Nothing is wired into `control`.** There is no `exp.Tracker`, and the data file
 gets the bridge identity and the clock offsets only because
-`tests/test_eyelink` writes them itself. Worth doing once the hardware path is
-known to work, not before.
+`tests/test_eyelink` writes them itself. `control.CalibrateTracker` is the one
+piece that does live there. Now that the hardware path works, this is worth
+doing.
 
 ### Other trackers
 

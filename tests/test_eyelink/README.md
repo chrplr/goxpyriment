@@ -5,33 +5,50 @@ what the bridge costs.
 
 ## What it measures
 
-Every trial flips a white patch, then does the same thing twice by two
-different routes:
+Every trial flips a white patch, then marks that flip twice by two different
+routes:
 
-1. **A TTL pulse**, raised on the flip thread immediately after the flip. The
-   EyeLink Host PC records the edge on its parallel port as an `INPUT` event,
-   timestamped by the Host itself.
-2. **A message through the bridge**, sent straight after. The Host records it as
-   a `MSG`, timestamped when it arrives.
+1. **A TTL pulse**, raised on the flip thread immediately after the flip, on
+   whatever device `-trigger` selects.
+2. **A message through the bridge**, sent straight after. The Host PC records it
+   in the EDF as a `MSG`, timestamped when it arrives.
 
-Both land in the same EDF on the same clock, so the gap between each `INPUT` and
-the `MSG` that follows it *is* the bridge's added latency — measured by the
-tracker, not inferred from this side. That is the number that decides whether a
-message can ever be used to time a stimulus. (It cannot; this test is how you
-show by how much.)
+The two do **not** currently meet in the same file — see *Wiring* below. So what
+this test actually reports is measured on **this machine**: the flip → TTL gap,
+and the full round trip of a bridge `Mark` (send, Python, tracker, reply). The
+round trip is an upper bound on the bridge's one-way latency, and it is the
+number that decides whether a `MSG` can be used to time a stimulus. It cannot:
+three runs of 10–20 trials on the MEG rig gave a median of 600–719 µs and a
+maximum of 1207 µs, against a frame of 8.3 ms at 120 Hz. Mark stimulus onsets
+with `triggers.FireTriggerSync`, and use `MSG` only for labelling.
 
 It also synchronises the two clocks before and after the run, so the difference
 gives the drift, and streams gaze samples throughout to check the link is alive.
 
 ## Wiring
 
+On the MEG rig the TTL and the gaze are joined in the **MEG acquisition**, not
+in the EDF:
+
 ```
-display PC ──TTL out── EyeLink Host PC parallel port (INPUT)
-display PC ──ethernet── EyeLink Host PC (the SDK link, via the bridge)
+stim PC ──TTL out────── MEG STI channel   (stimulus onsets)
+EyeLink Host PC ──X / Y / pupil (analog)── MEG MISC channels  (gaze)
+stim PC ──ethernet───── EyeLink Host PC   (the SDK link, via the bridge)
 ```
 
-The Host records TTL edges as `INPUT` events only when the EDF keeps them; the
-bridge asks for that at open (`file_event_filter` includes `INPUT`).
+Both signals are therefore on the MEG's clock, and stimulus onset is aligned
+with gaze in the MEG file. The EDF is a second, independent record of the gaze,
+carrying the bridge's `MSG` marks but **not** the TTL.
+
+**Nothing is connected to the EyeLink Host's parallel-port input.** Holding
+`0x00` and then `0xFF` on all eight lines of the TTL box both read `INPUT 127`
+in the EDF — 127 is the idle value of an unconnected port. Until a cable runs
+from a TTL source to the Host's DB25, the EDF contains no usable `INPUT` events,
+and the Host-clock comparison of an `INPUT` against its `MSG` — the tracker
+measuring the bridge's latency itself, rather than this side inferring it — is
+not available. The bridge does ask for `INPUT` in `file_event_filter` at open,
+so that measurement becomes possible the moment the cable exists, with no change
+to this program.
 
 ## Running it
 
@@ -56,21 +73,48 @@ Then, from the repo root:
 # no TTL device — exercises the bridge only
 go run ./tests/test_eyelink -w -s 999
 
-# the real measurement, through a parallel port
-go run ./tests/test_eyelink -s 999 -trigger parport -device /dev/parport0 \
+# with the MEG TTL box: pulses reach the MEG STI channel, and the run also
+# measures the flip → TTL gap
+go run ./tests/test_eyelink -s 999 -device megttlbox:port=/dev/ttyACM0,pin=1 \
     -trials 50 -fetch /tmp/goxtest.edf
 
-# or through the MEG TTL box (Arduino-based, /dev/ttyACM0 by default)
-go run ./tests/test_eyelink -s 999 -trigger megttl -device /dev/ttyACM0 \
+# or through a parallel port — pin=N is the data line, 1-8 as D0-D7
+go run ./tests/test_eyelink -s 999 -device parallel:port=/dev/parport0,pin=1 \
     -trials 50 -fetch /tmp/goxtest.edf
+
+# the second LPT, driving D3 (DB25 pin 5)
+go run ./tests/test_eyelink -s 999 -device parallel:port=/dev/parport1,pin=4
 
 # see the gaze on screen first, to confirm the stream and the calibration
 go run ./tests/test_eyelink -w -s 999 -gaze
 ```
 
-Useful flags: `-trigger none|parport|dlpio8|dlpio20|megttl`, `-device`, `-line`,
-`-pulse`, `-trials`, `-isi`, `-calibrate`, `-points`, `-fetch`, `-sync`.
-`-w` runs windowed, `-s` sets the subject ID. Escape aborts between trials.
+### Naming the TTL device
+
+`-device` takes one `KIND[:key=value,...]` spec, the same syntax as
+`test_triggers` (`tests/internal/trigdev`); `-h` prints the full list. The kinds
+that matter here are `megttlbox:port=…`, `parallel:port=…`, and `null` (the
+default: no hardware, bridge only). Every kind also takes `pin=N`, **numbered
+1-8 as printed on the hardware** — on a parallel port `pin=1` is D0, DB25 pin 2,
+and `pin=N` is D(N-1), DB25 pin N+1; ground is any of DB25 pins 18-25, 5 V logic.
+
+Leaving `port=` out of a `parallel:` spec takes the first accessible port. On
+the stim PC, which has two, the run prints which one it chose and what the
+alternatives were — but name the port explicitly rather than relying on the
+enumeration order.
+
+The port must be usable from userspace: `sudo modprobe ppdev`, rw access to the
+node (`sudo usermod -aG lp $USER`, then log in again), and — if `dmesg` says
+`lp0: using parport0` — `sudo rmmod lp`. With the `lp` printer driver holding
+the port, the claim can block in uninterruptible sleep and the process cannot
+be killed. See `triggers/parallel.go` for the details.
+
+The device, the pin and the spec as typed are written into the run's
+`-info.txt`, so a data file says what produced its triggers.
+
+Other useful flags: `-pulse` (TTL width, 5 ms), `-trials`, `-isi`, `-frames`,
+`-calibrate`, `-points`, `-fetch`, `-sync`. `-w` runs windowed, `-s` sets the
+subject ID. Escape aborts between trials.
 
 ## Samples, and what "dropped" means
 
@@ -87,17 +131,23 @@ hole in the data.
 ## Reading the results
 
 The CSV written by the run holds, per trial, the flip timestamp, the flip → TTL
-gap, and the full bridge round trip, all measured on this machine.
+gap, and the full bridge round trip, all measured on this machine. That is where
+every latency figure this test reports comes from.
 
-The EDF holds the other half. Convert and compare:
+The EDF holds the marks. Convert it and check they are all there, one per trial:
 
 ```bash
 edf2asc /tmp/goxtest.edf
-grep -E '^(INPUT|MSG)' /tmp/goxtest.asc | head -20
+grep '^MSG' /tmp/goxtest.asc | grep TRIAL | head -20
 ```
 
-Each `INPUT` should be followed by the `MSG` for the same trial. The difference
-between their timestamps is the bridge latency on the Host clock.
+`INPUT` lines, if any appear, are the Host's unconnected port idling at 127 and
+mean nothing (see *Wiring*). With a cable to the Host's DB25 they would become
+the real measurement: each `INPUT` followed by its trial's `MSG`, the difference
+being the bridge's latency on the Host clock.
+
+To check the TTL side, look at the MEG STI channel: one pulse per trial, at the
+onset of the patch.
 
 ## Calibration
 

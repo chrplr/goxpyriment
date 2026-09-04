@@ -1,3 +1,3 @@
 category: test
-description: Checks an SR Research EyeLink through the Python bridge, and measures what the bridge costs against a TTL
+description: Checks an SR Research EyeLink through the Python bridge, and measures what a bridge message costs against a TTL fired at the same flip
 reference: ""

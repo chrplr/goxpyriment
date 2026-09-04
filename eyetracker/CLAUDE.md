@@ -134,9 +134,12 @@ input on its parallel port as `INPUT` events in the EDF, timestamped by the Host
 when the edge arrives — no round trip, nothing to be delayed by the socket, and
 `triggers.FireTriggerSync` already drives that hardware from the flip thread.
 
-`Mark` is for trial labels and bookkeeping. `tests/test_eyelink` measures the
-difference between the two routes in the EDF itself, which is the only place
-they share a clock.
+`Mark` is for trial labels and bookkeeping. `tests/test_eyelink` times a `Mark`
+round trip against the flip it belongs to, on the display machine: 600-719 us
+median, 1207 us worst, over three runs on the MEG rig. Comparing the two routes
+*in the EDF* — the only place they share a clock — needs a TTL line wired to the
+Host's DB25, which the MEG rig does not have: there the TTL goes to the
+acquisition's STI channel instead, and meets the gaze in the MISC channels.
 
 ## Testing
 

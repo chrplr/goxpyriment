@@ -6,18 +6,19 @@
 //
 // It answers three questions, in order of how much they matter:
 //
-//  1. Do TTL pulses from this machine land in the EDF? Every trial pulses a
-//     TTL line whose rising edge is issued on the flip thread, immediately
-//     after the flip. The Host PC records it as an INPUT event, timestamped by
-//     the Host itself. This is the path an experiment should use to mark a
-//     stimulus onset.
+//  1. What does the bridge add? Every trial sends a message through the bridge
+//     right after the onset flip, and the full round trip — socket, Python
+//     process, link, reply — is timed on this machine. It is an upper bound on
+//     the one-way latency, and it is the number that says whether a message can
+//     ever be used for timing. (Expect it to say no: use a TTL for onsets and
+//     keep MSG for labels.)
 //
-//  2. What does the bridge add? Every trial ALSO sends a message through the
-//     bridge, right after the TTL. In the EDF, the MSG lands later than the
-//     INPUT by however long the socket, the Python process and the link took —
-//     measured on the tracker's own clock, which is the only clock that can
-//     compare them. That difference is the number that says whether a message
-//     can ever be used for timing. (Expect it to say no.)
+//  2. Does the TTL leave this machine on time? Every trial also pulses a TTL
+//     line whose rising edge is issued on the flip thread, immediately after
+//     the flip; the gap between the flip timestamp and the return of the raise
+//     is recorded. That is the path an experiment should use to mark a stimulus
+//     onset. Where the pulse LANDS depends on the wiring, and on the MEG rig it
+//     is not the EDF — see below.
 //
 //  3. Does the sample stream work, and how do the two clocks relate? The
 //     tracker's clock and this machine's clock are sampled before and after
@@ -28,21 +29,31 @@
 //	# on the display machine, in one terminal:
 //	python3 eyetracker/bridge/eyelink_bridge.py --tracker-host 100.1.1.1
 //
-//	# in another:
-//	go run ./tests/test_eyelink -w -s 999 -trigger parport -device /dev/parport0
+//	# in another (the TTL device is named by one -device spec; -h prints the
+//	# syntax, and pin= is 1-8 as printed on the hardware):
+//	go run ./tests/test_eyelink -w -s 999 -device parallel:port=/dev/parport0,pin=1
+//	go run ./tests/test_eyelink -w -s 999 -device megttlbox:port=/dev/ttyACM0,pin=1
 //
 //	# no hardware at all — bridge started with --simulate:
 //	go run ./tests/test_eyelink -w -s 999
 //
-// Wiring for (1): a TTL output line from this machine to the EyeLink Host PC's
-// parallel port input. The Host records the edge as an INPUT event only if the
-// EDF is configured to keep them, which the bridge asks for at open
-// (file_event_filter includes INPUT).
+// Wiring. On the MEG rig the TTL goes to the MEG acquisition's STI channel, and
+// the Host PC sends gaze to the same acquisition's MISC channels as analog X, Y
+// and pupil; the two therefore meet on the MEG's clock, not in the EDF. Nothing
+// is connected to the Host's parallel-port INPUT, so the EDF carries the MSG
+// marks but no TTL — an INPUT line in it, if any appears, is the unconnected
+// port idling at 127.
 //
-// Analysis: convert the EDF with edf2asc and compare, per trial, the INPUT line
-// against the following MSG line. The difference is the bridge's added latency
-// on the Host clock. The CSV this program writes holds the same trials measured
-// from this side.
+// That leaves every latency figure here measured on this side, which is why
+// (1) times a round trip rather than the one-way gap. Wiring a TTL line to the
+// Host's DB25 would give the better measurement without changing this program:
+// each INPUT and the MSG that follows it, on the tracker's own clock, which is
+// the only clock that can compare them. The EDF is asked to keep INPUT events
+// at open already (file_event_filter includes INPUT).
+//
+// Analysis: the CSV this program writes holds the per-trial timings. Convert
+// the EDF with edf2asc to check that every trial's MSG is there, and look at
+// the MEG STI channel for the pulses.
 package main
 
 import (
@@ -51,6 +62,7 @@ import (
 	"log"
 	"os"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/Zyko0/go-sdl3/sdl"
@@ -58,6 +70,7 @@ import (
 	"github.com/chrplr/goxpyriment/eyetracker"
 	"github.com/chrplr/goxpyriment/stimuli"
 	"github.com/chrplr/goxpyriment/tests/internal/safeexit"
+	"github.com/chrplr/goxpyriment/tests/internal/trigdev"
 	"github.com/chrplr/goxpyriment/triggers"
 )
 
@@ -73,9 +86,7 @@ func main() {
 	fCalibrate := flag.Bool("calibrate", false, "run the tracker's calibration before recording")
 	fPoints := flag.Int("points", 9, "calibration points (with -calibrate)")
 	fGaze := flag.Bool("gaze", false, "before the trials, show a live gaze dot until a key is pressed")
-	fTrigger := flag.String("trigger", "none", `TTL device: "none", "parport", "dlpio8", "dlpio20" or "megttl"`)
-	fDevice := flag.String("device", "", "device path for -trigger (empty: auto-detect where supported)")
-	fLine := flag.Int("line", 0, "TTL output line to pulse (0-7)")
+	fDevice := flag.String("device", "null", "TTL output device pulsed at each flip.\n"+trimBlank(trigdev.Usage))
 	fPulse := flag.Duration("pulse", 5*time.Millisecond, "TTL pulse width")
 	fSync := flag.Int("sync", 20, "clock round trips per synchronisation")
 
@@ -93,9 +104,7 @@ func main() {
 		calibrate:   *fCalibrate,
 		points:      *fPoints,
 		gaze:        *fGaze,
-		trigger:     *fTrigger,
 		device:      *fDevice,
-		line:        *fLine,
 		pulse:       *fPulse,
 		syncN:       *fSync,
 	}
@@ -117,9 +126,7 @@ type config struct {
 	calibrate   bool
 	points      int
 	gaze        bool
-	trigger     string
-	device      string
-	line        int
+	device      string // one trigdev spec, e.g. "parallel:port=/dev/parport0,pin=1"
 	pulse       time.Duration
 	syncN       int
 }
@@ -131,16 +138,32 @@ func run(exp *control.Experiment, cfg config) error {
 	}
 	geom := eyetracker.Geometry{WidthPx: int(w), HeightPx: int(h)}
 
-	trig, trigName, err := openTrigger(cfg.trigger, cfg.device)
+	spec, err := trigdev.ParseSpec(cfg.device)
+	if err != nil {
+		return err
+	}
+	trig, err := trigdev.Open(spec)
 	if err != nil {
 		return fmt.Errorf("opening the TTL device: %w", err)
 	}
 	defer trig.Close()
 
-	// Ctrl-C must not leave a line HIGH into the Host PC's parallel port, and
-	// must not stop working while we try to prevent that.
+	// The notes say where to clip the probe, at what logic level, and — when
+	// the spec left port= out on a machine with more than one parallel port —
+	// which port was chosen and what the alternatives were. Printing them is
+	// the only way the operator learns that a choice was made at all.
+	fmt.Printf("TTL device: %s\n", trig.Desc)
+	for _, n := range trig.Notes {
+		fmt.Printf("  - %s\n", n)
+	}
+	if trig.IsNull() {
+		fmt.Println("  (no TTL will reach the MEG or the Host PC)")
+	}
+
+	// Ctrl-C must not leave a line HIGH into the MEG's STI channel, and must
+	// not stop working while we try to prevent that.
 	safeexit.OnSignal(2*time.Second, func() {
-		trig.AllLow()
+		trig.Device.AllLow()
 		trig.Close()
 	})
 
@@ -163,7 +186,7 @@ func run(exp *control.Experiment, cfg config) error {
 	fmt.Printf("bridge %q, protocol ok, screen %dx%d\n", tracker.BridgeID(), w, h)
 	exp.AddExperimentInfo(fmt.Sprintf("eyetracker bridge: %s at %s", tracker.BridgeID(), cfg.bridgeAddr))
 	exp.AddExperimentInfo(fmt.Sprintf("eyetracker simulated: %t", tracker.Simulated()))
-	exp.AddExperimentInfo(fmt.Sprintf("TTL device: %s line %d pulse %v", trigName, cfg.line, cfg.pulse))
+	exp.AddExperimentInfo(fmt.Sprintf("TTL device: %s pulse %v spec=%q", trig.Desc, cfg.pulse, spec.Raw))
 	if tracker.Simulated() {
 		fmt.Println("\n*** THE BRIDGE IS SIMULATING THE TRACKER — this run contains no real gaze data ***")
 	}
@@ -235,8 +258,8 @@ func run(exp *control.Experiment, cfg config) error {
 		if err := tracker.ReceiveDataFile(cfg.fetch); err != nil {
 			return fmt.Errorf("fetching the EDF: %w", err)
 		}
-		fmt.Printf("EDF written to %s — convert it with edf2asc and compare each "+
-			"INPUT line against the MSG that follows it\n", cfg.fetch)
+		fmt.Printf("EDF written to %s — convert it with edf2asc and check that "+
+			"every trial's MSG is there\n", cfg.fetch)
 	}
 	return nil
 }
@@ -254,7 +277,7 @@ type trialRow struct {
 	nSamples  int // samples drained during this trial: the link's own pulse
 }
 
-func runTrials(exp *control.Experiment, tracker *eyetracker.Bridge, trig triggers.OutputTTLDevice, cfg config) ([]trialRow, error) {
+func runTrials(exp *control.Experiment, tracker *eyetracker.Bridge, trig trigdev.Opened, cfg config) ([]trialRow, error) {
 	exp.AddDataVariableNames([]string{
 		"trial", "flip_ns", "ttl_gap_us", "mark_rtt_us",
 		"tracker_ms", "gaze_x", "gaze_y", "gaze_valid", "n_samples", "dropped",
@@ -287,11 +310,11 @@ func runTrials(exp *control.Experiment, tracker *eyetracker.Bridge, trig trigger
 		// The rising edge is the marker, so it is raised here, on this thread,
 		// with nothing between it and the flip. Only the falling edge is
 		// deferred. See triggers.FireTriggerSync.
-		triggers.FireTriggerSync(trig, cfg.line, cfg.pulse)
+		triggers.FireTriggerSync(trig.Device, trig.Line, cfg.pulse)
 		afterTTL := control.TicksNS()
 
-		// And now the same event down the slow path, for comparison. In the
-		// EDF this MSG lands after the INPUT above by the bridge's latency.
+		// And now the same event down the slow path, for comparison: the round
+		// trip timed here is what a MSG would add to the TTL above.
 		markStart := control.TicksNS()
 		if err := tracker.Mark(fmt.Sprintf("TRIAL %d", i)); err != nil {
 			return rows, fmt.Errorf("trial %d: marking: %w", i, err)
@@ -428,9 +451,10 @@ func summarise(rows []trialRow, tracker *eyetracker.Bridge) {
 			"    drains — the EDF on the Host PC is complete and unaffected.\n"+
 			"    Expect this only if a trial outran the buffer; check the link.\n", d)
 	}
-	fmt.Println("\nThe TTL figure is measured on this machine and says when the edge was")
-	fmt.Println("issued, not when the Host recorded it. The number that matters is in the")
-	fmt.Println("EDF: the gap between each INPUT event and the MSG that follows it.")
+	fmt.Println("\nBoth figures are measured on this machine. The TTL one says when the edge")
+	fmt.Println("was issued, not when anything downstream recorded it — for that, look at the")
+	fmt.Println("MEG STI channel, or at a scope. The bridge round trip is an upper bound on")
+	fmt.Println("the one-way latency of a MSG: mark stimulus onsets with a TTL, not a message.")
 }
 
 func medianInt(sorted []int) int {
@@ -451,64 +475,13 @@ func median(sorted []float64) float64 {
 	return (sorted[n/2-1] + sorted[n/2]) / 2
 }
 
-// openTrigger opens the requested TTL output device, returning a no-op device
-// when none was asked for so the trial loop needs no special case.
-func openTrigger(kind, device string) (triggers.OutputTTLDevice, string, error) {
-	switch kind {
-	case "", "none":
-		return triggers.NullOutputTTLDevice{}, "none (no TTL will reach the Host PC)", nil
-
-	case "parport":
-		if device == "" {
-			ports := triggers.AvailableParallelPorts()
-			if len(ports) == 0 {
-				return nil, "", fmt.Errorf("no parallel port found; pass -device")
-			}
-			device = ports[0]
-		}
-		pp := triggers.NewParallelPort(device)
-		if err := pp.Open(); err != nil {
-			return nil, "", fmt.Errorf("opening %s: %w", device, err)
-		}
-		return pp, "parallel port " + device, nil
-
-	case "dlpio8":
-		if device == "" {
-			d, port, err := triggers.AutoDetectDLPIO8()
-			if err != nil {
-				return nil, "", err
-			}
-			return d, "DLP-IO8 on " + port, nil
-		}
-		d, err := triggers.NewDLPIO8(device)
-		if err != nil {
-			return nil, "", err
-		}
-		return d, "DLP-IO8 on " + device, nil
-
-	case "megttl":
-		if device == "" {
-			device = "/dev/ttyACM0"
-		}
-		d, err := triggers.NewMEGTTLBox(device)
-		if err != nil {
-			return nil, "", err
-		}
-		return d, "MEG TTL box on " + device, nil
-
-	case "dlpio20":
-		if device == "" {
-			d, port, err := triggers.AutoDetectDLPIO20()
-			if err != nil {
-				return nil, "", err
-			}
-			return d, "DLP-IO20 on " + port, nil
-		}
-		d, err := triggers.NewDLPIO20(device)
-		if err != nil {
-			return nil, "", err
-		}
-		return d, "DLP-IO20 on " + device, nil
+// trimBlank drops trailing whitespace from a multi-line usage block. The flag
+// package re-indents every line itself, so nothing has to be added here — but a
+// line that is blank must stay blank rather than become a run of spaces.
+func trimBlank(s string) string {
+	lines := strings.Split(s, "\n")
+	for i, l := range lines {
+		lines[i] = strings.TrimRight(l, " \t")
 	}
-	return nil, "", fmt.Errorf("unknown -trigger %q (none, parport, dlpio8, dlpio20, megttl)", kind)
+	return strings.Join(lines, "\n")
 }
