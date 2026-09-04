@@ -52,6 +52,19 @@ to this program.
 
 ## Running it
 
+### Prequesites
+
+* The Display (Stim) PC, on which you are going to run the commands listed below, must have the eyelink SDK installed as well as a Python environment where pylink ins installed.
+
+* the eyetracking camera and illuminator must be powered on and connected to th Eyelink Host PC.
+
+* The Eyelink Host PC must be running the calibration/acquisition program `C:\ELCL\EXE\ELCL.EXE`. 
+
+* To setup the eyetracking camera, run `track` on the Stim PC.
+
+
+### Launch the bridge on the Stim PC
+
 Start the bridge in one terminal:
 
 ```bash
@@ -67,11 +80,20 @@ Check the SDK and the Host answer before anything else:
 python3 eyetracker/bridge/eyelink_bridge.py --check --tracker-host 100.1.1.1
 ```
 
-Then, from the repo root:
+
+### Run the test program in another terminal on the stim PC
+
+(from the repo root)
 
 ```bash
 # no TTL device — exercises the bridge only
 go run ./tests/test_eyelink -w -s 999
+
+# Run the calibration
+go run ./test/test_eyelink -calibrate
+
+# see the gaze on screen first, to confirm the stream and the calibration
+go run ./tests/test_eyelink -w -s 999 -gaze
 
 # with the MEG TTL box: pulses reach the MEG STI channel, and the run also
 # measures the flip → TTL gap
@@ -85,11 +107,9 @@ go run ./tests/test_eyelink -s 999 -device parallel:port=/dev/parport0,pin=1 \
 # the second LPT, driving D3 (DB25 pin 5)
 go run ./tests/test_eyelink -s 999 -device parallel:port=/dev/parport1,pin=4
 
-# see the gaze on screen first, to confirm the stream and the calibration
-go run ./tests/test_eyelink -w -s 999 -gaze
 ```
 
-### Naming the TTL device
+#### Naming the TTL device
 
 `-device` takes one `KIND[:key=value,...]` spec, the same syntax as
 `test_triggers` (`tests/internal/trigdev`); `-h` prints the full list. The kinds
@@ -116,7 +136,7 @@ Other useful flags: `-pulse` (TTL width, 5 ms), `-trials`, `-isi`, `-frames`,
 `-calibrate`, `-points`, `-fetch`, `-sync`. `-w` runs windowed, `-s` sets the
 subject ID. Escape aborts between trials.
 
-## Samples, and what "dropped" means
+#### Samples, and what "dropped" means
 
 The trial loop drains the sample buffer every trial and records `n_samples`,
 which is the link's own pulse: a trial that receives far fewer samples than the
