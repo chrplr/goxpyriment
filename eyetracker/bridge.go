@@ -56,6 +56,8 @@ type Bridge struct {
 	recording bool
 	simulated bool
 	bridgeID  string
+	caps      []string // optional commands the back end announced at hello
+	capsKnown bool     // false when the bridge is older than the caps field
 
 	samples []Sample
 	events  []Event
@@ -186,6 +188,43 @@ func (b *Bridge) Simulated() bool {
 	return b.simulated
 }
 
+// SupportsStepwiseCalibration reports whether the tracker on the far side of
+// the bridge can be calibrated target by target — the [StepwiseCalibrator]
+// commands.
+//
+// *Bridge implements that interface whatever it is connected to, because the
+// Go type cannot know which back end answered: an EyeLink calibrates through
+// pylink's own setup routine and rejects those commands by name. So the
+// question is a runtime one, answered by the "caps" list in the bridge's hello.
+// control.Experiment.CalibrateTracker asks this before choosing a strategy;
+// call it before driving a calibration by hand.
+//
+// A bridge too old to announce its capabilities gets the benefit of the doubt
+// and this returns true, which is exactly the behaviour that predates the
+// field. Update the bridge script if that guess is wrong for your tracker.
+func (b *Bridge) SupportsStepwiseCalibration() bool {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+	if !b.capsKnown {
+		return true
+	}
+	for _, c := range b.caps {
+		if c == "calibration_enter" {
+			return true
+		}
+	}
+	return false
+}
+
+// Capabilities returns the optional commands the bridge announced at hello, or
+// nil when it announced none and when it is too old to announce any — use
+// [Bridge.SupportsStepwiseCalibration] to tell those two apart.
+func (b *Bridge) Capabilities() []string {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+	return append([]string(nil), b.caps...)
+}
+
 // BridgeID returns the bridge's self-reported name, e.g. "eyelink".
 func (b *Bridge) BridgeID() string {
 	b.mu.RLock()
@@ -238,6 +277,10 @@ func (b *Bridge) Open() error {
 		b.mu.Lock()
 		b.simulated = hello.Simulated
 		b.bridgeID = hello.Bridge
+		b.caps, b.capsKnown = nil, hello.Caps != nil
+		if hello.Caps != nil {
+			b.caps = append([]string(nil), *hello.Caps...)
+		}
 		b.mu.Unlock()
 	case <-time.After(b.dialTimeout):
 		b.hardClose()

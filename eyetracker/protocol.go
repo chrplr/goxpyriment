@@ -66,7 +66,7 @@ package eyetracker
 //
 // Distinguished from responses by carrying "ev" instead of "id".
 //
-//	{"ev":"hello","bridge":"eyelink","proto":1,"simulated":false}
+//	{"ev":"hello","bridge":"eyelink","proto":1,"simulated":false,"caps":[]}
 //	{"ev":"sample","t":1234567.0,"eye":"right","x":960.5,"y":540.25,"pa":1183.0}
 //	{"ev":"fix_start","eye":"right","start":1234570.0,"sx":960.0,"sy":540.0}
 //	{"ev":"fix_end","eye":"right","start":1234570.0,"end":1234810.0,"ax":961.2,"ay":539.8}
@@ -86,7 +86,8 @@ package eyetracker
 // # Ordering and liveness
 //
 // The bridge sends "hello" first, before any response. The client uses it to
-// verify the protocol version and to learn whether it is talking to real
+// verify the protocol version, to learn which optional commands the back end
+// implements ("caps"), and to learn whether it is talking to real
 // hardware or to a simulator — a distinction that must be visible in the data
 // file, because a simulated run that is mistaken for a real one is worse than
 // no run.
@@ -130,6 +131,11 @@ type message struct {
 	Bridge    string `json:"bridge,omitempty"`
 	Proto     int    `json:"proto,omitempty"`
 	Simulated bool   `json:"simulated,omitempty"`
+	// Caps lists the OPTIONAL commands the back end implements — currently
+	// the stepwise-calibration group. A bridge older than this field sends
+	// none at all, which is why the pointer matters: an absent list is "this
+	// bridge cannot say", not "this bridge supports nothing".
+	Caps *[]string `json:"caps,omitempty"`
 
 	// sample
 	T     float64  `json:"t,omitempty"`

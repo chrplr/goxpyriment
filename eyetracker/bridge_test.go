@@ -33,6 +33,10 @@ type fakeBridge struct {
 	tickMs    float64
 	// noHello suppresses the greeting, to test the Open timeout path.
 	noHello bool
+	// caps, when non-nil, is announced in hello as the optional commands this
+	// back end implements. Left nil, hello omits the field, which is how a
+	// bridge older than that field greets a current client.
+	caps []string
 }
 
 func newFakeBridge(t *testing.T) *fakeBridge {
@@ -59,9 +63,13 @@ func (f *fakeBridge) accept() {
 	f.mu.Unlock()
 
 	if !f.noHello {
-		f.send(map[string]any{
+		hello := map[string]any{
 			"ev": "hello", "bridge": "fake", "proto": f.proto, "simulated": f.simulated,
-		})
+		}
+		if f.caps != nil {
+			hello["caps"] = f.caps
+		}
+		f.send(hello)
 	}
 
 	sc := bufio.NewScanner(conn)
@@ -506,4 +514,42 @@ func ExampleGeometry_ToCentre() {
 	x, y := g.ToCentre(480, 270)
 	fmt.Printf("%.0f, %.0f\n", x, y)
 	// Output: -480, 270
+}
+
+// TestSupportsStepwiseCalibration covers the question control.CalibrateTracker
+// asks before it decides who draws the targets. *Bridge satisfies
+// StepwiseCalibrator whatever answered the socket, so only the bridge's own
+// answer distinguishes a Tobii from an EyeLink.
+func TestSupportsStepwiseCalibration(t *testing.T) {
+	tests := []struct {
+		name string
+		caps []string
+		want bool
+	}{
+		{"tobii announces the commands", []string{
+			"calibration_enter", "calibration_collect", "calibration_discard",
+			"calibration_compute", "calibration_leave"}, true},
+		// An EyeLink bridge announces an empty list: it has none of them, and
+		// treating that as "unknown" would drive a calibration that fails at
+		// the first target.
+		{"eyelink announces none", []string{}, false},
+		// A bridge older than the caps field says nothing at all. That is not
+		// the same as saying no, and the old behaviour is the safe guess.
+		{"an older bridge cannot say", nil, true},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			f := newFakeBridge(t)
+			f.caps = tc.caps
+			b := NewBridge(f.addr())
+			if err := b.Open(); err != nil {
+				t.Fatalf("Open: %v", err)
+			}
+			defer b.Close()
+			if got := b.SupportsStepwiseCalibration(); got != tc.want {
+				t.Errorf("SupportsStepwiseCalibration() = %v, want %v (caps %v)",
+					got, tc.want, tc.caps)
+			}
+		})
+	}
 }

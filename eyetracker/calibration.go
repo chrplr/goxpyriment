@@ -8,6 +8,18 @@ import (
 	"strings"
 )
 
+// StepwiseCalibrationReporter is implemented by a tracker that can only answer
+// at RUNTIME whether stepwise calibration is available — a [Bridge], whose Go
+// type satisfies [StepwiseCalibrator] whatever tracker is on the far side of
+// the socket.
+//
+// A caller that has a [StepwiseCalibrator] must ask this before using it, when
+// the value implements it: a type assertion alone reports what the Go type can
+// do, and the question is what the hardware can do.
+type StepwiseCalibrationReporter interface {
+	SupportsStepwiseCalibration() bool
+}
+
 // StepwiseCalibrator is implemented by a tracker whose SDK draws no calibration
 // graphics, so the CLIENT has to put each target on screen itself and tell the
 // tracker when to sample it.

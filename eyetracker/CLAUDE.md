@@ -28,7 +28,7 @@ and both were forced by the vendor rather than chosen — see below.
 |---|---|
 | `tracker.go` | Package doc, the `Tracker` interface, `CalibrationOptions`, `Offset`, `NullTracker` |
 | `events.go` | `Sample`, `Event`, `Eye`, and `Geometry` (the coordinate conversion) |
-| `calibration.go` | `StepwiseCalibrator`, `CalibrationResult`, `StandardPoints` — for a tracker whose SDK draws no targets |
+| `calibration.go` | `StepwiseCalibrator`, `StepwiseCalibrationReporter`, `CalibrationResult`, `StandardPoints` — for a tracker whose SDK draws no targets |
 | `protocol.go` | Wire types and the protocol specification |
 | `bridge.go` | The socket client |
 | `simulated.go` | `Simulated` — a tracker driven by any position function |
@@ -173,7 +173,12 @@ for the EyeLink.**
 The routine now exists: `control/eyetracker_calib.go`'s
 `Experiment.CalibrateTracker` draws the targets with `stimuli/`, in
 goxpyriment's own window, on the flip clock, and records the per-target sample
-counts. A tracker gets it by implementing `StepwiseCalibrator`.
+counts. A tracker gets it by implementing `StepwiseCalibrator` **and** reporting
+`SupportsStepwiseCalibration() == true`. Both are needed because `*Bridge`
+satisfies the interface whatever answered the socket: the Go type cannot see
+which back end is on the far side, so `CalibrateTracker` asks, and the answer
+comes from the `caps` list in the bridge's hello (computed from the methods the
+Python back end actually defines).
 
 The EyeLink does not, and cannot without the work below, because pylink's
 calibration inverts the direction of control. Everything from here down is
@@ -189,8 +194,10 @@ Two paths exist today for the EyeLink and neither is ours:
   the Python process. This works, and it is what you see when a calibration
   screen comes up. The costs: the bridge must run on the *display* machine (a
   bridge on another host draws the calibration on that host's screen), its
-  window competes with goxpyriment's fullscreen one, and target onsets are on
-  pylink's clock rather than flip-locked.
+  window competes with goxpyriment's fullscreen one — closing it hands focus to
+  whatever the window manager finds next, which is why `CalibrateTracker` and
+  `tests/test_eyelink` call `Experiment.ReclaimDisplay` afterwards — and target
+  onsets are on pylink's clock rather than flip-locked.
 - **The bridge refuses instead.** Where `pylink.openGraphics` is absent, the
   bridge raises an error naming the problem rather than hanging on a blank
   screen, and the operator calibrates from the SR Research display software.

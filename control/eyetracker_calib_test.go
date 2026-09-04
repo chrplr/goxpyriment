@@ -59,6 +59,46 @@ func TestCalibrateTrackerDelegatesToTheTracker(t *testing.T) {
 	}
 }
 
+// bridgeLikeTracker is the shape an eyetracker.Bridge has: it satisfies
+// StepwiseCalibrator whatever tracker answered the socket, and only its own
+// report says whether those commands actually work.
+type bridgeLikeTracker struct {
+	plainTracker
+	stepwise bool
+	entered  int
+}
+
+func (b *bridgeLikeTracker) SupportsStepwiseCalibration() bool { return b.stepwise }
+
+func (b *bridgeLikeTracker) CalibrationEnter() error                 { b.entered++; return nil }
+func (b *bridgeLikeTracker) CalibrationCollect(nx, ny float64) error { return nil }
+func (b *bridgeLikeTracker) CalibrationDiscard(nx, ny float64) error { return nil }
+func (b *bridgeLikeTracker) CalibrationLeave() error                 { return nil }
+func (b *bridgeLikeTracker) CalibrationCompute() (eyetracker.CalibrationResult, error) {
+	return eyetracker.CalibrationResult{}, nil
+}
+
+// TestCalibrateTrackerAsksBeforeDrawing covers the EyeLink-behind-a-bridge
+// case: the type assertion says the targets can be driven from here, the
+// tracker says they cannot, and the tracker wins. Believing the assertion
+// drove calibration_enter at an EyeLink bridge, which rejects it by name — a
+// failure that only appears with a participant already in the chair.
+func TestCalibrateTrackerAsksBeforeDrawing(t *testing.T) {
+	exp := &Experiment{}
+	tr := &bridgeLikeTracker{stepwise: false}
+
+	if err := exp.CalibrateTracker(tr, eyetracker.CalibrationOptions{Points: 9}); err != nil {
+		t.Fatalf("CalibrateTracker: %v", err)
+	}
+	if tr.calls != 1 {
+		t.Errorf("the tracker's own Calibrate was called %d times, want 1", tr.calls)
+	}
+	if tr.entered != 0 {
+		t.Errorf("CalibrationEnter was called %d times; the tracker said it "+
+			"does not support stepwise calibration", tr.entered)
+	}
+}
+
 // TestCalibrateTrackerSkip checks that Skip does nothing and says so. It
 // exists so a script can run end-to-end without a participant, and the run
 // must be identifiable afterwards as uncalibrated.

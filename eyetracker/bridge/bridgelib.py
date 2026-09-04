@@ -51,6 +51,10 @@ instead defines any of
 and the corresponding commands become available. A back end that defines none
 of them rejects those commands by name, so an experiment driving the wrong
 tracker gets an error that says so rather than a silent no-op.
+
+Which of them exist is also announced in the hello event, as "caps", because
+being told after connecting beats finding out from a rejected command in the
+middle of a session with a participant in the chair.
 """
 
 import json
@@ -132,6 +136,16 @@ class Session:
 
     # -- commands ---------------------------------------------------------
 
+    def capabilities(self):
+        """The optional commands this back end implements.
+
+        Sent in hello so the client can choose a calibration strategy before it
+        commits to one. Computed from the tracker object rather than declared,
+        so a back end cannot advertise what it does not have.
+        """
+        return [c for c in CALIBRATION_COMMANDS
+                if callable(getattr(self.tracker, c, None))]
+
     def calibration(self, cmd, args):
         """Dispatch a stepwise-calibration command to the back end."""
         fn = getattr(self.tracker, cmd, None)
@@ -194,6 +208,7 @@ class Session:
                 "bridge": self.tracker.name,
                 "proto": PROTO,
                 "simulated": self.tracker.simulated,
+                "caps": self.capabilities(),
             }
         )
 

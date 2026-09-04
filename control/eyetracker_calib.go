@@ -56,8 +56,10 @@ func (t *calTarget) Present(screen *apparatus.Screen, clear, update bool) error 
 //   - A tracker that runs its own setup routine — an EyeLink through pylink —
 //     is simply asked to do it. The Host PC's calibration screen is better
 //     tested than anything we can draw.
-//   - A tracker that implements [eyetracker.StepwiseCalibrator] — a Tobii,
-//     whose SDK draws nothing at all — is driven target by target from here.
+//   - A tracker that implements [eyetracker.StepwiseCalibrator] AND reports
+//     through [eyetracker.StepwiseCalibrationReporter] that the hardware
+//     really supports it — a Tobii, whose SDK draws nothing at all — is driven
+//     target by target from here.
 //     Each target is put on screen with [Experiment.ShowTS], held for
 //     opts.DwellMs, and only then does the tracker sample it. That ordering is
 //     the whole reason to do the drawing here: the target onset is on
@@ -85,6 +87,16 @@ func (e *Experiment) CalibrateTracker(t eyetracker.Tracker,
 	}
 
 	sc, ok := t.(eyetracker.StepwiseCalibrator)
+	if r, asked := t.(eyetracker.StepwiseCalibrationReporter); ok && asked &&
+		!r.SupportsStepwiseCalibration() {
+		// The Go type says the targets can be driven from here; the tracker
+		// itself says they cannot. An eyetracker.Bridge always satisfies the
+		// interface, because the type cannot know which back end answered the
+		// socket — an EyeLink behind pylink rejects every one of those commands
+		// by name. Believing the assertion would fail at the first target,
+		// with a participant already in the chair.
+		ok = false
+	}
 	if !ok {
 		// The tracker draws its own targets, in its own window: pylink opens
 		// one from the bridge process and closes it when the operator leaves

@@ -211,6 +211,9 @@ var (
 	// A bridged tracker can also be calibrated step by step, which is the
 	// only way to calibrate a Tobii. Whether the bridge on the other end
 	// actually supports it is a runtime question: one that does not rejects
-	// the commands by name.
-	_ StepwiseCalibrator = (*Bridge)(nil)
+	// the commands by name. It answers that question through
+	// StepwiseCalibrationReporter, which every caller must consult before
+	// treating the assertion below as permission to use it.
+	_ StepwiseCalibrator          = (*Bridge)(nil)
+	_ StepwiseCalibrationReporter = (*Bridge)(nil)
 )
