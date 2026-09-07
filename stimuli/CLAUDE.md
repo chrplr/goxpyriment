@@ -49,12 +49,20 @@ stimuli.PreloadAllVisual(screen, stims)      // batch
 
 ### Geometric shapes
 
-**`Circle`** — `NewCircle(x, y, radius, color)`. Drawn with horizontal scanlines, no texture.
+**`Circle`** — `NewCircle(radius, color)`. Drawn with horizontal scanlines, no texture.
 - `InsideCircle(areaRadius, areaPos)` — geometric containment check.
 
 **`Rectangle`** — `NewRectangle(x, y, w, h, color)`. Filled rect centered at position.
 
-**`FixCross`** — `NewFixCross(x, y, size, lineWidth, color)`. Two perpendicular lines.
+**`FixCross`** — `NewFixCross(size, lineWidth, color)`. Two perpendicular lines.
+
+**`PolyLine`** — Stroked poly-line, open or closed. `NewPolyLine(points, closed, lineWidth, color)`.
+- The thick-stroke counterpart of `Line` and the *unfilled* counterpart of `Shape`. Use it for outlined polygons, open angles, arbitrary contours.
+- `Points` are relative to the stimulus centre, **+Y up** (same convention as `Shape.Points`); `SetPosition` moves the whole figure without rewriting them. `Closed` connects the last point back to the first.
+- One `RenderGeometry` call: a quad per segment plus a disc per vertex, giving **round joins and round caps**. Round joins matter for sharp angles — a mitre would shoot a long spike out of a 20° vertex.
+- Vertex/index buffers are retained between `Draw` calls and only grow, so redrawing every frame allocates nothing after the first call. Safe inside a GC-disabled VSYNC loop.
+
+> **`Line.LineWidth` is not honoured.** `Line.Draw` calls `RenderLine`, which is always 1 px, so `NewLine(a, b, c, 5)` silently draws a hairline. Use `PolyLine` for any stroke wider than one pixel.
 
 ### Images
 
@@ -62,7 +70,7 @@ stimuli.PreloadAllVisual(screen, stims)      // batch
 - Lazy texture load from file or raw bytes (any SDL-supported format).
 - Width/Height available after first `Draw`.
 
-**`Canvas`** — Offscreen render target. `NewCanvas(x, y, w, h, bgColor)`.
+**`Canvas`** — Offscreen render target. `NewCanvas(w, h, bgColor)`.
 - `Blit(stimulus, screen)` — draw a stimulus into the canvas (temporarily shifts coordinate origin).
 - `Clear(screen)` — fill with background color.
 
