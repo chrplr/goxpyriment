@@ -53,9 +53,12 @@ type localizationResponse struct {
 }
 
 // runLocalizationTrial shows one fragmented triangle, waits for a click, then
-// requires a click on the forward arrow before returning — the paper advanced
-// trials with an arrow button (Fig. 1b) rather than on the response click, so a
-// stray double-click cannot skip a trial.
+// requires a click on the "Next" button before returning — the paper advanced
+// trials with a separate button (Fig. 1b) rather than on the response click, so
+// a stray double-click cannot skip a trial.
+//
+// The button is labelled in words rather than with the paper's arrow glyph:
+// the embedded Inconsolata has no U+2192, so "->" drew an empty box.
 //
 // The click position comes from Screen.MousePosition (centre-based, +Y up,
 // corrected for the logical size), and the reaction time from the SDL hardware
@@ -63,8 +66,8 @@ type localizationResponse struct {
 func runLocalizationTrial(exp *control.Experiment, cfg config, t tri) (localizationResponse, error) {
 	prompt := stimuli.NewTextLine(localizationPrompt, 0, float32(logicalHeight)/2-70, inkBlack)
 	defer prompt.Unload()
-	arrow := newButton("→", "", float32(logicalWidth)/2-140, float32(logicalHeight)/2-70, 130, 66)
-	defer arrow.unload()
+	next := newButton("Next", "", float32(logicalWidth)/2-140, float32(logicalHeight)/2-70, 160, 66)
+	defer next.unload()
 
 	fragments := t.fragments(cfg.baseY, cfg.fragmentFrac, cfg.strokePx, inkBlack)
 
@@ -89,7 +92,7 @@ func runLocalizationTrial(exp *control.Experiment, cfg config, t tri) (localizat
 			if err := mark.Draw(exp.Screen); err != nil {
 				return err
 			}
-			if err := arrow.draw(exp); err != nil {
+			if err := next.draw(exp); err != nil {
 				return err
 			}
 		}
@@ -107,7 +110,7 @@ func runLocalizationTrial(exp *control.Experiment, cfg config, t tri) (localizat
 
 	for {
 		mx, my := exp.Screen.MousePosition()
-		arrow.hovered = answered && arrow.contains(mx, my)
+		next.hovered = answered && next.contains(mx, my)
 
 		if err := draw(); err != nil {
 			return resp, err
@@ -125,9 +128,9 @@ func runLocalizationTrial(exp *control.Experiment, cfg config, t tri) (localizat
 		}
 
 		if !answered {
-			// Ignore a click that lands on the arrow's future position, so the
+			// Ignore a click that lands where Next will appear, so the
 			// participant cannot answer and advance with one press.
-			if arrow.contains(mx, my) {
+			if next.contains(mx, my) {
 				continue
 			}
 			resp.clickX, resp.clickY = mx, my
@@ -135,7 +138,7 @@ func runLocalizationTrial(exp *control.Experiment, cfg config, t tri) (localizat
 			answered = true
 			continue
 		}
-		if arrow.hovered {
+		if next.hovered {
 			return resp, nil
 		}
 	}

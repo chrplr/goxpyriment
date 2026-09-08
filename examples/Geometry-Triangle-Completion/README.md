@@ -45,7 +45,7 @@ Before the task, the sample triangle (30° base angles, base 0.7 units) is shown
 
 ## Task 2 — localization
 
-One practice trial with the sample triangle, then 49 test trials (7 configurations × 7 repetitions), pseudo-randomised so the same configuration never repeats consecutively. Each trial: click where the missing corner is, then click the forward arrow to advance. No feedback.
+One practice trial with the sample triangle, then 49 test trials (7 configurations × 7 repetitions), pseudo-randomised so the same configuration never repeats consecutively. Each trial: click where the missing corner is, then click **Next** (top right) to advance. No feedback.
 
 ### Stimuli (paper, Table 2 — isosceles)
 
@@ -105,7 +105,7 @@ Layout uses the paper's canvas exactly — `1920 × 1006` logical pixels, 1 unit
 
 | Input | Meaning |
 |-------|---------|
-| Mouse | Click an option, a demo button, the response location, or the arrow |
+| Mouse | Click an option, a demo button, the response location, or **Next** |
 | `1` `2` `3` | Pick a reasoning option by keyboard |
 | `S` | Revisit the sample-changes display during the reasoning task |
 | `SPACE` | Leave the sample-changes display; advance instruction screens |

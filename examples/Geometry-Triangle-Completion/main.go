@@ -26,7 +26,7 @@
 //
 // Controls:
 //
-//	mouse       — click an option, a demo button, the response location, the arrow
+//	mouse       — click an option, a demo button, the response location, Next
 //	1 / 2 / 3   — pick a reasoning option by keyboard (for the experimenter)
 //	S           — revisit the sample-changes display during the reasoning task
 //	SPACE       — leave the sample-changes display
@@ -257,8 +257,8 @@ func localizationInstructions(reps int) string {
 	return fmt.Sprintf(
 		"Part 2 of 2 — finding the missing corner\n\n"+
 			"You will see more partial triangles. Each time, click with the\n"+
-			"mouse where you think the missing top corner is, then click the\n"+
-			"arrow to go on.\n\n"+
+			"mouse where you think the missing top corner is, then click\n"+
+			"the Next button to go on.\n\n"+
 			"There is one practice trial, then %d test trials.\n\n"+
 			"Press SPACE to begin.", reps*len(localizationTriangles))
 }
