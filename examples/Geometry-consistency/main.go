@@ -88,7 +88,34 @@ type params struct {
 	strokePx    float64
 	jitterPx    float64
 	panelCentre float32 // |x| of each panel centre
+
+	// panelStrokePx is the outline of the bounding rectangle each stream is
+	// presented in (paper §2); 0 hides it.
+	panelStrokePx float32
 }
+
+// panelOutlines returns the square bounding rectangle drawn around each stream.
+// The paper presented "two simultaneous streams of figures each within a
+// bounding rectangle" (§2), and it is that rectangle's centre the per-
+// presentation position jitter is measured from.
+func panelOutlines(p params) []*stimuli.PolyLine {
+	if p.panelStrokePx <= 0 {
+		return nil
+	}
+	h := float32(p.panelPx / 2)
+	corners := []control.FPoint{{X: -h, Y: -h}, {X: h, Y: -h}, {X: h, Y: h}, {X: -h, Y: h}}
+	var out []*stimuli.PolyLine
+	for _, cx := range []float32{-p.panelCentre, p.panelCentre} {
+		box := stimuli.NewPolyLine(corners, true, p.panelStrokePx, panelOutlineColour)
+		box.Position = control.FPoint{X: cx, Y: 0}
+		out = append(out, box)
+	}
+	return out
+}
+
+// panelOutlineColour is deliberately dimmer than the figures so the frame reads
+// as context rather than as another stimulus.
+var panelOutlineColour = control.RGB(110, 110, 110)
 
 // ── Placement: one figure presentation in one panel ───────────────────────────
 
@@ -342,7 +369,7 @@ func showAttractor(exp *control.Experiment, sound *stimuli.Sound) error {
 // presentTrial runs one 60 s trial: nSlots presentations of 500 ms on / 300 ms
 // off, frame-locked, while the experimenter codes the infant's gaze. It returns
 // the SDL onset timestamp of each presentation (index-aligned with the streams).
-func presentTrial(exp *control.Experiment, left, right []placement, strokePx float32, framesOn, framesOff int) ([]uint64, gazeCoder, error) {
+func presentTrial(exp *control.Experiment, left, right []placement, boxes []*stimuli.PolyLine, strokePx float32, framesOn, framesOff int) ([]uint64, gazeCoder, error) {
 	var g gazeCoder
 	onsets := make([]uint64, len(left))
 
@@ -350,6 +377,18 @@ func presentTrial(exp *control.Experiment, left, right []placement, strokePx flo
 	// allocated on the first Draw and reused for the rest of the trial.
 	leftPL := stimuli.NewPolyLine(left[0].pts, left[0].closed, strokePx, control.White)
 	rightPL := stimuli.NewPolyLine(right[0].pts, right[0].closed, strokePx, control.White)
+
+	// The bounding rectangles stay up for the whole trial, including the blank
+	// inter-stimulus interval: they are the spatial frame the figures appear in,
+	// not part of the alternating stimulus.
+	drawBoxes := func() error {
+		for _, b := range boxes {
+			if err := b.Draw(exp.Screen); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
 
 	poll := func() error {
 		st := exp.PollEvents(func(e sdl.Event) bool {
@@ -386,6 +425,9 @@ func presentTrial(exp *control.Experiment, left, right []placement, strokePx flo
 			if err := exp.Screen.Clear(); err != nil {
 				return onsets, g, err
 			}
+			if err := drawBoxes(); err != nil {
+				return onsets, g, err
+			}
 			if err := leftPL.Draw(exp.Screen); err != nil {
 				return onsets, g, err
 			}
@@ -406,6 +448,9 @@ func presentTrial(exp *control.Experiment, left, right []placement, strokePx flo
 
 		for f := 0; f < framesOff; f++ {
 			if err := exp.Screen.Clear(); err != nil {
+				return onsets, g, err
+			}
+			if err := drawBoxes(); err != nil {
 				return onsets, g, err
 			}
 			if _, err := exp.Screen.FlipTS(); err != nil {
@@ -439,21 +484,24 @@ func main() {
 	unitFlag := flag.Float64("unit-px", 0,
 		"pixels per normalized figure unit (0 = fit the panel automatically)")
 	strokeFlag := flag.Float64("stroke-px", 6, "figure stroke width in logical pixels")
+	panelStrokeFlag := flag.Float64("panel-stroke-px", 2,
+		"outline width of the bounding rectangle around each stream (0 = no outline)")
 	jitterFlag := flag.Float64("jitter-px", 20,
 		"radius of the random position jitter, in logical pixels")
 	soundFlag := flag.String("attractor-sound", "",
 		"WAV file played with the attractor (default: the embedded ping)")
 
 	conds := buildConditions()
-	condOptions := make([]string, len(conditionNames))
-	for i, n := range conditionNames {
-		condOptions[i] = n + " — " + conds[n].label
-	}
+	// Just the codes: a select row divides the dialog's width evenly among all
+	// its options, so eight buttons are ~66 px wide — room for "3D", not for a
+	// sentence. The full description of each condition is in README.md, is
+	// printed by -h, and appears on the instructions screen once the session
+	// starts.
 	condField := control.InfoField{
 		Name:    "condition",
-		Label:   "Condition",
+		Label:   "Condition (1 = triangles, 2 = length, 3 = angle)",
 		Type:    control.FieldSelect,
-		Options: condOptions,
+		Options: conditionNames,
 	}
 
 	exp := control.NewExperimentFromFlags("Geometry-consistency",
@@ -501,6 +549,8 @@ func main() {
 		strokePx:    *strokeFlag,
 		jitterPx:    *jitterFlag,
 		panelCentre: logicalWidth / 4,
+
+		panelStrokePx: float32(*panelStrokeFlag),
 	}
 
 	// Pixels per normalized unit: fit the largest figure of this condition
@@ -536,8 +586,8 @@ func main() {
 		cbGroup, trials[0].context.id, sideName(trials[0].shapeOnLeft)))
 	exp.Data.WriteComment(fmt.Sprintf("p trials: %d x %d presentations of %d ms + %d ms blank",
 		p.nTrials, p.nSlots, stimulusDurationMs, isiDurationMs))
-	exp.Data.WriteComment(fmt.Sprintf("p geometry: unit=%.2f px, panel=%.0f px, stroke=%.1f px, jitter radius=%.1f px, canvas=%dx%d",
-		p.unitPx, p.panelPx, p.strokePx, p.jitterPx, logicalWidth, logicalHeight))
+	exp.Data.WriteComment(fmt.Sprintf("p geometry: unit=%.2f px, panel=%.0f px square at x=+/-%.0f, figure stroke=%.1f px, panel outline=%.1f px, jitter radius=%.1f px, canvas=%dx%d",
+		p.unitPx, p.panelPx, p.panelCentre, p.strokePx, p.panelStrokePx, p.jitterPx, logicalWidth, logicalHeight))
 
 	exp.AddDataVariableNames([]string{
 		"trial", "condition", "cb_group", "context_figure", "change_figure",
@@ -583,6 +633,8 @@ func main() {
 	warmup := stimuli.NewTone(440, 60, 0)
 	_ = warmup.PreloadDevice(exp.AudioDevice)
 
+	boxes := panelOutlines(p)
+
 	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
 
 	instructions := fmt.Sprintf(
@@ -614,7 +666,7 @@ func main() {
 				return err
 			}
 
-			onsets, g, err := presentTrial(exp, left, right, float32(p.strokePx), framesOn, framesOff)
+			onsets, g, err := presentTrial(exp, left, right, boxes, float32(p.strokePx), framesOn, framesOff)
 			if err != nil {
 				return err
 			}

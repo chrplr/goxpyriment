@@ -49,6 +49,10 @@ Rotation, scaling and mirroring are about the **centroid of the figure's vertice
 
 The stroke width is a **fixed** number of pixels and is deliberately not scaled with the figure — a stroke that grew with the figure would itself signal the area change and confound the area-only stream.
 
+### Bounding rectangles
+
+Each stream is presented "within a bounding rectangle" (paper §2), and it is that rectangle's centre the 20 px position jitter is measured from. The two square panels are drawn as thin grey outlines, as in the paper's Fig. 2b, and stay up for the whole trial — including the 300 ms blank between figures, since they are the spatial frame the figures appear in rather than part of the alternating stimulus. Set `-panel-stroke-px 0` to hide them and present the figures on a bare field.
+
 ### Figure geometry
 
 Figures are defined in normalized units with the implied areas printed in the paper's Figures 2a, 4 and 6, then scaled to pixels by a single factor, so the area ratios the design depends on hold at any display size.
@@ -85,6 +89,7 @@ Launching with no `-s` opens the setup dialog, which includes a condition select
 | `-panel-px` | `900` | Side of each square bounding panel, in logical pixels |
 | `-unit-px` | `0` | Pixels per normalized figure unit (0 = fit the panel automatically) |
 | `-stroke-px` | `6` | Figure stroke width, in logical pixels |
+| `-panel-stroke-px` | `2` | Outline width of the bounding rectangle around each stream (0 = none) |
 | `-jitter-px` | `20` | Radius of the random position jitter, in logical pixels |
 | `-attractor-sound` | (embedded ping) | WAV file played with the attractor — e.g. a rattle |
 | `-w` | off | Windowed mode (1024×768) instead of fullscreen |
