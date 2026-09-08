@@ -225,6 +225,33 @@ func defaultInfoValues(fields []InfoField) map[string]string {
 	return values
 }
 
+// ellipsize returns the longest prefix of text that fits maxW pixels with a
+// trailing ellipsis, together with its measured size. It returns an empty string
+// when not even one character plus the ellipsis fits.
+//
+// The search is binary rather than linear because the dialog re-measures every
+// label on every frame.
+func ellipsize(font *ttf.Font, text string, maxW float32) (string, int32, int32) {
+	r := []rune(text)
+	best, bestW, bestH := "", int32(0), int32(0)
+	lo, hi := 1, len(r)-1
+	for lo <= hi {
+		mid := (lo + hi) / 2
+		cand := string(r[:mid]) + "\u2026"
+		w, h, err := font.StringSize(cand)
+		if err != nil {
+			return "", 0, 0
+		}
+		if float32(w) <= maxW {
+			best, bestW, bestH = cand, w, h
+			lo = mid + 1
+		} else {
+			hi = mid - 1
+		}
+	}
+	return best, bestW, bestH
+}
+
 // normaliseSelects forces every FieldSelect value to be one of its options,
 // falling back to the first. A select holding something that is not on its own
 // list reaches the experiment as an unmatched string and lands in whatever the
@@ -479,10 +506,20 @@ func GetParticipantInfo(title string, fields []InfoField) (map[string]string, er
 		})
 	}
 
+	// renderCentered centres text in rect, shortening it with an ellipsis when it
+	// would not fit. A select row divides its width evenly among ALL its options
+	// (there is no wrapping), so a caller with many options, or long ones, used
+	// to get labels drawn straight over each other — unreadable, with no hint of
+	// what went wrong. Truncating makes the overflow visible instead.
 	renderCentered := func(text string, rect sdl.FRect, color sdl.Color) {
 		tw, th, err := font.StringSize(text)
 		if err != nil {
 			return
+		}
+		if float32(tw) > rect.W {
+			if text, tw, th = ellipsize(font, text, rect.W); text == "" {
+				return
+			}
 		}
 		renderText(text,
 			rect.X+(rect.W-float32(tw))/2,
