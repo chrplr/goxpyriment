@@ -470,6 +470,20 @@ Each file in `dist/` is a complete, standalone program. Email it, drop it on a
 USB stick, or share it — your colleague just double-clicks (or runs it from a
 terminal). No Go, no Python, no SDL install required.
 
+> **On Windows**, a program built with plain `go build` is a *console*
+> executable: double-clicking it opens a black terminal window next to the
+> fullscreen experiment. For a pure GUI program that opens no console, add the
+> `windowsgui` linker flag:
+>
+> ```bash
+> GOOS=windows GOARCH=amd64 go build -ldflags="-H windowsgui" -o my_experiment-windows.exe .
+> ```
+>
+> The trade-off: such a program has no terminal to print to, so `log` messages
+> and any startup error become invisible — a failure shows up as a program that
+> exits at once with nothing on screen. Keep a console build around for
+> debugging, and ship the `windowsgui` one.
+
 > **On macOS**, a binary downloaded from the internet may be blocked by
 > Gatekeeper. The recipient can allow it once via **System Settings → Privacy &
 > Security**, or run `xattr -d com.apple.quarantine my_experiment-macos-arm` in a

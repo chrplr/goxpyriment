@@ -42,24 +42,23 @@ On Linux, a goxpyriment program raises its own priority at startup — it calls
 Linux setup a one-time system configuration rather than a thing to remember.
 
 **On Windows it does not.** `sysinfo/realtime_other.go` deliberately implements
-`raiseToRealTime` as an error on every non-Linux platform, so every Windows run
-logs this once at startup:
+`raiseToRealTime` as an error on every non-Linux platform, and
+`Experiment.Initialize` does not even make the request there — it would fail
+identically on every machine, so a message about it carried no information.
+(Earlier versions printed "real-time scheduling not obtained, continuing at
+normal priority" on every Windows run; a console window opening beside the
+fullscreen experiment just to show that line was the only visible effect.)
 
-```
-real-time scheduling not obtained, continuing at normal priority:
-real-time scheduling is not implemented on windows
-```
-
-That message is expected on Windows and is not a fault. It is there because the
-alternative — a portable "raise priority" call that quietly does something
-different on each OS — would report success while giving you a different
-guarantee on every machine. Windows has no `SCHED_FIFO` and no POSIX priority to
-raise; it has *priority classes*, which are a different mechanism with different
-consequences.
+The elevation is Linux-only because the alternative — a portable "raise
+priority" call that quietly does something different on each OS — would report
+success while giving you a different guarantee on every machine. Windows has no
+`SCHED_FIFO` and no POSIX priority to raise; it has *priority classes*, which
+are a different mechanism with different consequences.
 
 So on Windows the priority decision is made **outside** the program, by however
-you launch it. `-no-realtime` and `-realtime-priority` have no effect there
-beyond suppressing the message.
+you launch it. `-no-realtime` and `-realtime-priority` have no effect there.
+The run's `-info.txt` still records the scheduling class the process actually
+got, so a launcher prefix that did not take effect is visible afterwards.
 
 ---
 

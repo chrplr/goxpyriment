@@ -40,17 +40,13 @@ On Linux, a goxpyriment program raises its own priority at startup — it calls
 `sysinfo.RaiseToRealTime` and needs no `chrt` prefix.
 
 **On macOS it does not.** `sysinfo/realtime_other.go` deliberately implements
-`raiseToRealTime` as an error on every non-Linux platform, so every macOS run
-logs this once at startup:
-
-```
-real-time scheduling not obtained, continuing at normal priority:
-real-time scheduling is not implemented on darwin
-```
-
-That message is expected on macOS and is not a fault. The reason it is an error
-rather than a silent success is worth stating, because it is the same reason
-`nice` is a weaker lever here than it looks:
+`raiseToRealTime` as an error on every non-Linux platform, and
+`Experiment.Initialize` does not make the request there at all — it would fail
+identically on every machine, so the "real-time scheduling not obtained"
+message that earlier versions printed on every macOS run carried no
+information and is gone. The reason it is an error rather than a silent
+success is worth stating, because it is the same reason `nice` is a weaker
+lever here than it looks:
 
 > macOS has `thread_policy_set`, but […] the setting that matters most for
 > stimulus timing is something else entirely […] a per-thread time-constraint

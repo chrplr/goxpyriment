@@ -116,6 +116,7 @@ type Experiment struct {
 	Microphone *apparatus.Microphone
 	// RealTimePriority is the SCHED_FIFO priority Initialize() asks the OS for,
 	// or 0 to not ask at all. NewExperiment sets it to DefaultRealTimePriority.
+	// It is only acted on under Linux; elsewhere it is ignored (see Initialize).
 	//
 	// It lives on the Experiment rather than inside NewExperimentFromFlags
 	// because the elevation is not a property of how the program was launched.
@@ -967,9 +968,16 @@ func (e *Experiment) Initialize() error {
 	// because every program reaches Initialize while only some are built from
 	// flags. RealTimePriority carries the decision so the flag path keeps its
 	// -no-realtime escape hatch and the plain path stops being a second, quieter
-	// policy. On non-Linux this always logs a failure: the elevation is
-	// deliberately Linux-only (sysinfo/realtime_other.go), because Windows
-	// priority classes and Darwin thread policies are not the same guarantee.
+	// policy.
+	//
+	// The elevation is deliberately Linux-only (sysinfo/realtime_other.go),
+	// because Windows priority classes and Darwin thread policies are not the
+	// same guarantee. On those platforms the request is not made at all: it
+	// would fail on every run, whatever the machine, so the failure message
+	// carried no information -- and on Windows it was the only line printed to
+	// a console window that otherwise had no reason to appear next to the
+	// fullscreen experiment. The run's system report still records the
+	// scheduling class actually obtained (sysinfo.SchedulingInfo).
 	//
 	// This runs on the main goroutine, which init() has locked to its OS thread,
 	// so the elevation lands on the thread the experiment loop will use.
@@ -980,7 +988,7 @@ func (e *Experiment) Initialize() error {
 	// reads it. Starting it before the elevation also keeps the fork off the
 	// real-time policy, which Linux applies to the calling thread alone.
 	sysinfo.PrimeHost()
-	if e.RealTimePriority > 0 {
+	if e.RealTimePriority > 0 && runtime.GOOS == "linux" {
 		if err := sysinfo.RaiseToRealTime(e.RealTimePriority); err != nil {
 			log.Printf("real-time scheduling not obtained, continuing at normal priority: %v", err)
 		}
