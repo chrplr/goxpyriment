@@ -8,6 +8,10 @@
 // Six white quadrilaterals on black, in two rows of three: five are the same
 // shape (up to a random rotation and size) and one is an intruder whose
 // bottom-right vertex was displaced. The participant clicks on the intruder.
+//
+// -exp 1 runs Experiment 1 instead: black shapes on white, arranged on a
+// circle around a fixation mark, canonical displays only (44 trials) and two
+// training trials.
 package main
 
 import (
@@ -36,17 +40,32 @@ const (
 	trainingCriterion = 0.80 // a training block is repeated below this
 )
 
-// layout is the geometry of the 2 × 3 display, computed from the draw area.
+// layout is the geometry of the six-slot display, computed from the draw
+// area: two rows of three in experiment 2, a circle in experiment 1.
 type layout struct {
 	unitPx    float32                // pixels per shape unit
-	slots     [nSlots]control.FPoint // slot centres, row-major from top-left
+	slots     [nSlots]control.FPoint // slot centres
 	hitRadius float32                // nearest-slot fallback for near-miss clicks
+	fixation  bool                   // experiment 1 keeps a mark at the centre
 }
 
-func newLayout(w, h float32) layout {
-	var l layout
-	l.unitPx = h / 8
+func newLayout(experiment int, w, h float32) layout {
+	l := layout{unitPx: h / 8}
 	l.hitRadius = 1.2 * l.unitPx
+	if experiment == 1 {
+		// "Organized in a circle as big as the screen permitted" (SI), with a
+		// fixation mark in the middle (Fig. 1B, left). Slot i sits at angle
+		// 60°·i counter-clockwise from the right; the radius leaves room for
+		// the largest shape (1.5 units × 1.125) at the top and bottom.
+		l.fixation = true
+		r := h/2 - 1.0*l.unitPx
+		for i := range l.slots {
+			a := float64(i) * math.Pi / 3
+			l.slots[i] = control.Point(r*float32(math.Cos(a)), r*float32(math.Sin(a)))
+		}
+		return l
+	}
+	// Row-major from the top-left.
 	xs := []float32{-w / 3.5, 0, w / 3.5}
 	ys := []float32{h / 4, -h / 4}
 	for r, y := range ys {
@@ -74,10 +93,11 @@ type slotShapes struct {
 	shapes []*stimuli.Shape
 }
 
-// buildTestTrials returns the 88 test trials (11 shapes × 4 deviants ×
-// {canonical, swapped}) in a fully random order, with the outlier slot
-// balanced across the block.
-func buildTestTrials() ([]trial, error) {
+// buildTestTrials returns the test trials in a fully random order, with the
+// outlier slot balanced across the block: 11 shapes × 4 deviants ×
+// {canonical, swapped} = 88 in experiment 2; canonical only = 44 in
+// experiment 1.
+func buildTestTrials(experiment int) ([]trial, error) {
 	var trials []trial
 	for _, s := range referenceShapes {
 		ref, err := referenceFigure(s.name)
@@ -90,8 +110,11 @@ func buildTestTrials() ([]trial, error) {
 				return nil, err
 			}
 			trials = append(trials,
-				trial{phase: "test", shape: s.name, deviant: d, presentation: "canonical", common: ref, odd: dev},
-				trial{phase: "test", shape: s.name, deviant: d, presentation: "swapped", common: dev, odd: ref})
+				trial{phase: "test", shape: s.name, deviant: d, presentation: "canonical", common: ref, odd: dev})
+			if experiment != 1 {
+				trials = append(trials,
+					trial{phase: "test", shape: s.name, deviant: d, presentation: "swapped", common: dev, odd: ref})
+			}
 		}
 	}
 	design.ShuffleList(trials)
@@ -112,6 +135,24 @@ func buildTrainingA() []trial {
 		trials = append(trials, t)
 	}
 	design.ShuffleList(trials)
+	assignBalancedSlots(trials)
+	return trials
+}
+
+// buildTrainingExp1 returns the two training trials of experiment 1: "two
+// training pairs of geometric shapes, randomly selected from the 3" (SI),
+// either member as the intruder.
+func buildTrainingExp1() []trial {
+	pairs := trainingPolygonPairs()
+	design.ShuffleList(pairs)
+	var trials []trial
+	for _, p := range pairs[:2] {
+		t := trial{phase: "train", shape: p.a.name + "|" + p.b.name, presentation: "canonical", common: p.a, odd: p.b}
+		if design.RandInt(0, 1) == 1 {
+			t.common, t.odd = p.b, p.a
+		}
+		trials = append(trials, t)
+	}
 	assignBalancedSlots(trials)
 	return trials
 }
@@ -178,13 +219,29 @@ func joinFloats[T float32 | float64](xs []T) string {
 func main() {
 	// Experiment-specific flags must be declared before
 	// NewExperimentFromFlags, which calls flag.Parse.
+	expFlag := flag.Int("exp", 2, "which experiment of the paper to run: 1 (black on white, circular layout, canonical only) or 2")
 	demoFlag := flag.Bool("demo", false, "show the 11 reference shapes with their four deviants and exit")
-	skipTraining := flag.Bool("skip-training", false, "go straight to the 88 test trials")
+	skipTraining := flag.Bool("skip-training", false, "go straight to the test trials")
 	itiFlag := flag.Int("iti", 500, "inter-trial blank in ms")
 	feedbackFlag := flag.Int("feedback", 700, "feedback display duration in ms")
 
 	exp := control.NewExperimentFromFlags("Geometry-LoT1", control.Black, control.White, 32)
 	defer exp.End()
+
+	switch *expFlag {
+	case 1:
+		// Experiment 1 showed black shapes on white. The colours were fixed
+		// above, before the flag was parsed, so swap them here: the screen
+		// reads BgColor on every Clear and the text screens read
+		// ForegroundColor on every draw.
+		palette.shape, palette.background = control.Black, control.White
+		exp.BackgroundColor, exp.ForegroundColor = palette.background, palette.shape
+		exp.Screen.BgColor = palette.background
+	case 2:
+	default:
+		exp.Fatal("-exp must be 1 or 2, got %d", *expFlag)
+	}
+	exp.Data.WriteComment(fmt.Sprintf("experiment: %d", *expFlag))
 
 	// The participant points at a shape, so the cursor must be visible;
 	// Initialize() hides it by default.
@@ -193,13 +250,14 @@ func main() {
 	}
 
 	exp.AddDataVariableNames([]string{
-		"trial", "phase", "block_repeat", "shape", "deviant", "presentation",
+		"experiment", "trial", "phase", "block_repeat", "shape", "deviant", "presentation",
 		"outlier_slot", "outlier_rotation", "outlier_scale", "rotations", "scales",
 		"response_slot", "correct", "rt", "onset_ts",
 	})
 
 	w, h := exp.DrawArea()
-	lay := newLayout(w, h)
+	lay := newLayout(*expFlag, w, h)
+	fixation := stimuli.NewFixCross(0.12*lay.unitPx, 2, palette.shape)
 
 	correctTone := sweepTone(440, 880, 200, 0.5)
 	errorTone := sweepTone(880, 440, 200, 0.5)
@@ -247,6 +305,9 @@ func main() {
 				}
 			}
 		}
+		if lay.fixation {
+			return fixation.Draw(exp.Screen)
+		}
 		return nil
 	}
 
@@ -275,7 +336,7 @@ func main() {
 	// (SI: "filled in green for geometric shapes").
 	recolour := func(s slotShapes, c control.Color) {
 		for _, sh := range s.shapes {
-			if sh.Color != control.Black {
+			if sh.Color != palette.background {
 				sh.Color = c
 			}
 		}
@@ -337,15 +398,16 @@ func main() {
 			return false, err
 		}
 
-		exp.Data.Add(index, t.phase, blockRepeat, t.shape, t.deviant, t.presentation,
+		exp.Data.Add(*expFlag, index, t.phase, blockRepeat, t.shape, t.deviant, t.presentation,
 			t.outlierSlot, rots[t.outlierSlot], scs[t.outlierSlot],
 			joinFloats(rots), joinFloats(scs),
 			response, correct, rt, onset)
 		return correct, nil
 	}
 
-	// runTrainingBlock repeats a block until the criterion is met.
-	runTrainingBlock := func(build func() []trial, message string) error {
+	// runTrainingBlock repeats a block until the criterion is met (a
+	// criterion of 0 runs it once).
+	runTrainingBlock := func(build func() []trial, criterion float64, message string) error {
 		for repeat := 0; ; repeat++ {
 			if err := exp.ShowInstructions(message); err != nil {
 				return err
@@ -361,7 +423,7 @@ func main() {
 					nCorrect++
 				}
 			}
-			if float64(nCorrect) >= trainingCriterion*float64(len(trials)) {
+			if float64(nCorrect) >= criterion*float64(len(trials)) {
 				return nil
 			}
 			message = fmt.Sprintf("%d correct out of %d.\n\nLet's practise this once more.\n\nPress SPACE to continue.", nCorrect, len(trials))
@@ -388,12 +450,19 @@ func main() {
 			return err
 		}
 
-		if !*skipTraining {
-			if err := runTrainingBlock(buildTrainingA,
+		switch {
+		case *skipTraining:
+		case *expFlag == 1:
+			if err := runTrainingBlock(buildTrainingExp1, 0,
+				"First, two practice trials.\n\nPress SPACE to start."); err != nil {
+				return err
+			}
+		default:
+			if err := runTrainingBlock(buildTrainingA, trainingCriterion,
 				"First, a short practice with pictures.\n\nPress SPACE to start."); err != nil {
 				return err
 			}
-			if err := runTrainingBlock(buildTrainingB,
+			if err := runTrainingBlock(buildTrainingB, trainingCriterion,
 				"Now a short practice with simple shapes.\n\nPress SPACE to start."); err != nil {
 				return err
 			}
@@ -402,7 +471,7 @@ func main() {
 		if err := exp.ShowInstructions("The experiment itself starts now.\n\nPress SPACE when you are ready."); err != nil {
 			return err
 		}
-		trials, err := buildTestTrials()
+		trials, err := buildTestTrials(*expFlag)
 		if err != nil {
 			return err
 		}
@@ -433,7 +502,7 @@ func showDemo(exp *control.Experiment, lay layout) error {
 	}
 	for r, s := range referenceShapes {
 		y := h/2 - (float32(r)+0.7)*h/float32(len(referenceShapes))
-		label := stimuli.NewTextLine(s.name, -w/2+w*0.1, y, control.White)
+		label := stimuli.NewTextLine(s.name, -w/2+w*0.1, y, palette.shape)
 		if err := label.Draw(exp.Screen); err != nil {
 			return err
 		}

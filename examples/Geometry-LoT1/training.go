@@ -83,7 +83,7 @@ func trainingPicturePairs() []pair {
 	cyan := control.RGB(0, 200, 220)
 	green := control.RGB(60, 200, 60)
 	purple := control.RGB(170, 90, 220)
-	w := control.White
+	w := palette.shape
 	return []pair{
 		// orange vs cyan blurred discs
 		{disc("orange-disc", orange), disc("cyan-disc", cyan)},
@@ -109,9 +109,9 @@ func trainingPicturePairs() []pair {
 				{[]control.FPoint{control.Point(-0.55, 0), control.Point(0, discR), control.Point(0.55, 0)}, w},
 			}}},
 		// checkerboard vs dots → ring vs disc (the hole is background-coloured)
-		{figure{"ring", []part{{regularPolygon(32, discR, 0), w}, {regularPolygon(32, discR*0.55, 0), control.Black}}}, disc("disc", w)},
+		{figure{"ring", []part{{regularPolygon(32, discR, 0), w}, {regularPolygon(32, discR*0.55, 0), palette.background}}}, disc("disc", w)},
 		// gradient disc vs grey polygon → crescent vs pentagon
-		{figure{"crescent", []part{{regularPolygon(32, discR, 0), purple}, {offset(regularPolygon(32, discR*0.85, 0), 0.4, 0.15), control.Black}}},
+		{figure{"crescent", []part{{regularPolygon(32, discR, 0), purple}, {offset(regularPolygon(32, discR*0.85, 0), 0.4, 0.15), palette.background}}},
 			figure{"pentagon", []part{{regularPolygon(5, discR, 90), purple}}}},
 		// dotted vs solid line
 		{figure{"solid-line", []part{bar(-barHalf, -discR, barHalf, discR, w)}},
@@ -126,7 +126,7 @@ func trainingPicturePairs() []pair {
 // trainingPolygonPairs are the three "generalization 2" pairs of Fig. 3A
 // (block B): arrow-head vs pentagon, square vs triangle, triangle vs pentagon.
 func trainingPolygonPairs() []pair {
-	w := control.White
+	w := palette.shape
 	pentagon := figure{"pentagon", []part{{regularPolygon(5, discR, 90), w}}}
 	triangle := figure{"triangle", []part{{[]control.FPoint{
 		control.Point(-0.6, 0.7), control.Point(0.8, 0), control.Point(-0.6, -0.7)}, w}}}

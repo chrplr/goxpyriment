@@ -46,6 +46,12 @@ const deviantFraction = 0.30
 // deviantNames lists the four deviants in the order used for the data file.
 var deviantNames = []string{"shorter", "longer", "rot_up", "rot_down"}
 
+// palette is the shape and background colour pair: white on black in
+// experiment 2 (and everything after it), black on white in experiment 1.
+// Set once from the -exp flag before any figure is built; training figures
+// with a hole (ring, crescent) paint the hole in palette.background.
+var palette = struct{ shape, background control.Color }{control.White, control.Black}
+
 // part is one filled convex polygon of a figure. Points are relative to the
 // figure's own origin (y up), in shape units.
 type part struct {
@@ -66,7 +72,7 @@ type figure struct {
 func quadrilateral(name string, tl, tr, br control.FPoint) figure {
 	return figure{name: name, parts: []part{{
 		points: []control.FPoint{control.Origin(), tl, tr, br},
-		color:  control.White,
+		color:  palette.shape,
 	}}}
 }
 

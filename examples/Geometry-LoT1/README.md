@@ -28,13 +28,15 @@ including the values the paper leaves open and the choices made here.
 go run ./examples/Geometry-LoT1 -s 1        # from the repo root
 go run ./examples/Geometry-LoT1 -w -s 1     # windowed
 go run ./examples/Geometry-LoT1 -w -demo    # the 11 shapes and their 4 deviants
+go run ./examples/Geometry-LoT1 -exp 1 -s 1 # Experiment 1 instead (see below)
 ```
 
 | Flag | Meaning |
 |------|---------|
 | `-s N`, `-w`, `-d N` | subject, windowed mode, display — the standard goxpyriment flags |
+| `-exp N` | which experiment of the paper: `2` (default) or `1` |
 | `-demo` | draw the 11 reference shapes with their four deviants and exit |
-| `-skip-training` | go straight to the 88 test trials |
+| `-skip-training` | go straight to the test trials |
 | `-iti MS` | inter-trial blank (default 500 ms) |
 | `-feedback MS` | feedback display duration (default 700 ms) |
 
@@ -57,6 +59,22 @@ go run ./examples/Geometry-LoT1 -w -demo    # the 11 shapes and their 4 deviants
 
 Each trial: 500 ms blank → display until the click (no timeout; clicks on the
 background are ignored) → 700 ms feedback.
+
+## Experiment 1 (`-exp 1`)
+
+The paper's first experiment (n = 605) differs from Experiment 2 in exactly
+the ways listed in its SI:
+
+| | `-exp 1` | `-exp 2` (default) |
+|---|---|---|
+| Colours | black shapes on white | white shapes on black |
+| Layout | the six shapes on a circle around a central fixation mark | two rows of three |
+| Composition | canonical only (the intruder is always the deviant) | half canonical, half swapped |
+| Test trials | 11 × 4 = **44** | 11 × 4 × 2 = **88** |
+| Training | 2 trials with polygon pairs, run once | 10 pictures + 6 polygons, each block to ≥ 80 % |
+
+Shapes, deviants, rotations, scales, response and feedback are identical. The
+`experiment` column of the data file records which variant produced each row.
 
 ## Deviants
 

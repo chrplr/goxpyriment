@@ -105,3 +105,35 @@ func TestTransformCentresAndRotates(t *testing.T) {
 		t.Error("pointInPolygon disagrees with the rotated rectangle")
 	}
 }
+
+func TestTrialCounts(t *testing.T) {
+	for _, tc := range []struct {
+		exp, n  int
+		swapped bool
+	}{{1, 44, false}, {2, 88, true}} {
+		trials, err := buildTestTrials(tc.exp)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if len(trials) != tc.n {
+			t.Errorf("exp %d: %d trials, want %d", tc.exp, len(trials), tc.n)
+		}
+		slotCount := map[int]int{}
+		hasSwapped := false
+		for _, tr := range trials {
+			slotCount[tr.outlierSlot]++
+			hasSwapped = hasSwapped || tr.presentation == "swapped"
+		}
+		if hasSwapped != tc.swapped {
+			t.Errorf("exp %d: swapped trials present = %v, want %v", tc.exp, hasSwapped, tc.swapped)
+		}
+		for s := 0; s < nSlots; s++ {
+			if c := slotCount[s]; c < tc.n/nSlots || c > tc.n/nSlots+1 {
+				t.Errorf("exp %d: slot %d is the outlier %d times, want %d or %d", tc.exp, s, c, tc.n/nSlots, tc.n/nSlots+1)
+			}
+		}
+	}
+	if n := len(buildTrainingExp1()); n != 2 {
+		t.Errorf("exp 1 training: %d trials, want 2", n)
+	}
+}

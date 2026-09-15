@@ -325,7 +325,26 @@ outlier scale, outlier rotation (Table S2).
 }
 ```
 
-## 9. Optional extras worth building alongside
+## 9. Experiment 1 variant (`-exp 1`)
+
+Exp. 1 (n = 605) is Exp. 2 minus the five changes listed in the SI, so the
+same program runs it from a flag:
+
+| | Exp. 1 | Exp. 2 |
+|---|---|---|
+| colours | black shapes on white background | white on black |
+| layout | six shapes on a circle "as big as the screen permitted", fixation mark at the centre (Fig. 1B left) — implemented as slot *i* at angle 60°·*i* from the right, radius `H/2 − 1 unit` | 2 × 3 grid |
+| composition | canonical only | canonical + swapped |
+| test trials | 11 × 4 = 44 | 88 |
+| training | 2 trials, pairs drawn at random from the 3 easy-polygon pairs; no criterion is stated, so the block runs once | 10 + 6, each block repeated to ≥ 80 % |
+| lottery page | — | (recruitment only, not part of the task) |
+
+Everything else — shapes, deviants, 30 % displacement, rotations, scales,
+click response, green/red + rising/falling feedback, 99th-percentile RT
+trimming — is shared. Error rates across the 11 shapes correlated at r² = 0.97
+between the two experiments (Fig. 1D).
+
+## 10. Optional extras worth building alongside
 
 * A `-demo` / `-shapes` flag that draws the 11 reference shapes with their four
   deviants in a grid (Fig. 1A) — the quickest way to check the coordinate
