@@ -44,6 +44,7 @@ From this directory:
     go run . -p demo              # choose the protocol on the command line
     go run . -dir .               # read protocols/ and stimuli/ from disk
     go run . -skip-wait           # start at once, no instruction screen
+    go run . -ttl megttlbox:/dev/ttyACM0   # TTL code at every onset (below)
 
 `-p` wins when it is given; otherwise the dialog's choice applies, and the
 dialog remembers it for the next session.
@@ -61,6 +62,8 @@ and every onset is measured from it. ESC, or closing the window, aborts.
 | `-dir DIR` | read `protocols/` and `stimuli/` from `DIR` instead of the copies embedded in the binary |
 | `-no-crosshair` | do not superimpose the fixation crosshair on the stimuli |
 | `-skip-wait` | no instruction screen and no start key |
+| `-ttl DEVICE[:PORT]` | send each row's `code` as a TTL at its onset — see *Triggers*; default none |
+| `-ttl-ms N` | TTL pulse width in ms; default 10 |
 
 **Record in fullscreen, never windowed.** A compositing desktop may throttle an
 unfocused window: measured here, a windowed run reported a refresh of 5690 Hz
@@ -130,11 +133,32 @@ The protocol table
 `onset_time` and `duration` are in ms; `onset_time` is measured from the start
 key. Types are `TEXT`, `BOX`, `IMAGE`, `SOUND`, and the `~`-separated
 `TEXT_STREAM`, `IMAGE_STREAM`, `SOUND_STREAM`. In a stream row an element may
-override the row default as `name:duration` or `name:duration:gap`.
+override the row default as `name:duration` or `name:duration:gap`. An
+optional `code` column (1–255) is the TTL code sent at the row's onset.
 
 Rows play in order and must not overlap; the loader rejects a table where they
 do. A fixation cross fills every gap, and the crosshair is drawn on top of
 everything, stimuli included.
+
+
+Triggers
+--------
+
+With `-ttl DEVICE[:PORT]` the row's `code` is written to the eight TTL lines
+at the row's onset — from the stream's post-flip hook, immediately after the
+VSYNC flip that shows the row's first stimulus or starts its sound, the same
+instant recorded as `actual_ms` — and cleared `-ttl-ms` later (10 ms by
+default, up to one frame more). For a stream row only the first element is
+marked, matching the single `_ONSET` line in the data file. Devices:
+`megttlbox:/dev/ttyACM0`, `mmbts:/dev/ttyACM0`, `dlpio8[:PORT|auto]`,
+`parallel[:/dev/parport0]`; the details, and the caveats per device, are in
+[`MEG-localizer2/README.md`](../MEG-localizer2/README.md#triggers), which
+shares this program. A device that cannot be opened, or a table without a
+single code, stops the program before the window opens.
+
+**`make-protocol.py` does not write a `code` column yet**, so `demo.tsv` runs
+without triggers: assign one code per condition there (18 conditions fit
+comfortably in 1–255) and regenerate.
 
 
 Regenerating the stimuli
@@ -177,8 +201,9 @@ The data file
 Two files per session under the data directory: a CSV with one row per event
 and a `-info.txt` with the session metadata (display, refresh rate, drivers).
 Columns are `subject_id`, `intended_ms`, `actual_ms`, `event`, `cond`,
-`stimuli` — so the scheduled and the achieved onset are both recorded, per
-event, on the same clock as any response.
+`stimuli`, `code` — so the scheduled and the achieved onset are both recorded,
+per event, on the same clock as any response, next to the TTL code sent (0
+when the row has none, and for responses).
 
 Events are `IMAGE_ONSET`/`OFFSET`, `IMAGE_STREAM_ONSET`/`OFFSET`, `SOUND_ONSET`,
 `SOUND_STREAM_ONSET` and `RESPONSE`. Fullscreen runs here give a mean onset
@@ -188,11 +213,9 @@ error of about 5 ms and a worst case under 20 ms.
 Not yet done
 ------------
 
-- **Hardware triggers.** A MEG run needs a TTL at each stimulus onset. Nothing
-  emits one yet. The hook exists: `stimuli.PresentStreamOfStimuliHooks` takes an
-  `OnsetCallback` fired immediately after the flip, and the `triggers/` package
-  has parallel-port, DLP-IO8, FT232H, LabJack and GPIO backends. Note that
-  `triggers/` is desktop-only and excluded from the browser build.
+- **Trigger codes in the demo table.** The program sends them (see
+  *Triggers*), but `make-protocol.py` does not assign any yet, so `demo.tsv`
+  runs without. The trigger path has also not been exercised on hardware.
 - **Responses.** The motor trials ask for three button presses; no key mapping
   is defined and nothing counts them. `RESPONSE` events are already timestamped
   on the run clock, so only the definition is missing.

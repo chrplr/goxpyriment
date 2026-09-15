@@ -1,15 +1,19 @@
 // Copyright (2026) Christophe Pallier <christophe@pallier.org>
 // Licensed under the Apache License, Version 2.0 (see LICENSE.txt).
 
-// MEG-localizer — a table-driven multimodal localizer for MEG.
+// MEG-localizer2 — a finger and tone localizer for MEG.
 //
-// Adapted from examples/RSVP-multimodal, which ports the Pinel fMRI localizer.
-// The presentation engine is unchanged: a run is a tab-separated table of
-// absolute onsets in protocols/, and nothing about the paradigm is compiled in.
+// Ten stimuli, one per trial, at a jittered SOA of about one second: five
+// pictures of a hand with one finger coloured red, and five narrow-band tones
+// one octave apart. The program is the one from examples/MEG-localizer — the
+// same table-driven presentation engine, differing only in what it embeds and
+// in running black on white, so the hand pictures' white background merges
+// with the screen. A run is a tab-separated table of absolute onsets in
+// protocols/, and nothing about the paradigm is compiled in.
 //
 //	onset_time	duration	type	cond	stimuli
-//	0	350	IMAGE_STREAM	words	admit.png:350:50~agree.png:350:50
-//	2000	1600	SOUND	sounds	sound_01.wav
+//	1000	500	SOUND	tone_800	tone_00800Hz.wav
+//	1991	500	IMAGE	finger_index	f2.jpg
 //
 // Types: TEXT, BOX, IMAGE, SOUND, TEXT_STREAM, IMAGE_STREAM, SOUND_STREAM.
 // In a stream row an element may override the row default as name:duration or
@@ -70,7 +74,7 @@ import (
 //go:embed protocols/*.tsv
 var protocolFS embed.FS
 
-//go:embed stimuli/*.wav stimuli/*.png
+//go:embed stimuli/*.wav stimuli/*.jpg
 var assetFS embed.FS
 
 // gracePeriodMs is how long the fixation cross is held after the last row, so
@@ -290,13 +294,15 @@ func main() {
 	ttlMs := flag.Int("ttl-ms", 10, "TTL pulse width in ms (the code is held at least this long, "+
 		"and at most one frame longer)")
 
-	// Font size 50 and a white-on-black screen reproduce the defaults of the
-	// gostim2 implementation, which used the same Inconsolata font.
+	// Black on white, unlike MEG-localizer: the hand pictures have a white
+	// background, so on a white screen only the hand appears and disappears,
+	// and the fixation cross and crosshair, drawn in the foreground colour,
+	// stay visible on top of it. Font size 50 as in MEG-localizer.
 	// The protocol selector rides along in the session-setup dialog that opens
 	// when no -s is given -- double-clicking the icon, that is -- so the run
 	// can be chosen without a command line. Its value is remembered across
 	// sessions like the other dialog settings.
-	exp := control.NewExperimentFromFlags("MEG-localizer", control.Black, control.White, 50,
+	exp := control.NewExperimentFromFlags("MEG-localizer2", control.White, control.Black, 50,
 		control.InfoField{Name: "protocol", Label: "Protocol",
 			Type: control.FieldSelect, Options: names, Default: initial})
 	defer exp.End()
@@ -433,7 +439,7 @@ func main() {
 			// Nothing to wait for: the clock starts below, right away.
 		case isRun:
 			if ierr := exp.ShowInstructions(
-				"MEG localizer — " + selected + "\n\n" +
+				"MEG localizer 2 — " + selected + "\n\n" +
 					"Please stay still and keep your eyes on the cross.\n\n" +
 					"Operator: press SPACE, then T to start the run."); ierr != nil {
 				return ierr
