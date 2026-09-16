@@ -68,7 +68,7 @@ The stimuli
 | `empty` | `EMPTY` | — | nothing: the fixation cross alone, for the trial's duration | 500 ms |
 | `tone_200` … `tone_3200` | `SOUND` | `tone_00200Hz.wav` … `tone_03200Hz.wav` | narrow-band noise centred on 200, 400, 800, 1600, 3200 Hz | 500 ms |
 
-The pictures are 568 × 738 px, shown at the centre of the screen. The
+The pictures are 187 × 244 px, shown at the centre of the screen. The
 fixation cross — black, 40 px arms, the same one throughout — is on screen
 for the whole run: alone between trials and during an empty trial, drawn on
 top of the hand during a picture. Since the screen is white, a picture's own
@@ -90,7 +90,7 @@ subdirectories are not):
 
 | Directory | Contents |
 |---|---|
-| `stimuli/hands/` | `fingers_all.jpg`, the five hands on one sheet, and `split_hands.py`, which cuts it into `f1.jpg` … `f5.jpg` |
+| `stimuli/hands/` | `fingers_all.jpg`, the five hands on one sheet; `split_hands.py`, which cuts it into `f1.jpg` … `f5.jpg`; and those five cuts at full size (568 × 738 px) — the copies in `stimuli/` are the same pictures scaled down to 187 × 244 |
 | `stimuli/tones/` | `make_tones.py` and `description.md`; `set1/` is the 1-octave set in use, `set2/` a 0.6-octave alternative (200 … 1056 Hz) |
 
 To try `set2`, copy its files over `stimuli/` and change `TONES_HZ` in
