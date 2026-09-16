@@ -3,24 +3,30 @@
 
 // MEG-localizer2 — a finger and tone localizer for MEG.
 //
-// Ten stimuli, one per trial, at a jittered SOA of about one second: five
-// pictures of a hand with one finger coloured red, and five narrow-band tones
-// one octave apart. The program is the one from examples/MEG-localizer — the
-// same table-driven presentation engine, differing only in what it embeds and
-// in running black on white, so the hand pictures' white background merges
-// with the screen. A run is a tab-separated table of absolute onsets in
-// protocols/, and nothing about the paradigm is compiled in.
+// Ten trial types, one per trial, at a jittered SOA of about one second: four
+// pictures of a hand with one finger coloured red, an empty trial in which
+// nothing but the fixation cross is on screen, and five narrow-band tones one
+// octave apart. The program is the one from examples/MEG-localizer — the same
+// table-driven presentation engine, differing in what it embeds, in running
+// black on white so the hand pictures' white background merges with the
+// screen, and in the EMPTY row type. A run is a tab-separated table of
+// absolute onsets in protocols/, and nothing about the paradigm is compiled in.
 //
 //	onset_time	duration	type	cond	stimuli
 //	1000	500	SOUND	tone_800	tone_00800Hz.wav
 //	1991	500	IMAGE	finger_index	f2.jpg
+//	3078	500	EMPTY	empty	-
 //
-// Types: TEXT, BOX, IMAGE, SOUND, TEXT_STREAM, IMAGE_STREAM, SOUND_STREAM.
-// In a stream row an element may override the row default as name:duration or
-// name:duration:gap (ms). Files are looked up by name in stimuli/; both
-// directories are embedded, so the binary is self-contained.
+// Types: TEXT, BOX, IMAGE, SOUND, EMPTY, TEXT_STREAM, IMAGE_STREAM,
+// SOUND_STREAM. In a stream row an element may override the row default as
+// name:duration or name:duration:gap (ms). Files are looked up by name in
+// stimuli/; both directories are embedded, so the binary is self-contained.
+// An EMPTY row presents nothing for its duration; its stimuli field is only a
+// label ("-" in make-protocol.py's tables), recorded in the data file.
 //
-// A fixation cross is shown whenever no stimulus is on screen.
+// The fixation cross is on screen throughout the run, at the same size: alone
+// between stimuli and during EMPTY rows, superimposed on the pictures (unless
+// -no-crosshair is given).
 //
 // The protocol tables and the stimuli they name are embedded, so the binary
 // runs on its own: double-clicking it opens the session-setup dialog, which
@@ -95,7 +101,7 @@ type row struct {
 	line     int    // line number in the table, for error messages
 	onsetMs  int    // scheduled onset, in ms from the start of the run
 	durMs    int    // the row's duration field: per-element for *_STREAM types
-	stype    string // TEXT, BOX, IMAGE, SOUND, TEXT_STREAM, IMAGE_STREAM, SOUND_STREAM
+	stype    string // TEXT, BOX, IMAGE, SOUND, EMPTY, TEXT_STREAM, IMAGE_STREAM, SOUND_STREAM
 	cond     string // condition label, may be empty
 	code     int    // TTL code sent at the row's onset (the "code" column); 0 for none
 	stimuli  string // the stimuli field verbatim, for the data file
@@ -111,8 +117,11 @@ func (r *row) totalMs() int {
 	return total
 }
 
-// isVisual reports whether the row puts something on screen. Sound rows do not:
-// the fixation cross stays up while they play.
+// isVisual reports whether the row occupies the screen for its duration, and so
+// gets an offset entry in the data file. Sound rows do not: the fixation cross
+// stays up while they play. EMPTY rows do, although what they show is that
+// same cross: their duration is a scheduled interval like a picture's, and
+// the offset marks its end.
 func (r *row) isVisual() bool { return !strings.HasPrefix(r.stype, "SOUND") }
 
 // logEntry is one line of the data file. Entries are buffered and sorted by
@@ -286,7 +295,8 @@ func main() {
 	assetDir := flag.String("dir", "", "read protocols/ and stimuli/ from this "+
 		"directory instead of the copies embedded in the binary "+
 		"(e.g. -dir . after regenerating them, to avoid a rebuild)")
-	noCrosshair := flag.Bool("no-crosshair", false, "do not superimpose the fixation crosshair on the stimuli")
+	noCrosshair := flag.Bool("no-crosshair", false, "do not superimpose the fixation cross on the stimuli "+
+		"(it is still shown between them and on EMPTY rows)")
 	skipWait := flag.Bool("skip-wait", false, "start immediately, without the instruction screen or the scanner trigger")
 	ttlSpec := flag.String("ttl", "", "send each row's \"code\" as a TTL at its onset, through "+
 		"DEVICE[:PORT]: megttlbox:/dev/ttyACM0, mmbts:/dev/ttyACM0, dlpio8[:PORT|auto], "+
@@ -387,11 +397,25 @@ func main() {
 		}
 	}
 
+	// The one fixation cross of the run. It fills every gap between stimuli, is
+	// what an EMPTY row presents, and is superimposed on every frame of every
+	// stimulus (see onFrame), so the participant sees the same cross, at the
+	// same size, from the start key to the end. Size and line width match the
+	// gostim2 original (arms of 20 px either side of centre).
+	fix := stimuli.NewFixCross(40, 2, exp.ForegroundColor)
+	fixGreen := stimuli.NewFixCross(40, 4, control.Green) // waiting for the trigger
+	if err := stimuli.PreloadVisualOnScreen(exp.Screen, fix); err != nil {
+		log.Fatalf("cannot preload fixation cross: %v", err)
+	}
+	if err := stimuli.PreloadVisualOnScreen(exp.Screen, fixGreen); err != nil {
+		log.Fatalf("cannot preload fixation cross: %v", err)
+	}
+
 	// Build and preload every stimulus up front: identical items (the four
 	// checkerboards, a repeated instruction word) are built once and shared, so
 	// each distinct file costs one texture or one audio stream, and no decoding
 	// happens once the run has started.
-	res := newResources(exp, *assetDir)
+	res := newResources(exp, *assetDir, fix)
 	streams := make([][]stimuli.StreamElement, len(rows))
 	for i := range rows {
 		if streams[i], err = res.build(&rows[i]); err != nil {
@@ -400,25 +424,6 @@ func main() {
 	}
 	log.Printf("preloaded %d images, %d sounds, %d texts",
 		len(res.pictures), len(res.sounds), len(res.texts)+len(res.boxes))
-
-	// The fixation cross fills every gap between stimuli. Size and line width
-	// match the gostim2 original (arms of 20 px either side of centre).
-	fix := stimuli.NewFixCross(40, 2, exp.ForegroundColor)
-	// Crosshair superimposed on every frame, stimuli included, so the
-	// participant has a stable fixation point throughout the run rather than
-	// only between blocks. Thinner and shorter than the between-block cross so
-	// it sits on top of a stimulus without competing with it.
-	crosshair := stimuli.NewFixCross(20, 1, exp.ForegroundColor)
-	fixGreen := stimuli.NewFixCross(40, 4, control.Green) // waiting for the trigger
-	if err := stimuli.PreloadVisualOnScreen(exp.Screen, fix); err != nil {
-		log.Fatalf("cannot preload fixation cross: %v", err)
-	}
-	if err := stimuli.PreloadVisualOnScreen(exp.Screen, crosshair); err != nil {
-		exp.Fatal("preloading the crosshair: %v", err)
-	}
-	if err := stimuli.PreloadVisualOnScreen(exp.Screen, fixGreen); err != nil {
-		log.Fatalf("cannot preload fixation cross: %v", err)
-	}
 
 	exp.AddDataVariableNames([]string{"intended_ms", "actual_ms", "event", "cond", "stimuli", "code"})
 	exp.AddExperimentInfo("protocol: " + selected)
@@ -517,8 +522,12 @@ func main() {
 				ttlFail("clear", ttl.Send(0))
 				pulseEndNS = 0
 			}
+			// The same cross as between stimuli, drawn on top of the picture
+			// so it never disappears or changes size. On a fixation lead or an
+			// EMPTY row this redraws the pixels the element just drew, which
+			// is harmless.
 			if !*noCrosshair {
-				return crosshair.Draw(exp.Screen)
+				return fix.Draw(exp.Screen)
 			}
 			return nil
 		}
@@ -732,16 +741,18 @@ func readAsset(dir, name string) ([]byte, error) {
 type resources struct {
 	dir      string
 	exp      *control.Experiment
+	fix      stimuli.VisualStimulus // what an EMPTY row shows: the run's fixation cross
 	pictures map[string]*stimuli.Picture
 	sounds   map[string]*stimuli.Sound
 	texts    map[string]*stimuli.TextLine
 	boxes    map[string]*stimuli.TextBox
 }
 
-func newResources(exp *control.Experiment, dir string) *resources {
+func newResources(exp *control.Experiment, dir string, fix stimuli.VisualStimulus) *resources {
 	return &resources{
 		dir:      dir,
 		exp:      exp,
+		fix:      fix,
 		pictures: map[string]*stimuli.Picture{},
 		sounds:   map[string]*stimuli.Sound{},
 		texts:    map[string]*stimuli.TextLine{},
@@ -812,6 +823,14 @@ func (res *resources) stimulus(stype, spec string) (stimuli.Stimulus, error) {
 		}
 		res.texts[spec] = t
 		return t, nil
+
+	case "EMPTY":
+		// Nothing but the fixation cross. The cross itself is the element,
+		// rather than a nil stimulus, so the row has a real VSYNC onset: the
+		// stream logs it, fires the onset hook (the TTL code), and holds the
+		// cross for the row's duration -- the empty trial is timed and
+		// triggered exactly like a picture.
+		return res.fix, nil
 
 	case "BOX":
 		if b, ok := res.boxes[spec]; ok {
@@ -899,6 +918,13 @@ func loadProtocol(name string, raw []byte) ([]row, error) {
 
 		switch stype {
 		case "TEXT", "IMAGE", "SOUND":
+			r.elements = []element{{spec: stim, durMs: dur}}
+		case "EMPTY":
+			// No file to load: the stimuli field is only a label for the data
+			// file, so it is not looked up. It still has to hold something --
+			// make-protocol.py writes "-" -- because TrimLeadingSpace above
+			// swallows the tab that opens a blank cell, shifting the code
+			// column into this one. Hence the empty-field check stays.
 			r.elements = []element{{spec: stim, durMs: dur}}
 		case "BOX":
 			// A literal "\n" in the table starts a new line.

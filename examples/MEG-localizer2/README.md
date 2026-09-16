@@ -1,16 +1,19 @@
 MEG-localizer2
 ==============
 
-A finger and tone localizer for MEG: one stimulus about every second, drawn
-from five pictures of a hand with one finger coloured red and five tones one
-octave apart, for 160 trials (each stimulus 16 times) — a run of about 160 s.
+A finger and tone localizer for MEG: one trial about every second, drawn
+from four pictures of a hand with one finger coloured red, an empty trial
+(nothing on screen but the fixation cross) and five tones one octave apart,
+for 160 trials (each of the ten 16 times) — a run of about 160 s.
 
 The program is the one from [`examples/MEG-localizer`](../MEG-localizer): the
 same table-driven presentation engine, and the same `main.go`, `ttl.go` and
-`ttl_js.go` but for four lines of `main.go` (the embed pattern, the title, and
+`ttl_js.go` but for a few lines of `main.go`: the embed pattern, the title,
 black-on-white instead of white-on-black so the hand pictures' white
-background merges with the screen). Everything that makes this a different experiment is in `stimuli/`
-and in the schedule under `protocols/`.
+background merges with the screen, one fixation cross kept on screen at the
+same size throughout the run, and the `EMPTY` row type. Everything else that
+makes this a different experiment is in `stimuli/` and in the schedule under
+`protocols/`.
 
 
 Running it
@@ -45,7 +48,7 @@ and every onset is measured from it. ESC, or closing the window, aborts.
 | `-w` | windowed instead of fullscreen |
 | `-d N` | display index |
 | `-dir DIR` | read `protocols/` and `stimuli/` from `DIR` instead of the copies embedded in the binary |
-| `-no-crosshair` | do not superimpose the fixation crosshair on the stimuli |
+| `-no-crosshair` | do not superimpose the fixation cross on the pictures (it stays on screen between them and on empty trials) |
 | `-skip-wait` | no instruction screen and no start key |
 | `-ttl DEVICE[:PORT]` | send each row's code as a TTL at its onset — see below; default none |
 | `-ttl-ms N` | TTL pulse width in ms; default 10 |
@@ -59,15 +62,22 @@ suffer. `-w` is for looking at stimuli, not for data.
 The stimuli
 -----------
 
-| Condition | File | What it is | Duration |
-|---|---|---|---|
-| `finger_thumb` … `finger_little` | `f1.jpg` … `f5.jpg` | a hand, black outline on white, with one finger filled red | 500 ms |
-| `tone_200` … `tone_3200` | `tone_00200Hz.wav` … `tone_03200Hz.wav` | narrow-band noise centred on 200, 400, 800, 1600, 3200 Hz | 500 ms |
+| Condition | Type | File | What it is | Duration |
+|---|---|---|---|---|
+| `finger_index` … `finger_little` | `IMAGE` | `f2.jpg` … `f5.jpg` | a hand, black outline on white, with one finger filled red | 500 ms |
+| `empty` | `EMPTY` | — | nothing: the fixation cross alone, for the trial's duration | 500 ms |
+| `tone_200` … `tone_3200` | `SOUND` | `tone_00200Hz.wav` … `tone_03200Hz.wav` | narrow-band noise centred on 200, 400, 800, 1600, 3200 Hz | 500 ms |
 
-The pictures are 568 × 738 px, shown at the centre of the screen with the
-fixation crosshair drawn on top. Between stimuli the screen is white with a
-black fixation cross, so a picture's own white background is invisible: what
-appears and disappears is the hand.
+The pictures are 568 × 738 px, shown at the centre of the screen. The
+fixation cross — black, 40 px arms, the same one throughout — is on screen
+for the whole run: alone between trials and during an empty trial, drawn on
+top of the hand during a picture. Since the screen is white, a picture's own
+white background is invisible: what appears and disappears is the hand.
+
+The empty trial takes the slot of the thumb picture: `f1.jpg` is still under
+`stimuli/` (and embedded), but no row of `demo.tsv` names it. An `EMPTY` row
+is timed, logged and triggered like a picture; its `stimuli` field is a label
+(`-`) that goes into the data file.
 
 The tones are one octave apart, spanning the tonotopic axis of primary
 auditory cortex, and are equalised for loudness on the ISO 226 60-phon
@@ -95,10 +105,10 @@ The schedule
     ./make-protocol.py                        # protocols/demo.tsv, seed 0
     ./make-protocol.py --seed 7 --name run7   # another order, another table
 
-- Each of the 10 stimuli appears 16 times: the order is 16 rounds, each a
-  permutation of the 10, so the counts stay balanced over the run, and a round
-  may not start with the stimulus the previous one ended with, so a stimulus
-  never follows itself.
+- Each of the 10 trial types (4 fingers, the empty trial, 5 tones) appears 16
+  times: the order is 16 rounds, each a permutation of the 10, so the counts
+  stay balanced over the run, and a round may not start with the type the
+  previous one ended with, so a stimulus never follows itself.
 - Successive onsets are 1000 ms apart ± a uniform jitter of up to 100 ms,
   drawn afresh for each trial (SOA in 900–1100 ms). The jitter is on the SOA,
   not on a fixed grid, so the run length varies by a few hundred ms from one
@@ -106,23 +116,25 @@ The schedule
 - The first stimulus comes 1 s after the start key.
 
 The table format is that of MEG-localizer: `onset_time` and `duration` in ms,
-`type` `IMAGE` or `SOUND`, a `cond` label, the stimulus file name, and the
-TTL `code` sent at the onset.
+`type` `IMAGE`, `SOUND` or `EMPTY`, a `cond` label, the stimulus file name (a
+bare label for `EMPTY`), and the TTL `code` sent at the onset.
 
     onset_time	duration	type	cond	stimuli	code
     1000	500	SOUND	tone_800	tone_00800Hz.wav	8
     1991	500	SOUND	tone_1600	tone_01600Hz.wav	9
     3078	500	IMAGE	finger_index	f2.jpg	2
+    8236	500	EMPTY	empty	-	1
 
 Rows play in order and must not overlap; the loader rejects a table where they
-do. A fixation cross fills every gap.
+do. The fixation cross fills every gap.
 
 
 Triggers
 --------
 
-Every row carries a code — **1–5 for the fingers** (thumb to little finger)
-and **6–10 for the tones** (200 Hz to 3200 Hz) — and with `-ttl` that code is
+Every row carries a code — **1 for the empty trial, 2–5 for the fingers**
+(index to little finger) and **6–10 for the tones** (200 Hz to 3200 Hz) — and
+with `-ttl` that code is
 written to the eight TTL lines at the row's onset and cleared `-ttl-ms` later
 (10 ms by default; the achieved width is between that and one frame more).
 The write is issued from the stream's post-flip onset hook, on the flip thread,
@@ -159,8 +171,9 @@ and a `-info.txt` with the session metadata (display, refresh rate, drivers).
 Columns are `subject_id`, `intended_ms`, `actual_ms`, `event`, `cond`,
 `stimuli`, `code`, so the scheduled and the achieved onset are both recorded,
 per event, on the same clock as any response, next to the TTL code the
-recording saw. Events are `IMAGE_ONSET`, `IMAGE_OFFSET`, `SOUND_ONSET` and
-`RESPONSE` (any key press, timestamped on the run clock; code 0).
+recording saw. Events are `IMAGE_ONSET`, `IMAGE_OFFSET`, `EMPTY_ONSET`,
+`EMPTY_OFFSET`, `SOUND_ONSET` and `RESPONSE` (any key press, timestamped on
+the run clock; code 0).
 
 
 Not yet done
