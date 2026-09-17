@@ -60,6 +60,7 @@ listed below — and most of the advantages.
 | Data output | `.csv` / `.psydat` / Excel | Plain `.csv` (no comment lines, imports straight into a spreadsheet) plus a companion `-info.txt` holding the session metadata; both written through a buffered output file |
 | System reporting | `psychopy.info` | `sysinfo` package: CPU, GPU, audio, memory, machine — including a WMI path on Windows |
 | Hardware triggers | Parallel, serial, LabJack, Cedrus, EGI, BrainProducts, TriggerBox | Parallel port (Linux LPT), DLP-IO8, FT232H, Linux GPIO (Raspberry Pi and other SBCs), LabJack T4 over Modbus TCP, NeuroSpin MEG TTL box, NEUROSPEC MMBT-S, generic serial |
+| Eye tracking | ioHub: EyeLink, Tobii, GazePoint, Pupil Labs; calibration/validation routines, ROI component | `eyetracker` package: vendor-neutral `Tracker` interface, EyeLink and Tobii Pro via a Python bridge process, null and mouse-simulated trackers, calibration through `exp.CalibrateTracker` |
 | Networked recording control | Egi/`iohub`, `emulator`, MQTT/OSC components | EGI NetStation event markers over TCP/IP (ECI), plus a "BEL_video" participant-video recorder client |
 | Worked examples | A demos folder | over 50 complete paradigms in `examples/` (plus ~30 feature demos), plus a `tests/` suite of programs whose output is analysed to verify timing and hardware behaviour |
 
@@ -73,15 +74,22 @@ data files — is covered by both.
 
 ### 1. Eye tracking
 
-This is the single largest gap. PsychoPy's **ioHub** provides a vendor-neutral
-API over EyeLink, Tobii, GazePoint and Pupil Labs, with Builder routines for
-calibration and validation and a region-of-interest component.
+PsychoPy's **ioHub** provides a vendor-neutral API over EyeLink, Tobii,
+GazePoint and Pupil Labs, with Builder routines for calibration and validation
+and a region-of-interest component.
 
-goxpyriment has no eye-tracking support at all — no gaze stream, pupillometry,
-calibration, or region-of-interest components. (It *does* ship a
-`triggers.VideoRecorder` client for a networked participant-video recorder, but
-that only records and labels footage of the participant; it is not gaze
-tracking and returns no eye position.)
+goxpyriment's `eyetracker` package covers the first two vendors: a
+vendor-neutral `Tracker` interface (open, calibrate, record, mark, latest
+sample, drained samples and fixation/saccade/blink events) with an EyeLink and
+a Tobii Pro back end, a null tracker, and a mouse-driven simulator. The vendor
+SDK runs in a small Python bridge process rather than being linked in, so the
+Go build stays pure and cross-compilable — the same split ioHub makes, for a
+different reason. Calibration is one call, `exp.CalibrateTracker`, drawn by the
+EyeLink's own routine or, for the Tobii, by goxpyriment itself. What PsychoPy
+still has and goxpyriment does not: GazePoint and Pupil Labs back ends,
+validation routines, a region-of-interest component, and Builder integration.
+Both have been run against real hardware (EyeLink on a MEG rig, Tobii on
+Windows); see `tests/test_eyelink` and `tests/test_tobii`.
 
 ### 2. Breadth of visual stimuli
 
@@ -90,8 +98,7 @@ goxpyriment equivalent:
 
 - **`ElementArrayStim`** — thousands of elements drawn in a single call.
   Required for Glass patterns, large-scale multiple-object tracking, and
-  texture-defined stimuli. Probably the most consequential omission after eye
-  tracking.
+  texture-defined stimuli. Probably the most consequential omission.
 - **`Aperture`** — restricting drawing to an arbitrary region.
 - **`RadialStim`**, **`NoiseStim`**, **`SecondOrder`** — specialised
   psychophysical textures.
@@ -153,7 +160,8 @@ only way in. goxpyriment requires writing Go.
 
 ## Choosing between them
 
-**Reach for PsychoPy when** you need eye tracking; when the paradigm depends on
+**Reach for PsychoPy when** you need a GazePoint or Pupil Labs tracker, or
+gaze validation and region-of-interest components; when the paradigm depends on
 large element arrays, apertures, or 3D/VR; when the study runs online with
 recruitment-platform integration; when arbitrary video must be played; or when
 the person building the experiment does not program.
