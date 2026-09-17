@@ -74,13 +74,20 @@
   generation). For precise timing, response times are obtained by
   using operating-system event timestamps recorded at
   hardware-interrupt time rather than by continuous polling, and the
-  garbage collector can be suspended for the duration of a trial. We
-  characterize the resulting timing behaviour with the hardware-based
-  protocol of the timing mega-study \parencite{bridges2020}, reporting
-  visual, auditory, and trigger latencies across several hardware
-  configurations. The framework ships with over forty example
-  experiments that serve as reusable templates for common
-  paradigms. \texttt{goxpyriment} is released under the Apache License
+  garbage collector can be suspended for the duration of a trial. TTL
+  triggers for EEG, MEG and fMRI are supported on a range of devices,
+  and eye trackers (EyeLink, Tobii Pro) are driven through a
+  vendor-neutral interface. We characterize the resulting timing
+  behaviour with the hardware-based protocol of the timing mega-study
+  \parencite{bridges2020}, reporting visual, auditory, and trigger
+  latencies across several hardware configurations. The same source
+  code also compiles to WebAssembly, so that an experiment can be run
+  in a web browser from a URL when browser-grade timing is
+  acceptable. The framework ships with over sixty example experiments
+  and some thirty-five demonstrations that serve as reusable templates
+  for common paradigms; all are available as pre-built programs for
+  Windows, macOS and Linux, and most as browser
+  versions. \texttt{goxpyriment} is released under the Apache License
   2.0 and is freely available at
   \url{https://github.com/chrplr/goxpyriment}.}
 
@@ -158,8 +165,11 @@ binaries that simplify distribution across laboratory hardware; (2) a
 timing architecture that obtains response times from operating-system
 event timestamps and that can suspend garbage collection during
 trials, whose behaviour we quantify using the protocol of the timing
-mega-study \parencite{bridges2020}; and (3) the existence of a gallery
-of more than forty examples of experiments.
+mega-study \parencite{bridges2020}; (3) a single code base that runs
+natively on Linux, macOS and Windows and, unchanged, in a web browser
+through WebAssembly; and (4) a gallery of more than sixty
+experiments and thirty-five demonstrations, each with its reference
+and a pre-built binary.
 
 {\small
 % float=tp (not *t): the doc class is one-column, so a starred full-width
@@ -202,6 +212,54 @@ Another important consequence of the fact that the executable is
 statically linked is that the user does not have to worry about
 potential changes in future versions of the library which could impact
 the behavior of their program. This promotes reproducibility.
+
+Because Go cross-compiles without a C toolchain, every example in the
+repository is built for Windows (x86-64), macOS (Apple silicon) and
+Linux (x86-64 and arm64, including the Raspberry~Pi) from a single
+Linux machine by the continuous-integration pipeline, and published
+both as one archive per platform and as one small archive per
+experiment (\url{https://downloads.pallier.org/builds/latest/}). The
+Windows builds are linked as GUI programs so that no console window
+opens beside the experiment. The binaries are not code-signed, so
+macOS Gatekeeper and Windows SmartScreen show a warning on first
+launch; the documentation gives the one-line workaround for each.
+
+\subsection{The same experiment in a web browser}\label{browser}
+
+The same source code compiles, unchanged, to WebAssembly
+(\texttt{GOOS=js GOARCH=wasm}). SDL3 and its font, image and audio
+companions are compiled by Emscripten once and shipped as a pre-built
+blob in a fork of the \texttt{go-sdl3} bindings, so an experimenter
+needs no Emscripten installation: \texttt{make wasm-NAME} produces a
+directory that any static web server can host. In the browser, the
+whole \texttt{Experiment} API is available: keyboard and mouse
+responses carry event timestamps, audio plays through Web Audio, and
+\texttt{Screen.Update()} parks on the browser's
+\texttt{requestAnimationFrame}, which is the closest thing a browser
+has to VSYNC. Session parameters that the desktop version takes from
+the command line or from the participant-information dialog are read
+from the URL query string (\texttt{?s=3}), and at the end of the
+session the participant's browser downloads a single \texttt{.zip}
+holding the data CSV and the \texttt{-info.txt} companion, byte for
+byte what a native run writes.
+
+Two honest caveats. First, a browser cannot offer the display-stack
+guarantees of the native build: there is no hardware retrace clock,
+no real-time priority, and we have not validated pixel onset with a
+photodiode in a browser. What we did measure is the timestamp
+resolution and the frame loop: SDL and input-event timestamps tick at
+about 5~$\mu$s when the page is served with cross-origin-isolation
+headers (about 100~$\mu$s otherwise), and a 299-frame presentation
+loop in headless Chrome ran at 16.666~ms (SD 0.12~ms) with no dropped
+frame. Paradigms that hinge on sub-millisecond onsets (rapid RSVP,
+subliminal priming) should therefore run natively; choice
+reaction-time, memory and attention tasks are well served. Second,
+some capabilities have no browser counterpart: hardware triggers,
+gamepads, audio recording, video playback and multi-display
+fullscreen, and all assets must be embedded (the browser has no file
+system). Eighty-six of the ninety-eight examples satisfy these
+constraints and are published as browser versions; each example's
+README links to its own.
 
 
 \subsection{Programming interface: a simple example}\label{example}
@@ -322,25 +380,87 @@ To reduce the likelihood of latencies, goxpyriment provides additional functions
 \subsection{Triggers}
 
 To communicate with external recording equipment, such as fMRI, EEG,
-and MEG systems, \verb|Goxpyriment| provides generic functions for
-reading from and writing to parallel and serial ports. Moreover, the
-current version implements TTL input/output interfaces for specific
-USB-serial devices: the DLP-IO-8 (see
-\url{https://github.com/chrplr/dlp-io8-g}) and an Arduino Mega 2560
-utilizing a custom protocol (see
-\url{https://github.com/chrplr/neurospin-meg-ttl-box}), and for an
-Ethernet-based device: the LabJack T4
-(\url{https://labjack.com/products/labjack-t4}). Adding support for
-new hardware is facilitated by the availability of the source code for
-the current devices.
+and MEG systems, \verb|Goxpyriment| exposes every TTL device through
+one eight-line input/output interface, so that an experiment written
+against one device runs against another by changing a flag. The
+current version drives the parallel port and GPIO lines (Linux), the
+DLP-IO8 (\url{https://github.com/chrplr/dlp-io8-g}) and DLP-IO20
+USB-serial boxes, the Adafruit FT232H (in pure Go, without the vendor
+library), the LabJack T4 over Ethernet
+(\url{https://labjack.com/products/labjack-t4}, without its SDK), the
+NEUROSPEC MMBT-S, and an Arduino Mega~2560 running a custom firmware
+that also timestamps button presses on the device
+(\url{https://github.com/chrplr/neurospin-meg-ttl-box}). Beyond TTL,
+the package talks to a generic serial port, to EGI NetStation over its
+network protocol, and to a networked video recorder. Adding support
+for new hardware is facilitated by the availability of the source code
+for the current devices.
 
-A notable feature of the Go language is that it makes asynchronous
-function execution trivial by simply prepending the \verb|go| keyword
-to a function call. For example, \verb|go pp.Pulse(5, 200)| sends a
-200~ms TTL pulse to line 5 of the parallel port in a 'fire-and-forget'
-manner. The function runs as a concurrent process and control returns
-immediately to the caller, allowing the program to proceed without
-delay—for example, to continue with stimulus presentation.
+How the pulse is issued matters as much as which device issues it.
+Go makes asynchronous execution trivial---prepending the \verb|go|
+keyword to a call runs it concurrently and returns at once---and it is
+tempting to fire every trigger that way. But a goroutine is scheduled
+at the runtime's convenience: measured against the flip timestamp, a
+rising edge dispatched through a goroutine at normal priority under
+load arrived 0.73~ms late with about 1~ms of spread, while the same
+edge raised synchronously on the statement after the flip, at
+real-time priority, arrived at a median of 34~$\mu$s (maximum
+37~$\mu$s). \texttt{goxpyriment} therefore provides
+\texttt{FireTriggerSync}, which raises the line on the calling thread
+and defers only the falling edge, which carries no information, to a
+goroutine. The fire-and-forget form remains the right one for a block
+marker or an end-of-run flag, where the edge is not the measurement.
+
+The device itself costs little. Firing the same pulse train on two
+devices from one schedule and reading the edges on an oscilloscope,
+the DLP-IO8's edge lagged the FT232H's by 179.4~$\mu$s (SD 5.7, $n =
+322$) on one machine and the parallel port's by 185.9~$\mu$s (SD 12.6,
+$n = 900$, worst pulse 254.8~$\mu$s) on another: the USB-serial path
+adds a constant of about 180~$\mu$s and a jitter an order of magnitude
+below a millisecond. (This is the delay between two devices on one
+schedule; the delay of a device's edge relative to the flip timestamp
+is reported separately in the
+\hyperref[app:onsets]{Supplementary Material}.)
+
+\subsection{Eye tracking}\label{eyetracking}
+
+Eye trackers are reached through a vendor-neutral \texttt{Tracker}
+interface---open, calibrate, start and stop recording, mark, read the
+latest sample or drain the buffered samples and the tracker's own
+fixation, saccade and blink events---with implementations for the
+SR~Research EyeLink and the Tobii~Pro range, a null tracker so that an
+experiment runs unchanged without hardware, and a simulated tracker
+driven by the mouse for development. Both vendors publish their
+interface only as a C library or a native Python extension, and
+linking either would cost \texttt{goxpyriment} its pure-Go build,
+its cross-compilation and its browser target. The vendor SDK therefore
+runs in a small Python \emph{bridge} process that the experiment talks
+to over a loopback TCP socket, one JSON object per line. This is the
+shape PsychoPy's ioHub arrived at for a different reason: there the
+separate process keeps the interpreter lock out of the sampling loop;
+here it keeps the C compiler out of the build. Supporting a further
+tracker is a new bridge script, not a new Go package.
+
+Calibration is one call, \texttt{exp.CalibrateTracker}, behind which
+two procedures hide. The EyeLink draws its own calibration targets in
+a window it owns, after which \texttt{goxpyriment} reclaims the
+display and keyboard focus; the Tobii SDK draws nothing, so
+\texttt{goxpyriment} draws the targets itself, with flip-timestamped
+onsets, and drives the tracker's collect-and-compute protocol point
+by point. The outcome of either is written to the session's
+\texttt{-info.txt}.
+
+The bridge is deliberately kept out of the timing path. Sending a
+message through it and waiting for the tracker's acknowledgement took
+a median of 600--719~$\mu$s and up to 1.2~ms over three runs on an
+EyeLink at 2000~Hz---small against a frame, but not a way to time a
+stimulus. Stimulus onsets are therefore marked by a TTL edge into the
+tracker's digital input (with \texttt{FireTriggerSync}, as above),
+and bridge messages serve only to label trials. The relation between
+the tracker's clock and the experiment's is measured NTP-style before
+and after each run, and both the offset, with its round-trip
+uncertainty, and the drift in parts per million are recorded in the
+data file's companion.
 
 
 \subsection{Miscellaneous additional features}
@@ -365,6 +485,30 @@ means the analysable file needs no cleaning and the provenance is still
 recorded --- and recorded automatically, rather than depending on someone
 writing it down. An example appears in the
 \hyperref[app:timing]{Supplementary Material} (Figure~\ref{fig:infofile}).
+
+Beyond the stimuli visible in the example, the library provides
+text-entry and menu widgets, thick poly-lines and filled polygons,
+sprite sheets, random-dot stereograms, Gabor patches, dot clouds and
+VSYNC-locked animation loops (drifting gratings, moving dot clouds),
+and the \emph{stream} functions for RSVP and mixed audio-visual
+sequences. Video plays in a frame-exact format (\texttt{.gv}) whose
+onsets are locked to the retrace, and a \texttt{media} package
+schedules several movies on one master clock. Naming latencies are
+measured with a software voice key on the microphone input, which
+returns the vocal onset timestamp and saves the recording per trial.
+For psychophysics, a \texttt{staircase} package implements the
+up-down \parencite{levitt1971} and QUEST \parencite{watson1983}
+procedures, and a \texttt{units} package converts between pixels,
+centimetres and degrees of visual angle for a described monitor and
+viewing distance.
+
+A small but consequential safeguard: modern desktops refuse to give a
+window keyboard focus that it did not obtain from the user, and SDL
+delivers key events only to the focused window, so an experiment
+started from a script, or resumed after an eye-tracker calibration
+owned the display, could run its trials without seeing a single
+response. \texttt{goxpyriment} detects this, flashes its window and
+waits for the click before the first trial.
 
 Another thing which is not transparent from the source code is the fact
 that \texttt{goxpyriment} provides a graphical
@@ -575,21 +719,45 @@ it was collected under.
 
 \section{Gallery of Examples}
 
-The repository provides over forty demos and examples of classic
-psychology paradigms, including the Stroop task, Attentional Blink
-(RSVP), Masked Priming, Retinotopic mapping for fMRI, and adaptive
-threshold estimation using the QUEST algorithm. These examples serve
-as both functional templates and a gallery of the framework's
-capabilities.
+The repository carries, at the time of writing, 63 experiments, 35
+demonstrations and 26 hardware tests, catalogued at
+\url{https://chrplr.github.io/goxpyriment/GalleryOfExamples/}. An
+\emph{experiment} implements a published paradigm and records
+behavioural data; a \emph{demonstration} shows one feature (an
+illusion, a widget, a stream) and measures nothing; a \emph{test} is
+a program whose output is analysed to check the performance of the
+machine it runs on (the timing suite of
+Section~\ref{timing-verification}, the trigger-device comparison, the
+eye-tracker checks). Every directory declares its category, a
+one-line description and its literature reference in a small metadata
+file from which the gallery is generated, and carries a README.
 
+The experiments span the classic repertoire of the field: attention
+(Posner cueing and the ANT, attentional blink, change blindness,
+multiple-object tracking, visual search, the psychological refractory
+period); memory (Sperling's iconic memory, Sternberg scanning, memory
+span, memory for binary sequences); numerical cognition (SNARC,
+number comparison, number change detection, magnitude estimation);
+language and reading (lexical decision, masked priming, the
+letter-size illusion, temporal integration in word recognition,
+Stroop and picture naming with a voice key, shadowing); geometry and
+reasoning (intruder and triangle-completion tasks, mental rotation in
+two and three dimensions, the ConceptARC benchmark, Rush~Hour);
+psychophysics (contrast detection by QUEST, auditory threshold
+estimation); statistical learning (auditory, visual, community
+structure); infant looking-time paradigms; motor timing (finger
+tapping and tracking, mouse tracking); and neuroimaging localizers
+(language localizers in three variants, MEG localizers, standard and
+multifocal retinotopic mapping, RSVP of images and of mathematics and
+language). Each serves as a functional template, and the collection
+as a whole doubles as a corpus from which AI coding assistants
+generate new experiments in the same idiom.
 
-TODO: expand this section, insert a more structured description of Gallery of examples (and mention demos).
-
-The examples and demos are available as pre-compiled binaries in the
-Releases tab of the github repository.  Yet, compiling all of them
-locally can be achieve in three steps: 1) install Go on your
-machine; 2) clone or download goxpyriment repository 3) run the
-`build.all` shell script.
+All examples and demonstrations are available pre-built for Windows,
+macOS and Linux (Section~\ref{single-binary-deployment}), and most
+also run in the browser (Section~\ref{browser}). Building them
+locally takes three steps: install Go, clone the repository, and run
+\texttt{examples/build.sh}.
 
 
 
@@ -617,11 +785,12 @@ Deployment      & Single binary & pip/conda    & Standalone or pip & MATLAB lice
 GC control      & Explicit disable & No        & No                & N/A              & No \\
 VSYNC sync      & Yes (SDL3)   & Yes (SDL2)    & Yes (Pyglet/PTB)  & Yes              & No \\
 Hardware triggers & Yes        & Yes           & Yes               & Yes              & No \\
+Eye tracking    & EyeLink, Tobii (bridge) & No & ioHub (several vendors) & EyeLink toolbox & WebGazer (webcam) \\
 Response device API & Unified  & Device-specific & Device-specific & Device-specific & N/A \\
 Event timestamp & SDL3 hardware & pygame timer & iohub/PTB clock  & \texttt{GetSecs} ($\mu$s) & Browser clock \\
 Stimulus set    & Moderate     & Moderate      & Extensive         & Extensive        & Moderate \\
 GUI builder     & No           & No            & Yes (Builder)     & No               & No \\
-Online deployment & No         & No            & Partial (PsychoJS) & No              & Yes \\
+Online deployment & Yes (same source, WASM) & No & Partial (PsychoJS) & No           & Yes \\
 Reference       & This paper   & \cite{krause2014} & \cite{peirce2019} & \cite{brainard1997} & \cite{deleeuw2023} \\
 \bottomrule
 \end{tabular}
@@ -645,10 +814,13 @@ extensively documented stimulus set, mature online deployment through
 PsychoJS, and a large user community. The Psychtoolbox remains a
 reference for low-level timing control on well-configured
 hardware. Relative to these established tools, \texttt{goxpyriment} is
-very young: it has no graphical builder, no online deployment, and a
-more limited stimulus library. Its distinctive contributions are
-therefore deployment simplicity and an explicit timing architecture
-rather than breadth of features. The entries in
+very young: it has no graphical builder and a more limited stimulus
+library, and its browser deployment, while it runs the same source,
+carries neither the hardware retrace clock nor the photodiode
+validation of the native build. Its distinctive contributions are
+therefore deployment simplicity---one binary, or one URL, from one
+source---and an explicit timing architecture rather than breadth of
+features. The entries in
 Table~\ref{tab:comparison} describe design characteristics; measured
 timing comparisons on identical hardware are reported in
 Section~\ref{timing-verification}.
@@ -668,10 +840,26 @@ Foundation (GPLv3 projects can include code licensed under Apache-2).
 
 \section{Limitations and Future Directions}\label{limitations-and-future-directions}
 
-\textbf{No Eye-tracker support.} There is none for the moment. This is a
-target for future releases. The coding effort is expected to be small
-as some code has already been written to interact through TCP/IP to
-control some of the trigger devices.
+\textbf{Timing is characterised on Linux only.} Every figure in
+Section~\ref{timing-verification} was measured under Linux. The
+framework builds and runs on macOS and Windows, but real-time
+scheduling is requested only on Linux, and no photodiode measurement
+has been made on the other two systems; an experimenter who needs
+onset guarantees there should run the bundled timing suite on their
+own machine before trusting any number.
+
+\textbf{Browser onsets are unvalidated.} The browser build has been
+checked for timestamp resolution and frame pacing but not, so far,
+against a photodiode; until it is, it should be reserved for paradigms
+that tolerate browser-grade onset precision.
+
+\textbf{Eye-tracker calibration.} On the EyeLink, calibration targets
+are drawn by the vendor library in its own window rather than by
+\texttt{goxpyriment}, so the calibration display cannot yet be styled
+like the experiment; the Tobii path already draws its own targets and
+the same could be done for the EyeLink. Trackers that publish a
+network protocol (GazePoint, Pupil~Labs) could be supported by a
+pure-Go client without a bridge.
 
 \textbf{No video recording}. While there is currently some support for
 recording audio responses and measuring naming times, the framework
@@ -683,15 +871,6 @@ video, this feature might be implemented in the future.
 results files are saved locally. In some situations, it could be
 useful to send the (anonymized) results to an on-line database, for
 example using a REST api.
-
-\textbf{Online deployment.} Currently, \texttt{goxpyriment} does not
-support web-based deployment. As Go can compile to web assembly (wasm)
-and SDL3 supports EMSCRIPTEN (\url{https://emscripten.org/}), it is an
-achievable goal. We actually have a proof of concept, having
-successfully implemented several examples of the gallery to run in the
-browser. However, work remains to be done to support all goxpyriment
-functions in the browser.  When this is achieved, the exact same
-source code will support web and local deployment.
 
 \textbf{Language barrier.}  Researchers who are unfamiliar with Go,
 that is, the vast majority, will need to invest a bit of time in
