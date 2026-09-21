@@ -7,7 +7,7 @@ This example reproduces the classic **Kanizsa square** illusion: four “pacman�
 From the repository root:
 
 ```bash
-cd examples/kanizsa-square
+cd examples/demo_Visual-Illusion-Kanizsa
 go run . -w
 ```
 
@@ -22,27 +22,33 @@ go run . -w
 - `-s int`  
   Subject ID (not used for data here; kept for API consistency).
 
-- `-r float`  
+- `-radius float`  
   **Radius** of the inducing circles in pixels.  
   Default: `50`.
 
-- `-w float`  
+- `-squaresize float`  
   **Size** (width and height) of the central square in pixels.  
   Default: `200`.
 
 Example:
 
 ```bash
-go run . -w -r 60 -w 250
+go run . -w -radius 60 -squaresize 250
 ```
 
 ## Behavior
 
-- Light gray background (set via `control.NewExperiment`).
-- Four black circles arranged at the corners of an invisible square of side `w`.
-- A central light-gray square mask of size `w × w`.
-- A short instruction (`"Kanizsa illusory square – press any key to exit"`) shown below the figure.
-- The program waits for a key press and then exits.
+- Light gray background (RGB 200, 200, 200).
+- Four black circles arranged at the corners of an invisible square of side `squaresize`.
+- A central gray square mask of size `squaresize × squaresize`, initially the same
+  gray as the background.
+- **↑ / ↓** make the central square lighter / darker by one RGB level per
+  press (all three channels together, so it stays neutral gray; holding the
+  key repeats). The range is clamped to 0–255.
+- **Enter** ends the adjustment: the signed difference between the square and
+  the background (square minus background, in RGB levels) is displayed on
+  screen and printed to stdout. Any key then exits.
+- ESC quits at any time.
 
 ---
 

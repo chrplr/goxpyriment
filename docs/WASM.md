@@ -175,7 +175,7 @@ file:line, which tells you exactly what to un-stub next.
 
 ## Publishing to downloads.pallier.org
 
-Every tagged release publishes 79 of the 91 examples as browser builds, served
+Every tagged release publishes 86 of the 98 examples (as of 2026-09-17) as browser builds, served
 from the Cloudflare R2 bucket. A visitor follows a **Run** link on
 <https://downloads.pallier.org/builds/latest/> and the experiment starts — no
 download, no install, no Gatekeeper.
