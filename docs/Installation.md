@@ -87,8 +87,8 @@ instantaneous.
 
 ## Full installation
 
-If you want to do serious development, in addition to Go, you need to
-install [Git](https://git-scm.com/), a code editor and, probably, an
+If you want to do serious development, in addition to [Go](https://go.dev), you need to
+install [Git](https://git-scm.com/), a code editor and possibly an
 AI-coding agent like [Claude
 Code](https://claude.com/product/claude-code), [Gemini
 cli](https://geminicli.com) or
@@ -119,18 +119,21 @@ Then:
 
     (Note: On Linux/macOS you can instead use `make all`)
 
-    If all goes well, this will compile codes from
+    This will compile the programs in
     [examples/*](https://github.com/chrplr/goxpyriment/tree/main/examples)
     and
     [tests/*](https://github.com/chrplr/goxpyriment/tree/main/tests)
-    (Note: The first time, this will take a while because Go needs to
+    (Note: this may take a while because Go needs to
     download several modules. Once this is done, future compilations
     will be fast.)
 
-    After this operation, a new `_build` folder contains executable
-    apps for many experiments. You can either run them from the
-    command line, or launch them by clicking on their icon in the
-    folder.
+    After this operation, the programs should be found in the `goxpyriment/_build` folder. 
+    You can either launch them by clicking on their icon in the
+    file explorer (the "Finder"" under macOS), or by typing the ir name in a terminal, e.g.:
+    
+    ```
+    cd _build
+    ./
 
 3. If you would like to read the documentation locally — both the API
    reference (via pkgsite) and this site (via zensical) — see
