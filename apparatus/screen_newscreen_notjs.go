@@ -7,6 +7,7 @@ package apparatus
 
 import (
 	"fmt"
+	"log"
 	"runtime"
 
 	"github.com/Zyko0/go-sdl3/sdl"
@@ -463,6 +464,23 @@ func NewScreen(title string, width, height int, bgColor sdl.Color, fullscreen bo
 		renderer.Destroy()
 		window.Destroy()
 		return nil, fmt.Errorf("apparatus.NewScreen: showing window: %w", err)
+	}
+
+	// Same settle-and-warm-up as the fullscreen path. Without it, on Wayland,
+	// presents return immediately (no VSYNC block) until the compositor has
+	// mapped the window, and Initialize's CalibrateRefresh measured ~4000 Hz.
+	// Reproduced 2026-09-23 whenever GetParticipantInfo had run (and quit) SDL
+	// first: 3905 and 5103 Hz on two runs; 60.0–60.2 Hz on three with this.
+	// A Sync failure is only logged: a windowed session that could not sync
+	// (it times out under some window managers) still worked before this.
+	if err := window.Sync(); err != nil {
+		log.Printf("apparatus.NewScreen: SyncWindow: %v", err)
+	}
+	for i := 0; i < 10; i++ {
+		_ = renderer.SetDrawColor(bgColor.R, bgColor.G, bgColor.B, bgColor.A)
+		_ = renderer.Clear()
+		_ = renderer.Present()
+		sdl.PumpEvents()
 	}
 
 	// Ensure a cursor shape is loaded and visible (mirrors fullscreen path).
