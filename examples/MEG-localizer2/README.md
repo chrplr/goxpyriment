@@ -9,8 +9,9 @@ for 160 trials (each of the ten 16 times) — a run of about 160 s.
 The program is the one from [`examples/MEG-localizer`](../MEG-localizer): the
 same table-driven presentation engine, and the same `main.go`, `ttl.go` and
 `ttl_js.go` but for a few lines of `main.go`: the embed pattern, the title,
-black-on-white instead of white-on-black so the hand pictures' white
-background merges with the screen, one fixation cross kept on screen at the
+black on mid-grey instead of white on black (grey so that the white
+photodiode square stands out; the hand pictures' background is painted the
+same grey), one fixation cross kept on screen at the
 same size throughout the run, and the `EMPTY` row type. Everything else that
 makes this a different experiment is in `stimuli/` and in the schedule under
 `protocols/`.
@@ -36,6 +37,7 @@ From this directory:
     go run . -dir .               # read protocols/ and stimuli/ from disk
     go run . -skip-wait           # start at once, no instruction screen
     go run . -ttl megttlbox:/dev/ttyACM0   # TTL code at every onset (below)
+    go run . -photodiode=false    # no photodiode square in the corner
 
 The run shows an instruction screen, waits for SPACE, then shows a green
 fixation cross and waits for **T** to start. The clock starts at that keypress
@@ -52,6 +54,8 @@ and every onset is measured from it. ESC, or closing the window, aborts.
 | `-skip-wait` | no instruction screen and no start key |
 | `-ttl DEVICE[:PORT]` | send each row's code as a TTL at its onset — see below; default none |
 | `-ttl-ms N` | TTL pulse width in ms; default 10 |
+| `-photodiode` | flash a square in the top-left corner for one frame at every row onset; on by default, `-photodiode=false` disables it |
+| `-photodiode-size N` | side of the photodiode square, in pixels; default 100 |
 
 **Record in fullscreen, never windowed** — see the note in
 [`MEG-localizer/README.md`](../MEG-localizer/README.md): a compositing desktop
@@ -64,15 +68,16 @@ The stimuli
 
 | Condition | Type | File | What it is | Duration |
 |---|---|---|---|---|
-| `finger_index` … `finger_little` | `IMAGE` | `f2.jpg` … `f5.jpg` | a hand, black outline on white, with one finger filled red | 500 ms |
+| `finger_index` … `finger_little` | `IMAGE` | `f2.jpg` … `f5.jpg` | a white hand with a black outline on grey, with one finger filled red | 500 ms |
 | `empty` | `EMPTY` | — | nothing: the fixation cross alone, for the trial's duration | 500 ms |
 | `tone_200` … `tone_3200` | `SOUND` | `tone_00200Hz.wav` … `tone_03200Hz.wav` | narrow-band noise centred on 200, 400, 800, 1600, 3200 Hz | 500 ms |
 
 The pictures are 187 × 244 px, shown at the centre of the screen. The
 fixation cross — black, 40 px arms, the same one throughout — is on screen
 for the whole run: alone between trials and during an empty trial, drawn on
-top of the hand during a picture. Since the screen is white, a picture's own
-white background is invisible: what appears and disappears is the hand.
+top of the hand during a picture. The screen is mid-grey (128) and each
+picture's background is painted the same grey, so it is invisible: what
+appears and disappears is the white hand.
 
 The empty trial takes the slot of the thumb picture: `f1.jpg` is still under
 `stimuli/` (and embedded), but no row of `demo.tsv` names it. An `EMPTY` row
@@ -90,7 +95,7 @@ subdirectories are not):
 
 | Directory | Contents |
 |---|---|
-| `stimuli/hands/` | `fingers_all.jpg`, the five hands on one sheet; `split_hands.py`, which cuts it into `f1.jpg` … `f5.jpg`; and those five cuts at full size (568 × 738 px) — the copies in `stimuli/` are the same pictures scaled down to 187 × 244 |
+| `stimuli/hands/` | `fingers_all.jpg`, the five hands on one sheet; `split_hands.py`, which cuts it into `f1.jpg` … `f5.jpg`; and those five cuts at full size (568 × 738 px), white background; `make_stimuli.py`, which makes the copies in `stimuli/` from them: the background around the hand (the white connected to the border) painted grey 128, then scaled down to 187 × 244 |
 | `stimuli/tones/` | `make_tones.py` and `description.md`; `set1/` is the 1-octave set in use, `set2/` a 0.6-octave alternative (200 … 1056 Hz) |
 
 To try `set2`, copy its files over `stimuli/` and change `TONES_HZ` in
@@ -161,6 +166,19 @@ build.
 
 The codes are just a column of the table: `make-protocol.py` writes them, and
 a table without the column runs without triggers.
+
+Photodiode
+----------
+
+At every row onset a 100×100 px square (`-photodiode-size`) is drawn in the
+top-left corner for one frame. It is drawn into the frame whose flip fires the
+TTL code, so the photodiode and the trigger channel mark the same flip, and
+the difference between them is the display latency. The square is white on
+the grey (128) background, so the photodiode sees a grey-to-white step. It
+flashes on every row, sound rows included; there it marks the flip after
+which the sound is started, not the sound itself, whose latency must be
+measured separately (e.g. with a microphone). `-photodiode=false` turns it
+off.
 
 
 The data file

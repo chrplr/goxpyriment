@@ -8,8 +8,8 @@
 // nothing but the fixation cross is on screen, and five narrow-band tones one
 // octave apart. The program is the one from examples/MEG-localizer — the same
 // table-driven presentation engine, differing in what it embeds, in running
-// black on white so the hand pictures' white background merges with the
-// screen, and in the EMPTY row type. A run is a tab-separated table of
+// black on mid-grey (the hand pictures' background is painted the same grey,
+// see stimuli/hands/make_stimuli.py), and in the EMPTY row type. A run is a tab-separated table of
 // absolute onsets in protocols/, and nothing about the paradigm is compiled in.
 //
 //	onset_time	duration	type	cond	stimuli
@@ -49,6 +49,12 @@
 // ttl.go). Not available in the browser build.
 //
 //	go run . -ttl megttlbox:/dev/ttyACM0
+//
+// Photodiode: a white square is drawn on the grey background in the top-left
+// corner for one frame at every row's onset --
+// on the frame whose flip fires the TTL code, so a photodiode on the corner
+// and the trigger channel mark the same event. It is on by default;
+// -photodiode=false turns it off, -photodiode-size sets its side in pixels.
 package main
 
 import (
@@ -87,6 +93,10 @@ var assetFS embed.FS
 // the final stimulus is not cut off by the window closing. It matches the grace
 // period of the gostim2 implementation this is ported from.
 const gracePeriodMs = 500
+
+// defaultPhotodiodeSize is the side, in pixels, of the square flashed in the
+// top-left corner at every row onset (see -photodiode).
+const defaultPhotodiodeSize = 100
 
 // element is one item of a row's stimulus sequence: a single stimulus for the
 // scalar types, one of the "~"-separated items for the *_STREAM types.
@@ -301,18 +311,24 @@ func main() {
 	ttlSpec := flag.String("ttl", "", "send each row's \"code\" as a TTL at its onset, through "+
 		"DEVICE[:PORT]: megttlbox:/dev/ttyACM0, mmbts:/dev/ttyACM0, dlpio8[:PORT|auto], "+
 		"parallel[:/dev/parport0]; empty means no triggers")
+	photodiode := flag.Bool("photodiode", true, "flash a square in the top-left corner for one frame at every "+
+		"row onset, for a photodiode (-photodiode=false to disable)")
+	photodiodeSize := flag.Float64("photodiode-size", defaultPhotodiodeSize,
+		"side of the photodiode square, in pixels")
 	ttlMs := flag.Int("ttl-ms", 10, "TTL pulse width in ms (the code is held at least this long, "+
 		"and at most one frame longer)")
 
-	// Black on white, unlike MEG-localizer: the hand pictures have a white
-	// background, so on a white screen only the hand appears and disappears,
-	// and the fixation cross and crosshair, drawn in the foreground colour,
-	// stay visible on top of it. Font size 50 as in MEG-localizer.
+	// Black on mid-grey, unlike MEG-localizer. Grey, not white, so that the
+	// white photodiode square stands out from the background; the hand
+	// pictures' background is painted the same grey (control.Gray, 128) by
+	// stimuli/hands/make_stimuli.py, so only the hand appears and disappears.
+	// The fixation cross, drawn in the foreground colour, stays visible on
+	// top of it. Font size 50 as in MEG-localizer.
 	// The protocol selector rides along in the session-setup dialog that opens
 	// when no -s is given -- double-clicking the icon, that is -- so the run
 	// can be chosen without a command line. Its value is remembered across
 	// sessions like the other dialog settings.
-	exp := control.NewExperimentFromFlags("MEG-localizer2", control.White, control.Black, 50,
+	exp := control.NewExperimentFromFlags("MEG-localizer2", control.Gray, control.Black, 50,
 		control.InfoField{Name: "protocol", Label: "Protocol",
 			Type: control.FieldSelect, Options: names, Default: initial})
 	defer exp.End()
@@ -411,6 +427,35 @@ func main() {
 		log.Fatalf("cannot preload fixation cross: %v", err)
 	}
 
+	// Photodiode patch, in the top-left corner of the drawable area. Positions
+	// are centre-relative with +Y up, so the corner is at (-w/2 + side/2,
+	// +h/2 - side/2), in the same size CenterToSDL works from: LogicalSize when
+	// one is set, the renderer output size otherwise. White on the grey
+	// background. nil when -photodiode is off, which is what onFrame tests.
+	var patch *stimuli.Rectangle
+	if *photodiode {
+		var w, h float32
+		if ls := exp.Screen.LogicalSize; ls != nil {
+			w, h = ls.X, ls.Y
+		} else {
+			ow, oh, serr := exp.Screen.Size()
+			if serr != nil {
+				log.Fatalf("-photodiode: cannot read the screen size: %v", serr)
+			}
+			w, h = float32(ow), float32(oh)
+		}
+		side := float32(*photodiodeSize)
+		if side <= 0 || side > w || side > h {
+			log.Fatalf("-photodiode-size: %.0f px does not fit on a %.0fx%.0f screen", side, w, h)
+		}
+		patch = stimuli.NewRectangle(-w/2+side/2, h/2-side/2, side, side, control.White)
+		if err := stimuli.PreloadVisualOnScreen(exp.Screen, patch); err != nil {
+			log.Fatalf("cannot preload photodiode square: %v", err)
+		}
+		log.Printf("photodiode: %.0f px square in the top-left corner of the %.0fx%.0f drawable area, "+
+			"1 frame at every row onset", side, w, h)
+	}
+
 	// Build and preload every stimulus up front: identical items (the four
 	// checkerboards, a repeated instruction word) are built once and shared, so
 	// each distinct file costs one texture or one audio stream, and no decoding
@@ -430,6 +475,10 @@ func main() {
 	exp.AddExperimentInfo("protocol_source: " + source)
 	if ttlDesc != "" {
 		exp.AddExperimentInfo(fmt.Sprintf("ttl: %s, pulse %d ms", ttlDesc, *ttlMs))
+	}
+	if patch != nil {
+		exp.AddExperimentInfo(fmt.Sprintf("photodiode: %.0f px square, top-left, white, "+
+			"1 frame at every row onset", *photodiodeSize))
 	}
 
 	isRun := selected != "instructions"
@@ -507,6 +556,11 @@ func main() {
 		// frames makes it a real -ttl-ms edge: the achieved width is between
 		// ttlMs and one frame more than it. The clearing frame may belong to
 		// the next row's stream, which is fine: the closure outlives the rows.
+		// The photodiode patch goes up on frame 0 of the row's first element --
+		// the frame whose flip onOnset follows -- and so reaches the screen in
+		// the same flip as the TTL code. For a sound row that flip is when the
+		// sound is started, not when it is heard: the audio latency is not in
+		// the photodiode signal.
 		var curCode, curLead int
 		var pulseEndNS uint64
 		onOnset := func(index int, onsetNS uint64) error {
@@ -521,6 +575,11 @@ func main() {
 			if pulseEndNS != 0 && ctx.NowNS >= pulseEndNS {
 				ttlFail("clear", ttl.Send(0))
 				pulseEndNS = 0
+			}
+			if patch != nil && ctx.Index == curLead && ctx.OnPhase && ctx.Frame == 0 {
+				if derr := patch.Draw(exp.Screen); derr != nil {
+					return derr
+				}
 			}
 			// The same cross as between stimuli, drawn on top of the picture
 			// so it never disappears or changes size. On a fixation lead or an
