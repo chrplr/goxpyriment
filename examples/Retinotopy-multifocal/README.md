@@ -60,6 +60,9 @@ go run ./examples/Retinotopy-multifocal -s 1
 # MEG: pulse TTL line 0 of a DLP-IO8 at every trial onset.
 go run ./examples/Retinotopy-multifocal -s 1 -trigger dlpio8 -trigger-line 0
 
+# No photodiode square (it is on by default).
+go run ./examples/Retinotopy-multifocal -s 1 -photodiode=false
+
 # fMRI: wait for the scanner pulse (key 't') before starting the run.
 go run ./examples/Retinotopy-multifocal -s 1 -wait-trigger
 
@@ -86,6 +89,8 @@ Besides the standard `-w`, `-d N` and `-s <id>`:
 | `-trigger-device S` | "" | Serial port or host, for the devices that need one |
 | `-trigger-line N` | 0 | TTL line to pulse (0–7) |
 | `-trigger-ms N` | 5 | Pulse width; must be shorter than the shortest trial |
+| `-photodiode` | on | Flash a white square in the top-left corner for one frame at every trial onset (habituation flashes included), in the same flip as the onset and the TTL marker; `-photodiode=false` disables it |
+| `-photodiode-size N` | 100 | Side of the photodiode square, in pixels |
 
 Hardware triggers are desktop-only: `triggers/` does not build for the browser,
 so it is behind a `!js` build tag and the browser build accepts only

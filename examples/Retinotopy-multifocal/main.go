@@ -59,6 +59,13 @@ const (
 
 	fixCrossSizePx = 16
 	fixCrossLinePx = 3
+
+	// defaultPhotodiodeSize is the side, in pixels, of the white square that
+	// -photodiode flashes in the top-left corner for one frame at every trial
+	// onset. It is drawn into the same frame as the onset, so it reaches the
+	// screen in the flip whose timestamp is recorded as onset_ms and that fires
+	// the TTL marker.
+	defaultPhotodiodeSize = 100
 )
 
 func main() {
@@ -87,6 +94,9 @@ func main() {
 		flagTrigDev  = flag.String("trigger-device", "", "Serial port or host for -trigger devices that need one")
 		flagTrigLine = flag.Int("trigger-line", 0, "TTL line to pulse (0-7)")
 		flagTrigMs   = flag.Int("trigger-ms", 5, "TTL pulse width in ms; must be shorter than the minimum trial")
+
+		flagPhotodiode     = flag.Bool("photodiode", true, "Flash a white square in the top-left corner for one frame at every trial onset (-photodiode=false to disable)")
+		flagPhotodiodeSize = flag.Float64("photodiode-size", defaultPhotodiodeSize, "Side of the photodiode square, in pixels")
 	)
 	flag.Bool("verify", false, "Print the sequence orthogonality report and exit without opening a window")
 
@@ -219,11 +229,46 @@ func main() {
 		maxFrames := maxInt(minFrames, int(math.Round(toaMaxSec*refresh)))
 		frameMs := 1000.0 / refresh
 
+		// ── Photodiode patch ────────────────────────────────────────────────
+		// Top-left corner of the drawable area. Positions are centre-relative
+		// with +Y up, so the corner is at (-w/2 + side/2, +h/2 - side/2), in
+		// the same size CenterToSDL works from: LogicalSize when one is set,
+		// the renderer output size otherwise.
+		var patch *stimuli.Rectangle
+		if *flagPhotodiode {
+			var w, h float32
+			if ls := exp.Screen.LogicalSize; ls != nil {
+				w, h = ls.X, ls.Y
+			} else {
+				ow, oh, serr := exp.Screen.Size()
+				if serr != nil {
+					return fmt.Errorf("-photodiode: cannot read the screen size: %w", serr)
+				}
+				w, h = float32(ow), float32(oh)
+			}
+			side := float32(*flagPhotodiodeSize)
+			if side <= 0 || side > w || side > h {
+				return fmt.Errorf("-photodiode-size: %.0f px does not fit on a %.0fx%.0f screen", side, w, h)
+			}
+			// The inner corner of the patch must lie outside the dartboard,
+			// or the patch would hide checks and the photodiode would see
+			// the stimulus fade as well as the flash.
+			if math.Hypot(float64(w/2-side), float64(h/2-side)) < ringPx[NRings] {
+				log.Printf("Warning: the %.0f px photodiode square overlaps the stimulus (outer radius %.0f px)",
+					side, ringPx[NRings])
+			}
+			patch = stimuli.NewRectangle(-w/2+side/2, h/2-side/2, side, side, control.White)
+			stimuli.PreloadVisualOnScreen(exp.Screen, patch)
+			log.Printf("photodiode: %.0f px white square in the top-left corner of the %.0fx%.0f drawable area, "+
+				"1 frame at each trial onset", side, w, h)
+		}
+
 		r := &runner{
 			exp:          exp,
 			textures:     textures,
 			dst:          dst,
 			fix:          stimuli.NewFixCross(fixCrossSizePx, fixCrossLinePx, control.Red),
+			patch:        patch,
 			fire:         fire,
 			frameMs:      frameMs,
 			targetFrames: maxInt(1, int(math.Round(targetDurSec*refresh))),
@@ -249,6 +294,10 @@ func main() {
 		exp.Data.WriteComment(fmt.Sprintf("m ring_radii_deg: %.3f %.3f %.3f %.3f",
 			ringDeg[0], ringDeg[1], ringDeg[2], ringDeg[3]))
 		exp.Data.WriteComment(fmt.Sprintf("m seed: %d", *flagSeed))
+		if patch != nil {
+			exp.Data.WriteComment(fmt.Sprintf("m photodiode_square_px: %.0f (top-left, white, 1 frame per trial onset)",
+				*flagPhotodiodeSize))
+		}
 		for _, line := range RegionTableLines(ringDeg) {
 			exp.Data.WriteComment("m " + line)
 		}
@@ -354,6 +403,7 @@ type runner struct {
 	textures []*apparatus.Texture
 	dst      []*control.FRect
 	fix      *stimuli.FixCross
+	patch    *stimuli.Rectangle // photodiode square; nil when -photodiode is off
 	fire     func()
 	rng      *rand.Rand
 
@@ -419,6 +469,13 @@ func (r *runner) presentTrial(on []bool, frames int) (uint64, error) {
 		}
 		if err := r.fix.Draw(r.exp.Screen); err != nil {
 			return onsetNS, err
+		}
+		// Frame 0 only: the patch goes out in the same flip as the onset, and
+		// is gone on the next one.
+		if r.patch != nil && f == 0 {
+			if err := r.patch.Draw(r.exp.Screen); err != nil {
+				return onsetNS, err
+			}
 		}
 
 		ts, err := r.exp.Screen.FlipTS()
