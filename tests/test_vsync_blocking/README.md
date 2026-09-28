@@ -37,6 +37,11 @@ a variable-refresh-rate panel exposes the supported range.
   the way to the panel, typically a compositor throttling an unfocused or
   occluded window. **Pacing cannot fix this**: it enforces a minimum frame
   time, not a maximum. Re-run fullscreen with the window focused.
+- **VBLANK-ANCHORED** — `GOXPY_VBLANK` is set and a kernel vblank clock was
+  found. Every frame is then held against a measured vblank, so `FlipTS`
+  returns hardware instants — but for the same reason the branch counts cannot
+  tell whether the driver blocks. The verdict falls back on UNAIDED vs NOMINAL
+  for that; re-run without `GOXPY_VBLANK` for the present-only picture.
 
 "Short paced frames" counts frames that still came in under 0.9 × nominal
 through the paced path; it should be 0.

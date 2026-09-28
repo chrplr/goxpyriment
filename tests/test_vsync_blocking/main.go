@@ -107,9 +107,10 @@ func main() {
 
 		ps := exp.Screen.PacingStats()
 		totalBranches := ps.Presents()
-		pacedPct := 0.0
+		pacedPct, vblankPct := 0.0, 0.0
 		if totalBranches > 0 {
 			pacedPct = 100 * float64(ps.Paced) / float64(totalBranches)
+			vblankPct = 100 * float64(ps.VblankHeld) / float64(totalBranches)
 		}
 
 		var verdict, recommendation string
@@ -118,6 +119,19 @@ func main() {
 			verdict = "DROPPING FRAMES — presents are arriving slower than the display refresh."
 			recommendation = "Pacing cannot fix this: it enforces a minimum frame time, not a maximum.\n" +
 				"Check for a compositor throttling this window (try fullscreen, and keep it focused)."
+		case vblankPct > 50:
+			// With a kernel vblank clock (GOXPY_VBLANK) every frame takes the
+			// hardware-anchored hold, blocking driver or not, so the branch
+			// tallies say nothing about blocking. Only UNAIDED does.
+			blocking := "blocks on VSYNC by itself"
+			if unaidedMs < 0.9*nominalMs {
+				blocking = "does NOT block on VSYNC by itself"
+			}
+			verdict = fmt.Sprintf("VBLANK-ANCHORED — %.1f %% of frames held against a kernel vblank.", vblankPct)
+			recommendation = "FlipTS carries a measured vblank instant, so onsets are hardware-anchored.\n" +
+				"In this mode the branch counts cannot show whether the driver blocks;\n" +
+				"judging by UNAIDED vs NOMINAL, it " + blocking + ".\n" +
+				"Re-run without GOXPY_VBLANK for the present-only verdict."
 		case pacedPct > 50:
 			verdict = fmt.Sprintf("NON-BLOCKING — %.1f %% of presents returned early.", pacedPct)
 			recommendation = "Update's frame pacing is doing real work here; without it, stimulus\n" +
@@ -148,8 +162,8 @@ func main() {
 
 		exp.Data.WriteComment(fmt.Sprintf("vsync nominal_ms=%.5f unaided_ms=%.5f paced_ms=%.5f short=%d/%d",
 			nominalMs, unaidedMs, pacedMs, shortPaced, len(paced)))
-		exp.Data.WriteComment(fmt.Sprintf("vsync blocked=%d paced=%d paced_pct=%.1f wait_mean_ms=%.3f wait_max_ms=%.3f",
-			ps.Blocked, ps.Paced, pacedPct,
+		exp.Data.WriteComment(fmt.Sprintf("vsync blocked=%d paced=%d vblank_held=%d paced_pct=%.1f wait_mean_ms=%.3f wait_max_ms=%.3f",
+			ps.Blocked, ps.Paced, ps.VblankHeld, pacedPct,
 			float64(ps.WaitMean().Nanoseconds())/1e6, float64(ps.WaitMax.Nanoseconds())/1e6))
 		exp.Data.WriteComment("vsync verdict: " + verdict)
 
@@ -175,14 +189,14 @@ func main() {
 				"Unaided present      : %6.3f ms  (%.2f Hz)\n"+
 				"Paced (Screen.Update): %6.3f ms  (%.2f Hz)\n"+
 				"Short paced frames   : %d / %d\n"+
-				"Present branches     : %d blocked / %d paced  (%.1f %% paced)\n"+
+				"Present branches     : %d blocked / %d paced / %d vblank-held  (%.1f %% paced)\n"+
 				"Early-return wait    : mean %.3f ms  max %.3f ms\n"+
 				"Rates at native size : %s\n\n"+
 				"%s\n\n%s\n\n"+
 				"Press any key to exit.",
 			nFrames, nominalMs, 1000/nominalMs, unaidedMs, 1000/unaidedMs,
 			pacedMs, 1000/pacedMs, shortPaced, len(paced),
-			ps.Blocked, ps.Paced, pacedPct,
+			ps.Blocked, ps.Paced, ps.VblankHeld, pacedPct,
 			float64(ps.WaitMean().Nanoseconds())/1e6, float64(ps.WaitMax.Nanoseconds())/1e6,
 			modeList,
 			verdict, recommendation,
@@ -190,8 +204,8 @@ func main() {
 
 		log.Printf("nominal %.3f ms | unaided %.3f ms | paced %.3f ms | short %d/%d",
 			nominalMs, unaidedMs, pacedMs, shortPaced, len(paced))
-		log.Printf("branches: %d blocked / %d paced (%.1f %% paced), wait mean %.3f ms max %.3f ms",
-			ps.Blocked, ps.Paced, pacedPct,
+		log.Printf("branches: %d blocked / %d paced / %d vblank-held (%.1f %% paced), wait mean %.3f ms max %.3f ms",
+			ps.Blocked, ps.Paced, ps.VblankHeld, pacedPct,
 			float64(ps.WaitMean().Nanoseconds())/1e6, float64(ps.WaitMax.Nanoseconds())/1e6)
 		log.Printf("verdict: %s", verdict)
 
