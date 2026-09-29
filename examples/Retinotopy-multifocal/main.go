@@ -485,7 +485,10 @@ func (r *runner) presentTrial(on []bool, frames int) (uint64, error) {
 		if f == 0 {
 			onsetNS = ts
 			// Immediately after the flip, on this thread: the rising edge
-			// lands tens of microseconds after the photons.
+			// lands tens of microseconds after the flip returns. The photons
+			// come one to three frames later, depending on the display stack
+			// (see triggers.FireTriggerSync); measure that lag with the
+			// photodiode and subtract it in analysis.
 			r.fire()
 		}
 		if startedTarget {
