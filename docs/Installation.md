@@ -139,7 +139,7 @@ Then:
    reference (via pkgsite) and this site (via zensical) — see
    [Viewing the documentation locally](ViewingDocsLocally.md).
 
-
+<!--
 ### If a program fails to build on Windows
 
 A build that stops on a line like
@@ -171,6 +171,7 @@ any programs that did not build. If some are still missing:
     mkdir -p /c/go-tmp
     export GOTMPDIR=/c/go-tmp
     ```
+-->
 
 ### One extra step on a Linux machine used for data collection
 
