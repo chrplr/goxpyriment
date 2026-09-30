@@ -1,6 +1,6 @@
 # choice-reaction-times
 
-Press F or J according to the colour (red/green) of a central square; the colour-key mapping alternates across 8 blocks of 32 trials, with SOA distributions matched across colours
+Press F or J according to the colour (red/green) of a central square; the colour-key mapping alternates across 8 blocks of 24 trials (set with -blocks and -trials), with SOA distributions matched across colours
 
 *Donders (1868/1969); Hick (1952)*
 

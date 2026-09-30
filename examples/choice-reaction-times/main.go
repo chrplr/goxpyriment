@@ -7,13 +7,16 @@
 //
 // Timing is onset-to-onset: each square appears SOA ms after the previous
 // one, whatever the response time. The square disappears at the response, or
-// at the response deadline if there is none. Within every block, the 16 SOA
-// values (evenly spaced over 1750–2250 ms, mean 2000 ms) are each paired once
+// at the response deadline if there is none. Within every block, trials/2 SOA
+// values (evenly spaced over 2250–2750 ms, mean 2500 ms) are each paired once
 // with red and once with green, so the SOA distribution preceding a red square
 // is identical to the one preceding a green square.
+//
+// Flags: -blocks N (default 8) and -trials N (default 24, must be even).
 package main
 
 import (
+	"flag"
 	"fmt"
 	"math"
 	"runtime"
@@ -25,17 +28,19 @@ import (
 )
 
 const (
-	NBlocks        = 8
-	NSOAs          = 16 // distinct SOA values; each is used once per colour
-	TrialsPerBlock = 2 * NSOAs
-	SOAMin         = 1750 // ms
-	SOAMax         = 2250 // ms
-	DeadlineMS     = 1500 // response deadline; DeadlineMS+FeedbackMS must be < SOAMin
-	FeedbackMS     = 200  // duration of the feedback frame
-	SquareSize     = 200  // pixels
-	FrameWidth     = 6    // pixels, thickness of the feedback frame
-	CrossSize      = 30   // pixels
-	CrossWidth     = 4    // pixels
+	SOAMin     = 2250 // ms
+	SOAMax     = 2750 // ms
+	DeadlineMS = 1500 // response deadline; DeadlineMS+FeedbackMS must be < SOAMin
+	FeedbackMS = 200  // duration of the feedback frame
+	SquareSize = 200  // pixels
+	FrameWidth = 6    // pixels, thickness of the feedback frame
+	CrossSize  = 30   // pixels
+	CrossWidth = 4    // pixels
+)
+
+var (
+	nBlocks        = flag.Int("blocks", 8, "Number of blocks (the colour-key mapping alternates between blocks)")
+	trialsPerBlock = flag.Int("trials", 24, "Trials per block; must be even and >= 4 (each SOA value is used once per colour)")
 )
 
 // newFrame returns the four bars of an outline hugging the square's edge.
@@ -47,6 +52,15 @@ func newFrame(color control.Color) []stimuli.VisualStimulus {
 		stimuli.NewRectangle(0, -off, long, FrameWidth, color),
 		stimuli.NewRectangle(-off, 0, FrameWidth, long, color),
 		stimuli.NewRectangle(off, 0, FrameWidth, long, color),
+	}
+}
+
+// newDiagonalCross returns an X joining the square's opposite corners.
+func newDiagonalCross(color control.Color) []stimuli.VisualStimulus {
+	const h = SquareSize / 2
+	return []stimuli.VisualStimulus{
+		stimuli.NewPolyLine([]control.FPoint{{X: -h, Y: -h}, {X: h, Y: h}}, false, FrameWidth, color),
+		stimuli.NewPolyLine([]control.FPoint{{X: -h, Y: h}, {X: h, Y: -h}}, false, FrameWidth, color),
 	}
 }
 
@@ -77,18 +91,18 @@ func keyName(k control.Keycode) string {
 	return "none"
 }
 
-// soaValues returns NSOAs values evenly spaced over [SOAMin, SOAMax].
-func soaValues() []int {
-	v := make([]int, NSOAs)
+// soaValues returns n values evenly spaced over [SOAMin, SOAMax] (n >= 2).
+func soaValues(n int) []int {
+	v := make([]int, n)
 	for i := range v {
-		v[i] = SOAMin + (i*(SOAMax-SOAMin)+(NSOAs-1)/2)/(NSOAs-1)
+		v[i] = SOAMin + (i*(SOAMax-SOAMin)+(n-1)/2)/(n-1)
 	}
 	return v
 }
 
 // blockTrials pairs every SOA value once with each colour, then shuffles.
 func blockTrials(soas []int) []trial {
-	trials := make([]trial, 0, TrialsPerBlock)
+	trials := make([]trial, 0, 2*len(soas))
 	for _, s := range soas {
 		trials = append(trials, trial{"red", s}, trial{"green", s})
 	}
@@ -104,21 +118,23 @@ func instructions(block int, m mapping) string {
 	return fmt.Sprintf("Block %d of %d\n\n"+
 		"%s square: press F (left index finger)\n"+
 		"%s square: press J (right index finger)\n\n"+
-		"Press SPACE to start.", block, NBlocks, left, right)
+		"Press SPACE to start.", block, *nBlocks, left, right)
 }
 
-const introText = "Welcome!\n\n" +
-	"On each trial, a red or a green square appears at the centre of the screen.\n" +
-	"Your task is to press a key according to its colour:\n" +
-	"F with your left index finger, or J with your right index finger.\n\n" +
-	"The experiment has 8 blocks of 32 trials.\n" +
-	"IMPORTANT: the colour-key mapping switches from one block to the next.\n" +
-	"Read the instructions at the start of each block carefully.\n\n" +
-	"After each response, a frame briefly appears where the square was:\n" +
-	"WHITE if your response was correct, BLACK if it was wrong or too slow.\n\n" +
-	"Keep your eyes on the central cross and respond\n" +
-	"as quickly and as accurately as possible.\n\n" +
-	"Press SPACE to continue."
+func introText() string {
+	return "Welcome!\n\n" +
+		"On each trial, a red or a green square appears at the centre of the screen.\n" +
+		"Your task is to press a key according to its colour:\n" +
+		"F with your left index finger, or J with your right index finger.\n\n" +
+		fmt.Sprintf("The experiment has %d blocks of %d trials.\n", *nBlocks, *trialsPerBlock) +
+		"IMPORTANT: the colour-key mapping switches from one block to the next.\n" +
+		"Read the instructions at the start of each block carefully.\n\n" +
+		"After each response, a frame briefly appears where the square was:\n" +
+		"WHITE if your response was correct, BLACK if it was wrong or too slow.\n\n" +
+		"Keep your eyes on the central cross and respond\n" +
+		"as quickly and as accurately as possible.\n\n" +
+		"Press SPACE to continue."
+}
 
 // keyStats accumulates, for one response key, the number of trials on which
 // it was the correct key and the RTs of the correct responses.
@@ -156,6 +172,13 @@ func main() {
 	exp := control.NewExperimentFromFlags("Choice Reaction Times", control.Gray, control.Black, 32)
 	defer exp.End()
 
+	if *nBlocks < 1 {
+		exp.Fatal("-blocks must be >= 1, got %d", *nBlocks)
+	}
+	if *trialsPerBlock < 4 || *trialsPerBlock%2 != 0 {
+		exp.Fatal("-trials must be even and >= 4 (each SOA value is paired once with each colour), got %d", *trialsPerBlock)
+	}
+
 	exp.AddDataVariableNames([]string{"block", "trial", "mapping", "color", "soa_planned", "soa_actual",
 		"correct_key", "response", "rt", "correct"})
 
@@ -168,7 +191,8 @@ func main() {
 	responseKeys := []control.Keycode{control.K_F, control.K_J}
 
 	whiteFrame := newFrame(control.White) // correct response
-	blackFrame := newFrame(control.Black) // wrong key or no response
+	// Wrong key or no response: black frame plus a black X across the square.
+	errorFeedback := append(newFrame(control.Black), newDiagonalCross(control.Black)...)
 
 	// present draws stims under the permanent fixation cross and flips,
 	// returning the flip timestamp.
@@ -186,7 +210,7 @@ func main() {
 		}
 		return exp.Screen.FlipTS()
 	}
-	soas := soaValues()
+	soas := soaValues(*trialsPerBlock / 2)
 
 	// Counterbalance the starting mapping by subject ID; mappings alternate.
 	first, second := mappingA, mappingB
@@ -209,10 +233,10 @@ func main() {
 	stats := map[control.Keycode]*keyStats{control.K_F: {}, control.K_J: {}}
 
 	err := exp.Run(func() error {
-		if err := exp.ShowInstructions(introText); err != nil {
+		if err := exp.ShowInstructions(introText()); err != nil {
 			return err
 		}
-		for b := 0; b < NBlocks; b++ {
+		for b := 0; b < *nBlocks; b++ {
 			m := first
 			if b%2 == 1 {
 				m = second
@@ -250,14 +274,14 @@ func main() {
 					return err
 				}
 
-				// Feedback: the square is replaced by a frame at its edge.
+				// Feedback: the square is replaced by a frame at its edge (plus an X on error).
 				correct := key == correctKey
-				frame := blackFrame
+				feedback := errorFeedback
 				if correct {
 					nCorrect++
-					frame = whiteFrame
+					feedback = whiteFrame
 				}
-				if _, err := present(frame...); err != nil {
+				if _, err := present(feedback...); err != nil {
 					debug.SetGCPercent(100)
 					return err
 				}
@@ -286,8 +310,8 @@ func main() {
 
 			exp.Wait(1000)
 			msg := fmt.Sprintf("End of block %d of %d\n\nCorrect responses: %d / %d\n\n",
-				b+1, NBlocks, nCorrect, TrialsPerBlock)
-			if b < NBlocks-1 {
+				b+1, *nBlocks, nCorrect, *trialsPerBlock)
+			if b < *nBlocks-1 {
 				msg += "Take a short break.\n\nPress SPACE to continue."
 			} else {
 				msg += "Press SPACE to see your results."

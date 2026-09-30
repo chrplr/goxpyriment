@@ -1,0 +1,13 @@
+onset_time	duration	type	cond	stimuli
+2000	350	IMAGE_STREAM	disks_random	disk_frame_6.png:350:50~disk_frame_7.png:350:50~disk_frame_5.png:350:50~disk_frame_3.png:350:50
+4000	350	IMAGE_STREAM	disks_regular	disk_frame_3.png:350:50~disk_frame_4.png:350:50~disk_frame_5.png:350:50~disk_frame_6.png:350:50
+6000	350	IMAGE_STREAM	wedges	wedge_4.png:350:50~wedge_6.png:350:50~wedge_2.png:350:50~wedge_5.png:350:50
+8000	300	SOUND_STREAM	tones_regular	tone_09_440Hz.wav:300:100~tone_08_403Hz.wav:300:100~tone_07_370Hz.wav:300:100~tone_06_339Hz.wav:300:100
+10000	300	SOUND_STREAM	tones_random	tone_03_261Hz.wav:300:100~tone_05_311Hz.wav:300:100~tone_09_440Hz.wav:300:100~tone_07_370Hz.wav:300:100
+12000	350	IMAGE_STREAM	faces	face_008.png:350:50~face_052.png:350:50~face_018.png:350:50~face_033.png:350:50
+14000	350	IMAGE_STREAM	houses	house_053.png:350:50~house_065.png:350:50~house_138.png:350:50~house_113.png:350:50
+16000	350	IMAGE_STREAM	rings	ring_1.png:350:50~ring_8.png:350:50~ring_7.png:350:50~ring_3.png:350:50
+18000	350	IMAGE_STREAM	disks_random	disk_frame_5.png:350:50~disk_frame_2.png:350:50~disk_frame_8.png:350:50~disk_frame_6.png:350:50
+20000	300	SOUND_STREAM	tones_random	tone_09_440Hz.wav:300:100~tone_03_261Hz.wav:300:100~tone_05_311Hz.wav:300:100~tone_07_370Hz.wav:300:100
+22000	350	IMAGE_STREAM	disks_regular	disk_frame_4.png:350:50~disk_frame_3.png:350:50~disk_frame_2.png:350:50~disk_frame_1.png:350:50
+24000	300	SOUND_STREAM	tones_regular	tone_07_370Hz.wav:300:100~tone_05_311Hz.wav:300:100~tone_03_261Hz.wav:300:100~tone_01_220Hz.wav:300:100
