@@ -1,0 +1,131 @@
+{#-
+  Theme override: adds an MNE-style landing hero + card menu on the home page.
+  Purely presentational — the page Markdown (docs/index.md) is rendered
+  unchanged below the cards. Card blurbs reuse wording from docs/index.md.
+-#}
+{% extends "base.html" %}
+
+{#- Hero is rendered inside the tabs block so the nav tabs stay directly under the header. -#}
+{% block tabs %}
+  {{ super() }}
+  {% if page and page.url == "" %}
+  <section class="gx-hero">
+    <div class="md-grid gx-hero__inner">
+      <img class="gx-hero__logo" src="{{ 'assets/logo.png' | url }}" alt="goxpyriment logo">
+      <div class="gx-hero__text">
+        <h1 class="gx-hero__title">goxpyriment</h1>
+        <p class="gx-hero__tagline">{{ config.site_description }}</p>
+        <div class="gx-hero__actions">
+          <a class="gx-btn gx-btn--primary" href="{{ 'Installation/' | url }}">Install</a>
+          <a class="gx-btn" href="{{ 'GettingStarted/' | url }}">Getting Started</a>
+          <a class="gx-btn" href="{{ config.repo_url }}">GitHub</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="gx-cards-wrap">
+    <div class="md-grid">
+      <div class="gx-cards">
+        <a class="gx-card" href="#gx-about">
+          <span class="gx-card__icon">{% include ".icons/material/information-outline.svg" %}</span>
+          <span class="gx-card__title">About goxpyriment</span>
+          <span class="gx-card__text">What goxpyriment is, documentation overview, support, background, license and citation.</span>
+        </a>
+        <a class="gx-card" href="{{ 'Installation/' | url }}">
+          <span class="gx-card__icon">{% include ".icons/material/download.svg" %}</span>
+          <span class="gx-card__title">Install</span>
+          <span class="gx-card__text">Install and build the bundled examples.</span>
+        </a>
+        <a class="gx-card" href="{{ 'CreatingYourOwnExperiment/' | url }}">
+          <span class="gx-card__icon">{% include ".icons/material/rocket-launch-outline.svg" %}</span>
+          <span class="gx-card__title">Creating Your Own Experiment</span>
+          <span class="gx-card__text">A step-by-step beginner guide from an empty folder to a shareable executable.</span>
+        </a>
+        <a class="gx-card" href="{{ 'GettingStarted/' | url }}">
+          <span class="gx-card__icon">{% include ".icons/material/school-outline.svg" %}</span>
+          <span class="gx-card__title">Getting Started</span>
+          <span class="gx-card__text">Worked tutorials: trials, data logging, RSVP streams, reaction times.</span>
+        </a>
+        <a class="gx-card" href="{{ 'UserManual/' | url }}">
+          <span class="gx-card__icon">{% include ".icons/material/book-open-page-variant-outline.svg" %}</span>
+          <span class="gx-card__title">User Manual</span>
+          <span class="gx-card__text">Core concepts explained in depth: rendering model, timing, input, data, streams, audio, and experimental design.</span>
+        </a>
+        <a class="gx-card" href="{{ 'API/' | url }}">
+          <span class="gx-card__icon">{% include ".icons/material/code-braces.svg" %}</span>
+          <span class="gx-card__title">API Reference</span>
+          <span class="gx-card__text">Complete function and type reference, organized by package.</span>
+        </a>
+        <a class="gx-card" href="{{ 'GalleryOfExamples/' | url }}">
+          <span class="gx-card__icon">{% include ".icons/material/view-grid-outline.svg" %}</span>
+          <span class="gx-card__title">Gallery of Examples</span>
+          <span class="gx-card__text">Over fifty example experiments and demos, with pre-built binaries for Windows, macOS, and Linux.</span>
+        </a>
+        <a class="gx-card" href="{{ 'MigrationGuide/' | url }}">
+          <span class="gx-card__icon">{% include ".icons/material/swap-horizontal.svg" %}</span>
+          <span class="gx-card__title">Migration Guide</span>
+          <span class="gx-card__text">Migrating from PsychoPy / Expyriment / Psychtoolbox.</span>
+        </a>
+        <a class="gx-card" href="{{ 'TimingTests/' | url }}">
+          <span class="gx-card__icon">{% include ".icons/material/timer-outline.svg" %}</span>
+          <span class="gx-card__title">Timing Tests</span>
+          <span class="gx-card__text">Checking your computer's timing.</span>
+        </a>
+        <a class="gx-card" href="https://groups.google.com/a/pallier.org/g/goxpyriment">
+          <span class="gx-card__icon">{% include ".icons/material/forum-outline.svg" %}</span>
+          <span class="gx-card__title">Support</span>
+          <span class="gx-card__text">Google group forum — report bugs on GitHub issues.</span>
+        </a>
+      </div>
+    </div>
+  </section>
+  {% endif %}
+{% endblock %}
+
+{#- On the home page the index.md text is hidden until the "About" card is
+    clicked (CSS :target, see extra.css). The Markdown itself is unchanged. -#}
+{% block content %}
+  {% if page and page.url == "" %}
+  <div id="gx-about" class="gx-about">
+    <a class="gx-about__close" href="#">Hide ✕</a>
+    {{ super() }}
+  </div>
+  {% elif page and page.url == "GalleryOfExamples/" %}
+  {#- Gallery: the generated Markdown tables are restyled as a card grid
+      (extra.css); this only adds a client-side filter box. -#}
+  <div class="gx-gallery">
+    <div class="gx-filter">
+      <span class="gx-filter__icon">{% include ".icons/material/magnify.svg" %}</span>
+      <input class="gx-filter__input" type="search" placeholder="Filter examples by name, topic or author…" aria-label="Filter examples">
+      <span class="gx-filter__count" aria-live="polite"></span>
+    </div>
+    {{ super() }}
+  </div>
+  <script>
+    (function () {
+      var root = document.currentScript.previousElementSibling;
+      var input = root.querySelector(".gx-filter__input");
+      var count = root.querySelector(".gx-filter__count");
+      var h1 = root.querySelector("h1");
+      if (h1) h1.after(root.querySelector(".gx-filter"));  // filter under the title
+      var cells = Array.prototype.filter.call(root.querySelectorAll("td"),
+        function (td) { return td.textContent.trim() !== ""; });
+      function apply() {
+        var q = input.value.trim().toLowerCase();
+        var shown = 0;
+        cells.forEach(function (td) {
+          var hit = !q || td.textContent.toLowerCase().indexOf(q) !== -1;
+          td.hidden = !hit;
+          if (hit) shown++;
+        });
+        count.textContent = q ? shown + " / " + cells.length : cells.length + " examples";
+      }
+      input.addEventListener("input", apply);
+      apply();
+    })();
+  </script>
+  {% else %}
+    {{ super() }}
+  {% endif %}
+{% endblock %}
