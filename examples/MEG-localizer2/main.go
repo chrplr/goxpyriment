@@ -51,9 +51,10 @@
 //	go run . -ttl megttlbox:/dev/ttyACM0
 //
 // Photodiode: a white square is drawn on the grey background in the top-left
-// corner for one frame at every row's onset --
-// on the frame whose flip fires the TTL code, so a photodiode on the corner
-// and the trigger channel mark the same event. It is on by default;
+// corner for 3 frames from every stimulus onset -- each row, and each item of a
+// stream row. At a row onset it goes up in the flip that fires the TTL code, so
+// a photodiode on the corner and the trigger channel mark the same event. It
+// is on by default;
 // -photodiode=false turns it off, -photodiode-size sets its side in pixels.
 package main
 
@@ -94,9 +95,14 @@ var assetFS embed.FS
 // period of the gostim2 implementation this is ported from.
 const gracePeriodMs = 500
 
-// defaultPhotodiodeSize is the side, in pixels, of the square flashed in the
-// top-left corner at every row onset (see -photodiode).
+// defaultPhotodiodeSize is the side, in pixels, of the square shown in the
+// top-left corner from every stimulus onset (see -photodiode).
 const defaultPhotodiodeSize = 100
+
+// photodiodeFrames is how many frames the photodiode square stays up from each
+// stimulus onset. More than one, so a single frame lost in the display stack
+// cannot erase a marker: the square is then late by a frame, not missing.
+const photodiodeFrames = 3
 
 // element is one item of a row's stimulus sequence: a single stimulus for the
 // scalar types, one of the "~"-separated items for the *_STREAM types.
@@ -311,8 +317,8 @@ func main() {
 	ttlSpec := flag.String("ttl", "", "send each row's \"code\" as a TTL at its onset, through "+
 		"DEVICE[:PORT]: megttlbox:/dev/ttyACM0, mmbts:/dev/ttyACM0, dlpio8[:PORT|auto], "+
 		"parallel[:/dev/parport0]; empty means no triggers")
-	photodiode := flag.Bool("photodiode", true, "flash a square in the top-left corner for one frame at every "+
-		"row onset, for a photodiode (-photodiode=false to disable)")
+	photodiode := flag.Bool("photodiode", true, fmt.Sprintf("show a square in the top-left corner for %d frames "+
+		"from every stimulus onset, sounds included, for a photodiode (-photodiode=false to disable)", photodiodeFrames))
 	photodiodeSize := flag.Float64("photodiode-size", defaultPhotodiodeSize,
 		"side of the photodiode square, in pixels")
 	ttlMs := flag.Int("ttl-ms", 10, "TTL pulse width in ms (the code is held at least this long, "+
@@ -453,7 +459,7 @@ func main() {
 			log.Fatalf("cannot preload photodiode square: %v", err)
 		}
 		log.Printf("photodiode: %.0f px square in the top-left corner of the %.0fx%.0f drawable area, "+
-			"1 frame at every row onset", side, w, h)
+			"%d frames from every stimulus onset", side, w, h, photodiodeFrames)
 	}
 
 	// Build and preload every stimulus up front: identical items (the four
@@ -478,7 +484,8 @@ func main() {
 	}
 	if patch != nil {
 		exp.AddExperimentInfo(fmt.Sprintf("photodiode: %.0f px square, top-left, white, "+
-			"1 frame at every row onset", *photodiodeSize))
+			"%d frames from every stimulus onset (sounds: the flip that starts them)",
+			*photodiodeSize, photodiodeFrames))
 	}
 
 	isRun := selected != "instructions"
@@ -556,13 +563,21 @@ func main() {
 		// frames makes it a real -ttl-ms edge: the achieved width is between
 		// ttlMs and one frame more than it. The clearing frame may belong to
 		// the next row's stream, which is fine: the closure outlives the rows.
-		// The photodiode patch goes up on frame 0 of the row's first element --
-		// the frame whose flip onOnset follows -- and so reaches the screen in
-		// the same flip as the TTL code. For a sound row that flip is when the
-		// sound is started, not when it is heard: the audio latency is not in
-		// the photodiode signal.
+		// The photodiode patch goes up on frame 0 of every element but the
+		// fixation lead -- the frame whose flip onOnset follows and whose
+		// timestamp is logged as the onset -- so at a row onset it reaches the
+		// screen in the same flip as the TTL code. For a sound that flip is when
+		// the sound is started, not when it is heard: the audio latency is not
+		// in the photodiode signal.
+		//
+		// patchLeft is how many more frames the patch is drawn, counting the
+		// one about to be flipped. Like pulseEndNS it outlives the rows, so a
+		// patch begun late in one row finishes in the next. An onset less than
+		// photodiodeFrames after the previous one restarts the count, merging
+		// the two patches into one.
 		var curCode, curLead int
 		var pulseEndNS uint64
+		patchLeft := 0
 		onOnset := func(index int, onsetNS uint64) error {
 			if curCode == 0 || index != curLead {
 				return nil // a fixation lead, or a later element of a stream row
@@ -576,9 +591,15 @@ func main() {
 				ttlFail("clear", ttl.Send(0))
 				pulseEndNS = 0
 			}
-			if patch != nil && ctx.Index == curLead && ctx.OnPhase && ctx.Frame == 0 {
-				if derr := patch.Draw(exp.Screen); derr != nil {
-					return derr
+			if patch != nil {
+				if ctx.Index >= curLead && ctx.OnPhase && ctx.Frame == 0 {
+					patchLeft = photodiodeFrames
+				}
+				if patchLeft > 0 {
+					patchLeft--
+					if derr := patch.Draw(exp.Screen); derr != nil {
+						return derr
+					}
 				}
 			}
 			// The same cross as between stimuli, drawn on top of the picture

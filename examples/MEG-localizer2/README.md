@@ -54,7 +54,7 @@ and every onset is measured from it. ESC, or closing the window, aborts.
 | `-skip-wait` | no instruction screen and no start key |
 | `-ttl DEVICE[:PORT]` | send each row's code as a TTL at its onset — see below; default none |
 | `-ttl-ms N` | TTL pulse width in ms; default 10 |
-| `-photodiode` | flash a square in the top-left corner for one frame at every row onset; on by default, `-photodiode=false` disables it |
+| `-photodiode` | show a square in the top-left corner for 3 frames from every stimulus onset, sounds included; on by default, `-photodiode=false` disables it |
 | `-photodiode-size N` | side of the photodiode square, in pixels; default 100 |
 
 **Record in fullscreen, never windowed** — see the note in
@@ -170,10 +170,15 @@ a table without the column runs without triggers.
 Photodiode
 ----------
 
-At every row onset a 100×100 px square (`-photodiode-size`) is drawn in the
-top-left corner for one frame. It is drawn into the frame whose flip fires the
-TTL code, so the photodiode and the trigger channel mark the same flip, and
-the difference between them is the display latency. The square is white on
+At every stimulus onset a 100×100 px square (`-photodiode-size`) is drawn in
+the top-left corner and held for 3 frames, so a single frame lost in the
+display stack delays it by a frame instead of erasing it. Every row is marked,
+and in a stream row every item, not only the first as the TTL is. Two onsets
+closer than 3 frames merge into one longer square. At a row onset the square
+goes up in the frame whose flip fires the TTL code, so the photodiode and the
+trigger channel mark the same flip. The TTL is raised as that flip *returns*,
+one to three frames before the square is on the panel; the difference between
+the two channels is that display latency. The square is white on
 the grey (128) background, so the photodiode sees a grey-to-white step. It
 flashes on every row, sound rows included; there it marks the flip after
 which the sound is started, not the sound itself, whose latency must be
