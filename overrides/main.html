@@ -42,6 +42,11 @@
           <span class="gx-card__title">Creating Your Own Experiment</span>
           <span class="gx-card__text">A step-by-step beginner guide from an empty folder to a shareable executable.</span>
         </a>
+        <a class="gx-card" href="{{ 'VibeCoding/' | url }}">
+          <span class="gx-card__icon">{% include ".icons/material/robot-outline.svg" %}</span>
+          <span class="gx-card__title">How to vibe-code</span>
+          <span class="gx-card__text">Let an AI coding agent write the experiment for you, e.g. reproduce a study from its paper's method section.</span>
+        </a>
         <a class="gx-card" href="{{ 'GettingStarted/' | url }}">
           <span class="gx-card__icon">{% include ".icons/material/school-outline.svg" %}</span>
           <span class="gx-card__title">Getting Started</span>
@@ -91,6 +96,30 @@
     <a class="gx-about__close" href="#">Hide ✕</a>
     {{ super() }}
   </div>
+  <script>
+    // Open/close the About text with a class rather than relying on :target,
+    // which instant navigation (history.pushState) does not update.
+    (function () {
+      var about = document.currentScript.previousElementSibling;
+      function open() { about.classList.add("gx-about--open"); }
+      var id = decodeURIComponent(location.hash.slice(1));
+      var target = id && document.getElementById(id);
+      if (target && (target === about || about.contains(target))) open();  // e.g. a search result
+      // Match the end of the href: instant navigation makes links absolute.
+      document.querySelectorAll('a[href$="#gx-about"]').forEach(function (a) {
+        a.addEventListener("click", function (e) {
+          e.preventDefault();
+          open();
+          about.scrollIntoView({ behavior: "smooth" });
+        });
+      });
+      about.querySelector(".gx-about__close").addEventListener("click", function (e) {
+        e.preventDefault();
+        about.classList.remove("gx-about--open");
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      });
+    })();
+  </script>
   {% elif page and page.url == "GalleryOfExamples/" %}
   {#- Gallery: the generated Markdown tables are restyled as a card grid
       (extra.css); this only adds a client-side filter box. -#}
@@ -111,6 +140,37 @@
       if (h1) h1.after(root.querySelector(".gx-filter"));  // filter under the title
       var cells = Array.prototype.filter.call(root.querySelectorAll("td"),
         function (td) { return td.textContent.trim() !== ""; });
+
+      // Wrap each card's description (the loose text between the bold title
+      // and the reference / Run link) in a span so CSS can clamp it to a few
+      // lines; a click toggles the full text, which is also the tooltip.
+      cells.forEach(function (td) {
+        var title = td.querySelector(":scope > strong");
+        if (!title) return;
+        var desc = document.createElement("span");
+        desc.className = "gx-desc";
+        var ems = td.querySelectorAll(":scope > em");
+        // The reference is the last <em>, provided only <br>s / the Run link
+        // follow it (a stray "*" in a description can create other <em>s).
+        var ref = ems.length ? ems[ems.length - 1] : null;
+        for (var m = ref && ref.nextSibling; ref && m; m = m.nextSibling) {
+          if (m.nodeType === 3 ? m.textContent.trim() !== "" :
+              !(m.tagName === "BR" || (m.tagName === "A" && m.textContent.indexOf("▶") === 0))) ref = null;
+        }
+        var n = title.nextSibling;
+        while (n) {
+          var next = n.nextSibling;
+          if (n.nodeType === 1 && (n === ref ||
+              (n.tagName === "A" && n.textContent.indexOf("▶") === 0))) break;
+          if (!(n.nodeType === 1 && n.tagName === "BR")) desc.appendChild(n);
+          n = next;
+        }
+        if (!desc.textContent.trim()) return;
+        desc.title = desc.textContent.trim();
+        title.after(desc);
+        desc.addEventListener("click", function () { desc.classList.toggle("gx-desc--open"); });
+        if (ref) ref.title = ref.textContent.trim();
+      });
       function apply() {
         var q = input.value.trim().toLowerCase();
         var shown = 0;
