@@ -295,7 +295,7 @@ func main() {
 	ttlMs := flag.Int("ttl-ms", 10, "TTL pulse width in ms (the code is held at least this long, "+
 		"and at most one frame longer)")
 	photodiode := flag.Bool("photodiode", true, fmt.Sprintf("show a white square in the top-left corner "+
-		"for %d frames from every stimulus onset, sounds included (-photodiode=false to disable)", photodiodeFrames))
+		"for %d frames from every stimulus onset, sounds included, black otherwise (-photodiode=false to disable)", photodiodeFrames))
 	photodiodeSize := flag.Float64("photodiode-size", 100, "side of the photodiode square, in pixels")
 
 	// Font size 50 and a white-on-black screen reproduce the defaults of the
@@ -425,7 +425,8 @@ func main() {
 	// Photodiode square, top-left corner of the drawable area. Positions are
 	// centre-relative with +Y up, so the corner is at (-w/2 + side/2,
 	// +h/2 - side/2), in the size CenterToSDL works from: LogicalSize when one
-	// is set, the renderer output size otherwise.
+	// is set, the renderer output size otherwise. White at onsets, black
+	// otherwise (onFrame and show set the colour).
 	var patch *stimuli.Rectangle
 	if *photodiode {
 		var w, h float32
@@ -447,7 +448,7 @@ func main() {
 			exp.Fatal("preloading the photodiode square: %v", err)
 		}
 		log.Printf("photodiode: %.0f px white square in the top-left corner of the %.0fx%.0f drawable area, "+
-			"%d frames from every stimulus onset", side, w, h, photodiodeFrames)
+			"%d frames from every stimulus onset, black otherwise", side, w, h, photodiodeFrames)
 	}
 
 	exp.AddDataVariableNames([]string{"intended_ms", "actual_ms", "event", "cond", "stimuli", "code"})
@@ -458,11 +459,32 @@ func main() {
 	}
 	if patch != nil {
 		exp.AddExperimentInfo(fmt.Sprintf("photodiode: %.0f px white square, top-left, "+
-			"%d frames from every stimulus onset (sounds: the flip that starts them)",
+			"%d frames from every stimulus onset (sounds: the flip that starts them), black otherwise",
 			*photodiodeSize, photodiodeFrames))
 	}
 
 	isRun := selected != "instructions"
+
+	// show is exp.Show plus the black photodiode square, for the screens of
+	// the run that are not part of a stream (the stream draws the square
+	// itself, in onFrame), so the corner is black from the green cross to the
+	// end.
+	show := func(v stimuli.VisualStimulus) error {
+		if patch == nil {
+			return exp.Show(v)
+		}
+		if err := exp.Screen.Clear(); err != nil {
+			return err
+		}
+		if err := v.Draw(exp.Screen); err != nil {
+			return err
+		}
+		patch.Color = control.Black
+		if err := patch.Draw(exp.Screen); err != nil {
+			return err
+		}
+		return exp.Screen.Flip()
+	}
 
 	// Entries accumulate outside the run closure so a run aborted with ESC
 	// still writes everything recorded up to that point.
@@ -483,7 +505,7 @@ func main() {
 			// version this waited for the scanner's synchronisation pulse; a
 			// MEG run has no such pulse, so the same key starts the clock by
 			// hand until a trigger box drives it.
-			if serr := exp.Show(fixGreen); serr != nil {
+			if serr := show(fixGreen); serr != nil {
 				return serr
 			}
 			if kerr := exp.Keyboard.WaitKey(control.K_T); kerr != nil {
@@ -504,7 +526,7 @@ func main() {
 		// The per-call disable nests harmlessly inside this one.
 		defer debug.SetGCPercent(debug.SetGCPercent(-1))
 
-		if serr := exp.Show(fix); serr != nil {
+		if serr := show(fix); serr != nil {
 			return serr
 		}
 		// The clock starts at the trigger, so every onset is measured from it.
@@ -539,7 +561,7 @@ func main() {
 		// the next row's stream, which is fine: the closure outlives the rows.
 		var curCode, curLead int
 		var pulseEndNS uint64
-		// patchLeft is how many more frames the photodiode square is drawn,
+		// patchLeft is how many more frames the photodiode square is white,
 		// counting the one about to be flipped. It is set on the first on-frame
 		// of every element but the fixation lead -- the frame whose flip is the
 		// onset recorded in TimingLog.OnsetNS, and for a sound the flip right
@@ -566,11 +588,16 @@ func main() {
 				if ctx.OnPhase && ctx.FirstFrame && ctx.Index >= curLead {
 					patchLeft = photodiodeFrames
 				}
+				// Black whenever it is not white, so the photodiode always
+				// sees a black-to-white step even if a stimulus reaches the
+				// corner.
+				patch.Color = control.Black
 				if patchLeft > 0 {
 					patchLeft--
-					if err := patch.Draw(exp.Screen); err != nil {
-						return err
-					}
+					patch.Color = control.White
+				}
+				if err := patch.Draw(exp.Screen); err != nil {
+					return err
 				}
 			}
 			if !*noCrosshair {
@@ -619,7 +646,7 @@ func main() {
 		}
 
 		// Hold the fixation cross briefly so the last stimulus is not cut off.
-		if serr := exp.Show(fix); serr != nil {
+		if serr := show(fix); serr != nil {
 			return serr
 		}
 		if remaining := lastMs + gracePeriodMs - int(clk.NowMillis()); remaining > 0 {

@@ -89,7 +89,7 @@ Besides the standard `-w`, `-d N` and `-s <id>`:
 | `-trigger-device S` | "" | Serial port or host, for the devices that need one |
 | `-trigger-line N` | 0 | TTL line to pulse (0–7) |
 | `-trigger-ms N` | 5 | Pulse width; must be shorter than the shortest trial |
-| `-photodiode` | on | Flash a white square in the top-left corner for one frame at every trial onset (habituation flashes included), drawn in the same flip as the onset. The TTL marker is raised when that flip returns, which is one to three frames *before* the square reaches the screen; the photodiode measures that lag. `-photodiode=false` disables it |
+| `-photodiode` | on | Flash a white square in the top-left corner for one frame at every trial onset (habituation flashes included), drawn in the same flip as the onset; the square is black on every other frame (and on the wait-for-trigger screen), because grey→white is too small a step for reliable photodiode detection. The TTL marker is raised when that flip returns, which is one to three frames *before* the square reaches the screen; the photodiode measures that lag. `-photodiode=false` disables it |
 | `-photodiode-size N` | 100 | Side of the photodiode square, in pixels |
 
 Hardware triggers are desktop-only: `triggers/` does not build for the browser,

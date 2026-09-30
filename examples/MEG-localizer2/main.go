@@ -50,11 +50,11 @@
 //
 //	go run . -ttl megttlbox:/dev/ttyACM0
 //
-// Photodiode: a white square is drawn on the grey background in the top-left
-// corner for 3 frames from every stimulus onset -- each row, and each item of a
-// stream row. At a row onset it goes up in the flip that fires the TTL code, so
-// a photodiode on the corner and the trigger channel mark the same event. It
-// is on by default;
+// Photodiode: a square in the top-left corner is white for 3 frames from every
+// stimulus onset -- each row, and each item of a stream row -- and black the
+// rest of the run, for the largest possible contrast step. At a row onset it
+// turns white in the flip that fires the TTL code, so a photodiode on the
+// corner and the trigger channel mark the same event. It is on by default;
 // -photodiode=false turns it off, -photodiode-size sets its side in pixels.
 package main
 
@@ -317,8 +317,8 @@ func main() {
 	ttlSpec := flag.String("ttl", "", "send each row's \"code\" as a TTL at its onset, through "+
 		"DEVICE[:PORT]: megttlbox:/dev/ttyACM0, mmbts:/dev/ttyACM0, dlpio8[:PORT|auto], "+
 		"parallel[:/dev/parport0]; empty means no triggers")
-	photodiode := flag.Bool("photodiode", true, fmt.Sprintf("show a square in the top-left corner for %d frames "+
-		"from every stimulus onset, sounds included, for a photodiode (-photodiode=false to disable)", photodiodeFrames))
+	photodiode := flag.Bool("photodiode", true, fmt.Sprintf("show a white square in the top-left corner for %d frames "+
+		"from every stimulus onset, sounds included, black otherwise, for a photodiode (-photodiode=false to disable)", photodiodeFrames))
 	photodiodeSize := flag.Float64("photodiode-size", defaultPhotodiodeSize,
 		"side of the photodiode square, in pixels")
 	ttlMs := flag.Int("ttl-ms", 10, "TTL pulse width in ms (the code is held at least this long, "+
@@ -436,8 +436,8 @@ func main() {
 	// Photodiode patch, in the top-left corner of the drawable area. Positions
 	// are centre-relative with +Y up, so the corner is at (-w/2 + side/2,
 	// +h/2 - side/2), in the same size CenterToSDL works from: LogicalSize when
-	// one is set, the renderer output size otherwise. White on the grey
-	// background. nil when -photodiode is off, which is what onFrame tests.
+	// one is set, the renderer output size otherwise. White at onsets, black
+	// otherwise (onFrame and show set the colour). nil when -photodiode is off.
 	var patch *stimuli.Rectangle
 	if *photodiode {
 		var w, h float32
@@ -459,7 +459,7 @@ func main() {
 			log.Fatalf("cannot preload photodiode square: %v", err)
 		}
 		log.Printf("photodiode: %.0f px square in the top-left corner of the %.0fx%.0f drawable area, "+
-			"%d frames from every stimulus onset", side, w, h, photodiodeFrames)
+			"white %d frames from every stimulus onset, black otherwise", side, w, h, photodiodeFrames)
 	}
 
 	// Build and preload every stimulus up front: identical items (the four
@@ -483,12 +483,32 @@ func main() {
 		exp.AddExperimentInfo(fmt.Sprintf("ttl: %s, pulse %d ms", ttlDesc, *ttlMs))
 	}
 	if patch != nil {
-		exp.AddExperimentInfo(fmt.Sprintf("photodiode: %.0f px square, top-left, white, "+
-			"%d frames from every stimulus onset (sounds: the flip that starts them)",
+		exp.AddExperimentInfo(fmt.Sprintf("photodiode: %.0f px square, top-left, white "+
+			"%d frames from every stimulus onset (sounds: the flip that starts them), black otherwise",
 			*photodiodeSize, photodiodeFrames))
 	}
 
 	isRun := selected != "instructions"
+
+	// show is exp.Show plus the black photodiode patch, for the screens of the
+	// run that are not part of a stream (the stream draws the patch itself, in
+	// onFrame), so the corner is black from the green cross to the end.
+	show := func(v stimuli.VisualStimulus) error {
+		if patch == nil {
+			return exp.Show(v)
+		}
+		if err := exp.Screen.Clear(); err != nil {
+			return err
+		}
+		if err := v.Draw(exp.Screen); err != nil {
+			return err
+		}
+		patch.Color = control.Black
+		if err := patch.Draw(exp.Screen); err != nil {
+			return err
+		}
+		return exp.Screen.Flip()
+	}
 
 	// Entries accumulate outside the run closure so a run aborted with ESC
 	// still writes everything recorded up to that point.
@@ -509,7 +529,7 @@ func main() {
 			// version this waited for the scanner's synchronisation pulse; a
 			// MEG run has no such pulse, so the same key starts the clock by
 			// hand until a trigger box drives it.
-			if serr := exp.Show(fixGreen); serr != nil {
+			if serr := show(fixGreen); serr != nil {
 				return serr
 			}
 			if kerr := exp.Keyboard.WaitKey(control.K_T); kerr != nil {
@@ -530,7 +550,7 @@ func main() {
 		// The per-call disable nests harmlessly inside this one.
 		defer debug.SetGCPercent(debug.SetGCPercent(-1))
 
-		if serr := exp.Show(fix); serr != nil {
+		if serr := show(fix); serr != nil {
 			return serr
 		}
 		// The clock starts at the trigger, so every onset is measured from it.
@@ -563,14 +583,14 @@ func main() {
 		// frames makes it a real -ttl-ms edge: the achieved width is between
 		// ttlMs and one frame more than it. The clearing frame may belong to
 		// the next row's stream, which is fine: the closure outlives the rows.
-		// The photodiode patch goes up on frame 0 of every element but the
+		// The photodiode patch turns white on frame 0 of every element but the
 		// fixation lead -- the frame whose flip onOnset follows and whose
 		// timestamp is logged as the onset -- so at a row onset it reaches the
 		// screen in the same flip as the TTL code. For a sound that flip is when
 		// the sound is started, not when it is heard: the audio latency is not
 		// in the photodiode signal.
 		//
-		// patchLeft is how many more frames the patch is drawn, counting the
+		// patchLeft is how many more frames the patch is white, counting the
 		// one about to be flipped. Like pulseEndNS it outlives the rows, so a
 		// patch begun late in one row finishes in the next. An onset less than
 		// photodiodeFrames after the previous one restarts the count, merging
@@ -595,11 +615,15 @@ func main() {
 				if ctx.Index >= curLead && ctx.OnPhase && ctx.Frame == 0 {
 					patchLeft = photodiodeFrames
 				}
+				// Black whenever it is not white: grey→white is too small a
+				// step for the photodiode to detect reliably, black→white is not.
+				patch.Color = control.Black
 				if patchLeft > 0 {
 					patchLeft--
-					if derr := patch.Draw(exp.Screen); derr != nil {
-						return derr
-					}
+					patch.Color = control.White
+				}
+				if derr := patch.Draw(exp.Screen); derr != nil {
+					return derr
 				}
 			}
 			// The same cross as between stimuli, drawn on top of the picture
@@ -652,7 +676,7 @@ func main() {
 		}
 
 		// Hold the fixation cross briefly so the last stimulus is not cut off.
-		if serr := exp.Show(fix); serr != nil {
+		if serr := show(fix); serr != nil {
 			return serr
 		}
 		if remaining := lastMs + gracePeriodMs - int(clk.NowMillis()); remaining > 0 {

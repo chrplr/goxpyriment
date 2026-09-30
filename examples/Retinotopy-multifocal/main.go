@@ -95,7 +95,7 @@ func main() {
 		flagTrigLine = flag.Int("trigger-line", 0, "TTL line to pulse (0-7)")
 		flagTrigMs   = flag.Int("trigger-ms", 5, "TTL pulse width in ms; must be shorter than the minimum trial")
 
-		flagPhotodiode     = flag.Bool("photodiode", true, "Flash a white square in the top-left corner for one frame at every trial onset (-photodiode=false to disable)")
+		flagPhotodiode     = flag.Bool("photodiode", true, "Flash a white square in the top-left corner for one frame at every trial onset, black otherwise (-photodiode=false to disable)")
 		flagPhotodiodeSize = flag.Float64("photodiode-size", defaultPhotodiodeSize, "Side of the photodiode square, in pixels")
 	)
 	flag.Bool("verify", false, "Print the sequence orthogonality report and exit without opening a window")
@@ -260,7 +260,7 @@ func main() {
 			patch = stimuli.NewRectangle(-w/2+side/2, h/2-side/2, side, side, control.White)
 			stimuli.PreloadVisualOnScreen(exp.Screen, patch)
 			log.Printf("photodiode: %.0f px white square in the top-left corner of the %.0fx%.0f drawable area, "+
-				"1 frame at each trial onset", side, w, h)
+				"1 frame at each trial onset, black otherwise", side, w, h)
 		}
 
 		r := &runner{
@@ -295,7 +295,7 @@ func main() {
 			ringDeg[0], ringDeg[1], ringDeg[2], ringDeg[3]))
 		exp.Data.WriteComment(fmt.Sprintf("m seed: %d", *flagSeed))
 		if patch != nil {
-			exp.Data.WriteComment(fmt.Sprintf("m photodiode_square_px: %.0f (top-left, white, 1 frame per trial onset)",
+			exp.Data.WriteComment(fmt.Sprintf("m photodiode_square_px: %.0f (top-left, white 1 frame per trial onset, black otherwise)",
 				*flagPhotodiodeSize))
 		}
 		for _, line := range RegionTableLines(ringDeg) {
@@ -325,7 +325,21 @@ func main() {
 		}
 		if *flagWaitTrig {
 			green := stimuli.NewFixCross(fixCrossSizePx, fixCrossLinePx, control.Green)
-			if serr := exp.Show(green); serr != nil {
+			if serr := exp.Screen.Clear(); serr != nil {
+				return serr
+			}
+			if serr := green.Draw(exp.Screen); serr != nil {
+				return serr
+			}
+			// Black patch while waiting, so the first onset is black→white
+			// like every later one.
+			if patch != nil {
+				patch.Color = control.Black
+				if serr := patch.Draw(exp.Screen); serr != nil {
+					return serr
+				}
+			}
+			if serr := exp.Screen.Flip(); serr != nil {
 				return serr
 			}
 			if kerr := exp.Keyboard.WaitKey(control.K_T); kerr != nil {
@@ -470,9 +484,15 @@ func (r *runner) presentTrial(on []bool, frames int) (uint64, error) {
 		if err := r.fix.Draw(r.exp.Screen); err != nil {
 			return onsetNS, err
 		}
-		// Frame 0 only: the patch goes out in the same flip as the onset, and
-		// is gone on the next one.
-		if r.patch != nil && f == 0 {
+		// White on frame 0 only, so it goes out in the same flip as the
+		// onset; black on every other frame. Grey→white is too small a step
+		// for the photodiode to detect reliably, black→white is not.
+		if r.patch != nil {
+			if f == 0 {
+				r.patch.Color = control.White
+			} else {
+				r.patch.Color = control.Black
+			}
 			if err := r.patch.Draw(r.exp.Screen); err != nil {
 				return onsetNS, err
 			}

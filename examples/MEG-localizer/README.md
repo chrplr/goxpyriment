@@ -64,7 +64,7 @@ and every onset is measured from it. ESC, or closing the window, aborts.
 | `-skip-wait` | no instruction screen and no start key |
 | `-ttl DEVICE[:PORT]` | send each row's `code` as a TTL at its onset — see *Triggers*; default none |
 | `-ttl-ms N` | TTL pulse width in ms; default 10 |
-| `-photodiode` | white square in the top-left corner for 3 frames from every stimulus onset, sounds included — see *Photodiode*; on by default, `-photodiode=false` disables it |
+| `-photodiode` | white square in the top-left corner for 3 frames from every stimulus onset, sounds included, black otherwise — see *Photodiode*; on by default, `-photodiode=false` disables it |
 | `-photodiode-size N` | side of that square, in pixels; default 100 |
 
 **Record in fullscreen, never windowed.** A compositing desktop may throttle an
@@ -167,7 +167,9 @@ A white square in the top-left corner (100 px, `-photodiode-size`) marks
 recorded as that stimulus's onset and held for 3 frames, so a single frame lost
 in the display stack delays it by a frame instead of erasing it. Two onsets
 closer than 3 frames merge into one longer square. The fixation cross that
-fills the gap before a row is not marked.
+fills the gap before a row is not marked. Between onsets the square is drawn
+black, from the green waiting cross to the end of the run, so the photodiode
+always sees a black-to-white step, even if a stimulus reaches the corner.
 
 For a sound, the square marks the flip right after which playback is started;
 the sound reaches the speakers later, by the audio output latency. That delay

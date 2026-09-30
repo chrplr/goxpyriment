@@ -54,7 +54,7 @@ and every onset is measured from it. ESC, or closing the window, aborts.
 | `-skip-wait` | no instruction screen and no start key |
 | `-ttl DEVICE[:PORT]` | send each row's code as a TTL at its onset — see below; default none |
 | `-ttl-ms N` | TTL pulse width in ms; default 10 |
-| `-photodiode` | show a square in the top-left corner for 3 frames from every stimulus onset, sounds included; on by default, `-photodiode=false` disables it |
+| `-photodiode` | show a white square in the top-left corner for 3 frames from every stimulus onset, sounds included, black otherwise; on by default, `-photodiode=false` disables it |
 | `-photodiode-size N` | side of the photodiode square, in pixels; default 100 |
 
 **Record in fullscreen, never windowed** — see the note in
@@ -178,8 +178,9 @@ closer than 3 frames merge into one longer square. At a row onset the square
 goes up in the frame whose flip fires the TTL code, so the photodiode and the
 trigger channel mark the same flip. The TTL is raised as that flip *returns*,
 one to three frames before the square is on the panel; the difference between
-the two channels is that display latency. The square is white on
-the grey (128) background, so the photodiode sees a grey-to-white step. It
+the two channels is that display latency. Between onsets the square is
+black, from the green waiting cross to the end of the run, so the photodiode
+sees a black-to-white step (grey-to-white was too small to detect reliably). It
 flashes on every row, sound rows included; there it marks the flip after
 which the sound is started, not the sound itself, whose latency must be
 measured separately (e.g. with a microphone). `-photodiode=false` turns it
