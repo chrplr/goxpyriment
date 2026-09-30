@@ -64,6 +64,8 @@ and every onset is measured from it. ESC, or closing the window, aborts.
 | `-skip-wait` | no instruction screen and no start key |
 | `-ttl DEVICE[:PORT]` | send each row's `code` as a TTL at its onset — see *Triggers*; default none |
 | `-ttl-ms N` | TTL pulse width in ms; default 10 |
+| `-photodiode` | white square in the top-left corner for 3 frames from every stimulus onset, sounds included — see *Photodiode*; on by default, `-photodiode=false` disables it |
+| `-photodiode-size N` | side of that square, in pixels; default 100 |
 
 **Record in fullscreen, never windowed.** A compositing desktop may throttle an
 unfocused window: measured here, a windowed run reported a refresh of 5690 Hz
@@ -155,6 +157,24 @@ marked, matching the single `_ONSET` line in the data file. Devices:
 [`MEG-localizer2/README.md`](../MEG-localizer2/README.md#triggers), which
 shares this program. A device that cannot be opened, or a table without a
 single code, stops the program before the window opens.
+
+Photodiode
+----------
+
+A white square in the top-left corner (100 px, `-photodiode-size`) marks
+**every** stimulus onset: each image, text and box, each item of a stream row
+(not only the first, as the TTL does), and each sound. It is drawn in the flip
+recorded as that stimulus's onset and held for 3 frames, so a single frame lost
+in the display stack delays it by a frame instead of erasing it. Two onsets
+closer than 3 frames merge into one longer square. The fixation cross that
+fills the gap before a row is not marked.
+
+For a sound, the square marks the flip right after which playback is started;
+the sound reaches the speakers later, by the audio output latency. That delay
+is not corrected for here and has to be measured on the rig.
+
+The TTL, when enabled, is raised as that flip *returns*, which is one to three
+frames before the square is on the panel; the photodiode measures that lag too.
 
 **`make-protocol.py` does not write a `code` column yet**, so `demo.tsv` runs
 without triggers: assign one code per condition there (18 conditions fit

@@ -73,6 +73,11 @@ var protocolFS embed.FS
 //go:embed stimuli/*.wav stimuli/*.png
 var assetFS embed.FS
 
+// photodiodeFrames is how many frames the photodiode square stays up from each
+// stimulus onset. More than one, so a single frame lost in the display stack
+// cannot erase a marker: the square is then late by a frame, not missing.
+const photodiodeFrames = 3
+
 // gracePeriodMs is how long the fixation cross is held after the last row, so
 // the final stimulus is not cut off by the window closing. It matches the grace
 // period of the gostim2 implementation this is ported from.
@@ -289,6 +294,9 @@ func main() {
 		"parallel[:/dev/parport0]; empty means no triggers")
 	ttlMs := flag.Int("ttl-ms", 10, "TTL pulse width in ms (the code is held at least this long, "+
 		"and at most one frame longer)")
+	photodiode := flag.Bool("photodiode", true, fmt.Sprintf("show a white square in the top-left corner "+
+		"for %d frames from every stimulus onset, sounds included (-photodiode=false to disable)", photodiodeFrames))
+	photodiodeSize := flag.Float64("photodiode-size", 100, "side of the photodiode square, in pixels")
 
 	// Font size 50 and a white-on-black screen reproduce the defaults of the
 	// gostim2 implementation, which used the same Inconsolata font.
@@ -414,11 +422,44 @@ func main() {
 		log.Fatalf("cannot preload fixation cross: %v", err)
 	}
 
+	// Photodiode square, top-left corner of the drawable area. Positions are
+	// centre-relative with +Y up, so the corner is at (-w/2 + side/2,
+	// +h/2 - side/2), in the size CenterToSDL works from: LogicalSize when one
+	// is set, the renderer output size otherwise.
+	var patch *stimuli.Rectangle
+	if *photodiode {
+		var w, h float32
+		if ls := exp.Screen.LogicalSize; ls != nil {
+			w, h = ls.X, ls.Y
+		} else {
+			ow, oh, serr := exp.Screen.Size()
+			if serr != nil {
+				exp.Fatal("-photodiode: cannot read the screen size: %v", serr)
+			}
+			w, h = float32(ow), float32(oh)
+		}
+		side := float32(*photodiodeSize)
+		if side <= 0 || side > w || side > h {
+			exp.Fatal("-photodiode-size: %.0f px does not fit on a %.0fx%.0f screen", side, w, h)
+		}
+		patch = stimuli.NewRectangle(-w/2+side/2, h/2-side/2, side, side, control.White)
+		if err := stimuli.PreloadVisualOnScreen(exp.Screen, patch); err != nil {
+			exp.Fatal("preloading the photodiode square: %v", err)
+		}
+		log.Printf("photodiode: %.0f px white square in the top-left corner of the %.0fx%.0f drawable area, "+
+			"%d frames from every stimulus onset", side, w, h, photodiodeFrames)
+	}
+
 	exp.AddDataVariableNames([]string{"intended_ms", "actual_ms", "event", "cond", "stimuli", "code"})
 	exp.AddExperimentInfo("protocol: " + selected)
 	exp.AddExperimentInfo("protocol_source: " + source)
 	if ttlDesc != "" {
 		exp.AddExperimentInfo(fmt.Sprintf("ttl: %s, pulse %d ms", ttlDesc, *ttlMs))
+	}
+	if patch != nil {
+		exp.AddExperimentInfo(fmt.Sprintf("photodiode: %.0f px white square, top-left, "+
+			"%d frames from every stimulus onset (sounds: the flip that starts them)",
+			*photodiodeSize, photodiodeFrames))
 	}
 
 	isRun := selected != "instructions"
@@ -498,6 +539,16 @@ func main() {
 		// the next row's stream, which is fine: the closure outlives the rows.
 		var curCode, curLead int
 		var pulseEndNS uint64
+		// patchLeft is how many more frames the photodiode square is drawn,
+		// counting the one about to be flipped. It is set on the first on-frame
+		// of every element but the fixation lead -- the frame whose flip is the
+		// onset recorded in TimingLog.OnsetNS, and for a sound the flip right
+		// after which it is started -- so the square's leading edge is the
+		// onset. Like pulseEndNS it lives outside the rows, so a square begun
+		// late in one row finishes in the next. An onset less than
+		// photodiodeFrames after the previous one restarts the count, merging
+		// the two squares into one.
+		patchLeft := 0
 		onOnset := func(index int, onsetNS uint64) error {
 			if curCode == 0 || index != curLead {
 				return nil // a fixation lead, or a later element of a stream row
@@ -510,6 +561,17 @@ func main() {
 			if pulseEndNS != 0 && ctx.NowNS >= pulseEndNS {
 				ttlFail("clear", ttl.Send(0))
 				pulseEndNS = 0
+			}
+			if patch != nil {
+				if ctx.OnPhase && ctx.FirstFrame && ctx.Index >= curLead {
+					patchLeft = photodiodeFrames
+				}
+				if patchLeft > 0 {
+					patchLeft--
+					if err := patch.Draw(exp.Screen); err != nil {
+						return err
+					}
+				}
 			}
 			if !*noCrosshair {
 				return crosshair.Draw(exp.Screen)
