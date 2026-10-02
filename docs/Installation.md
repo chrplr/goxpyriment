@@ -175,27 +175,18 @@ any programs that did not build. If some are still missing:
 
 ### One extra step on a Linux machine used for data collection
 
-Nothing above requires special privileges, and you can write and run
-experiments without doing any of this. But an experiment that has to
-present stimuli on time competes with everything else on the machine, and
-the operating system has no reason to prefer it — so on a machine that will
-actually collect data, grant your user real-time scheduling before you
-start trusting its timing.
-
-The procedure is in [Setting priority under
-Linux](SettingPriorityUnderLinux.md): create a group, add a file to
-`/etc/security/limits.d/`, add yourself to the group, then **log out and log
-back in**.
-
- Check the file afterwards with
-  `grep rtprio /etc/security/limits.d/*.conf`, and check the grant is live
-  with `ulimit -r` after logging back in — it should print your chosen
-  priority, not `0`.
+An experiment that has to present stimuli on time competes with other
+processes running on the machine. You can ask the operating system to
+give the preference to your goxpyriment programs by granting your user
+real-time scheduling. The full procedure is described in [Setting
+priority under Linux](SettingPriorityUnderLinux.md). In a nutshell,
+you have create a group `goxpyriment`, configure its permissions in
+`/etc/security/limits.d/`, add yourself to the group, then **log out
+and log back in**. 
 
 Once that is in place you can verify the machine's timing end to end with
 [Timing Tests](TimingTests.md), which also lists the other Linux tuning
 worth doing (disabling the compositor is the single largest improvement).
-
 
 ### Program your own experiments
 
