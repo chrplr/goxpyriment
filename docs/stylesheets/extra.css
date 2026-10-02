@@ -284,7 +284,7 @@
 /* Home page: the index.md text lives behind the "About goxpyriment" card.
    Hidden by default; shown when #gx-about (or any heading inside it, e.g. a
    search result) is the URL target. */
-.md-container:has(.gx-hero) .md-content__inner:not(:has(.gx-about:target, .gx-about :target)) {
+.md-container:has(.gx-hero) .md-content__inner:not(:has(.gx-about--open, .gx-about:target, .gx-about :target)) {
   display: none;
 }
 .md-container:has(.gx-hero) .md-sidebar--secondary {
@@ -480,5 +480,201 @@
 @media screen and (min-width: 76.25em) {
   .md-container:has(.gx-gallery) .md-sidebar--primary {
     display: none;
+  }
+}
+
+/* Gallery: homogeneous card heights. Titles ≤ 2 lines, descriptions ≤ 3 lines
+   (click to expand; full text in the tooltip), references ≤ 1 line. */
+.gx-gallery table td > strong {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+.gx-gallery .gx-desc {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+  cursor: pointer;
+}
+.gx-gallery .gx-desc--open {
+  -webkit-line-clamp: unset;
+  display: block;
+}
+.gx-gallery table td > em {
+  display: block;
+  max-width: 100%;
+  width: fit-content;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-sizing: border-box;
+}
+/* Same height whether the title takes one line or two (Run button is pinned
+   to the bottom, so shorter cards just gain a little air above it). */
+.gx-gallery table td {
+  min-height: 13.25rem;
+}
+
+/* ======================================================================
+   Readability (site-wide)
+   ====================================================================== */
+
+/* Quote blocks — used throughout the docs for tips and notes — as callouts. */
+.md-typeset blockquote {
+  margin: 1.2em 0;
+  padding: .7em 1em .7em 1.1em;
+  border-left: 4px solid var(--gx-blue);
+  border-radius: 0 8px 8px 0;
+  background: var(--gx-blue-soft);
+  color: var(--md-default-fg-color);
+}
+.md-typeset blockquote > :first-child {
+  margin-top: 0;
+}
+.md-typeset blockquote > :last-child {
+  margin-bottom: 0;
+}
+.md-typeset blockquote strong:first-child {
+  color: var(--gx-blue);
+}
+
+/* Body text: slightly larger, more line spacing, comfortable line length. */
+.md-typeset {
+  font-size: .82rem;
+  line-height: 1.7;
+}
+.md-typeset p,
+.md-typeset ul,
+.md-typeset ol {
+  max-width: 44rem;
+}
+.md-typeset h2 {
+  margin-top: 2.2em;
+}
+.md-typeset h3 {
+  margin-top: 1.8em;
+  font-weight: 650;
+}
+.md-typeset li {
+  margin-bottom: .3em;
+}
+
+/* Table of contents: small uppercase label, clear active entry. */
+.md-nav--secondary > .md-nav__title {
+  font-size: .62rem;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  color: var(--md-default-fg-color--light);
+}
+.md-nav--secondary .md-nav__link--active {
+  color: var(--gx-blue);
+  font-weight: 600;
+}
+
+/* Left navigation: section headings (e.g. the Misc groups) read as labels. */
+.md-nav--primary .md-nav__item--section > .md-nav__link,
+.md-nav--primary .md-nav__item--nested > .md-nav__link {
+  font-weight: 600;
+  color: var(--md-default-fg-color);
+}
+.md-nav__link--active {
+  font-weight: 600;
+}
+
+/* Breadcrumbs above the page title. */
+.md-path {
+  font-size: .68rem;
+}
+
+/* ======================================================================
+   Footer: light, matching the header
+   ====================================================================== */
+.md-footer {
+  background: var(--md-default-bg-color);
+  color: var(--md-default-fg-color);
+  border-top: 1px solid var(--gx-card-border);
+}
+.md-footer__link {
+  opacity: 1;
+}
+.md-footer__link:hover .md-footer__title,
+.md-footer__link:focus .md-footer__title {
+  color: var(--gx-blue);
+}
+.md-footer__direction {
+  color: var(--md-default-fg-color--light);
+}
+.md-footer-meta {
+  background: var(--gx-blue-soft);
+  color: var(--md-default-fg-color--light);
+}
+.md-footer-meta.md-typeset a,
+.md-footer-meta .md-copyright a {
+  color: var(--gx-blue);
+}
+.md-social__link svg {
+  fill: var(--md-default-fg-color--light);
+}
+.md-social__link:hover svg {
+  fill: var(--gx-blue);
+}
+
+/* Pages that are a top-level tab on their own (User Manual, API) or not in
+   the nav at all have nothing to list in the left sidebar; drop the empty
+   column on wide screens so the text uses the space. (Mobile keeps the
+   drawer, which holds the full navigation.) */
+@media screen and (min-width: 76.25em) {
+  .md-main__inner:not(:has(.md-nav--primary .md-nav__item--active.md-nav__item--nested)) .md-sidebar--primary {
+    display: none;
+  }
+}
+
+/* "## Table of Contents" followed by a numbered list (User Manual): two
+   columns with round number badges. The Markdown is unchanged. */
+.md-typeset h2#table-of-contents + ol {
+  columns: 2;
+  column-gap: 2.4rem;
+  list-style: none;
+  counter-reset: gx-toc;
+  margin-left: 0;
+  padding-left: 0;
+  max-width: none;
+}
+.md-typeset h2#table-of-contents + ol > li {
+  counter-increment: gx-toc;
+  break-inside: avoid;
+  position: relative;
+  margin: 0 0 .55em;
+  padding-left: 2.1em;
+  line-height: 1.45;
+}
+.md-typeset h2#table-of-contents + ol > li::before {
+  content: counter(gx-toc);
+  position: absolute;
+  left: 0;
+  top: .05em;
+  width: 1.55em;
+  height: 1.55em;
+  border-radius: 50%;
+  background: var(--gx-blue-soft);
+  color: var(--gx-blue);
+  font-size: .8em;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.md-typeset h2#table-of-contents + ol > li > a {
+  font-weight: 600;
+  text-decoration: none;
+}
+.md-typeset h2#table-of-contents + ol > li > a:hover {
+  text-decoration: underline;
+}
+@media screen and (max-width: 44.9375em) {
+  .md-typeset h2#table-of-contents + ol {
+    columns: 1;
   }
 }

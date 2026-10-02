@@ -4,6 +4,10 @@ site_description = "A Go framework for behavioral and psychological experiments"
 site_url = "https://chrplr.github.io/goxpyriment"
 repo_url = "https://github.com/chrplr/goxpyriment"
 repo_name = "chrplr/goxpyriment"
+copyright = """
+Copyright &copy; 2026 Christophe Pallier &middot; Apache License 2.0 &middot;
+Cite as <a href="https://doi.org/10.5281/zenodo.19200598">doi:10.5281/zenodo.19200598</a>
+"""
 
 docs_dir = "docs"
 
@@ -18,7 +22,7 @@ nav = [
   { Gallery = [ { "Gallery of Examples" = "GalleryOfExamples.md" }, { "Pre-built examples" = "pre-built-examples.md" } ] },
   { "User Manual" = "UserManual.md" },
   { API = "API.md" },
-  { Misc = [ { "Migration Guide" = "MigrationGuide.md" }, { "Comparison with PsychoPy" = "ComparisonWithPsychoPy.md" }, { "Timing Tests" = "TimingTests.md" }, { "Movies / media" = "MediaMovies.md" }, { "Packaging your experiment" = "How_to_package_your_experiment.md" }, { "Standalone example repo" = "StandaloneExampleRepo.md" }, { "WASM build" = "WASM.md" }, { "Fullscreen & high pixel density" = "Fullscreen_high_pixel_density.md" }, { "Frame syncing" = "frame-syncing.md" }, { "Trigger jitter for EEG/MEG" = "TriggerJitterForEEGandMEG.md" }, { "Timing mega-study comparison" = "TimingMegastudyComparison.md" }, { "Setting priority under Linux" = "SettingPriorityUnderLinux.md" }, { "Setting priority under Windows" = "SettingPriorityUnderWindows.md" }, { "Setting priority under macOS" = "SettingPriorityUnderMacOS.md" }, { "Linux virtual console" = "LinuxVirtualConsoleSDL.md" }, { "How experiment.go works" = "how-experiment-go-works.md" }, { "Library usage" = "library_usage.md" }, { "Go vs Python" = "gemini-about-go-vs-python.md" }, { "Viewing docs locally" = "ViewingDocsLocally.md" } ] },
+  { Misc = [ { "Coming from other tools" = [ { "Migration Guide" = "MigrationGuide.md" }, { "Comparison with PsychoPy" = "ComparisonWithPsychoPy.md" }, { "Go vs Python" = "gemini-about-go-vs-python.md" } ] }, { "Timing & performance" = [ { "Timing Tests" = "TimingTests.md" }, { "Timing mega-study comparison" = "TimingMegastudyComparison.md" }, { "Frame syncing" = "frame-syncing.md" }, { "Trigger jitter for EEG/MEG" = "TriggerJitterForEEGandMEG.md" } ] }, { "Platform setup" = [ { "Setting priority under Linux" = "SettingPriorityUnderLinux.md" }, { "Setting priority under Windows" = "SettingPriorityUnderWindows.md" }, { "Setting priority under macOS" = "SettingPriorityUnderMacOS.md" }, { "Fullscreen & high pixel density" = "Fullscreen_high_pixel_density.md" }, { "Linux virtual console" = "LinuxVirtualConsoleSDL.md" } ] }, { "Media & browser" = [ { "Movies / media" = "MediaMovies.md" }, { "WASM build" = "WASM.md" } ] }, { "Sharing & packaging" = [ { "Packaging your experiment" = "How_to_package_your_experiment.md" }, { "Standalone example repo" = "StandaloneExampleRepo.md" } ] }, { "Under the hood" = [ { "How experiment.go works" = "how-experiment-go-works.md" }, { "Library usage" = "library_usage.md" }, { "Viewing docs locally" = "ViewingDocsLocally.md" } ] } ] },
 ]
 
 [project.theme]
@@ -31,6 +35,11 @@ features = [
   "navigation.tabs",
   "navigation.top",
   "navigation.sections",
+  "navigation.footer",
+  "navigation.tracking",
+  "navigation.path",
+  "navigation.instant",
+  "toc.follow",
   "content.code.copy",
   "content.code.annotate",
   "search.highlight",
@@ -68,3 +77,19 @@ tabbed = { alternate_style = true }
 
 [project.plugins]
 search = {}
+
+# Footer links (icons shown next to the copyright line).
+[[project.extra.social]]
+icon = "fontawesome/brands/github"
+link = "https://github.com/chrplr/goxpyriment"
+name = "GitHub repository"
+
+[[project.extra.social]]
+icon = "material/forum-outline"
+link = "https://groups.google.com/a/pallier.org/g/goxpyriment"
+name = "Google group forum"
+
+[[project.extra.social]]
+icon = "material/bug-outline"
+link = "https://github.com/chrplr/goxpyriment/issues"
+name = "Report a bug"
