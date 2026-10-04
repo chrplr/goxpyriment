@@ -5,43 +5,7 @@
 
 Adaptive psychophysical threshold estimation: classical up-down (Levitt 1971) and Bayesian QUEST (Watson & Pelli 1983), plus a runner for interleaved designs.
 
-## Core interface
-
-```go
-type Staircase interface {
-    Intensity() float64   // stimulus intensity for the next trial
-    Update(correct bool)  // record response, update internal state
-    Done() bool           // stopping criterion met?
-    Threshold() float64   // current threshold estimate
-    History() []Trial     // all trials in order
-}
-```
-
-Staircases are decoupled from stimulus presentation. The experiment loop calls `Intensity()`, presents the stimulus, records the response, then calls `Update`.
-
-```go
-type Trial struct {
-    Intensity float64
-    Correct   bool
-    Reversal  bool  // only used by UpDown
-}
-```
-
 ## UpDown (Levitt 1971)
-
-```go
-cfg := staircase.UpDownConfig{
-    StartIntensity:          0.5,
-    MinIntensity:            0.01,
-    MaxIntensity:            1.0,
-    StepUp:                  0.1,
-    StepDown:                0.05,   // 2:1 up-down ratio targets ~70.7%
-    NCorrectDown:            2,       // 2-down-1-up
-    MaxReversals:            12,
-    NReversalsForThreshold:  6,       // average last 6 reversals
-}
-sc := staircase.NewUpDown(cfg)
-```
 
 ### Key behaviors
 
@@ -61,34 +25,9 @@ cfg.Phase2StepDown = 0.01
 cfg.Phase2StartReversal = 4  // switch to phase 2 steps after 4 reversals
 ```
 
-### Extra methods
-
-- `Reversals() []float64` — intensity at each reversal point
-- `NReversals() int` — current reversal count
-
 ## Quest (Watson & Pelli 1983)
 
 Bayesian adaptive procedure. Places stimulus at the current posterior estimate of threshold.
-
-```go
-cfg := staircase.QuestConfig{
-    TGuess:        -1.0,    // prior mode (log-contrast or other log-unit)
-    TGuessSd:       2.0,    // prior SD (broad = uninformative)
-    PThreshold:     0.82,   // target performance level
-    Beta:           3.5,    // Weibull slope
-    Delta:          0.01,   // lapse rate
-    Gamma:          0.5,    // lower asymptote (0.5 for 2AFC, 0 for yes/no)
-    IntensityMin:  -4.0,
-    IntensityMax:   0.0,
-    IntensityStep:  0.01,   // grid resolution
-    MaxTrials:      40,
-    EstimateMethod: "mean", // "mean" (default) or "mode"
-}
-sc, err := staircase.NewQuest(cfg)
-if err != nil {
-    log.Fatal(err) // invalid config (see Key behaviors below)
-}
-```
 
 ### Key behaviors
 
@@ -104,23 +43,6 @@ if err != nil {
 Quest works in any monotonic scale. Log-contrast is conventional (`TGuess = log10(0.1) = -1`). Keep all intensities in the same scale.
 
 ## Runner — interleaved staircases
-
-```go
-runner := staircase.NewRunner(nil, sc1, sc2, sc3)  // nil = time-seeded RNG
-for !runner.Done() {
-    sc, err := runner.Next()      // random non-done staircase
-    if err != nil {
-        break                     // all done (guarded by !runner.Done() above)
-    }
-    intensity := sc.Intensity()
-    // present stimulus…
-    sc.Update(correct)
-}
-// retrieve thresholds:
-for _, sc := range runner.All() {
-    fmt.Println(sc.Threshold())
-}
-```
 
 - `Next()` returns an error if all staircases are done — always guard with `!runner.Done()`.
 - `All()` returns the original staircases in order (same pointers passed at construction).

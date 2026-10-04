@@ -22,20 +22,6 @@ transport moved to `bridge/bridgelib.py`, which both scripts import, and the Go
 side gained only `calibration.go`. What the Tobii did need was two additions,
 and both were forced by the vendor rather than chosen — see below.
 
-## Files
-
-| File | Contents |
-|---|---|
-| `tracker.go` | Package doc, the `Tracker` interface, `CalibrationOptions`, `Offset`, `NullTracker` |
-| `events.go` | `Sample`, `Event`, `Eye`, and `Geometry` (the coordinate conversion) |
-| `calibration.go` | `StepwiseCalibrator`, `StepwiseCalibrationReporter`, `CalibrationResult`, `StandardPoints` — for a tracker whose SDK draws no targets |
-| `protocol.go` | Wire types and the protocol specification |
-| `bridge.go` | The socket client |
-| `simulated.go` | `Simulated` — a tracker driven by any position function |
-| `bridge/bridgelib.py` | The transport: `Session`, `serve_forever`, and the back-end contract. Shared by every bridge |
-| `bridge/eyelink_bridge.py` | The EyeLink back end (pylink, or `--simulate`) |
-| `bridge/tobii_bridge.py` | The Tobii Pro back end (tobii_research, or `--simulate`) |
-
 The drawing half of a stepwise calibration lives in `control/eyetracker_calib.go`
 (`Experiment.CalibrateTracker`), not here: this package cannot import SDL,
 because it also has to build for the browser.

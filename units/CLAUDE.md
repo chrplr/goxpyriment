@@ -5,56 +5,6 @@
 
 Vision-science unit conversions. A `Monitor` encodes physical display dimensions and viewing distance; all pixel↔degree↔centimetre conversions derive from it.
 
-## Monitor
-
-```go
-// Explicit physical dimensions
-m := units.NewMonitor(widthCm, heightCm, widthPx, heightPx, distanceCm)
-
-// From diagonal (inches) — derives width/height from aspect ratio
-m := units.NewMonitorFromDiagonal(24.0, 1920, 1080, 60.0)
-
-err := m.Validate()  // returns error if any field ≤ 0
-```
-
-## Conversions
-
-### Horizontal (X axis)
-
-```go
-px  := m.DegToPx(deg)   // visual angle → pixels
-deg := m.PxToDeg(px)    // pixels → visual angle
-px  := m.CmToPx(cm)     // centimetres → pixels
-cm  := m.PxToCm(px)     // pixels → centimetres
-```
-
-### Vertical (Y axis — use when pixels are not square)
-
-```go
-px  := m.DegToPxY(deg)
-deg := m.PxToDegY(px)
-px  := m.CmToPxY(cm)
-cm  := m.PxToCmY(px)
-```
-
-### Distance only (no pixel density needed)
-
-```go
-cm  := m.DegToCm(deg)   // visual angle → physical size at viewing distance
-deg := m.CmToDeg(cm)    // physical size → visual angle
-```
-
-### Summary statistics
-
-```go
-m.PPcmX()          // pixels per cm, horizontal
-m.PPcmY()          // pixels per cm, vertical
-m.PPI()            // pixels per inch (horizontal)
-m.PPD()            // pixels per degree — the canonical vision-science unit
-m.HasSquarePixels() // true if X and Y pixel density agree within 0.1%
-fmt.Println(m)     // human-readable summary
-```
-
 ## Typical use
 
 ```go

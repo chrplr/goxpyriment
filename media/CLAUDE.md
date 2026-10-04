@@ -12,16 +12,6 @@ No audio. Pure Go, no cgo. The package extends — does not replace —
 `stimuli.Video` / `stimuli.GvVideo` / `stimuli.PlayGv`; those remain the
 single-movie convenience path.
 
-## Key types
-
-- `MasterClock` — monotonic, freeze-during-burst.
-- `MovieManager` — owns the clock and the set of `Movie`s.
-- `Movie` — per-movie state (Play/Pause/Stop/SetRate/SeekTime/SeekFrame/...).
-- `Onset` — emitted to `OnAt`, `OnAtDisplay`, `OnDisplayOnset`,
-  `OnDisplayOffset`, `OnDone` callbacks.
-- `Target` (sealed) — `Frame(n)`, `AtTime(d)`, `Done{}`.
-- `OnsetSource` — `LookAhead`, `VsyncEstimated`, `HardwareVerified`.
-
 ## Per-frame call sites
 
 Movie-only frame:

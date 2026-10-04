@@ -7,14 +7,6 @@ Top-level experiment orchestration package. Every experiment imports only `contr
 
 ## Experiment lifecycle
 
-```go
-exp := control.NewExperimentFromFlags("My Experiment", control.Black, control.White, 32)
-defer exp.End()
-exp.Run(func() error {
-    // trial loop body — return control.EndLoop to exit, nil to continue
-})
-```
-
 `NewExperimentFromFlags` handles flag parsing (`-w` windowed mode, `-d N` display index, `-s` subject ID), SDL/TTF init, window creation, audio device, font, and data file in one call. It takes optional trailing `InfoField`s, appended to the session-setup dialog it opens when `-s` is absent and returned in `exp.Info` — that is how an experiment asks for one more setting (which protocol to run, which response box) without building its own dialog; `exp.Info` is nil whenever the dialog is skipped. Use the lower-level `NewExperiment(...) + Initialize()` only when you need non-standard initialization order.
 
 **Real-time priority is requested by `Initialize()`, so both paths get it.** It
@@ -30,41 +22,11 @@ When `-s` is **absent** (e.g. the binary was launched by double-clicking its ico
 
 `exp.Run` wraps the SDL event loop. User code panicked with `exitPanic` is recovered there; callers never see it directly. Return `control.EndLoop` (or `sdl.EndLoop`) to exit cleanly.
 
-## Experiment fields
-
-| Field | Type | Description |
-|---|---|---|
-| `Screen` | `*apparatus.Screen` | Window + renderer |
-| `Keyboard` | `*apparatus.Keyboard` | Blocking/non-blocking key input |
-| `Mouse` | `*apparatus.Mouse` | Mouse button + position input |
-| `AudioDevice` | `sdl.AudioDeviceID` | Passed to `Sound.PreloadDevice` |
-| `Audio` | `*AudioManager` | High-level audio playback |
-| `Data` | `*results.DataFile` | `.csv` experiment data file |
-| `Design` | `*design.Experiment` | Trial/block structure |
-| `Info` | `map[string]string` | Participant metadata (from `GetParticipantInfo`) |
-| `SubjectID` | `int` | Set by `-s` flag or `GetParticipantInfo` |
-| `DefaultFont` | `*ttf.Font` | Passed to stimuli that omit an explicit font |
-| `DefaultFontSize` | `int` | Font size used at init |
-| `CursorVisible` | `bool` | Mouse pointer over the experiment window. **Defaults to false — `Initialize` hides the cursor.** Set true before `Initialize`, or call `exp.ShowCursor()` after, for mouse-driven paradigms. `ShowCursor`/`HideCursor` keep it in sync |
-| `BackgroundColor` | `sdl.Color` | Screen background |
-| `ForegroundColor` | `sdl.Color` | Default text color |
-| `OutputDirectory` | `string` | Where `.csv` files are written |
-| `RealTimePriority` | `int` | SCHED_FIFO priority `Initialize()` requests; `DefaultRealTimePriority` (50), or 0 to decline. `NewExperimentFromFlags` sets it from `-no-realtime` / `-realtime-priority` |
-
 ## Convenience methods
 
-- `exp.Show(stim)` — `Clear()` + `Draw()` + `Update()` in one call. Use for single-stimulus frames.
-- `exp.ShowTS(stim)` — Same as `Show` but returns the SDL3 nanosecond flip timestamp for hardware-precise RT.
-- `exp.ShowTimed(stim, durationMs)` — `Show(stim)` + `Wait(durationMs)`. For fixation crosses, cues, and passive stimulus viewing.
 - `exp.ShowFrames(stim, n)` — holds the stimulus for exactly `n` display frames, returning the first flip's timestamp (the onset). Redraws every frame; that is mandatory, not an optimisation (see `apparatus/CLAUDE.md`, "There is no 'wait for n VSYNCs' call").
-- `exp.BlankFrames(n)` — frame-locked `Blank`: clears and holds blank for `n` frames, returning the first flip's timestamp (the previous stimulus's offset).
-- `exp.ShowAndGetRT(stim, keys, timeoutMs)` — Clears stale keyboard events, shows stim with `ShowTS`, waits for a key with `GetKeyEventTS`, returns `(key, rtMs, error)` with hardware-precise RT. `timeoutMs = -1` for no timeout; returns `(0, 0, nil)` on timeout.
-- `exp.ShowEndMessage(message)` — Renders a centered completion message and waits for any key. For end-of-experiment screens.
-- `exp.ShowInstructions(text)` — Renders centered text, waits for spacebar.
 - `exp.FittedTextBox(text)` — the layout behind both: a centered `TextBox` wrapped to `exp.DrawArea()` and rendered at the largest point size (never above `DefaultFontSize`) at which the whole block fits, preferring a size that leaves the author's own line breaks intact. Never wrap a text screen at a fixed fraction of the window: that turns a pixel width into a column count that varies with the display, so hand-wrapped text is re-broken into orphan lines on a narrower screen, and nothing checks the height at all. The fitted font is owned by the experiment and closed by `End()`.
 - `exp.DrawArea()` — the logical drawing space (`Screen.LogicalSize`, else `Screen.Width/Height`). Layout code wants this, not the window size.
-- `exp.Blank(ms)` — Clears screen, flips, sleeps `ms` milliseconds.
-- `exp.PollEvents(handler)` — Drains SDL queue; `handler` may be nil. Returns `EventState`.
 - `exp.HandleEvents()` — Returns `(lastKey, lastMouseButton, error)`. Prefer `PollEvents` for new code.
 
 ## Calibrating a gaze tracker (eyetracker_calib.go)
@@ -96,20 +58,6 @@ run's `-info.txt`. A monocular partial success is logged as a warning: a run
 quietly recorded on one eye and later analysed as binocular is the failure that
 warning exists to prevent. See `eyetracker/CLAUDE.md`.
 
-## EventState
-
-Returned by `PollEvents`. Summarises the current SDL queue drain:
-
-```go
-type EventState struct {
-    LastKey            sdl.Keycode
-    LastMouseButton    uint32
-    LastKeyTimestamp   uint64
-    LastMouseTimestamp uint64
-    QuitRequested      bool  // sticky — stays true once ESC or window-close seen
-}
-```
-
 ## Mouse cursor: hidden by default
 
 `Initialize` calls `HideCursor` once the screen exists (`apparatus.NewScreen`
@@ -131,14 +79,6 @@ mid-session between blocks.
 
 `exp.Audio` coordinates playback so callers don't touch SDL audio streams directly.
 
-| Method | Behaviour |
-|---|---|
-| `PlaySync(snd)` | Blocks until playback complete |
-| `PlayAsync(snd)` | Starts playback; goroutine managed internally |
-| `PlayMemorySync/Async([]byte)` | One-shot from raw bytes |
-| `PlayBuzzer()` / `PlayCorrect()` | Embedded feedback sounds |
-| `Shutdown()` | Called by `exp.End()` automatically |
-
 Audio stimuli still need `sound.PreloadDevice(exp.AudioDevice)` before first play.
 
 ## Participant info dialog (GetParticipantInfo)
@@ -151,40 +91,8 @@ exp.Info = info
 
 `GetParticipantInfo` opens its own SDL window, loads/saves `~/.cache/goxpyriment/last_session.json` (subject_id is always reset to empty on load), and returns a `map[string]string`. It shuts down SDL internally; `exp.Initialize()` re-initialises cleanly afterwards. Call it **before** `exp.Initialize()`.
 
-### Predefined field sets
+## Event queue for hand-rolled input loops (defaults.go)
 
-| Constant | Fields |
-|---|---|
-| `ParticipantFields` | subject_id, age, gender, handedness |
-| `MonitorFields` | screen width/cm, viewing distance/cm, refresh rate |
-| `FullscreenField` | fullscreen checkbox |
-| `StandardFields` | ParticipantFields + MonitorFields |
-
-Custom fields use `InfoField{Name, Label, Default, Type}` where `Type` is `FieldText` or `FieldCheckbox`.
-
-## EventLog
-
-Optional structured session metadata. `exp.CollectEventLog()` gathers SDL/OS/display/audio info:
-
-```go
-log := exp.CollectEventLog()
-// log.SDLVersion, log.Platform, log.Hostname, log.VideoDriver, log.DisplayMode …
-```
-
-## SDL type re-exports (defaults.go)
-
-Import only `control` — do not import `go-sdl3` directly in experiment code.
-
-### Colors
-`Black`, `White`, `Red`, `Green`, `Blue`, `Yellow`, `Magenta`, `Cyan`, `Gray`, `DarkGray`, `LightGray`
-
-### Key codes
-Navigation/control (`K_SPACE`, `K_ESCAPE`, `K_RETURN`, `K_BACKSPACE`, `K_TAB`, `K_UP`, `K_DOWN`, `K_LEFT`, `K_RIGHT`, `K_HOME`, `K_END`, `K_DELETE`), the full alphabet `K_A` … `K_Z`, the digit row `K_0` … `K_9`, the numeric keypad (`K_KP_0` … `K_KP_9`, `K_KP_ENTER`, `K_KP_PLUS`, `K_KP_MINUS`), and punctuation (`K_MINUS`, `K_PLUS`, `K_EQUALS`, `K_LEFTBRACKET`, `K_RIGHTBRACKET`). See `defaults.go` for the authoritative list.
-
-### Mouse
-`BUTTON_LEFT`, `BUTTON_RIGHT`
-
-### Event queue (for hand-rolled input loops)
 Enough of the SDL event API is re-exported to build a custom input loop — e.g. a
 text-input/typing loop with per-keystroke hardware timestamps and a blinking
 cursor — without importing `go-sdl3`:
@@ -200,20 +108,6 @@ frame. `examples/Typing-Speed` is a complete worked example. Prefer the
 `Keyboard` helpers (`GetKeyEventTS`, …) for ordinary key responses — reach for
 the raw queue only when you need text input or bespoke event handling.
 
-### Type aliases
-`Color = sdl.Color`, `FPoint = sdl.FPoint`, `FRect = sdl.FRect`, `Keycode = sdl.Keycode`, `Event = sdl.Event`, `EventType = sdl.EventType`, `KeyboardEvent = sdl.KeyboardEvent`, `TextInputEvent = sdl.TextInputEvent`
-
-### Helper constructors
-- `Point(x, y float32) sdl.FPoint`
-- `Origin() sdl.FPoint` — (0, 0)
-- `RGB(r, g, b uint8) sdl.Color`
-- `RGBA(r, g, b, a uint8) sdl.Color`
-- `FontFromMemory(data []byte, size float32) (*ttf.Font, error)` — load TTF from embedded bytes
-- `FontFromFile(path string, size float32) (*ttf.Font, error)`
-
-### Loop sentinel
-- `EndLoop` — return from `exp.Run` callback to exit cleanly
-- `IsEndLoop(err) bool` — distinguish graceful exit from real errors
 
 ## Audio latency tuning
 

@@ -2,31 +2,6 @@
 
 Hardware TTL signal output (EEG/MEG trigger codes) and TTL input (response pads). Lines are **0-indexed (0–7)**; bit N of a bitmask corresponds to line N.
 
-## Interfaces
-
-```go
-// OutputTTLDevice — send trigger codes to recording equipment.
-type OutputTTLDevice interface {
-    Send(mask byte) error                   // all 8 lines from bitmask
-    SetHigh(line int) error                 // 0-indexed
-    SetLow(line int) error                  // 0-indexed
-    Pulse(line int, d time.Duration) error  // HIGH for d, then LOW (blocks)
-    AllLow() error
-    Close() error
-}
-
-// InputTTLDevice — read TTL inputs from response hardware.
-type InputTTLDevice interface {
-    ReadAll() (byte, error)                                          // bitmask
-    ReadLine(line int) (byte, error)                                 // 0 or 1
-    WaitForInput(ctx context.Context) (mask byte, rt time.Duration, err error)
-    DrainInputs(ctx context.Context) error
-    Close() error
-}
-```
-
-`NullOutputTTLDevice` and `NullInputTTLDevice` are silent no-ops.
-
 ## Firing a trigger on a stimulus onset
 
 Use **`FireTriggerSync`**, on the statement after the flip, with nothing in

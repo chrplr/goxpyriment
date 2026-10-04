@@ -40,28 +40,6 @@ Every example/test directory needs a `meta.yaml` (`category:`, `description:`, `
 
 Before editing any file, `grep` the `Makefile` for its name. Notably `README.md` is **generated** from `docs/index.md` (`make readme`), and the gallery tables from `meta.yaml` files (`make update-examples-gallery`); both have CI sync guards. `docs/*.pdf` are tracked and regenerated with `make pdfs`/`make book` (see the `docs` skill).
 
-## Package architecture
-
-| Package | Role |
-|---|---|
-| `control/` | Top-level orchestration — `Experiment` facade, SDL re-exports, participant info dialog |
-| `stimuli/` | All visual and audio stimuli, VSYNC-locked animation loops, RSVP streams |
-| `media/` | Multi-clip `.gv` video playback (`MovieManager`/`Movie`); complements single-clip `stimuli.GvVideo` |
-| `apparatus/` | SDL window/renderer (`Screen`), keyboard, mouse, gamepad, gamma corrector, response devices |
-| `results/` | Data file (plain `.csv`; `#`-metadata goes to a companion `-info.txt`), buffered output |
-| `design/` | Trial/block structure, randomization, Latin-square counterbalancing |
-| `staircase/` | Adaptive thresholds — `UpDown` (Levitt 1971), `Quest` (Watson & Pelli 1983) |
-| `units/` | Pixels↔degrees↔cm via a `Monitor` struct |
-| `eyetracker/` | Vendor-neutral `Tracker` interface, socket client for SDK bridges (EyeLink, Tobii), mouse simulator |
-| `triggers/` | Hardware/network trigger interfaces (parallel port, GPIO, DLP-IO, FT232H, LabJack, MEG TTL box, serial, NetStation, BEL) — desktop only |
-| `clock/` | `Clock` with `SleepUntil`, global `GetTime` |
-| `geometry/` | Distance, polar↔Cartesian, degree→radian |
-| `assets_embed/` | Embedded Inconsolata font, ping/buzzer sounds |
-| `vblank/` | Per-platform vblank clocks (Linux DRM, macOS CVDisplayLink) anchoring flip timestamps |
-| `sysinfo/` | Machine snapshot printed by `-sysinfo` and written into every `-info.txt` |
-
-`assets_embed/`, `vblank/` and `sysinfo/` have no `CLAUDE.md` — read their doc comments.
-
 ## Key conventions
 
 - **Coordinate system:** positions are screen-center relative (`(0,0)` = center), and **+Y points UP** (opposite of SDL's Y-down pixels — `Screen.CenterToSDL` computes `height/2 - y`). Use *negative* Y to go below center. Using negative Y for "up" mirrors the layout vertically — a recurring bug.

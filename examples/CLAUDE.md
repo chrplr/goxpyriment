@@ -40,10 +40,6 @@ templates by paradigm:
    `../staircase/`, `../control/`, …) — detailed API for the package you're using.
 4. `docs/API.md` — complete public API reference.
 
-Experiment code imports **only `control`** (plus `design`, `stimuli`, `results` as
-needed) — never `go-sdl3` directly. SDL colors, key codes, types and helpers are
-re-exported from `control` (see `../control/defaults.go`).
-
 ## Typical program skeleton
 
 ```go
@@ -110,19 +106,3 @@ bools are written bare; everything else is RFC-4180 quoted.
   UserManual §5/§6.
 - **Never draw outside `exp.Run`** (the SDL main thread). Drawing from a goroutine
   silently does nothing or crashes.
-- **Coordinates are center-relative**: `(0,0)` is screen centre, `sdl.FPoint{X,Y}`.
-  **+Y points UP** (larger Y = higher on screen; opposite of SDL Y-down). Using
-  negative Y for "up" mirrors the layout vertically — a recurring bug.
-- **Use `control.*` constants** for colors and key codes; don't import `go-sdl3`.
-- **Add a `meta.yaml`** (`category: experiment` or `demo`, plus `description:` and
-  `reference:`) so the example appears in `docs/GalleryOfExamples.md`. Regenerate with
-  `make update-examples-gallery`.
-- **Copyright header** on every new `.go` file (see root `CLAUDE.md`).
-- **Run from the repo root** so `go.work` resolves the workspace
-  (`go run ./examples/<name>`). Most examples accept `-w` (windowed), `-d N`
-  (display), `-s <id>` (subject).
-- **Name the package, not `main.go`.** `go run ./examples/<name>` (or `go run .`
-  from inside the directory) compiles every file in the package. `go run
-  examples/<name>/main.go` compiles *only that file* — it happens to work while
-  an example is a single file, and silently stops finding the rest the moment
-  you add a second one. `RSVP-Images` is the example that already has two.
