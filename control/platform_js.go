@@ -7,6 +7,7 @@ package control
 
 import (
 	"flag"
+	"fmt"
 	"log"
 	"net/url"
 	"os"
@@ -54,39 +55,24 @@ func (e *Experiment) platformInitAudio() error {
 // registered flag (e.g. tracking parameters) are skipped with a console note
 // instead of aborting the program the way flag.Parse would. Call after all
 // flags are registered and immediately before flag.Parse.
+//
+// Under JATOS the parameters of the study link count too (see queryPairs).
 func platformPrepareFlags() {
-	loc := js.Global().Get("location")
-	if loc.IsUndefined() {
-		return
-	}
-	raw := strings.TrimPrefix(loc.Get("search").String(), "?")
-	if raw == "" {
+	pairs := queryPairs()
+	if len(pairs) == 0 {
 		return
 	}
 	args := os.Args[:1:1]
-	for _, pair := range strings.Split(raw, "&") {
-		if pair == "" {
+	for _, p := range pairs {
+		if flag.Lookup(p.key) == nil {
+			log.Printf("control: ignoring unknown URL parameter %q", p.key)
 			continue
 		}
-		key, val, hasVal := strings.Cut(pair, "=")
-		k, err := url.QueryUnescape(key)
-		if err != nil || k == "" {
+		if p.val == "" {
+			args = append(args, "-"+p.key)
 			continue
 		}
-		if flag.Lookup(k) == nil {
-			log.Printf("control: ignoring unknown URL parameter %q", k)
-			continue
-		}
-		if !hasVal || val == "" {
-			args = append(args, "-"+k)
-			continue
-		}
-		v, err := url.QueryUnescape(val)
-		if err != nil {
-			log.Printf("control: ignoring malformed URL parameter %q", pair)
-			continue
-		}
-		args = append(args, "-"+k+"="+v)
+		args = append(args, "-"+p.key+"="+p.val)
 	}
 	os.Args = args
 }
@@ -110,9 +96,41 @@ func platformAudioDeviceName(sdl.AudioDeviceID) (string, error) {
 
 // platformDataDestination names what Finalize just wrote, for the log line at
 // the end of a session: in the browser, the single archive the participant is
-// handed, holding both files (see results/data_wasm.go).
+// handed, holding both files (see results/data_wasm.go) — or, under JATOS, the
+// study result the files were uploaded to.
 func platformDataDestination(d *results.DataFile) string {
+	if d.UploadsToJatos() {
+		return fmt.Sprintf("JATOS result files %s and %s (study result %s)",
+			results.JatosFilename(d.OutputFile.Filename), results.JatosFilename(d.InfoFile.Filename),
+			js.Global().Get("jatos").Get("studyResultId").String())
+	}
 	return d.ZipFilename()
+}
+
+// platformDefaultSubjectID supplies the subject ID when no -s was given. Under
+// JATOS there is no participant-ID box, and every participant would otherwise
+// be subject 0; the study result ID is unique per run on the server, so it
+// keeps file names, and the subject_id column, distinct. Outside JATOS there is
+// no default (ok is false).
+func platformDefaultSubjectID() (int, bool) {
+	if !results.JatosAvailable() {
+		return 0, false
+	}
+	id, err := strconv.Atoi(js.Global().Get("jatos").Get("studyResultId").String())
+	if err != nil {
+		log.Printf("control: JATOS study result ID is not a number (%v); subject ID stays 0", err)
+		return 0, false
+	}
+	return id, true
+}
+
+// platformReportOutcome tells the launcher page how the session ended. The
+// page reads the global once the Go program has returned (see
+// cmd/gen-wasm-launcher): under JATOS, ok moves the study run on to its next
+// component, or to its end; !ok keeps the participant on the page with message
+// shown, and records the run as failed. Without JATOS nothing reads it.
+func platformReportOutcome(ok bool, message string) {
+	js.Global().Set("goxpyrimentOutcome", map[string]any{"ok": ok, "message": message})
 }
 
 // platformParticipantInfo answers GetParticipantInfo from the page URL instead
@@ -180,31 +198,75 @@ func platformParticipantInfo(fields []InfoField) (map[string]string, bool) {
 // value maps to the empty string, which boolString reads as true.
 func urlParams() map[string]string {
 	out := map[string]string{}
-	loc := js.Global().Get("location")
-	if loc.IsUndefined() {
-		return out
-	}
-	raw := strings.TrimPrefix(loc.Get("search").String(), "?")
-	if raw == "" {
-		return out
-	}
-	for _, pair := range strings.Split(raw, "&") {
-		if pair == "" {
-			continue
-		}
-		key, val, _ := strings.Cut(pair, "=")
-		k, err := url.QueryUnescape(key)
-		if err != nil || k == "" {
-			continue
-		}
-		v, err := url.QueryUnescape(val)
-		if err != nil {
-			log.Printf("control: ignoring malformed URL parameter %q", pair)
-			continue
-		}
-		out[k] = v
+	for _, p := range queryPairs() {
+		out[p.key] = p.val
 	}
 	return out
+}
+
+// queryPair is one decoded key=value of the query string. A bare key has val "".
+type queryPair struct{ key, val string }
+
+// queryPairs decodes the page's query string, in order, followed by the
+// parameters of the JATOS study link when the page was served by JATOS.
+//
+// The second source matters because JATOS does not hand the study link's query
+// string to the component page: a participant opens .../publix/<code>?s=3,
+// JATOS redirects to the component's own URL, and the ?s=3 survives only in
+// jatos.urlQueryParameters. That is also where recruitment platforms put their
+// IDs (Prolific's PROLIFIC_PID, for instance). Coming last, the study link's
+// parameters replace a key the page URL also carries.
+func queryPairs() []queryPair {
+	var out []queryPair
+	if loc := js.Global().Get("location"); !loc.IsUndefined() {
+		raw := strings.TrimPrefix(loc.Get("search").String(), "?")
+		for _, pair := range strings.Split(raw, "&") {
+			if pair == "" {
+				continue
+			}
+			key, val, _ := strings.Cut(pair, "=")
+			k, err := url.QueryUnescape(key)
+			if err != nil || k == "" {
+				continue
+			}
+			v, err := url.QueryUnescape(val)
+			if err != nil {
+				log.Printf("control: ignoring malformed URL parameter %q", pair)
+				continue
+			}
+			out = append(out, queryPair{k, v})
+		}
+	}
+	if results.JatosAvailable() {
+		params := js.Global().Get("jatos").Get("urlQueryParameters")
+		if params.Type() == js.TypeObject {
+			keys := js.Global().Get("Object").Call("keys", params)
+			for i := 0; i < keys.Length(); i++ {
+				k := keys.Index(i).String()
+				v := params.Get(k)
+				val := ""
+				if v.Type() == js.TypeString {
+					val = v.String()
+				} else if !v.IsUndefined() && !v.IsNull() {
+					val = v.Call("toString").String()
+				}
+				out = setPair(out, k, val)
+			}
+		}
+	}
+	return out
+}
+
+// setPair replaces the value of key in pairs, or appends it if absent, so that
+// a parameter given in both sources is passed once, with the later value.
+func setPair(pairs []queryPair, key, val string) []queryPair {
+	for i := range pairs {
+		if pairs[i].key == key {
+			pairs[i].val = val
+			return pairs
+		}
+	}
+	return append(pairs, queryPair{key, val})
 }
 
 // resolveSelect maps a URL value onto one of a select's options, accepting

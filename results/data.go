@@ -65,6 +65,10 @@ type DataFile struct {
 	SubjectID     int
 	VariableNames []string
 	StartTime     time.Time
+
+	// sent counts the CSV buffer entries already appended to the JATOS result
+	// data (browser build only; see data_wasm.go).
+	sent int
 }
 
 // WriteComment writes a comment line to the companion info file (not the CSV).
@@ -72,18 +76,25 @@ func (df *DataFile) WriteComment(comment string) {
 	df.InfoFile.WriteLine(df.InfoFile.CommentChar + " " + comment)
 }
 
-// Save flushes both the CSV file and the companion info file to disk.
+// Save flushes both the CSV file and the companion info file to disk. In a
+// browser served by JATOS it also sends the CSV rows written since the last
+// Save to the server, so that a session abandoned midway still leaves its
+// completed blocks there.
 func (df *DataFile) Save() error {
 	if err := df.InfoFile.Save(); err != nil {
 		return fmt.Errorf("results.DataFile.Save: info file: %w", err)
 	}
-	return df.OutputFile.Save()
+	if err := df.OutputFile.Save(); err != nil {
+		return err
+	}
+	return df.saveRemote()
 }
 
 // Finalize writes out the session's results at the end of a run. The two
 // builds differ in kind, not just in destination, so each provides its own
 // implementation: data_desktop.go flushes the CSV and the companion info file
-// to disk, while data_wasm.go packs both into a single .zip download. See
+// to disk, while data_wasm.go uploads both to the JATOS server when the page was
+// served by JATOS and otherwise packs them into a single .zip download. See
 // data_wasm.go for why the browser must not fire two downloads.
 
 // DefaultDataDir returns the default results directory used when no output

@@ -33,7 +33,7 @@ The Go side talks to the Emscripten side through `go-sdl3`'s js bindings
 |---|---|
 | go-sdl3 fork with the js/wasm target | [`github.com/chrplr/go-sdl3-wasm`](https://github.com/chrplr/go-sdl3-wasm), branch **`wasm-render-fixes`** (local clone: `~/00_git/go-sdl3-wasm`). The module path is unchanged (`github.com/Zyko0/go-sdl3`), and goxpyriment's `go.mod` has a `replace` pointing at a pinned pseudo-version of the fork; `vendor/` is kept in sync with `GOWORK=off go mod vendor` |
 | Prebuilt `sdl.js` / `sdl.wasm` + bundler | `cmd/wasmsdl` in the fork — embeds the blobs and an `index.html`, and builds/serves a complete browser bundle. Rebuild recipe: `.docker/emscripten-build/Dockerfile` in the fork |
-| goxpyriment js platform code | `control/platform_js.go` (URL-parameter flags, no dialog, audio device open), `apparatus/screen_newscreen_js.go` (canvas window), `apparatus/screen_present_js.go` (RAF-synced flips), `results/output_file_wasm.go` + `results/data_wasm.go` (session → one .zip download) — all build tag `js` |
+| goxpyriment js platform code | `control/platform_js.go` (URL-parameter flags, no dialog, audio device open), `apparatus/screen_newscreen_js.go` (canvas window), `apparatus/screen_present_js.go` (RAF-synced flips), `results/output_file_wasm.go` + `results/data_wasm.go` (session → one .zip download, or to the JATOS server), `results/jatos_wasm.go` (jatos.js bridge) — all build tag `js` |
 | Export-list generator | `cmd/gen-wasm-exports` — scans go-sdl3's js bindings + goxpyriment's own calls **as compiled for `GOOS=js`** (files excluded by build constraints, and `triggers/`, are not counted), emits `wasm/exported_functions.json` for `emcc -sEXPORTED_FUNCTIONS=@…`, and **lists the go-sdl3 calls whose js bindings are still panic-stubs** (the remaining-work list) |
 
 ### The go-sdl3 replace — what dependents need to know
@@ -209,6 +209,49 @@ The bucket sends the COOP/COEP headers through a Cloudflare response-header
 rule, so published experiments get the ~5 µs clock; see
 `docs/copy_apps_to_cloudflare_R2.md` for the rule and the storage budget.
 
+## Running on JATOS
+
+A browser build can run as a study on a [JATOS](https://www.jatos.org) server,
+which stores the results instead of having the participant download them:
+`make jatos-NAME` builds the study archive. **How to deploy and use it is in
+[Deploying on a JATOS server](DeployingOnAJatosServer.md)**; what follows is for
+maintainers.
+
+- **Detection.** `results.JatosAvailable()` checks for the global `jatos`
+  object, which only exists on a page that loaded `jatos.js` — served by the
+  JATOS server itself, not shipped in the study. Without it, every path is the
+  plain browser behaviour above.
+- **One promise chain.** Every jatos.js call returns a promise. They are queued
+  on one chain (`results/jatos_wasm.go`), so appends arrive in order and the
+  trial loop never waits on the network; `Finalize` waits for the whole chain.
+  The chain is built from plain JS functions only (bound methods), never
+  `js.FuncOf`: a Go callback cannot run once the Go program has exited, and a
+  crashed session exits with appends still queued.
+- **Parameters.** JATOS redirects the study link to the component's own URL and
+  keeps the link's query string only in `jatos.urlQueryParameters`;
+  `control.queryPairs` merges it with `location.search`.
+- **The page.** `gen-wasm-launcher -jatos` renders the launcher with
+  `jatos.js`, no participant-ID box, Start enabled only after `jatos.onLoad`,
+  and a handler on `go.run`'s promise that closes the study run from the
+  outcome the Go side left in `window.goxpyrimentOutcome`. Hand-written
+  `web/index.html` pages are not adapted; the generated page is used for every
+  example.
+- **The archive.** `cmd/gen-jatos-jzip` writes the `.jas` study description
+  (schema version 3, taken from JATOS's own test archive) and zips the bundle.
+  UUIDs are derived from the example name, so importing a rebuilt archive
+  updates the existing study; the assets folder is `goxpy_<name>` to avoid
+  collisions on a shared server. The runtime files are bundled per study
+  (+5.3 MB): JATOS studies cannot share an assets folder.
+- **Server behaviour, measured on cortex.jatos.org (JATOS 3.11, 2026-10-04).**
+  The component page has no COOP/COEP headers (`crossOriginIsolated` is false,
+  so timestamps tick at ~100 µs rather than ~5 µs, see below) and no CSP. `.wasm`
+  files are served as `application/octet-stream` and uncompressed, which
+  `instantiateStreaming` rejects: the JATOS page compiles `main.wasm` from an
+  ArrayBuffer instead (`sdl.js` falls back by itself). Result-file names
+  containing whitespace or punctuation such as `:`, `/`, `,` or `!` are refused
+  with `400 Bad filename` (the full set is `IOUtils.REGEX_ILLEGAL_IN_FILENAME` in
+  the JATOS source); `results.JatosFilename` replaces them with `_`.
+
 ## What works today (verified 2026-07-13)
 
 - `GOOS=js GOARCH=wasm go build` for the library (all packages except
@@ -278,7 +321,8 @@ experiment before this fix landed:
   The revoke stays where it is.
 
 So: **never add a second download to the browser path.** If a future experiment
-needs to hand back another artefact, add it to the archive.
+needs to hand back another artefact, add it to the archive. (Under JATOS there
+is no download: the files are uploaded — see "Running on JATOS" above.)
 
 ### The key design points
 

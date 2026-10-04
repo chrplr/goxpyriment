@@ -15,3 +15,10 @@ func (df *DataFile) Finalize() error {
 	}
 	return df.OutputFile.Finalize()
 }
+
+// saveRemote is a no-op on desktop: Save has already written to disk.
+func (df *DataFile) saveRemote() error { return nil }
+
+// UploadsToJatos reports whether Finalize sends the data to a JATOS server.
+// Never on desktop.
+func (df *DataFile) UploadsToJatos() bool { return false }

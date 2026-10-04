@@ -163,9 +163,14 @@ func (e *Experiment) finalizeData() {
 				return
 			}
 			e.Data.WriteEndTime()
-			if err := e.Data.Finalize(); err == nil {
-				log.Printf("Results saved in %s", platformDataDestination(e.Data))
+			if err := e.Data.Finalize(); err != nil {
+				log.Printf("Saving the results failed: %v", err)
+				platformReportOutcome(false, "The results could not be sent to the server. "+
+					"Your browser has downloaded them as a .zip file instead: please send that file to the experimenter.")
+				return
 			}
+			log.Printf("Results saved in %s", platformDataDestination(e.Data))
+			platformReportOutcome(true, "")
 		}
 	})
 }
@@ -354,6 +359,14 @@ func NewExperimentFromFlags(name string, bg, fg sdl.Color, fontSize float32, ext
 		screenNumber = DisplayIDFromInfo(info)
 		windowedMode = info["fullscreen"] != "true"
 		outputDir = strings.TrimSpace(info["output_dir"])
+	}
+	// Still no subject ID, and no dialog to ask for one: a browser page served
+	// by JATOS numbers the participant after its study result instead of
+	// leaving everyone subject 0 (see platformDefaultSubjectID).
+	if !sProvided && info == nil {
+		if id, ok := platformDefaultSubjectID(); ok {
+			subjectID = id
+		}
 	}
 
 	width, height, fullscreen := 0, 0, true

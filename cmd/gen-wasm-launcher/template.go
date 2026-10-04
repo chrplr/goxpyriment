@@ -17,7 +17,10 @@ var launcherTmpl = template.Must(template.New("launcher").Parse(`<!DOCTYPE html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{{.App}} — goxpyriment</title>
-<style>
+{{if .Jatos}}<!-- Served by the JATOS server from its own installation, not from the
+     study assets; it defines the global jatos that goxpyriment looks for. -->
+<script src="jatos.js"></script>
+{{end}}<style>
   :root {
     --bg: #1a1a1a; --panel: #242424; --fg: #e8e8e8;
     --muted: #9a9a9a; --accent: #4a9eff; --border: #3a3a3a;
@@ -89,9 +92,11 @@ var launcherTmpl = template.Must(template.New("launcher").Parse(`<!DOCTYPE html>
     running in your browser via WebAssembly.</p>
 
   <div class="field">
-    <label for="subject">Participant ID</label>
+    {{if .Jatos}}<!-- Under JATOS the participant ID comes from the study link (?s=…) or,
+         failing that, from the study result ID: there is nothing to type. -->
+    {{else}}<label for="subject">Participant ID</label>
     <input id="subject" type="text" inputmode="numeric" value="1" autocomplete="off" />
-    <button id="start" disabled>Loading&hellip;</button>
+    {{end}}<button id="start" disabled>Loading&hellip;</button>
   </div>
 
   <div id="status">Loading the SDL runtime&hellip;</div>
@@ -102,10 +107,12 @@ var launcherTmpl = template.Must(template.New("launcher").Parse(`<!DOCTYPE html>
       background tabs, and frame timing degrades when they do.</li>
     <li>Pressing Start also unlocks audio — browsers keep sound suspended until
       the first user gesture.</li>
-    <li>When the session ends, your browser downloads <strong>one</strong>
+{{if .Jatos}}    <li>Your responses are sent to the study server as you go. Please do not
+      close this tab before the end page appears.</li>
+{{else}}    <li>When the session ends, your browser downloads <strong>one</strong>
       <code>.zip</code> file holding the <code>.csv</code> of results and the
       matching <code>-info.txt</code> of session metadata. If your browser asks
-      where to save it, say yes — that archive is the whole session.</li>
+      where to save it, say yes — that archive is the whole session.</li>{{end}}
     <li>Press <kbd>ESC</kbd> at any time to abort.</li>
   </ul>
 </div>
@@ -115,8 +122,8 @@ var launcherTmpl = template.Must(template.New("launcher").Parse(`<!DOCTYPE html>
 <script>
   const canvasElement = document.getElementById('canvas');
   const startButton = document.getElementById('start');
-  const subjectField = document.getElementById('subject');
-  const statusLine = document.getElementById('status');
+{{if not .Jatos}}  const subjectField = document.getElementById('subject');
+{{end}}  const statusLine = document.getElementById('status');
   const launcher = document.getElementById('launcher');
   const focusHint = document.getElementById('focusHint');
 
@@ -125,9 +132,9 @@ var launcherTmpl = template.Must(template.New("launcher").Parse(`<!DOCTYPE html>
     statusLine.classList.toggle('error', !!isError);
   }
 
-  const initialSubject = new URLSearchParams(location.search).get('s');
+{{if not .Jatos}}  const initialSubject = new URLSearchParams(location.search).get('s');
   if (initialSubject) subjectField.value = initialSubject;
-
+{{end}}
   // Cross-origin isolation is what lets the browser expose its full timer
   // resolution, which SDL timestamps — and therefore reaction times — inherit:
   // ~5 us isolated, ~100 us otherwise. Say so rather than silently recording
@@ -163,10 +170,14 @@ var launcherTmpl = template.Must(template.New("launcher").Parse(`<!DOCTYPE html>
 
   let sdlReady = false;
   let goReady = false;
-  let goInstance = null;
+  let goInstance = null;{{if .Jatos}}
+  // jatos.js fetches the study run's IDs and parameters from the server before
+  // it calls onLoad; the Go side reads them at startup, so it must not run
+  // before that.
+  let jatosReady = false;{{end}}
 
   function maybeEnableStart() {
-    if (!sdlReady || !goReady) return;
+    if (!sdlReady || !goReady{{if .Jatos}} || !jatosReady{{end}}) return;
     startButton.disabled = false;
     startButton.textContent = 'Start';
     setStatus('Ready.');
@@ -184,8 +195,46 @@ var launcherTmpl = template.Must(template.New("launcher").Parse(`<!DOCTYPE html>
   }
 
   const go = new Go();
-  WebAssembly.instantiateStreaming(fetch('main.wasm'), go.importObject)
-    .then((result) => { goInstance = result.instance; goReady = true; maybeEnableStart(); })
+{{if .Jatos}}
+  jatos.onLoad(() => { jatosReady = true; maybeEnableStart(); });
+
+  // go.run's promise resolves when the Go program exits, whatever the cause;
+  // the exit code tells a normal return (0) from log.Fatal or os.Exit(1).
+  let exitCode = 0;
+  const goExit = go.exit;
+  go.exit = (code) => { exitCode = code; goExit.call(go, code); };
+
+  // Close the study run once the Go program has returned. By then End() has
+  // waited for every upload (results/data_wasm.go) and left its verdict in
+  // goxpyrimentOutcome (control/platform_js.go). On success, move on:
+  // startNextComponent ends the study itself when this is the last component.
+  // On failure, stay on this page with the reason shown — the crash overlay,
+  // or the note about the downloaded fallback — and record the run as failed.
+  function finishStudyRun() {
+    const outcome = window.goxpyrimentOutcome ||
+      (exitCode === 0 ? { ok: true, message: '' }
+                      : { ok: false, message: 'The experiment stopped with exit code ' + exitCode + '.' });
+    if (outcome.ok) {
+      jatos.startNextComponent();
+      return;
+    }
+    document.body.classList.remove('running');
+    startButton.style.display = 'none';
+    setStatus(outcome.message, true);
+    jatos.endStudyWithoutRedirect(false, outcome.message.slice(0, 255));
+  }
+{{end}}{{if .Jatos}}  // JATOS serves .wasm as application/octet-stream (measured on
+  // cortex.jatos.org, JATOS 3.11), which instantiateStreaming rejects outright.
+  // Compiling from an ArrayBuffer does not look at the MIME type. (sdl.js has
+  // the same fallback built in.)
+  fetch('main.wasm')
+    .then((resp) => {
+      if (!resp.ok) throw new Error('main.wasm: HTTP ' + resp.status);
+      return resp.arrayBuffer();
+    })
+    .then((bytes) => WebAssembly.instantiate(bytes, go.importObject))
+{{else}}  WebAssembly.instantiateStreaming(fetch('main.wasm'), go.importObject)
+{{end}}    .then((result) => { goInstance = result.instance; goReady = true; maybeEnableStart(); })
     .catch((err) => {
       console.error(err);
       setStatus('Could not load the experiment: ' + err, true);
@@ -194,13 +243,13 @@ var launcherTmpl = template.Must(template.New("launcher").Parse(`<!DOCTYPE html>
   startButton.addEventListener('click', () => {
     startButton.disabled = true;
 
-    // The Go side reads its flags from location.search at startup
+{{if not .Jatos}}    // The Go side reads its flags from location.search at startup
     // (control.platformPrepareFlags), so the participant ID has to be in the
     // query string before it runs. replaceState changes it without a reload.
     const params = new URLSearchParams(location.search);
     params.set('s', subjectField.value.trim() || '0');
     history.replaceState(null, '', location.pathname + '?' + params.toString());
-
+{{end}}
     document.body.classList.add('running');
     canvasElement.focus();
     void canvasElement.offsetWidth; // force layout before SDL measures the canvas
@@ -209,7 +258,7 @@ var launcherTmpl = template.Must(template.New("launcher").Parse(`<!DOCTYPE html>
     // Run on a fresh task, not inside this click handler: Go's wasm scheduler
     // can only park a blocked main goroutine when it is not nested in another
     // callback's stack.
-    setTimeout(() => go.run(goInstance), 0);
+    setTimeout(() => go.run(goInstance){{if .Jatos}}.then(finishStudyRun){{end}}, 0);
   });
 
   function fitCanvas() {
@@ -234,9 +283,9 @@ var launcherTmpl = template.Must(template.New("launcher").Parse(`<!DOCTYPE html>
   focusHint.addEventListener('click', () => { canvasElement.focus(); trackFocus(); });
   setInterval(trackFocus, 500);
 
-  subjectField.addEventListener('keydown', (e) => {
+{{if not .Jatos}}  subjectField.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !startButton.disabled) startButton.click();
-  });
+  });{{end}}
 </script>
 </body>
 </html>
