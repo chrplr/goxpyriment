@@ -29,28 +29,10 @@ live beside the package, not here.
   `reference:` (may be empty). This puts the test in the `tests` table of
   `docs/GalleryOfExamples.md`. Regenerate with `make update-examples-gallery`; the
   generator warns about directories lacking a `meta.yaml`.
-- **Copyright header** on every new `.go` file (see root `CLAUDE.md`).
-- `tests/` is a **separate module** with its own `go.mod` (a `replace` directive points
-  at the library). Run from the repo root so `go.work` resolves the workspace.
 
 ## Running
-
-```bash
-go run ./tests/<name>                # from repo root
-cd tests/<name> && go run . -w       # or from the dir; -w = windowed
-```
-
-Name the package, not `main.go`: `go run tests/<name>/main.go` compiles only
-that one file, so it breaks as soon as a test has more than one.
 
 Most accept the same flags as examples: `-w` (windowed), `-d N` (display), `-s <id>`.
 These are run and judged by a human at a real display — they are not part of CI and
 have no automated pass/fail.
 
-## Writing a new test vs. an example
-
-Put it here only if its **results are analysed to check performance** (timing, AV/TTL
-sync) or it **exercises hardware**, verified by eye. If it merely *demonstrates how to
-use* a framework feature in isolation, it is a **demo** — put it in `../examples/` as a
-`demo_`-prefixed directory (`category: demo`). Real experiments that record behavioural
-data also go in `../examples/`. See `../examples/CLAUDE.md` for the authoring workflow.

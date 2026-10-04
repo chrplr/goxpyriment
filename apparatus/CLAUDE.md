@@ -14,36 +14,9 @@ defer screen.Destroy()
 
 Passing `fullscreen=true` or `width==0 && height==0` opens an exclusive fullscreen window at native resolution. Windowed screens are hidden at creation and shown after setup.
 
-### Coordinate system
+### `SetLogicalSize` changes `Screen.Width`/`Height`
 
-All stimulus positions and the mouse cursor use a **center-based** coordinate system: (0, 0) = screen center. `CenterToSDL(x, y)` converts to SDL's top-left origin for drawing calls.
-
-```go
-sdlX, sdlY := screen.CenterToSDL(posX, posY)
-```
-
-> ⚠️ **Axis convention — +Y is UP.** Positive Y is *higher* on the screen
-> (maths/vision-science convention), the opposite of SDL's Y-down pixel space —
-> `CenterToSDL` computes `height/2 - y`. To stack items above→below on screen,
-> give them *decreasing* Y (e.g. header `+90`, target `+35`, box `-27`). Using
-> negative Y for "up" mirrors the whole layout vertically — a recurring bug.
-
-### Key methods
-
-| Method | Description |
-|---|---|
-| `Clear()` | Fill with background color |
-| `Update()` / `Flip()` | Present backbuffer and hold to the frame boundary, so one call = one display frame (in the browser: parks until the next requestAnimationFrame — see below) |
-| `FlipTS()` | `Flip` + the SDL nanosecond timestamp of the flip |
-| `CalibrateRefresh(n)` | Measure the actual frame period over n frames, bypassing pacing |
-| `ClearAndUpdate()` | Clear + Present in one call |
-| `Size() (w, h int32)` | Current renderer output size |
-| `FrameDuration() time.Duration` | Nominal frame time (1 / refresh rate) |
-| `VSync() int` | Current VSYNC state (1=on, 0=off, -1=adaptive) |
-| `SetVSync(vsync int)` | Change VSYNC mode |
-| `SetLogicalSize(w, h int32)` | Device-independent logical resolution with letterboxing. Updates `Screen.Width`/`Height` too — they are the *drawing* space, not the window, and layout code reads them. For physical pixels use `Renderer.CurrentOutputSize()`. |
-| `MousePosition() (float32, float32)` | Cursor in center-based coords (HiDPI-corrected) |
-| `DisplayInfo() DisplayInfo` | Native resolution, refresh rate, pixel density, format |
+After it, they are the *drawing* space, not the window, and layout code reads them. For physical pixels use `Renderer.CurrentOutputSize()`.
 
 ### SystemInfo — which GPU actually rendered
 
@@ -78,152 +51,15 @@ SDL_RENDER_DRIVER=software ./my_experiment    # force software (always works)
 ./my_experiment -w                            # windowed (avoids fullscreen path)
 ```
 
-### DisplayInfo
-
-```go
-type DisplayInfo struct {
-    ID             sdl.DisplayID
-    Name           string
-    NativeW, NativeH int32
-    PixelDensity   float32
-    RefreshRate    float32
-    BitsPerPixel   int
-    BitsPerChannel int
-    PixelFormat    sdl.PixelFormat
-}
-```
-
 ### CanvasOffset
 
 `screen.CanvasOffset` is an optional `*sdl.FPoint` that temporarily shifts the coordinate origin. Used internally by `stimuli.Canvas.Blit`; do not set it in experiment code unless implementing custom offscreen rendering.
 
-### Type re-exports
-
-`apparatus` re-exports common SDL types so stimuli code only imports `apparatus`:
-
-```go
-type FRect      = sdl.FRect
-type FPoint     = sdl.FPoint
-type Color      = sdl.Color
-type Texture    = sdl.Texture
-type Surface    = sdl.Surface
-type PixelFormat = sdl.PixelFormat
-type TextureAccess = sdl.TextureAccess
-type BlendMode  = sdl.BlendMode
-```
-
-## Keyboard
-
-```go
-kb := &apparatus.Keyboard{PollKeys: pollFunc}  // injected by control.Experiment
-```
-
-| Method | Description |
-|---|---|
-| `Wait()` | Block until any key; returns keycode or `sdl.EndLoop` |
-| `WaitKeys(keys []sdl.Keycode, timeoutMS int64)` | Block for one of the listed keys or timeout (-1 = no timeout) |
-| `WaitKey(key sdl.Keycode)` | Convenience for single key |
-| `WaitKeysRT(keys, timeoutMS)` | Returns `(key, rtMs, error)` |
-| `GetKeyEventTS(keys, timeoutMS)` | Returns `(key, eventTimestampNS, error)` — hardware-precision SDL3 timestamp |
-| `GetKeyEventsTS(keys, timeoutMS)` | Returns `([]InputEvent, error)` — first key + 50 ms simultaneity window; for bilateral responses |
-| `CollectKeyEventsTS(keys, durationMS)` | Returns `([]InputEvent, error)` — all keys pressed during the full fixed window |
-| `IsPressed(key)` | Returns `true` if key is physically held right now (scancode state, no queue) |
-| `WaitKeyReleaseTS(key, timeoutMS)` | Blocks until KEY_UP; returns hardware timestamp for duration measurement |
-| `Check()` | Non-blocking poll; returns first key or 0 |
-| `Clear()` | Drain SDL event queue |
-
-`PollKeys` is a function injected by the `Experiment`; it drains the SDL queue and returns `(firstKey, quitRequested)`.
-
-## Mouse
-
-```go
-m := &apparatus.Mouse{PollButtons: pollFunc}  // injected by control.Experiment
-```
-
-| Method | Description |
-|---|---|
-| `ShowCursor(show bool)` | Toggle cursor visibility. `NewScreen` leaves the cursor visible, but `control.Experiment.Initialize` then hides it — see `control/CLAUDE.md` |
-| `Position() (x, y float32)` | Current cursor position in **window pixels** (not center-based) |
-| `WaitPress()` | Block until any mouse button pressed |
-| `WaitPressRT(timeoutMS)` | Returns `(button, rtMs, error)` |
-| `GetPressEventTS(timeoutMS)` | Returns `(button, eventTimestampNS, error)` — hardware-precision SDL3 timestamp |
-| `Check()` | Non-blocking poll; returns first button or 0 |
-
-Note: `Position()` returns window-pixel coordinates, unlike `Screen.MousePosition()` which returns center-based coordinates.
-
 ## GamePad
-
-```go
-pads, err := apparatus.GetGamePads()  // returns []GamePad
-defer pads[0].Close()
-button := pads[0].WaitPress()  // block until button pressed
-
-// Analog sticks/triggers, −32768..32767. Standardized by SDL's controller
-// mapping DB, so LEFTX/LEFTY are always the left stick regardless of device.
-x := pads[0].Axis(sdl.GAMEPAD_AXIS_LEFTX)
-y := pads[0].Axis(sdl.GAMEPAD_AXIS_LEFTY)
-```
 
 Prefer `GamePad` over the low-level `Joystick` (`joystick.go`) for analog input: raw joystick axis numbers are device-specific and axes 0/1 are often a digital D-pad (only 8 directions), whereas the gamepad axes are standardized and properly analog. `GetGamePads()` only returns controllers SDL recognizes; fall back to `GetJoysticks()` for unrecognized devices. See `examples/demo_joystick` for the prefer-gamepad-with-joystick-fallback pattern.
 
-## GammaCorrector
-
-```go
-gc := apparatus.NewGammaCorrectorUniform(2.2)
-corrected := gc.CorrectColor(sdl.Color{R: 128, G: 128, B: 128, A: 255})
-// corrected.R ≈ 186 — the physical digital value for 50% luminance on γ=2.2
-
-// Per-channel gamma (from photometer measurements)
-gc = apparatus.NewGammaCorrector(2.1, 2.2, 2.3)
-```
-
-## Input abstraction (DeviceKind, InputEvent)
-
-```go
-type DeviceKind int
-const (
-    DeviceKeyboard DeviceKind = iota
-    DeviceMouse
-    DeviceGamepad
-    DeviceTTL
-)
-
-type InputEvent struct {
-    Device      DeviceKind
-    Key         sdl.Keycode   // DeviceKeyboard
-    Button      uint32        // DeviceMouse or DeviceGamepad
-    TimestampNS uint64        // SDL3 nanosecond hardware timestamp
-}
-```
-
-## ResponseDevice interface
-
-Unified input abstraction for device-agnostic experiment code.
-
-```go
-type ResponseDevice interface {
-    WaitResponse(ctx context.Context) (Response, error)
-    DrainResponses(ctx context.Context) error
-}
-
-type Response struct {
-    Source  DeviceKind
-    Code    uint32
-    RT      time.Duration
-    Precise bool  // true = SDL3 nanosecond accuracy; false = poll-interval accuracy
-}
-```
-
-Construct wrappers:
-
-```go
-rd := &apparatus.KeyboardResponseDevice{KB: exp.Keyboard}
-rd := &apparatus.MouseResponseDevice{M: exp.Mouse}
-rd := &apparatus.GamepadResponseDevice{GP: pad}
-rd := apparatus.NewTTLResponseDevice(box, 5*time.Millisecond)
-```
-
-### Browser (GOOS=js) presentation
+## Browser (GOOS=js) presentation
 
 The present path is platform-split (`screen_present_notjs.go` /
 `screen_present_js.go`). On js, `present()` submits to the canvas and then

@@ -20,66 +20,13 @@ The directory is created if absent.
 
 In normal experiments, access via `exp.Data` — do not create a `DataFile` directly.
 
-| Method | Description |
-|---|---|
-| `AddVariableNames(names []string)` | Write CSV header row (`subject_id` is always prepended automatically — do not include it) |
-| `Add(...interface{})` | Append a data row — numbers/bools bare, all other fields always quoted (RFC 4180) |
-| `WriteComment(string)` | Write a `#`-prefixed line to the info file |
-| `WriteSystemInfo(apparatus.SystemInfo)` | Write SDL/renderer/audio metadata to the info file |
-| `WriteDisplayInfo(apparatus.DisplayInfo)` | Write display metadata to the info file |
-| `WriteHostInfo(sysinfo.SysInfo)` | Write machine/OS metadata (kernel, desktop, CPU, GPUs, sound server) to the info file |
-| `WriteParticipantInfo(map[string]string)` | Write participant metadata to the info file (keys sorted) |
-| `WriteEndTime()` | Write session end time and duration to the info file |
-| `Save()` | Flush both the CSV and the info file to disk (browser under JATOS: append new CSV rows to the server) |
-
 ### CSV format
 
-```
-subject_id,condition,response,rt_ms,correct
-3,"congruent","F",412,true
-3,"incongruent","J",538,false
-```
-
 Numbers and booleans are unquoted; strings are always double-quoted with internal `"` doubled.
-
-### Info file format
-
-```
-# --EXPERIMENT INFO
-# e mainfile: My Experiment
-# e start_time: 20260330-142011
-# --SUBJECT INFO
-# s id: 3
-# --SYSTEM INFO
-# sys sdl_version: 3.2.10
-# ...
-# --DISPLAY INFO
-# d refresh_rate_hz: 60.0000
-# ...
-# e end_time: 20260330-143012.000
-# e duration: 00:10:01.000
-```
-
-### Constants
-
-| Constant | Value |
-|---|---|
-| `OutputFileCommentChar` | `"#"` |
-| `OutputFileEOL` | `"\n"` |
-| `DataFileDirectory` | `"goxpy_data"` |
-| `DataFileDelimiter` | `","` |
 
 ## OutputFile
 
 Lower-level buffered text file, used as the base of `DataFile` (and its `InfoFile`).
-
-```go
-f, err := results.NewOutputFile(directory, filename)
-f.Write(content)
-f.WriteLine(content)    // content + EOL
-f.WriteComment(text)    // "#" + text + EOL
-f.Save()                // flush to disk
-```
 
 `Save()` is defined in `output_file_desktop.go` (build tag: non-wasm). In the browser it is a no-op that keeps buffering, and `output_file_wasm.go` triggers a download at the end of the session instead.
 
