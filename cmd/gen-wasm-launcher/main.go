@@ -22,7 +22,17 @@
 //
 //	go run ./cmd/gen-wasm-launcher -app Memory_span -page examples/Memory_span/web/index.html -out …
 //
-// Either way the page loads sdl.js, sdl.wasm and wasm_exec.js from ../_runtime/
+// JATOS (-jatos): render the generated launcher for a study on a JATOS server
+// (https://www.jatos.org). The page loads jatos.js, starts only once jatos.js
+// has loaded, has no participant-ID box (the ID comes from the study link or
+// the study result), and moves the study run on when the experiment returns.
+// The runtime files sit next to the page: every JATOS study has its own assets
+// folder, so there is no shared directory to point at. Hand-written pages are
+// not adapted to JATOS; -jatos with -page is refused.
+//
+//	go run ./cmd/gen-wasm-launcher -app Stroop_task -jatos -out .../Stroop_task/index.html
+//
+// Otherwise the page loads sdl.js, sdl.wasm and wasm_exec.js from ../_runtime/
 // rather than from its own directory: those three files are byte-identical in
 // every bundle, so they are published once instead of ~79 times. sdl.wasm is
 // fetched by the Emscripten glue rather than by a tag, which is why the page
@@ -94,6 +104,7 @@ type pageData struct {
 	Description string
 	Reference   string
 	RuntimeDir  string
+	Jatos       bool
 }
 
 // adapt rewrites an example's own launcher page to load the shared runtime.
@@ -132,11 +143,15 @@ func main() {
 		page     = flag.String("page", "", "adapt this hand-written launcher instead of generating one")
 		out      = flag.String("out", "", "output file (required)")
 		examples = flag.String("examples", "examples", "directory holding the example sources")
+		jatos    = flag.Bool("jatos", false, "render the launcher for a JATOS study (runtime files next to the page)")
 	)
 	flag.Parse()
 
 	if *app == "" || *out == "" {
 		log.Fatal("both -app and -out are required")
+	}
+	if *jatos && *page != "" {
+		log.Fatal("-jatos uses the generated launcher; hand-written pages (-page) are not adapted to JATOS")
 	}
 
 	var html string
@@ -155,12 +170,17 @@ func main() {
 			log.Printf("WARNING: no usable meta.yaml for %q — the page will carry no description", *app)
 		}
 		var sb strings.Builder
-		err := launcherTmpl.Execute(&sb, pageData{
+		data := pageData{
 			App:         *app,
 			Description: m.description,
 			Reference:   m.reference,
 			RuntimeDir:  runtimeDir,
-		})
+			Jatos:       *jatos,
+		}
+		if *jatos {
+			data.RuntimeDir = ""
+		}
+		err := launcherTmpl.Execute(&sb, data)
 		if err != nil {
 			log.Fatalf("rendering the launcher for %s: %v", *app, err)
 		}

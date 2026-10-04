@@ -6,6 +6,7 @@
 package results
 
 import (
+	"fmt"
 	"log"
 	"strings"
 	"syscall/js"
@@ -38,6 +39,10 @@ func (o *OutputFile) Save() error {
 // and the info file into one archive instead, because two downloads in a row
 // lose the second one (see data_wasm.go). This path remains for a standalone
 // OutputFile — a log, say — of which an experiment produces at most one.
+//
+// When the page was served by JATOS, the file is uploaded as a result file of
+// the study run instead, and the download is only the fallback for an upload
+// that fails.
 func (o *OutputFile) Finalize() error {
 	if len(o.Buffer) == 0 {
 		return nil
@@ -45,6 +50,20 @@ func (o *OutputFile) Finalize() error {
 
 	content := strings.Join(o.Buffer, "")
 	o.Buffer = make([]string, 0)
+
+	if JatosAvailable() {
+		log.Printf("Sending %s to JATOS...", JatosFilename(o.Filename))
+		jatosEnqueue("uploadResultFile", content, JatosFilename(o.Filename))
+		err := jatosAwait()
+		if err == nil {
+			return nil
+		}
+		log.Printf("results: sending %s to JATOS failed (%v); downloading it instead", o.Filename, err)
+		if dlErr := downloadBytes(o.Filename, []byte(content), "text/plain"); dlErr != nil {
+			return fmt.Errorf("results.OutputFile.Finalize: %w; fallback download: %v", err, dlErr)
+		}
+		return fmt.Errorf("results.OutputFile.Finalize: %w (downloaded instead)", err)
+	}
 
 	log.Printf("Saving %s...", o.Filename)
 	return downloadBytes(o.Filename, []byte(content), "text/plain")

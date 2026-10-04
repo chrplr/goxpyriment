@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"runtime/debug"
 	"syscall/js"
+
+	"github.com/chrplr/goxpyriment/results"
 )
 
 // platformHandleCrash reports an unrecovered panic in the browser: it logs the
@@ -16,7 +18,8 @@ import (
 // full-page error overlay (for the participant), then returns true so
 // Experiment.Run swallows the panic. It also sets e.crashed, which makes
 // finalizeData skip the download of the partial, half-written data files — a
-// crashed session should not hand the participant a broken .csv.
+// crashed session should not hand the participant a broken .csv. Under JATOS,
+// the rows of the blocks saved before the crash are already on the server.
 //
 // There is no filesystem in the browser, so a panic that would abort a desktop
 // run instead used to unwind silently into End(), downloading empty files with
@@ -24,6 +27,9 @@ import (
 // visible instead.
 func (e *Experiment) platformHandleCrash(r any) bool {
 	e.crashed = true
+	// The launcher page ends a JATOS study run as failed on this, leaving the
+	// overlay in place rather than moving on to the end page.
+	platformReportOutcome(false, fmt.Sprintf("experiment crashed: %v", r))
 
 	// Developer-facing: full detail in the browser console.
 	stack := debug.Stack()
@@ -59,7 +65,16 @@ func (e *Experiment) platformHandleCrash(r any) bool {
 	setStyles(title, map[string]string{"fontSize": "1.4em", "fontWeight": "bold"})
 
 	hint := document.Call("createElement", "div")
-	hint.Set("textContent", "No data file was saved. Reload the page to start again.")
+	if results.JatosAvailable() {
+		// The blocks the experiment saved before the crash were appended to
+		// the JATOS result data as it went (results/data_wasm.go). Restarting
+		// is the experimenter's call: JATOS normally refuses a second run of
+		// the same study link.
+		hint.Set("textContent", "Any blocks completed before this point were sent to the server. "+
+			"Please tell the experimenter what happened.")
+	} else {
+		hint.Set("textContent", "No data file was saved. Reload the page to start again.")
+	}
 
 	detail := document.Call("createElement", "pre")
 	detail.Set("textContent", fmt.Sprintf("%v", r))

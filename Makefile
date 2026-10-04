@@ -30,6 +30,7 @@ help:
 	@echo "  tests     Build test binaries"
 	@echo "  wasm-NAME        Build a browser (WASM) bundle of an example to _build/wasm/NAME/"
 	@echo "  wasm-NAME-serve  Build + serve a browser bundle at http://localhost:8080/?s=1"
+	@echo "  jatos-NAME       Build a JATOS study archive of an example to _build/jatos/NAME.jzip"
 	@echo "  pdfs      Generate PDF docs via pandoc + xelatex (one per page)"
 	@echo "  book      Generate the whole documentation as one PDF in docs/"
 	@echo "  docs      Build Zensical HTML site to site/"
@@ -174,4 +175,10 @@ wasm-%-serve:
 wasm-%:
 	$(WASMSDL) build $(call wasm_html,$*) -out _build/wasm/$* ./examples/$*
 	@echo "Bundle in _build/wasm/$* — serve it with: make wasm-$*-serve"
+
+# JATOS study archive (see "Running on JATOS" in docs/WASM.md): the browser
+# bundle with a launcher that sends the results to the JATOS server, packed as
+# a .jzip for Import Study.
+jatos-%:
+	bash examples/installers/build-jatos-study.sh $*
 

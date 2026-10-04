@@ -52,3 +52,11 @@ func platformDataDestination(d *results.DataFile) string {
 func platformParticipantInfo(_ []InfoField) (map[string]string, bool) {
 	return nil, false
 }
+
+// platformDefaultSubjectID supplies no default on desktop: without -s the
+// setup dialog asks, and under -headless subject 0 is used.
+func platformDefaultSubjectID() (int, bool) { return 0, false }
+
+// platformReportOutcome is a no-op on desktop: the end of the process is the
+// end of the session, and the log says how it went.
+func platformReportOutcome(bool, string) {}
