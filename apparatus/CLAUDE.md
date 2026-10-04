@@ -63,6 +63,21 @@ Ada: rendering defaults to `Mesa Intel(R) Arc(tm) Graphics (MTL)`, and
 identical on both. Do not infer the GPU from which `/dev/dri/renderD*` node the
 process has open — that varies between identical runs.
 
+### NVIDIA + X11 — fullscreen rendering
+
+On Linux with NVIDIA proprietary drivers and X11, the OpenGL renderer can
+silently fail in fullscreen (blank screen or SIGSEGV in `SDL_RenderPresent`);
+windowed mode (`-w`) is unaffected. `screen_newscreen_notjs.go` therefore hints
+SDL to prefer Vulkan on Linux, which fixes this on NVIDIA RTX hardware; SDL
+falls back to OpenGL if Vulkan is unavailable. The hint has normal priority, so
+the environment still overrides it:
+
+```bash
+SDL_RENDER_DRIVER=vulkan ./my_experiment      # force Vulkan
+SDL_RENDER_DRIVER=software ./my_experiment    # force software (always works)
+./my_experiment -w                            # windowed (avoids fullscreen path)
+```
+
 ### DisplayInfo
 
 ```go
