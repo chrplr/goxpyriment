@@ -95,13 +95,13 @@ Hardware, timing, and feature tests live in the [`tests/`](../tests/) directory 
 
 ## Binaries
 
-If you have followed the [installation instructions](Installation.md), running the script `build-all.sh` has created binaries for all examples in the subfolder `_build`. You can just open this folder and launch the executables.
+If you have followed the [Full Installation instructions](Installation.md/#full-installation), running the script `build-all.sh` has created binaries for all examples in the subfolder `_build`. You can just open this folder and launch the executables.
 
 Else, you can download [pre-built executable programs](pre-built-examples.md) for all [examples](https://github.com/chrplr/goxpyriment/tree/main/examples).
 
 Alternatively, you can read the next section if you want to compile these experiments on your computer. 
 
-## Building from source
+## Running the examples from source
 
 If you have installed [go](https://go.dev) on your computer, you can run any example directly from a local clone of the [goxpyriment repository](https://github.com/chrplr/goxpyriment):
 
