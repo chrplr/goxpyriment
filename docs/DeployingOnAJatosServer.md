@@ -11,16 +11,47 @@ This page explains how to build the study, put it on a server, recruit
 participants and get the data back. For how browser builds work in general, see
 [WASM build](WASM.md).
 
+> **In short**
+>
+> 1. Make sure the experiment [runs in a browser](#1-make-sure-the-experiment-runs-in-a-browser):
+>    stimuli embedded, `exp.Data.Save()` after each block, tested with
+>    `make wasm-NAME-serve`.
+> 2. [Build the study archive](#2-build-the-study-archive): `make jatos-NAME`
+>    → `_build/jatos/NAME.jzip`.
+> 3. [Import it](#3-import-it-into-jatos) in JATOS with **Import study**.
+> 4. [Run it yourself](#4-try-it-yourself-first) with the **Run** button and
+>    check the result arrives.
+> 5. [Create a study link](#5-create-study-links) and send it to participants.
+> 6. [Download the results](#7-getting-the-results) with **Export Results**.
+
 ## What you need
 
 - A JATOS server and an account on it. Your institution may run one; otherwise
   [MindProbe](https://www.mindprobe.eu) offers free hosting for researchers, and
   JATOS can be installed on any machine (see the JATOS documentation). Studies
   built here have been tested on JATOS 3.11.
-- This repository and Go (the same setup as for building the examples; see
-  [Installation](Installation.md)). No other tools: the build produces the study
-  archive itself.
+- A clone of this repository and Go (the same setup as for building the
+  examples; see [Installation](Installation.md)). No other tools: the build
+  produces the study archive itself.
 - An experiment that runs in a browser (next section).
+
+### JATOS vocabulary
+
+The JATOS interface uses a few words of its own:
+
+- **Study** — one experiment as it exists on the server. Each `.jzip` you
+  import is one study.
+- **Component** — one page of a study. A goxpyriment study has a single
+  component, the experiment; you can add others (a consent form, a
+  questionnaire) in JATOS.
+- **Worker** — JATOS's word for a participant. You are a worker too when you
+  test your own study.
+- **Study link** — the URL you give participants. Links are grouped into
+  **batches**; the imported study comes with one batch, `Default`, which is all
+  you need.
+- **Result** — one run of the study by one worker. It holds the *result data*
+  (text) and the *result files* (uploaded files); see
+  [Getting the results](#7-getting-the-results).
 
 ## 1. Make sure the experiment runs in a browser
 
@@ -44,9 +75,52 @@ works with `make wasm-NAME-serve` works on JATOS. Before deploying:
    Run through it once and check the `.zip` it downloads at the end.
 
 The experiment must live in its own directory under `examples/`, with a
-`main.go` and a `meta.yaml` (copy one from an existing example). The
-`description:` line of `meta.yaml` becomes the study description shown in
+`main.go` and a `meta.yaml`. The directory name is the `NAME` in
+`make wasm-NAME-serve` and `make jatos-NAME`, and becomes the study's title in
 JATOS.
+
+### If your experiment is in its own folder
+
+If you built your experiment in a folder of your own, as in
+[Creating Your Own Experiment](CreatingYourOwnExperiment.md), move a copy into
+the repository first. The browser build needs the repository: it relies on the
+browser version of SDL that the repository includes and on its `make` targets.
+
+1. Clone the repository, if you have not already, and go into it:
+
+   ```bash
+   git clone https://github.com/chrplr/goxpyriment
+   cd goxpyriment
+   ```
+
+2. Copy your folder into `examples/`, **leaving out `go.mod` and `go.sum`**:
+   the `examples` directory already has its own, which cover every goxpyriment
+   package. Keep the name short, without spaces (`my_experiment`, not
+   `My Experiment`). Below, `../my_experiment` is your folder; adjust the path
+   to wherever it is.
+
+   ```bash
+   mkdir examples/my_experiment
+   cp -r ../my_experiment/* examples/my_experiment/
+   rm -f examples/my_experiment/go.mod examples/my_experiment/go.sum
+   ```
+
+3. Create `examples/my_experiment/meta.yaml` with three lines:
+
+   ```yaml
+   category: experiment
+   description: Short description shown to participants and in JATOS
+   reference: (a citation, or leave empty)
+   ```
+
+   The `description:` line is shown on the page participants open and as the
+   study description in JATOS.
+
+4. Check it in the browser with `make wasm-my_experiment-serve`, then continue
+   with step 2 using `make jatos-my_experiment`.
+
+Edit the copy under `examples/` from then on, or copy your changes over before
+each rebuild.
 
 ## 2. Build the study archive
 
@@ -81,7 +155,23 @@ import the new `.jzip`. Because every build of the same example carries the same
 study identifiers, JATOS recognises it and asks whether to overwrite the
 existing study and its files: answer yes to both. The study's links stay valid.
 
-## 4. Create study links
+## 4. Try it yourself first
+
+Before sending a link to anyone, run the study as a participant would:
+
+1. Open the study in JATOS and click its **Run** button. This runs the study as
+   your own *JATOS worker*, the worker JATOS keeps for researchers testing their
+   studies. No study link is needed.
+2. Click **Start** and go through the experiment to the end.
+3. Go back to the study and open **Results**: your run should be there,
+   `FINISHED`, with its result data and its two result files (see
+   [Getting the results](#7-getting-the-results)). Download the files and
+   check them as you would after a lab session.
+
+Delete this test result afterwards (select it under **Results** and delete it)
+so it is not mixed with real data.
+
+## 5. Create study links
 
 Open the study and go to **Study links**. JATOS offers several kinds of link;
 the usual choices are:
@@ -120,7 +210,7 @@ https://jatos.example.org/publix/AbCdEfGh?level=2         any flag the program d
   from parameters of the same name (`?age=31&handedness=2`), as in any browser
   build. No dialog is shown online.
 
-## 5. What participants see
+## 6. What participants see
 
 1. The study link opens a page with the experiment's name, its description and a
    **Start** button. There is no participant-ID box.
@@ -133,7 +223,7 @@ https://jatos.example.org/publix/AbCdEfGh?level=2         any flag the program d
 Ask participants to use a computer with a keyboard, Chrome, Edge or Firefox, and
 to keep the tab in the foreground: browsers slow down background tabs.
 
-## 6. Getting the results
+## 7. Getting the results
 
 Open the study and go to **Results**. Each run is a row, with its state
 (`FINISHED`, `FAIL`, `DATA_RETRIEVED`…), the worker, the duration and the

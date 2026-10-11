@@ -516,5 +516,6 @@ macOS `.app` bundles, and automated GitHub releases — see
 - [User Manual](UserManual.md) — the concepts behind the framework.
 - [API Reference](API.md) — every function and type.
 - [Packaging Your Experiment](How_to_package_your_experiment.md) — installers and automated releases.
+- [Deploying on a JATOS server](DeployingOnAJatosServer.md) — run your experiment in participants' browsers and collect the data on a server.
 
 Happy experimenting!

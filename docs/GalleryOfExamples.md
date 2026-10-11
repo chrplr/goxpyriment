@@ -95,7 +95,7 @@ Hardware, timing, and feature tests live in the [`tests/`](../tests/) directory 
 
 ## Binaries
 
-If you have followed the [Full Installation instructions](Installation.md/#full-installation), running the script `build-all.sh` has created binaries for all examples in the subfolder `_build`. You can just open this folder and launch the executables.
+If you have followed the [Full Installation instructions](Installation.md#full-installation), running the script `build-all.sh` has created binaries for all examples in the subfolder `_build`. You can just open this folder and launch the executables.
 
 Else, you can download [pre-built executable programs](pre-built-examples.md) for all [examples](https://github.com/chrplr/goxpyriment/tree/main/examples).
 

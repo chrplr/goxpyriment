@@ -59,6 +59,9 @@ content, split.
    executable.
 3. **[Getting Started](GettingStarted.md)** — worked tutorials: trials,
    data logging, RSVP streams, reaction times. [[PDF](GettingStarted.pdf)]
+4. **[Running your experiment online (JATOS)](DeployingOnAJatosServer.md)** —
+   put an experiment on a JATOS server, send participants a link, and collect
+   their data on the server.
 
 **[User Manual](UserManual.md)** — core concepts explained in depth:
 rendering model, timing, input, data, streams, audio, and experimental
