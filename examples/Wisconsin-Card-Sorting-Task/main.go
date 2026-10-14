@@ -17,6 +17,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"math"
 	"math/rand"
 	"strings"
 
@@ -194,6 +195,20 @@ func drawScene(exp *control.Experiment, pics pictures, keys []card, labels []*st
 	return pic.Draw(screen)
 }
 
+// showCard presents the trial display and returns the VSYNC timestamp of its
+// first flip, the card onset. That flip is marked for a recording: with
+// -photodiode the corner square turns white on it, with -ttl the code is
+// written right after it, and ShowTS keeps the display up until the square has
+// gone black again (see control.MarkerFlags). Without either flag it is a
+// single flip.
+func showCard(exp *control.Experiment, pics pictures, keys []card, labels []*stimuli.TextLine,
+	test card, code byte) (uint64, error) {
+	exp.Marker.Arm(code)
+	return exp.ShowTS(stimuli.DrawFunc(func(*apparatus.Screen) error {
+		return drawScene(exp, pics, keys, labels, test, -1)
+	}))
+}
+
 // waitUntil blocks until the given offset (ms) on the session clock. Every
 // phase of a fixed-SOA trial is timed against that single zero rather than
 // against the phase before it, so a late frame costs its own phase and nothing
@@ -273,12 +288,25 @@ func main() {
 		"Wait for the scanner trigger — the first 't' keypress after the instructions — before starting; "+
 			"trial onsets are then counted from that pulse")
 	allCards := flag.Bool("all-cards", false, "Draw test cards from the full 60-card deck (includes cards matching one key card on two dimensions)")
+	maxDuration := flag.Duration("max_duration", 0,
+		"Time limit, counted from the first trial (e.g. 10m, 90s): no trial starts after it, and a trial still "+
+			"awaiting a response when it expires is abandoned and not recorded. 0 = no limit")
+	ttlCode := flag.Int("ttl-code", 1, "TTL code (1-255) sent at each card onset with -ttl; 1 raises line 0")
+	// -photodiode, -photodiode-size, -marker-frames, -ttl, -ttl-ms: every card
+	// onset is marked for a recording.
+	control.MarkerFlags()
 
 	exp := control.NewExperimentFromFlags("Wisconsin-Card-Sorting-Task", control.Gray, control.Black, 32)
 	defer exp.End()
 
 	if *minRun < 1 || *maxRun < *minRun {
 		log.Fatalf("-minrun/-maxrun: need 1 <= minrun (%d) <= maxrun (%d)", *minRun, *maxRun)
+	}
+	if *maxDuration < 0 {
+		log.Fatalf("-max_duration %v: must be positive (or 0 for no limit)", *maxDuration)
+	}
+	if *ttlCode < 1 || *ttlCode > 255 {
+		log.Fatalf("-ttl-code %d: must be 1-255", *ttlCode)
 	}
 
 	// Scanner mode: the trial is a fixed grid — card, then feedback at a fixed
@@ -306,6 +334,13 @@ func main() {
 		log.Printf("warning: show cursor: %v", err)
 	}
 
+	// The photodiode square sits at the top-left corner of the drawing area,
+	// next to the first key card (and the frame drawn round a chosen card).
+	if side := exp.Marker.Size(); exp.Marker.PhotodiodeEnabled() &&
+		-logicalW/2+side > keyX(0)-cardW/2-8 && logicalH/2-side < keyY+cardH/2+8 {
+		log.Printf("Warning: the %.0f px photodiode square overlaps the first key card", side)
+	}
+
 	exp.AddExperimentInfo(fmt.Sprintf("deck: %d cards (%s)", len(buildDeck(*allCards)),
 		map[bool]string{true: "full", false: "unambiguous only"}[*allCards]))
 	exp.AddExperimentInfo(fmt.Sprintf("rule changes after %d-%d consecutive correct sorts", *minRun, *maxRun))
@@ -319,6 +354,12 @@ func main() {
 			*soaMS, respWindow, *feedbackMS, *itiMS, *nTrials, total, total/60)
 	} else {
 		exp.AddExperimentInfo("self-paced trials (no fixed SOA)")
+	}
+	if *maxDuration > 0 {
+		exp.AddExperimentInfo(fmt.Sprintf("time limit %v from the first trial", *maxDuration))
+	}
+	if exp.Marker.TTLEnabled() {
+		exp.AddExperimentInfo(fmt.Sprintf("ttl code %d at every card onset", *ttlCode))
 	}
 	exp.AddDataVariableNames([]string{
 		"trial", "category", "rule", "trial_in_category", "run_correct",
@@ -437,6 +478,16 @@ func main() {
 			sessionClock.Reset()
 		}
 
+		// -max_duration: the moment on the session clock at which the task
+		// stops, counted from the same zero as the trial grid. No limit is
+		// represented by an end time no session reaches.
+		endMS := int64(math.MaxInt64)
+		if *maxDuration > 0 {
+			endMS = origin + maxDuration.Milliseconds()
+		}
+		nDone := 0 // trials completed and recorded
+		timeUp := false
+
 		for trial := 1; trial <= *nTrials; trial++ {
 			// Onset, response deadline and feedback onset of this trial on the
 			// session clock. Unused when self-paced.
@@ -444,21 +495,27 @@ func main() {
 			respDeadline := trialStart + int64(respWindow)
 			fbEnd := respDeadline + int64(*feedbackMS)
 
+			if sessionClock.NowMillis() >= endMS {
+				timeUp = true
+				break
+			}
 			if *soaMS > 0 {
-				if err := waitUntil(exp, sessionClock, trialStart); err != nil {
+				// The previous trial's blank is cut short by the time limit.
+				if err := waitUntil(exp, sessionClock, min(trialStart, endMS)); err != nil {
 					return err
 				}
 			} else if err := exp.Blank(*itiMS); err != nil {
 				return err
 			}
+			if sessionClock.NowMillis() >= endMS {
+				timeUp = true
+				break
+			}
 			test := nextCard()
 			trialInCategory++
 
 			exp.Keyboard.Clear() // drop stale presses/clicks from the last trial
-			if err := drawScene(exp, pics, keys, labels, test, -1); err != nil {
-				return err
-			}
-			onsetNS, err := exp.Screen.FlipTS()
+			onsetNS, err := showCard(exp, pics, keys, labels, test, byte(*ttlCode))
 			if err != nil {
 				return err
 			}
@@ -467,9 +524,20 @@ func main() {
 			if *soaMS > 0 {
 				deadline = respDeadline
 			}
+			// The time limit closes the response window if it falls first.
+			cutByLimit := endMS < math.MaxInt64 && (deadline < 0 || endMS < deadline)
+			if cutByLimit {
+				deadline = endMS
+			}
 			resp, modality, rt, err := getResponse(exp, onsetNS, sessionClock, deadline)
 			if err != nil {
 				return err
+			}
+			if resp < 0 && cutByLimit {
+				// Time ran out while the card was waiting for an answer: the
+				// trial is abandoned, not recorded as a miss.
+				timeUp = true
+				break
 			}
 			// Fixed SOA: the card stays up for the whole window whether or not
 			// the participant has answered, so feedback onset is on the grid
@@ -547,6 +615,7 @@ func main() {
 				test.match(ruleNumber)+1, test.match(ruleColor)+1, test.match(ruleShape)+1,
 				resp+1, modality, rt, correct,
 				strings.Join(dims, "+"), perseverative, ruleChanged)
+			nDone++
 
 			if *soaMS > 0 {
 				// Feedback off, then blank to the end of the trial. Both ends
@@ -561,15 +630,21 @@ func main() {
 				return err
 			}
 		}
-		if *soaMS > 0 { // let the last trial's inter-trial blank run its course
-			if err := waitUntil(exp, sessionClock, origin+int64(*nTrials)*int64(*soaMS)); err != nil {
+		if *soaMS > 0 && !timeUp { // let the last trial's inter-trial blank run its course
+			if err := waitUntil(exp, sessionClock, min(origin+int64(*nTrials)*int64(*soaMS), endMS)); err != nil {
 				return err
 			}
+		}
+		if timeUp {
+			elapsed := float64(sessionClock.NowMillis()-origin) / 1000
+			exp.AddExperimentInfo(fmt.Sprintf("time limit %v reached after %d of %d trials (%.1f s)",
+				*maxDuration, nDone, *nTrials, elapsed))
+			log.Printf("time limit %v reached after %d of %d trials (%.1f s)", *maxDuration, nDone, *nTrials, elapsed)
 		}
 
 		summary := fmt.Sprintf(
 			"Finished.\n\n%d/%d correct — %d categories completed,\n%d perseverative errors.",
-			nCorrect, *nTrials, categoriesCompleted, nPerseverative)
+			nCorrect, nDone, categoriesCompleted, nPerseverative)
 		if *soaMS > 0 {
 			summary += fmt.Sprintf("\n%d trials with no response.", nMissed)
 		}

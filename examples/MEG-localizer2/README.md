@@ -7,8 +7,10 @@ from four pictures of a hand with one finger coloured red, an empty trial
 for 160 trials (each of the ten 16 times) — a run of about 160 s.
 
 The program is the one from [`examples/MEG-localizer`](../MEG-localizer): the
-same table-driven presentation engine, and the same `main.go`, `ttl.go` and
-`ttl_js.go` but for a few lines of `main.go`: the embed pattern, the title,
+same table-driven presentation engine and the same `main.go` — both take the
+photodiode square and the TTL output from the library's onset marker
+(`control.MarkerFlags`, `exp.Marker`) — but for a few lines of `main.go`: the
+embed pattern, the title,
 black on mid-grey instead of white on black (grey so that the white
 photodiode square stands out; the hand pictures' background is painted the
 same grey), one fixation cross kept on screen at the
@@ -52,10 +54,11 @@ and every onset is measured from it. ESC, or closing the window, aborts.
 | `-dir DIR` | read `protocols/` and `stimuli/` from `DIR` instead of the copies embedded in the binary |
 | `-no-crosshair` | do not superimpose the fixation cross on the pictures (it stays on screen between them and on empty trials) |
 | `-skip-wait` | no instruction screen and no start key |
-| `-ttl DEVICE[:PORT]` | send each row's code as a TTL at its onset — see below; default none |
-| `-ttl-ms N` | TTL pulse width in ms; default 10 |
+| `-ttl KIND[:PORT]` | send each row's code as a TTL at its onset — see below; default none |
+| `-ttl-ms N` | how long each code stays on the lines, in ms; default 0 = `-marker-frames` frame periods (50 ms at 60 Hz) |
 | `-photodiode` | show a white square in the top-left corner for 3 frames from every stimulus onset, sounds included, black otherwise; on by default, `-photodiode=false` disables it |
 | `-photodiode-size N` | side of the photodiode square, in pixels; default 100 |
+| `-marker-frames N` | frames the square stays white from each onset; default 3 |
 
 **Record in fullscreen, never windowed** — see the note in
 [`MEG-localizer/README.md`](../MEG-localizer/README.md): a compositing desktop
@@ -140,11 +143,13 @@ Triggers
 Every row carries a code — **1 for the empty trial, 2–5 for the fingers**
 (index to little finger) and **6–10 for the tones** (200 Hz to 3200 Hz) — and
 with `-ttl` that code is
-written to the eight TTL lines at the row's onset and cleared `-ttl-ms` later
-(10 ms by default; the achieved width is between that and one frame more).
-The write is issued from the stream's post-flip onset hook, on the flip thread,
-immediately after the VSYNC flip that shows the picture or starts the sound —
-the same instant recorded as `actual_ms`. It is not the photon time: the flip
+written to the eight TTL lines at the row's onset and cleared by timer `-ttl-ms`
+later (by default 3 frame periods, 50 ms at 60 Hz; until October 2026 the
+default was 10 ms — `-ttl-ms 10` restores it). The marker is armed from the
+stream's pre-flip callback and the code written inside the flip itself, right
+after the VSYNC flip that shows the picture or starts the sound — the same
+instant recorded as `actual_ms`. On a sound row the code now goes out just
+before the sound is started rather than just after; both follow the same flip. It is not the photon time: the flip
 leads the panel by a constant one to three frames depending on the display
 stack, to be measured once per rig and subtracted (see
 `docs/TriggerJitterForEEGandMEG.md`).
@@ -155,13 +160,18 @@ stack, to be measured once per rig and subtracted (see
 | `mmbts:/dev/ttyACM0` | NEUROSPEC MMBT-S; port required. In its factory pulse mode every trigger is 8 ms wide whatever `-ttl-ms` says |
 | `dlpio8[:PORT]` | DLP-IO8-G; a port name, or `auto` (the default) to probe for one. Its `Send` writes the lines one by one, so a code takes ~1 ms to settle |
 | `parallel[:/dev/parport0]` | parallel port; the first accessible one by default |
+| `null` | no hardware: exercises the code path without a device |
+
+Other kinds (`dlpio20`, `gpio`, `ft232h`, `labjackt4:HOST`) are accepted too:
+see `triggers.DeviceSpecUsage`.
 
 A device that was asked for and cannot be opened stops the program before the
 window opens, and so does a table without a single code — a run recorded
 without its triggers is only found out when the data are useless. Trigger
-failures during the run are counted, reported at the end, and written to the
-session metadata (`ttl_device=… errors=N`). All lines are driven low before
-the first row and after the last. Triggers are not available in the browser
+failures during the run are counted, logged once, and written to the session
+metadata in a `marker stats:` line (onsets, codes, clears, write errors,
+overlaps); before October 2026 this was a `ttl_device=… errors=N` comment.
+All lines are driven low before the first row and when the program ends. Triggers are not available in the browser
 build.
 
 The codes are just a column of the table: `make-protocol.py` writes them, and
@@ -179,12 +189,13 @@ goes up in the frame whose flip fires the TTL code, so the photodiode and the
 trigger channel mark the same flip. The TTL is raised as that flip *returns*,
 one to three frames before the square is on the panel; the difference between
 the two channels is that display latency. Between onsets the square is
-black, from the green waiting cross to the end of the run, so the photodiode
+black, from the instruction screen to the end of the run, so the photodiode
 sees a black-to-white step (grey-to-white was too small to detect reliably). It
 flashes on every row, sound rows included; there it marks the flip after
 which the sound is started, not the sound itself, whose latency must be
-measured separately (e.g. with a microphone). `-photodiode=false` turns it
-off.
+measured separately (e.g. with a microphone). A sound shorter than half a
+frame, which the stream starts on an off-frame, gets its code but no square.
+`-photodiode=false` turns it off.
 
 
 The data file

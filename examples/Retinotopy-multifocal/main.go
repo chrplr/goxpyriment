@@ -34,6 +34,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/chrplr/goxpyriment/apparatus"
 	"github.com/chrplr/goxpyriment/control"
@@ -60,12 +61,12 @@ const (
 	fixCrossSizePx = 16
 	fixCrossLinePx = 3
 
-	// defaultPhotodiodeSize is the side, in pixels, of the white square that
-	// -photodiode flashes in the top-left corner for one frame at every trial
-	// onset. It is drawn into the same frame as the onset, so it reaches the
-	// screen in the flip whose timestamp is recorded as onset_ms and that fires
-	// the TTL marker.
-	defaultPhotodiodeSize = 100
+	// Onset-marker defaults for this paradigm (see control.MarkerFlags): the
+	// photodiode square is white for one frame at every trial onset, in the
+	// flip whose timestamp is recorded as onset_ms, and the TTL pulse is 5 ms.
+	// Both must fit inside the shortest trial (13 frames at 60 Hz).
+	markerFrames = 1
+	markerTTLMs  = 5
 )
 
 func main() {
@@ -90,14 +91,15 @@ func main() {
 		flagDistCm  = flag.Float64("viewing-distance-cm", 50, "Viewing distance in cm (used when the info dialog is skipped)")
 
 		flagWaitTrig = flag.Bool("wait-trigger", false, "Wait for the scanner pulse (key 't') before starting the run")
-		flagTrigger  = flag.String("trigger", "none", "TTL device for per-trial markers: "+TriggerDeviceNames)
-		flagTrigDev  = flag.String("trigger-device", "", "Serial port or host for -trigger devices that need one")
-		flagTrigLine = flag.Int("trigger-line", 0, "TTL line to pulse (0-7)")
-		flagTrigMs   = flag.Int("trigger-ms", 5, "TTL pulse width in ms; must be shorter than the minimum trial")
-
-		flagPhotodiode     = flag.Bool("photodiode", true, "Flash a white square in the top-left corner for one frame at every trial onset, black otherwise (-photodiode=false to disable)")
-		flagPhotodiodeSize = flag.Float64("photodiode-size", defaultPhotodiodeSize, "Side of the photodiode square, in pixels")
+		flagTTLLine  = flag.Int("ttl-line", 0, "TTL line (0-7) pulsed at every trial onset with -ttl")
 	)
+	// -photodiode (on by default here), -photodiode-size, -marker-frames, -ttl
+	// and -ttl-ms mark every trial onset for the recording.
+	control.MarkerFlags(control.MarkerConfig{
+		Photodiode:  true,
+		Frames:      markerFrames,
+		TTLDuration: markerTTLMs * time.Millisecond,
+	})
 	flag.Bool("verify", false, "Print the sequence orthogonality report and exit without opening a window")
 
 	exp := control.NewExperimentFromFlags(expName, control.Gray, control.White, 24)
@@ -112,9 +114,13 @@ func main() {
 			expName, exp.BackgroundColor)
 	}
 
-	if *flagTrigMs >= int(toaMinSec*1000) {
-		log.Fatalf("-trigger-ms=%d must be shorter than the shortest trial (%.0f ms)",
-			*flagTrigMs, toaMinSec*1000)
+	if *flagTTLLine < 0 || *flagTTLLine > 7 {
+		log.Fatalf("-ttl-line=%d out of range (0-7)", *flagTTLLine)
+	}
+	// One onset's pulse must be over before the next onset.
+	if d := exp.Marker.TTLDuration(); exp.Marker.TTLEnabled() && d >= time.Duration(toaMinSec*float64(time.Second)) {
+		log.Fatalf("-ttl-ms: the %v TTL pulse must be shorter than the shortest trial (%.0f ms)",
+			d, toaMinSec*1000)
 	}
 
 	seqs, err := BuildSequences(*flagPrime, NRegions, *flagShift, *flagTrials)
@@ -134,12 +140,6 @@ func main() {
 			"A run of fewer than p=%d trials is not balanced; do not analyse it as a full run.",
 			100*report.MinOnFrac, 100*report.MaxOnFrac, report.P)
 	}
-
-	fire, closeTrigger, err := openTrigger(*flagTrigger, *flagTrigDev, *flagTrigLine, *flagTrigMs)
-	if err != nil {
-		log.Fatalf("%s: %v", expName, err)
-	}
-	defer closeTrigger()
 
 	if herr := exp.HideCursor(); herr != nil {
 		log.Printf("Warning: could not hide cursor: %v", herr)
@@ -229,38 +229,16 @@ func main() {
 		maxFrames := maxInt(minFrames, int(math.Round(toaMaxSec*refresh)))
 		frameMs := 1000.0 / refresh
 
-		// ── Photodiode patch ────────────────────────────────────────────────
-		// Top-left corner of the drawable area. Positions are centre-relative
-		// with +Y up, so the corner is at (-w/2 + side/2, +h/2 - side/2), in
-		// the same size CenterToSDL works from: LogicalSize when one is set,
-		// the renderer output size otherwise.
-		var patch *stimuli.Rectangle
-		if *flagPhotodiode {
-			var w, h float32
-			if ls := exp.Screen.LogicalSize; ls != nil {
-				w, h = ls.X, ls.Y
-			} else {
-				ow, oh, serr := exp.Screen.Size()
-				if serr != nil {
-					return fmt.Errorf("-photodiode: cannot read the screen size: %w", serr)
-				}
-				w, h = float32(ow), float32(oh)
-			}
-			side := float32(*flagPhotodiodeSize)
-			if side <= 0 || side > w || side > h {
-				return fmt.Errorf("-photodiode-size: %.0f px does not fit on a %.0fx%.0f screen", side, w, h)
-			}
-			// The inner corner of the patch must lie outside the dartboard,
-			// or the patch would hide checks and the photodiode would see
-			// the stimulus fade as well as the flash.
+		// The photodiode square sits at the top-left corner of the drawing
+		// area; its inner corner must lie outside the dartboard, or the square
+		// would hide checks and the photodiode would see the stimulus fade as
+		// well as the flash.
+		if side := exp.Marker.Size(); exp.Marker.PhotodiodeEnabled() {
+			w, h := exp.DrawArea()
 			if math.Hypot(float64(w/2-side), float64(h/2-side)) < ringPx[NRings] {
 				log.Printf("Warning: the %.0f px photodiode square overlaps the stimulus (outer radius %.0f px)",
 					side, ringPx[NRings])
 			}
-			patch = stimuli.NewRectangle(-w/2+side/2, h/2-side/2, side, side, control.White)
-			stimuli.PreloadVisualOnScreen(exp.Screen, patch)
-			log.Printf("photodiode: %.0f px white square in the top-left corner of the %.0fx%.0f drawable area, "+
-				"1 frame at each trial onset, black otherwise", side, w, h)
 		}
 
 		r := &runner{
@@ -268,8 +246,7 @@ func main() {
 			textures:     textures,
 			dst:          dst,
 			fix:          stimuli.NewFixCross(fixCrossSizePx, fixCrossLinePx, control.Red),
-			patch:        patch,
-			fire:         fire,
+			ttlCode:      byte(1) << uint(*flagTTLLine),
 			frameMs:      frameMs,
 			targetFrames: maxInt(1, int(math.Round(targetDurSec*refresh))),
 			gapMinFrames: maxInt(1, int(math.Round(targetGapMinSec*refresh))),
@@ -294,9 +271,8 @@ func main() {
 		exp.Data.WriteComment(fmt.Sprintf("m ring_radii_deg: %.3f %.3f %.3f %.3f",
 			ringDeg[0], ringDeg[1], ringDeg[2], ringDeg[3]))
 		exp.Data.WriteComment(fmt.Sprintf("m seed: %d", *flagSeed))
-		if patch != nil {
-			exp.Data.WriteComment(fmt.Sprintf("m photodiode_square_px: %.0f (top-left, white 1 frame per trial onset, black otherwise)",
-				*flagPhotodiodeSize))
+		if exp.Marker.TTLEnabled() {
+			exp.Data.WriteComment(fmt.Sprintf("m ttl_line: %d (code %d) at every trial onset", *flagTTLLine, 1<<uint(*flagTTLLine)))
 		}
 		for _, line := range RegionTableLines(ringDeg) {
 			exp.Data.WriteComment("m " + line)
@@ -330,14 +306,6 @@ func main() {
 			}
 			if serr := green.Draw(exp.Screen); serr != nil {
 				return serr
-			}
-			// Black patch while waiting, so the first onset is black→white
-			// like every later one.
-			if patch != nil {
-				patch.Color = control.Black
-				if serr := patch.Draw(exp.Screen); serr != nil {
-					return serr
-				}
 			}
 			if serr := exp.Screen.Flip(); serr != nil {
 				return serr
@@ -417,8 +385,7 @@ type runner struct {
 	textures []*apparatus.Texture
 	dst      []*control.FRect
 	fix      *stimuli.FixCross
-	patch    *stimuli.Rectangle // photodiode square; nil when -photodiode is off
-	fire     func()
+	ttlCode  byte // the onset marker's code: one bit, the -ttl-line
 	rng      *rand.Rand
 
 	frameMs      float64
@@ -484,18 +451,13 @@ func (r *runner) presentTrial(on []bool, frames int) (uint64, error) {
 		if err := r.fix.Draw(r.exp.Screen); err != nil {
 			return onsetNS, err
 		}
-		// White on frame 0 only, so it goes out in the same flip as the
-		// onset; black on every other frame. Grey→white is too small a step
-		// for the photodiode to detect reliably, black→white is not.
-		if r.patch != nil {
-			if f == 0 {
-				r.patch.Color = control.White
-			} else {
-				r.patch.Color = control.Black
-			}
-			if err := r.patch.Draw(r.exp.Screen); err != nil {
-				return onsetNS, err
-			}
+		// The first frame is the trial onset: the marker's square turns white
+		// in this flip, and its TTL line is raised right after it, tens of
+		// microseconds after the flip returns. The photons come one to three
+		// frames later, depending on the display stack; measure that lag with
+		// the photodiode and subtract it in analysis.
+		if f == 0 {
+			r.exp.Marker.Arm(r.ttlCode)
 		}
 
 		ts, err := r.exp.Screen.FlipTS()
@@ -504,12 +466,6 @@ func (r *runner) presentTrial(on []bool, frames int) (uint64, error) {
 		}
 		if f == 0 {
 			onsetNS = ts
-			// Immediately after the flip, on this thread: the rising edge
-			// lands tens of microseconds after the flip returns. The photons
-			// come one to three frames later, depending on the display stack
-			// (see triggers.FireTriggerSync); measure that lag with the
-			// photodiode and subtract it in analysis.
-			r.fire()
 		}
 		if startedTarget {
 			r.lastTargetNS = ts

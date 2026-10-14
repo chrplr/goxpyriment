@@ -272,11 +272,54 @@ type GvFrameContext struct {
 // will be late. Raise a TTL line here and lower it from a later frame instead.
 type GvFrameCallback func(ctx GvFrameContext) error
 
+// GvMark asks [PlayGvFunc] to mark the onset of one video frame with the
+// screen's onset marker (see apparatus.Marker, set up by control.MarkerFlags):
+// the photodiode square turns white in the frame's first flip and Code is
+// written to the TTL device right after it. Code 0 marks it with the square
+// only. Without a marker attached to the screen a mark does nothing.
+type GvMark struct {
+	Frame int  // 0-based video frame index
+	Code  byte // TTL code; 0 = photodiode square only
+}
+
 // PlayGvFunc is [PlayGv] with a per-frame callback, for acting on the onset of
-// a specific frame — firing a TTL trigger, logging a timestamp, or aborting
-// early on some condition.
-func PlayGvFunc(screen *xio.Screen, path string, x, y float32, onFrame GvFrameCallback) ([]UserEvent, []VideoFrameLog, error) {
-	return playGv(screen, path, x, y, onFrame)
+// a specific frame — logging a timestamp, or aborting early on some condition.
+// onFrame may be nil.
+//
+// marks lists the frames whose onset is marked for a recording:
+//
+//	stimuli.PlayGvFunc(exp.Screen, "movie.gv", 0, 0, nil,
+//		stimuli.GvMark{Frame: 0, Code: 1}, stimuli.GvMark{Frame: 186, Code: 2})
+//
+// The marker is armed before the frame's first refresh, so the square and the
+// code land on the flip reported as that frame's FlipNS, whatever the number
+// of refreshes each video frame is held for. Arming from onFrame cannot do
+// that: it runs after the frame's first flip, so it can only mark the flip
+// after it. A frame outside the video, or listed twice, is an error before
+// playback starts. When the last marked frame leaves the square still white
+// at the end of the video, the last frame is held, redrawn, until the square
+// is black again (at most the marker's frame count).
+func PlayGvFunc(screen *xio.Screen, path string, x, y float32, onFrame GvFrameCallback, marks ...GvMark) ([]UserEvent, []VideoFrameLog, error) {
+	return playGv(screen, path, x, y, onFrame, marks)
+}
+
+// gvMarkTable checks marks against the video's frame count and returns them
+// as a lookup from frame index to code; nil when there are none.
+func gvMarkTable(marks []GvMark, frameCount int) (map[int]byte, error) {
+	if len(marks) == 0 {
+		return nil, nil
+	}
+	table := make(map[int]byte, len(marks))
+	for _, m := range marks {
+		if m.Frame < 0 || m.Frame >= frameCount {
+			return nil, fmt.Errorf("mark on frame %d: the video has frames 0-%d", m.Frame, frameCount-1)
+		}
+		if _, dup := table[m.Frame]; dup {
+			return nil, fmt.Errorf("frame %d is marked twice", m.Frame)
+		}
+		table[m.Frame] = m.Code
+	}
+	return table, nil
 }
 
 // PlayGv plays a .gv video file once, frame by frame, synchronised to VSYNC.
@@ -288,17 +331,22 @@ func PlayGvFunc(screen *xio.Screen, path string, x, y float32, onFrame GvFrameCa
 // display frames skipped (SkippedFrames > 0 means the decode+draw loop was
 // too slow and missed one or more VSYNC edges).
 func PlayGv(screen *xio.Screen, path string, x, y float32) ([]UserEvent, []VideoFrameLog, error) {
-	return playGv(screen, path, x, y, nil)
+	return playGv(screen, path, x, y, nil, nil)
 }
 
-// playGv is the shared implementation of PlayGv and PlayGvFunc. onFrame may be
-// nil.
-func playGv(screen *xio.Screen, path string, x, y float32, onFrame GvFrameCallback) ([]UserEvent, []VideoFrameLog, error) {
+// playGv is the shared implementation of PlayGv and PlayGvFunc. onFrame and
+// marks may be nil.
+func playGv(screen *xio.Screen, path string, x, y float32, onFrame GvFrameCallback, marks []GvMark) ([]UserEvent, []VideoFrameLog, error) {
 	v, err := NewGvVideo(path)
 	if err != nil {
 		return nil, nil, fmt.Errorf("PlayGv: %w", err)
 	}
 	defer v.Unload()
+
+	markAt, err := gvMarkTable(marks, v.FrameCount)
+	if err != nil {
+		return nil, nil, fmt.Errorf("PlayGv %q: %w", path, err)
+	}
 
 	if err := v.preload(screen); err != nil {
 		return nil, nil, fmt.Errorf("PlayGv: %w", err)
@@ -339,6 +387,13 @@ func playGv(screen *xio.Screen, path string, x, y float32, onFrame GvFrameCallba
 			}
 			if err := v.Draw(screen); err != nil {
 				return userEvents, logs, fmt.Errorf("PlayGv: drawing frame %d: %w", i, err)
+			}
+			// Armed before the frame's first flip, so the marker lands on
+			// the flip logged as this frame's onset.
+			if h == 0 && markAt != nil {
+				if code, ok := markAt[i]; ok {
+					screen.Marker().Arm(code)
+				}
 			}
 			ts, err := screen.FlipTS()
 			if err != nil {
@@ -386,6 +441,25 @@ func playGv(screen *xio.Screen, path string, x, y float32, onFrame GvFrameCallba
 				if ue.Event.KeyboardEvent().Key == sdl.K_ESCAPE {
 					return userEvents, logs, nil
 				}
+			}
+		}
+	}
+
+	// A mark near the end can leave the square white when the video stops,
+	// and whatever follows may not flip for a while (a key wait): hold the
+	// last frame until the square is black. Busy is false within the marker's
+	// frame count plus one; the bound only guards against a bug.
+	if markAt != nil {
+		m := screen.Marker()
+		for n := 0; m.Busy() && n <= m.Frames()+1; n++ {
+			if err := screen.Clear(); err != nil {
+				return userEvents, logs, fmt.Errorf("PlayGv: clearing screen: %w", err)
+			}
+			if err := v.Draw(screen); err != nil {
+				return userEvents, logs, fmt.Errorf("PlayGv: drawing the last frame: %w", err)
+			}
+			if err := screen.Update(); err != nil {
+				return userEvents, logs, fmt.Errorf("PlayGv: flipping display: %w", err)
 			}
 		}
 	}

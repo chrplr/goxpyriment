@@ -1,0 +1,3 @@
+category: test
+description: Onset marker (photodiode square + TTL code) checked in software — square read back from each frame, code and clear timed against the flips with a logging TTL device
+reference: ""

@@ -133,6 +133,14 @@ type Experiment struct {
 	// leave the desktop unresponsive until the process is killed (see
 	// docs/SettingPriorityUnderLinux.md).
 	RealTimePriority int
+	// MarkerConfig chooses the onset marker Initialize sets up (photodiode
+	// square, TTL output). NewExperimentFromFlags fills it from the flags
+	// MarkerFlags registered; otherwise set it before Initialize.
+	MarkerConfig MarkerConfig
+	// Marker marks onsets for a recording: Arm(code) before a flip, Fire(code)
+	// for an event with no flip. Never nil after Initialize — a marker that
+	// does nothing when no photodiode or TTL was configured. See marker.go.
+	Marker *apparatus.Marker
 
 	sdlLoader interface{ Unload() }
 	imgLoader interface{ Unload() }
@@ -161,6 +169,9 @@ func (e *Experiment) finalizeData() {
 			// overlay; skip the download so they are not handed a broken file.
 			if e.crashed {
 				return
+			}
+			if line := e.markerStatsLine(); line != "" {
+				e.writeExperimentInfo(line)
 			}
 			e.Data.WriteEndTime()
 			if err := e.Data.Finalize(); err != nil {
@@ -390,6 +401,9 @@ func NewExperimentFromFlags(name string, bg, fg sdl.Color, fontSize float32, ext
 	if info != nil {
 		exp.Info = info
 	}
+	if mc, ok := markerConfigFromFlags(); ok {
+		exp.MarkerConfig = mc
+	}
 	if err := exp.Initialize(); err != nil {
 		log.Fatalf("failed to initialize experiment: %v", err)
 	}
@@ -415,7 +429,7 @@ func (e *Experiment) Show(v stimuli.VisualStimulus) error {
 //
 // The flip holds to the frame boundary (see Screen.Update), so consecutive
 // ShowTS calls occupy exactly one display frame each even on drivers where
-// SDL_RenderPresent does not block.
+// SDL_RenderPresent does not block — unless an onset marker is armed (below).
 //
 // The timestamp is on the same clock as SDL3 event timestamps, so the
 // reaction time from this stimulus onset is simply:
@@ -423,12 +437,40 @@ func (e *Experiment) Show(v stimuli.VisualStimulus) error {
 //	onset, _ := exp.ShowTS(stim)
 //	key, keyTS, _ := exp.Keyboard.GetKeyEventTS(keys, -1)
 //	rtNS := int64(keyTS - onset)
+//
+// When an onset marker with a photodiode square is armed (exp.Marker.Arm),
+// ShowTS keeps v on screen, redrawing it, until the square has been white for
+// its frames and black once (Frames+1 flips; 4 by default), so that a wait
+// after ShowTS — which does not flip — cannot leave the square white. It still
+// returns the timestamp of the first flip. Use ShowFrames for an exact number
+// of frames.
 func (e *Experiment) ShowTS(v stimuli.VisualStimulus) (uint64, error) {
+	ts, err := e.showOnce(v)
+	if err != nil {
+		return 0, err
+	}
+	if err := e.completeMarker(func() error { return e.presentNoFlip(v) }); err != nil {
+		return 0, fmt.Errorf("control.Experiment.ShowTS: %w", err)
+	}
+	return ts, nil
+}
+
+// presentNoFlip clears and draws v, turning the quit sentinel into the panic
+// Run recovers, as ShowTS does.
+func (e *Experiment) presentNoFlip(v stimuli.VisualStimulus) error {
 	if err := v.Present(e.Screen, true, false); err != nil {
 		if IsEndLoop(err) {
 			panic(exitPanic{err: err})
 		}
-		return 0, fmt.Errorf("control.Experiment.ShowTS: presenting stimulus: %w", err)
+		return fmt.Errorf("presenting stimulus: %w", err)
+	}
+	return nil
+}
+
+// showOnce is one clear + draw + flip: ShowTS without the marker hold.
+func (e *Experiment) showOnce(v stimuli.VisualStimulus) (uint64, error) {
+	if err := e.presentNoFlip(v); err != nil {
+		return 0, fmt.Errorf("control.Experiment.ShowTS: %w", err)
 	}
 	ts, err := e.Screen.FlipTS()
 	if err != nil {
@@ -461,7 +503,8 @@ func (e *Experiment) ShowFrames(v stimuli.VisualStimulus, n int) (uint64, error)
 	}
 	var onsetNS uint64
 	for i := 0; i < n; i++ {
-		ts, err := e.ShowTS(v)
+		// showOnce, not ShowTS: exactly n frames, marker or not.
+		ts, err := e.showOnce(v)
 		if err != nil {
 			return 0, fmt.Errorf("control.Experiment.ShowFrames: frame %d: %w", i, err)
 		}
@@ -595,11 +638,24 @@ func (e *Experiment) CorrectColor(c sdl.Color) sdl.Color {
 //
 //	exp.Show(stim)
 //	exp.Wait(durationMs)
+//
+// The duration counts from the onset flip, so the frames an onset marker holds
+// the stimulus for (see ShowTS) are part of it, not added to it.
 func (e *Experiment) ShowTimed(v stimuli.VisualStimulus, durationMs int) error {
-	if err := e.Show(v); err != nil {
+	onset, err := e.ShowTS(v)
+	if err != nil {
 		return fmt.Errorf("control.Experiment.ShowTimed: %w", err)
 	}
-	return e.Wait(durationMs)
+	return e.Wait(remainingMs(durationMs, onset))
+}
+
+// remainingMs is what is left of durationMs since the flip at onsetNS.
+func remainingMs(durationMs int, onsetNS uint64) int {
+	elapsed := int((sdl.TicksNS() - onsetNS) / 1_000_000)
+	if r := durationMs - elapsed; r > 0 {
+		return r
+	}
+	return 0
 }
 
 // ShowAndGetRT presents a visual stimulus with hardware-precise onset timing,
@@ -884,11 +940,20 @@ func (e *Experiment) ShowInstructions(text string) error {
 //	exp.Screen.Clear()
 //	exp.Screen.Update()
 //	exp.Wait(ms)
+//
+// An armed onset marker is completed as in ShowTS, inside the ms.
 func (e *Experiment) Blank(ms int) error {
-	if err := e.Screen.ClearAndUpdate(); err != nil {
+	if err := e.Screen.Clear(); err != nil {
 		return fmt.Errorf("control.Experiment.Blank: %w", err)
 	}
-	return e.Wait(ms)
+	onset, err := e.Screen.FlipTS()
+	if err != nil {
+		return fmt.Errorf("control.Experiment.Blank: %w", err)
+	}
+	if err := e.completeMarker(e.Screen.Clear); err != nil {
+		return fmt.Errorf("control.Experiment.Blank: %w", err)
+	}
+	return e.Wait(remainingMs(ms, onset))
 }
 
 // pumpFrame pumps OS events for one frame: keeps the window responsive on all
@@ -1006,6 +1071,21 @@ func (e *Experiment) Initialize() error {
 			log.Printf("real-time scheduling not obtained, continuing at normal priority: %v", err)
 		}
 	}
+
+	// The onset marker's TTL device is opened before any window exists, so a
+	// bad -ttl stops the program without a fullscreen window flashing up.
+	markerOut, markerDesc, err := e.openMarkerOutput()
+	if err != nil {
+		return err
+	}
+	markerAttached := false
+	defer func() {
+		// Initialize failed after opening the device: release it, lines low.
+		if !markerAttached && markerOut != nil {
+			_ = markerOut.AllLow()
+			_ = markerOut.Close()
+		}
+	}()
 
 	// Reuse loaders cached by GetParticipantInfo (if it was called first) to
 	// avoid loading a second copy of the SDL dylib on macOS, which triggers
@@ -1166,6 +1246,12 @@ func (e *Experiment) Initialize() error {
 	if len(e.Info) > 0 {
 		e.Data.WriteParticipantInfo(e.Info)
 	}
+	e.writePendingExperimentInfo()
+
+	if err := e.attachMarker(markerOut, markerDesc); err != nil {
+		return err
+	}
+	markerAttached = true
 
 	// Handle Ctrl-C and SIGTERM: set quit flag so pumpFrame exits Run() cleanly
 	// on the main goroutine. Never call End()/sdl.Quit() from here — concurrent
@@ -1178,6 +1264,10 @@ func (e *Experiment) Initialize() error {
 		<-ch
 		e.quitFlag.Store(1)
 		e.finalizeData()
+		// Lines low now: the os.Exit fallback below skips End.
+		if err := e.Marker.Close(); err != nil {
+			log.Printf("onset marker: %v", err)
+		}
 		// Give pumpFrame up to 3 s to detect the flag so defer End() can run
 		// from the main goroutine. If the main goroutine is blocked outside Run(),
 		// force-exit as a last resort.
@@ -1300,10 +1390,36 @@ func (e *Experiment) AddBlock(b *design.Block, copies int) {
 	e.Design.AddBlock(b, copies)
 }
 
-// AddExperimentInfo attaches free-form metadata (e.g. lab name, version)
-// to the experiment design for inclusion in the data file header.
+// AddExperimentInfo records a line of free-form session metadata (e.g. a
+// protocol name, a parameter, a measured clock offset) in the session's
+// -info.txt, as an "e <text>" comment line; "key: value" text then reads like
+// the rest of the header. A line added before the data file exists is held
+// and written by Initialize; one added later is written at once, so a line
+// recorded mid-session (how far a run got, a drift measured at the end) sits
+// where it happened, before the end time. The line is also kept in
+// Design.ExperimentInfo.
 func (e *Experiment) AddExperimentInfo(text string) {
 	e.Design.AddExperimentInfo(text)
+	if e.Data != nil {
+		e.writeExperimentInfo(text)
+	}
+}
+
+// writeExperimentInfo writes one AddExperimentInfo entry to the info file,
+// one comment line per line of text so an embedded newline cannot produce an
+// unprefixed line.
+func (e *Experiment) writeExperimentInfo(text string) {
+	for _, line := range strings.Split(text, "\n") {
+		e.Data.WriteComment("e " + line)
+	}
+}
+
+// writePendingExperimentInfo writes the AddExperimentInfo calls made before
+// the data file existed. Called by Initialize once e.Data is set.
+func (e *Experiment) writePendingExperimentInfo() {
+	for _, text := range e.Design.ExperimentInfo {
+		e.writeExperimentInfo(text)
+	}
 }
 
 // ShuffleBlocks randomizes the presentation order of blocks.
@@ -1478,6 +1594,9 @@ func (e *Experiment) End() {
 		}
 	}
 	e.finalizeData()
+	if err := e.Marker.Close(); err != nil {
+		log.Printf("onset marker: %v", err)
+	}
 	if e.DefaultFont != nil {
 		e.DefaultFont.Close()
 	}

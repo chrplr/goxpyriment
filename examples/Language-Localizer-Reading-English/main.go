@@ -43,21 +43,23 @@
 //	go run . -s 3 -set 2           # a subject already scanned on set 1
 //	go run . -w -s 999             # windowed mode, for testing
 //	go run . -autostart -s 999     # no SPACE, no trigger: start immediately
-//	go run . -s 3 -dlpio8 auto     # EEG/MEG: TTL out through a DLP-IO8-G
+//	go run . -s 3 -ttl dlpio8      # EEG/MEG: TTL out through a DLP-IO8-G (auto-detected)
 //
 // Flags: -w windowed mode, -d N display index, -s N subject ID, -run 1|2,
-// -set 1..5, -trigger KEY, -autostart, -fontsize N, -dlpio8 PORT|auto,
-// -photodiode, -photodiode-size N, -ttl-pin-sentence/-nonword/-probe N.
+// -set 1..5, -trigger KEY, -autostart, -fontsize N, -ttl KIND[:PORT],
+// -ttl-ms N, -photodiode, -photodiode-size N, -marker-frames N,
+// -ttl-pin-sentence/-nonword/-probe N. The -photodiode and -ttl flags are the
+// library's onset marker (control.MarkerFlags).
 //
 // -photodiode adds a 200 px white square in the top-left corner, flashed for
 // one frame on exactly the frames that carry a word onset and the probe, so a
 // photodiode can be compared against the TTL pin on a scope.
 //
-// With -dlpio8 the experiment marks the recording on three pins of the
-// DLP-IO8-G: pin 1 is pulsed at every word onset of a sentence trial, pin 2 at
-// every word onset of a nonword trial, and pin 3 at the press-probe. See the
-// ttl* constants below for why one pin per condition is used rather than
-// 8-bit codes.
+// With -ttl the experiment marks the recording on three pins of the device
+// (a DLP-IO8-G by design): pin 1 is pulsed at every word onset of a sentence
+// trial, pin 2 at every word onset of a nonword trial, and pin 3 at the
+// press-probe. See the pin constants below for why one pin per condition is
+// used rather than 8-bit codes.
 package main
 
 import (
@@ -101,7 +103,7 @@ const (
 // "press now" signal without a third-party image.
 const probeRadius = 110
 
-// TTL output on the DLP-IO8-G, when -dlpio8 selects one. The condition is
+// TTL output, when -ttl selects a device (e.g. -ttl dlpio8). The condition is
 // carried by WHICH pin pulses:
 //
 //	pin 1  pulsed at each word onset in a sentence trial
@@ -113,64 +115,38 @@ const probeRadius = 110
 // -ttl-pin-nonword and -ttl-pin-probe.
 //
 // Pins are numbered 1-8 as they are labelled on the board (and as
-// tests/test_dlpio8 numbers them). The triggers package counts lines from 0
-// instead, so every pin is converted with pinToLine before it reaches the
-// device: pin 1 is line 0.
+// tests/test_dlpio8 numbers them); pin N is the code with bit N-1 set.
 //
 // Only ever ONE pin changes at a time. The DLP-IO8-G has no write-all
 // command — triggers.DLPIO8.Send writes one byte per line, so an 8-bit code is
 // eight sequential edges over the serial link, and a recording system latching
 // on any edge would see the intermediate values. One pin per condition avoids
-// that entirely.
+// that entirely: the onset marker writes a single-bit code as one SetHigh.
 const (
 	defaultSentencePin = 1
 	defaultNonwordPin  = 2
 	defaultProbePin    = 3
-
-	ttlWordPulseMs = 10                    // minimum width of the word pulse
-	ttlProbePulse  = 10 * time.Millisecond // width of the probe pulse
-
-	// patchFrames is how many display frames the photodiode square is drawn
-	// for. This is a frame count because it is about what is on screen; the
-	// TTL width above is a duration because it is about the recording system,
-	// and the two are NOT the same clock: the render loop runs a frame ahead of
-	// scan-out, so "the next frame callback" arrives ~0.1 ms after the onset
-	// hook, not 16.7 ms after it. Clearing the line on a frame count produced
-	// 0.087 ms pulses (measured on an AD3, 2026-08-19) — too short for most
-	// EEG/MEG inputs to latch.
-	patchFrames = 1
 )
 
-// defaultPhotodiodeSize is the side, in pixels, of the square flashed in the
-// top-left corner by -photodiode. It goes up on the same frame whose flip fires
-// the TTL word pulse, so a photodiode on the corner of the screen and a scope on
-// the trigger pin measure the same event: the difference between the two traces
-// is the display pipeline's latency, which is what a photodiode is for.
-const defaultPhotodiodeSize = 200
+// Onset-marker defaults for this paradigm (see control.MarkerFlags). The TTL
+// width is a duration because it is about the recording system; the
+// photodiode square is a frame count because it is about what is on screen.
+// Clearing the line on a frame count instead produced 0.087 ms pulses
+// (measured on an AD3, 2026-08-19: the render loop runs a frame ahead of
+// scan-out) — too short for most EEG/MEG inputs to latch.
+const (
+	markerTTLMs        = 10  // TTL pulse width, words and probe
+	markerFrames       = 1   // frames the photodiode square is white
+	markerPhotodiodePx = 200 // side of the photodiode square
+)
 
-// pinToLine converts a board pin number (1-8) to the 0-indexed line the
-// triggers package expects.
-func pinToLine(pin int) int { return pin - 1 }
-
-// ttlDevice is the subset of triggers.OutputTTLDevice this experiment needs.
-// It is declared here, rather than importing the interface, so the browser
-// build compiles: the triggers package is desktop-only (see ttl.go/ttl_js.go).
-type ttlDevice interface {
-	SetHigh(line int) error
-	SetLow(line int) error
-	Pulse(line int, d time.Duration) error
-	AllLow() error
-	Close() error
+// pinCode is the TTL code that raises board pin (1-8) alone; 0 for pin 0.
+func pinCode(pin int) byte {
+	if pin < 1 {
+		return 0
+	}
+	return 1 << uint(pin-1)
 }
-
-// nullTTL is the do-nothing device used when -dlpio8 is not given.
-type nullTTL struct{}
-
-func (nullTTL) SetHigh(int) error              { return nil }
-func (nullTTL) SetLow(int) error               { return nil }
-func (nullTTL) Pulse(int, time.Duration) error { return nil }
-func (nullTTL) AllLow() error                  { return nil }
-func (nullTTL) Close() error                   { return nil }
 
 // trial is one row of a stimulus table.
 type trial struct {
@@ -200,18 +176,19 @@ func main() {
 	triggerKey := flag.String("trigger", "t", "key sent by the scanner to start the run (single character)")
 	autostart := flag.Bool("autostart", false, "skip the SPACE prompt and the scanner trigger; start the clock immediately (for timing audits)")
 	fontSize := flag.Int("fontsize", 72, "point size of the RSVP words")
-	dlpio8 := flag.String("dlpio8", "",
-		"send EEG/MEG TTL triggers through a DLP-IO8-G: a port name (/dev/ttyUSB0, COM3) or \"auto\" to detect one; empty means no triggers")
 	sentencePin := flag.Int("ttl-pin-sentence", defaultSentencePin,
-		"DLP-IO8-G pin pulsed at each word onset of a SENTENCE trial (1-8, as labelled on the board)")
+		"TTL pin pulsed at each word onset of a SENTENCE trial (1-8, as labelled on the board)")
 	nonwordPin := flag.Int("ttl-pin-nonword", defaultNonwordPin,
-		"DLP-IO8-G pin pulsed at each word onset of a NONWORD trial (1-8)")
+		"TTL pin pulsed at each word onset of a NONWORD trial (1-8)")
 	probePin := flag.Int("ttl-pin-probe", defaultProbePin,
-		"DLP-IO8-G pin pulsed at the press-probe (1-8); 0 to send no probe marker")
-	photodiode := flag.Bool("photodiode", false,
-		"flash a white square in the top-left corner for one frame at every word onset and at the probe, to be picked up by a photodiode")
-	photodiodeSize := flag.Float64("photodiode-size", defaultPhotodiodeSize,
-		"side of the photodiode square, in pixels")
+		"TTL pin pulsed at the press-probe (1-8); 0 to send no probe marker")
+	// -photodiode, -photodiode-size, -marker-frames, -ttl (e.g. -ttl dlpio8,
+	// -ttl dlpio8:/dev/ttyUSB0) and -ttl-ms mark every word onset and the probe.
+	control.MarkerFlags(control.MarkerConfig{
+		PhotodiodeSize: markerPhotodiodePx,
+		Frames:         markerFrames,
+		TTLDuration:    markerTTLMs * time.Millisecond,
+	})
 
 	exp := control.NewExperimentFromFlags(
 		"langloc_reading_english",
@@ -241,16 +218,9 @@ func main() {
 	}
 	log.Printf("loaded %d trials from %s (%s)", len(trials), csvName, conditionOrder(trials))
 
-	// TTL output for EEG/MEG. A named port that cannot be opened is fatal:
-	// starting a recording session whose triggers are silently missing wastes
-	// the session. All lines are driven LOW before the first trial, so the
-	// recording starts from a known state.
-	ttl, ttlPort, err := openTTL(*dlpio8)
-	if err != nil {
-		log.Fatalf("-dlpio8: %v", err)
-	}
-	defer ttl.Close()
-	if ttlPort != "" {
+	// Pin checks. (A device that cannot be opened has already stopped the
+	// program, in NewExperimentFromFlags.)
+	if exp.Marker.TTLEnabled() {
 		for _, p := range []struct {
 			name string
 			pin  int
@@ -266,29 +236,14 @@ func main() {
 			log.Fatalf("-ttl-pin-sentence and -ttl-pin-nonword are both pin %d: the two conditions would be indistinguishable",
 				*sentencePin)
 		}
-		if lerr := ttl.AllLow(); lerr != nil {
-			log.Fatalf("-dlpio8: cannot drive %s low: %v", ttlPort, lerr)
-		}
 		probeDesc := fmt.Sprintf("pin %d = probe", *probePin)
 		if *probePin == 0 {
 			probeDesc = "no probe marker"
 		}
 		log.Printf("TTL triggers on %s: pin %d = word onset (sentences), pin %d = word onset (nonwords), %s",
-			ttlPort, *sentencePin, *nonwordPin, probeDesc)
-	}
-
-	// A failing trigger must not abort a run in progress, but it must not pass
-	// unnoticed either: the first failure is logged and counted, and the count
-	// is reported at the end and written to the data file's metadata.
-	ttlErrors := 0
-	ttlFail := func(what string, err error) {
-		if err == nil {
-			return
-		}
-		ttlErrors++
-		if ttlErrors == 1 {
-			log.Printf("WARNING: TTL %s failed: %v (further failures counted silently)", what, err)
-		}
+			exp.Marker.OutputDesc(), *sentencePin, *nonwordPin, probeDesc)
+		exp.AddExperimentInfo(fmt.Sprintf("ttl pins: %d = word onset (sentences), %d = word onset (nonwords), %s",
+			*sentencePin, *nonwordPin, probeDesc))
 	}
 
 	// Fixation crosses, matching the other localizers in this repository:
@@ -300,35 +255,6 @@ func main() {
 	stimuli.PreloadVisualOnScreen(exp.Screen, fixGreen)
 	stimuli.PreloadVisualOnScreen(exp.Screen, fixGrey)
 	stimuli.PreloadVisualOnScreen(exp.Screen, probe)
-
-	// Photodiode patch, in the top-left corner of the drawable area. Positions
-	// are centre-relative with +Y up, so the top-left corner is at
-	// (-width/2 + side/2, +height/2 - side/2). nil when -photodiode is off,
-	// which is what every draw site tests.
-	var patch *stimuli.Rectangle
-	if *photodiode {
-		// The same size CenterToSDL works from, or the corner will not be the
-		// corner: it uses LogicalSize when one has been set, and the renderer
-		// output size otherwise.
-		var w, h float32
-		if ls := exp.Screen.LogicalSize; ls != nil {
-			w, h = ls.X, ls.Y
-		} else {
-			ow, oh, serr := exp.Screen.Size()
-			if serr != nil {
-				log.Fatalf("-photodiode: cannot read the screen size: %v", serr)
-			}
-			w, h = float32(ow), float32(oh)
-		}
-		side := float32(*photodiodeSize)
-		if side <= 0 || side > w || side > h {
-			log.Fatalf("-photodiode-size: %.0f px does not fit on a %.0fx%.0f screen", side, w, h)
-		}
-		patch = stimuli.NewRectangle(-w/2+side/2, h/2-side/2, side, side, control.White)
-		stimuli.PreloadVisualOnScreen(exp.Screen, patch)
-		log.Printf("photodiode: %.0f px white square in the top-left corner of the %.0fx%.0f drawable area, "+
-			"%d frame(s) at each word onset and at the probe", side, w, h, patchFrames)
-	}
 
 	exp.AddDataVariableNames([]string{
 		"run", "set", "trial", "block", "item", "condition", "words",
@@ -435,78 +361,20 @@ func main() {
 			}
 		}
 
-		// TTL hooks. onOnset runs immediately AFTER the flip that puts a word on
-		// screen, on the same SDL clock instant as the logged TimingLog.OnsetNS,
-		// so the trigger marks the displayed onset rather than GPU-submission
-		// time. It must stay short — one single-byte serial write is — and
-		// never block; the line is dropped again by onFrame one frame later.
+		// Onset marking. onFrame runs just before each flip; on the first frame
+		// of a word it arms the marker, so the photodiode square turns white in
+		// the flip that puts the word on screen and the trial's condition pin
+		// is raised right after it, on the same SDL clock instant as the logged
+		// TimingLog.OnsetNS. The marker lowers the pin markerTTLMs later.
 		//
-		// wordLine is set once per trial, before the stream, to the line that
-		// codes this trial's condition. The hooks read it rather than the trial
-		// itself so the timing-critical path does nothing but one serial write.
-		wordLine := pinToLine(*sentencePin)
-
-		// pulseEndNS is when the current word pulse may be dropped, on the SDL
-		// clock; 0 means no pulse is up. Timing the width rather than counting
-		// frames is what makes it a real 10 ms edge — see ttlWordPulseMs.
-		var pulseEndNS uint64
-		onOnset := func(_ int, onsetNS uint64) error {
-			ttlFail("word onset", ttl.SetHigh(wordLine))
-			pulseEndNS = onsetNS + uint64(ttlWordPulseMs)*1_000_000
-			return nil
-		}
+		// wordCode is set once per trial, before the stream, to the pin that
+		// codes this trial's condition.
+		wordCode := pinCode(*sentencePin)
 		onFrame := func(ctx stimuli.FrameContext) error {
-			// Words have no ISI, so the pulse is dropped by the first frame
-			// callback at least ttlWordPulseMs after the rising edge, rather
-			// than at the start of an off-phase. The achieved width is thus
-			// between ttlWordPulseMs and one frame more than it.
-			if pulseEndNS != 0 && ctx.NowNS >= pulseEndNS {
-				ttlFail("word offset", ttl.SetLow(wordLine))
-				pulseEndNS = 0
-			}
-			// The photodiode patch is drawn on top of the word, on the frame
-			// that is about to be flipped — the same frame whose flip fires the
-			// TTL from onOnset. Drawing it here rather than adding it to the
-			// stream keeps the stream's own timing untouched: it is one more
-			// filled rect in a frame that was being rendered anyway.
-			if patch != nil && ctx.OnPhase && ctx.Frame < patchFrames {
-				if derr := patch.Draw(ctx.Screen); derr != nil {
-					return derr
-				}
+			if ctx.OnPhase && ctx.Frame == 0 {
+				exp.Marker.Arm(wordCode)
 			}
 			return nil
-		}
-
-		// showProbe presents the probe, flashing the patch with it for the same
-		// number of frames as a word, then redrawing the probe alone. Without
-		// -photodiode it is exactly exp.ShowTS.
-		showProbe := func() (uint64, error) {
-			if patch == nil {
-				return exp.ShowTS(probe)
-			}
-			if cerr := exp.Screen.Clear(); cerr != nil {
-				return 0, cerr
-			}
-			if derr := probe.Draw(exp.Screen); derr != nil {
-				return 0, derr
-			}
-			if derr := patch.Draw(exp.Screen); derr != nil {
-				return 0, derr
-			}
-			ts, ferr := exp.Screen.FlipTS()
-			if ferr != nil {
-				return 0, ferr
-			}
-			// Second frame: the probe without the patch, so the flash is as
-			// short as the ones marking the words.
-			if cerr := exp.Screen.Clear(); cerr != nil {
-				return ts, cerr
-			}
-			if derr := probe.Draw(exp.Screen); derr != nil {
-				return ts, derr
-			}
-			_, ferr = exp.Screen.FlipTS()
-			return ts, ferr
 		}
 
 		for i, t := range trials {
@@ -520,12 +388,12 @@ func main() {
 				return serr
 			}
 
-			// Which line this trial's word onsets will pulse. Chosen here, in
-			// the blank before the first word, so the stream's onset hook has
+			// Which pin this trial's word onsets will pulse. Chosen here, in
+			// the blank before the first word, so the frame callback has
 			// nothing to decide.
-			wordLine = pinToLine(*sentencePin)
+			wordCode = pinCode(*sentencePin)
 			if t.cond == "N" {
-				wordLine = pinToLine(*nonwordPin)
+				wordCode = pinCode(*nonwordPin)
 			}
 
 			if werr := waitUntil(t.onsetMs + preBlankMs); werr != nil {
@@ -534,23 +402,18 @@ func main() {
 
 			// 12 words at 450 ms each, no gap. The stream is VSYNC-locked and
 			// records every key event with a hardware timestamp, so presses
-			// made while reading are not lost. The hooks fire a TTL at each
-			// word onset when -dlpio8 is in use, and cost nothing when it is
-			// not (the null device's methods are empty).
+			// made while reading are not lost. The frame callback marks each
+			// word onset; without -photodiode or -ttl the marker does nothing.
 			stims := make([]stimuli.Stimulus, len(t.words))
 			for j, w := range t.words {
 				stims[j] = stimuli.NewTextLine(w, 0, 0, exp.ForegroundColor)
 			}
 			elements := stimuli.MakeRegularStream(stims, wordMs*time.Millisecond, 0)
-			events, timing, perr := stimuli.PresentStreamOfStimuliHooks(
-				exp.Screen, elements, 0, 0, onFrame, onOnset)
+			events, timing, perr := stimuli.PresentStreamOfStimuliFunc(
+				exp.Screen, elements, 0, 0, onFrame)
 			if perr != nil {
 				return perr // includes EndLoop on ESC, handled by exp.Run
 			}
-			// The stream ends on the last word's final frame; make sure the
-			// pulse is not left high if that frame was also its first.
-			ttlFail("word offset", ttl.SetLow(wordLine))
-			pulseEndNS = 0
 			for _, ev := range events {
 				if isResponse(ev, respKeys) {
 					credit(ev.TimestampNS)
@@ -560,19 +423,16 @@ func main() {
 
 			// Press-probe for 400 ms. It opens this trial's response window and
 			// closes the previous one: an unanswered probe stays unanswered.
-			probeNS, serr := showProbe()
+			// Its onset is marked like a word's: the square in its first flip,
+			// the probe pin right after it (none with -ttl-pin-probe 0).
+			exp.Marker.Arm(pinCode(*probePin))
+			probeNS, serr := exp.ShowTS(probe)
 			if serr != nil {
 				return serr
 			}
 			records[i].probeOnsetNS = probeNS
 			records[i].probeOnsetMs = int64(probeNS-triggerNS) / 1_000_000
 			pending = i
-
-			// Probe marker. Pulse blocks for its 10 ms, which is harmless here:
-			// the next deadline is 400 ms away and the schedule is absolute.
-			if *probePin > 0 {
-				ttlFail("probe", ttl.Pulse(pinToLine(*probePin), ttlProbePulse))
-			}
 
 			// The previous trial can no longer receive a response: its row is
 			// final and is written now, so a run cut short by anything other
@@ -608,19 +468,6 @@ func main() {
 	// one where ESC was pressed.
 	flushUpTo(len(records))
 
-	// Leave the recording system with every line low, and record how the
-	// trigger link behaved: a count in the session metadata outlives the
-	// terminal it was printed to.
-	if ttlPort != "" {
-		ttlFail("all low", ttl.AllLow())
-		exp.Data.WriteComment(fmt.Sprintf("ttl_device=DLP-IO8-G port=%s errors=%d", ttlPort, ttlErrors))
-		if ttlErrors > 0 {
-			log.Printf("WARNING: %d TTL operations failed during this run — check the triggers in the recording",
-				ttlErrors)
-		} else {
-			log.Printf("TTL: all triggers sent without error on %s", ttlPort)
-		}
-	}
 	printSummary(records)
 }
 

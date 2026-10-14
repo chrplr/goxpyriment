@@ -558,7 +558,7 @@ Use this decision guide before committing to a timing strategy.
 | Stimulus duration measured in frames (e.g. 2-frame mask) | Per-frame loop with `screen.Flip()` (paced, safe on all drivers), or `PresentStreamOfImages` (Section 10) |
 | Multi-stimulus sequence, RT relative to a specific stimulus | `exp.ShowTS(stim)` + `exp.Keyboard.GetKeyEventTS(...)` — nanosecond timestamps on the same SDL clock; subtract directly |
 | RSVP or rapid animation (frame-accurate presentation of many items) | `PresentStreamOfImages` / `PresentStreamOfText` (Section 10) — GC disabled, VSYNC-locked, full timing log |
-| EEG/MEG synchronisation required | Add a TTL pulse via `triggers` immediately after `exp.ShowTS` (Section 17) |
+| EEG/MEG synchronisation required | The onset marker: `control.MarkerFlags()` + `exp.Marker.Arm(code)` before the onset, which gives a photodiode square and a TTL code on the same flip (Section 17) |
 | Stimulus duration not a multiple of the frame period (e.g. 10 ms, 17 ms) | Variable Refresh Rate mode — see below |
 
 **OS considerations.** Presentation latency depends heavily on whether the display compositor is active — see the next section. For EEG work, always verify onset timing with a photodiode regardless of OS.
@@ -1368,6 +1368,12 @@ from a later `FrameCallback`; never sleep or call a blocking `Pulse`). The
 pure-audio equivalent is `PlayStreamOfSoundsHook(elements, onOnset)`, firing at the
 `Play()` instant. See the API reference and the `test_stream_trigger` example.
 
+For the usual case — a photodiode square and a TTL code at each onset — arm the
+library's onset marker from the `FrameCallback` instead of writing to a device
+yourself: `if ctx.OnPhase && ctx.Frame == 0 { exp.Marker.Arm(code) }`. The
+marker writes the code right after the onset flip and clears it on a timer (see
+[Onset markers](#onset-markers-photodiode-square-and-ttl-codes) in Section 17).
+
 ---
 
 ## 11. Audio
@@ -2164,6 +2170,33 @@ construction; the GPU texture is allocated lazily on the first `Update` or
 `Draw`. For playing several clips back to back without a gap, use
 `media.MovieManager` (see `docs/MediaMovies.md`).
 
+#### Marking chosen frames for a recording
+
+To mark the onset of particular video frames with the onset marker
+(photodiode square and TTL code — see Section 17), list them after the
+callback:
+
+```go
+control.MarkerFlags()     // before NewExperimentFromFlags: -photodiode, -ttl, ...
+...
+events, logs, err := stimuli.PlayGvFunc(exp.Screen, "movie.gv", 0, 0, nil,
+    stimuli.GvMark{Frame: 0, Code: 1},    // movie onset
+    stimuli.GvMark{Frame: 186, Code: 2})  // the event inside the movie
+```
+
+Each mark is armed before the frame's **first** refresh, so the square turns
+white and the code is written on the flip logged as `logs[frame].FlipNS`,
+however many refreshes each video frame is held for. Code 0 marks a frame with
+the square only. A frame outside the video, or listed twice, is an error before
+playback starts; without `-photodiode`/`-ttl` the marks do nothing. If a mark
+near the end leaves the square still white when the video stops, the last frame
+is held, redrawn, until it is black (at most the marker's frame count).
+
+Checked in software by `tests/test_onset_marker` (a 30 fps clip on a 60 Hz
+display, so each frame is held for 2 refreshes; frames 0, 10 and 32 marked):
+each code was written 0.8–3.6 µs after its frame's logged flip, and the square
+was white on exactly the 3 refreshes from each marked frame's first one.
+
 #### Firing a trigger on a chosen frame
 
 `PlayGvFunc` is `PlayGv` with a per-frame callback, invoked immediately after
@@ -2190,6 +2223,13 @@ see the warning below.
 
 `tests/test_gv_sync` is a complete worked example: it plays a generated flash
 train and fires a TTL pulse at each bright onset for photodiode verification.
+
+Because the callback runs *after* the frame's first flip, arming the onset
+marker from it (`exp.Marker.Arm`) marks the flip after that one — a hold
+refresh of the same frame when the video is slower than the display. Use the
+`GvMark` list above to mark frames; use the callback for logging, aborting,
+or a bare TTL (`exp.Marker.Fire`, written right after the frame's flip but with
+no square).
 
 If you need to draw around the video as well, drive the loop yourself instead.
 `CurrentFrame()` returns the frame now in the GPU texture — the one the next
@@ -2447,6 +2487,89 @@ All trigger devices in goxpyriment share two interfaces:
 
 Lines are **0-indexed (0–7)**. Bit N of a bitmask drives line N.
 
+### Onset markers: photodiode square and TTL codes
+
+For marking stimulus onsets in a recording, use the library's **onset marker**
+rather than driving a device yourself. At each marked onset it does two things
+on the same flip:
+
+- a square in the top-left corner of the drawing area turns white for 3 frames
+  (black on every other frame), for a photodiode taped to the screen;
+- a TTL code is written to the trigger device right after the flip, and the
+  lines are cleared 3 frame periods later (50 ms at 60 Hz).
+
+```go
+func main() {
+    control.MarkerFlags()       // -photodiode, -photodiode-size, -marker-frames, -ttl, -ttl-ms
+    exp := control.NewExperimentFromFlags("My task", control.Gray, control.White, 32)
+    defer exp.End()
+    ...
+    err := exp.Run(func() error {
+        for _, t := range trials {
+            exp.Marker.Arm(t.code)            // the next flip is an onset
+            onset, _ := exp.ShowTS(t.stim)    // square + code go out with this flip
+            key, keyTS, _ := exp.Keyboard.GetKeyEventTS(keys, -1)
+            exp.Marker.Fire(responseCode)     // a response: code now, no square
+            ...
+        }
+        return control.EndLoop
+    })
+    ...
+}
+```
+
+```bash
+go run . -s 1 -photodiode -ttl megttlbox:/dev/ttyACM0
+go run . -s 1 -photodiode -ttl dlpio8          # auto-detected
+go run . -s 1 -ttl null                        # no hardware: exercises the code path
+```
+
+- **The flags are opt-in.** Only programs that call `control.MarkerFlags()`
+  (before `NewExperimentFromFlags`) have them. A paradigm can change the
+  defaults, e.g. `control.MarkerFlags(control.MarkerConfig{Photodiode: true})`.
+  Programs built with `NewExperiment` set `exp.MarkerConfig` before `Initialize`.
+- **`-ttl` names a device in one string**, `KIND[:PORT]`: `dlpio8[:PORT|auto]`,
+  `dlpio20`, `megttlbox:/dev/ttyACM0`, `mmbts:/dev/ttyACM0`,
+  `parallel[:/dev/parport0]`, `gpio`, `ft232h`, `labjackt4:HOST`, `null` (see
+  `triggers.DeviceSpecUsage`). A device that cannot be opened stops the program
+  before any window opens. Hardware triggers are desktop-only; the browser
+  build refuses `-ttl`, while `-photodiode` works there.
+- **Any presentation path is covered.** The marker is driven from inside
+  `Screen.Update`, which every flip goes through: `Show`/`ShowTS`, streams
+  (arm from the `FrameCallback` on `ctx.OnPhase && ctx.Frame == 0`), `.gv`
+  video (list the frames to mark: `PlayGvFunc(..., stimuli.GvMark{Frame, Code})`,
+  Section 15), and
+  `PlaySyncedWithFlip` (arm before the call). For a sound, the marker marks the
+  flip that starts it; the audio output latency is in neither signal.
+- **`ShowTS` holds an armed onset** until the square is black again (4 flips by
+  default), so a key wait after it cannot leave the square white; it still
+  returns the first flip's timestamp, and reaction times are unaffected.
+  `ShowFrames`/`BlankFrames` never hold. Wrap a composite scene in
+  `stimuli.DrawFunc` to present it through `ShowTS`.
+- **`Fire(code)`** writes a code immediately with no square — for events that
+  are not a flip: a response once detected, a sound started with `Play`.
+- **Recorded in the -info.txt**: the square and the device used, and at the end
+  `marker stats:` — onsets, codes, clears, write errors, overlaps (a code
+  written while the previous one was still on the lines) and merged flashes
+  (onsets less than 4 frames apart). A failed write is counted and logged once;
+  it does not end the session.
+
+**One line per event type is the safe choice on the DLP boxes.** Their `Send`
+writes the eight lines one command at a time — about 0.6 ms on the DLP-IO8,
+3.5 ms on the DLP-IO20 — and a recording sampling during that window can latch
+a code that was never sent. A code with a single bit set (1, 2, 4, … 128)
+avoids it: the marker writes it as one `SetHigh` and clears it with one
+`SetLow`. Multi-bit codes are fine on the MEG TTL box when its firmware
+advertises the atomic-port command (the `-info.txt` records the firmware); older
+firmware leaves a narrow window too.
+
+Two more limits: onsets closer than the TTL duration overlap on the lines
+(lower `-ttl-ms`), and a multi-bit code on a slow device delays the write by
+the times above.
+The offset between the code and the photons is the display's latency (one to
+three frames): measure it once per rig with the photodiode and subtract it in
+analysis.
+
 ### Sending triggers (EEG event codes)
 
 ```go
@@ -2460,9 +2583,10 @@ out, _, err := triggers.AutoDetectDLPIO8()
 if err != nil { log.Fatal(err) }
 defer out.Close()
 
-// In the trial loop:
+// In the trial loop: raise line 0 right after the flip; only the falling
+// edge is deferred (see "Pulse blocks" below).
 onset, _ := exp.ShowTS(stim)
-out.Pulse(0, 10*time.Millisecond)  // 10 ms pulse on line 0 = EEG event marker
+triggers.FireTriggerSync(out, 0, 10*time.Millisecond)
 ```
 
 For the NeuroSpin MEGTTLBox:

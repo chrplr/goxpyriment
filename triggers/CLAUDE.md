@@ -35,6 +35,32 @@ subtracted in analysis — the library never adjusts a timestamp. See
 [docs/TimingTests.md](../docs/TimingTests.md) and
 [docs/TriggerJitterForEEGandMEG.md](../docs/TriggerJitterForEEGandMEG.md).
 
+## Opening a device by name (open.go)
+
+`triggers.Open(spec)` parses and opens a device named in one string. It is what
+`-ttl` (control's onset marker) and `tests/internal/trigdev`'s `-device` use.
+`DeviceSpecUsage` documents the syntax:
+
+- **Format:** `KIND[:PORT][,key=value,...]`, or `KIND[:key=value,...]`.
+- **First bare value:** the value right after the colon is the kind's address:
+  the port, the host for labjackt4, the chip for gpio.
+- **Auto-detection:** `dlpio8`, `dlpio20` and `parallel` auto-detect when no
+  port is given or the port is `auto`.
+- **Kinds:** dlpio8, dlpio20, megttlbox, mmbts, parallel, gpio, ft232h,
+  labjackt4 and null. `parport` and `megttl` are accepted as aliases.
+- **`pin=N`** (1-8) is accepted and validated, but `Open` ignores it: a device is
+  opened whole.
+- **Failure:** an open failure is an error. It never falls back to a null device.
+
+For marking stimulus onsets in an experiment, prefer the library's onset marker
+(`control.MarkerFlags`, `exp.Marker.Arm`) over calling the device yourself. It
+does all of the following:
+- writes the code right after the flip
+- serialises the writes
+- clears the lines on a timer
+- counts failures
+- draws the matching photodiode square
+
 ## Per-device notes
 
 Wiring, protocol, timing measurements and quirks for each device are in

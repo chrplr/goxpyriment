@@ -179,8 +179,6 @@ func main() {
 		"onset_ms", // stimulus onset relative to the first event of the block
 	})
 
-	// Written with WriteComment rather than AddExperimentInfo: the latter only
-	// stores the strings on the design object, which nothing ever writes out.
 	// These land in the session's -info.txt, flushed when the data file is
 	// finalized, so a data set carries the design it was collected under.
 	taskInfo(exp, "--TASK INFO")
@@ -542,11 +540,8 @@ func framesFor(exp *control.Experiment, ms int) int {
 	return n
 }
 
-// taskInfo writes one metadata line into the session's companion -info.txt.
-//
-// Experiment.AddExperimentInfo is not used: it appends to design.Experiment's
-// ExperimentInfo slice, which no writer ever reads, so anything recorded that
-// way is silently lost.
+// taskInfo writes one metadata line into the session's companion -info.txt,
+// under the --TASK INFO section rather than as an AddExperimentInfo "e" line.
 func taskInfo(exp *control.Experiment, line string) {
 	if exp.Data != nil {
 		exp.Data.WriteComment(line)

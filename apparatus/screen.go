@@ -106,6 +106,9 @@ type Screen struct {
 	heldToTarget  bool   // whether the last hold actually waited
 	anchorIsHW    bool   // whether anchorNS is a measured vblank rather than a schedule
 
+	marker     *Marker      // onset marker drawn and fired by Update; nil when none (see SetMarker)
+	prePresent func() error // see SetPrePresentHook
+
 	vbl        vblank.Timer // kernel vblank clock, nil when none is available
 	vblChecked bool         // whether the one-time probe for it has run
 
@@ -536,6 +539,17 @@ func (s *Screen) Update() error {
 			return fmt.Errorf("apparatus.Screen.Update: resetting render target: %w", err)
 		}
 	}
+	// The onset marker's square goes on top of everything the caller drew.
+	if s.marker != nil {
+		if err := s.marker.drawSquare(s.Renderer); err != nil {
+			return fmt.Errorf("apparatus.Screen.Update: %w", err)
+		}
+	}
+	if s.prePresent != nil {
+		if err := s.prePresent(); err != nil {
+			return fmt.Errorf("apparatus.Screen.Update: pre-present hook: %w", err)
+		}
+	}
 	// The deadline is one frame after the PREVIOUS frame's anchor, so it has to
 	// be sampled before this frame overwrites it.
 	anchor := s.anchorNS
@@ -553,6 +567,10 @@ func (s *Screen) Update() error {
 	// would return the PREVIOUS frame's vblank, and predicting the next one
 	// would be the synthesised timestamp this whole change exists to remove.
 	s.recordOnset()
+	// 4. The marker's code, right after the timestamp it marks.
+	if s.marker != nil {
+		s.marker.afterFlip(s.lastFlipNS)
+	}
 	return nil
 }
 

@@ -58,7 +58,7 @@ go run ./examples/Retinotopy-multifocal -w -s 1 -fullfield
 go run ./examples/Retinotopy-multifocal -s 1
 
 # MEG: pulse TTL line 0 of a DLP-IO8 at every trial onset.
-go run ./examples/Retinotopy-multifocal -s 1 -trigger dlpio8 -trigger-line 0
+go run ./examples/Retinotopy-multifocal -s 1 -ttl dlpio8 -ttl-line 0
 
 # No photodiode square (it is on by default).
 go run ./examples/Retinotopy-multifocal -s 1 -photodiode=false
@@ -85,16 +85,27 @@ Besides the standard `-w`, `-d N` and `-s <id>`:
 | `-seed N` | 1 | Seed for trial durations and target times |
 | `-screen-width-cm` / `-viewing-distance-cm` | 30 / 50 | Used when the participant dialog is skipped (`-s` given, or in the browser) |
 | `-wait-trigger` | off | Wait for the scanner pulse (key `t`) before the run |
-| `-trigger NAME` | none | `none`, `dlpio8`, `dlpio20`, `ft232h`, `labjackt4`, `parport`, `megttl` |
-| `-trigger-device S` | "" | Serial port or host, for the devices that need one |
-| `-trigger-line N` | 0 | TTL line to pulse (0–7) |
-| `-trigger-ms N` | 5 | Pulse width; must be shorter than the shortest trial |
-| `-photodiode` | on | Flash a white square in the top-left corner for one frame at every trial onset (habituation flashes included), drawn in the same flip as the onset; the square is black on every other frame (and on the wait-for-trigger screen), because grey→white is too small a step for reliable photodiode detection. The TTL marker is raised when that flip returns, which is one to three frames *before* the square reaches the screen; the photodiode measures that lag. `-photodiode=false` disables it |
+| `-ttl KIND[:PORT]` | none | TTL device for the per-trial markers: `dlpio8`, `dlpio20`, `megttlbox:/dev/ttyACM0`, `mmbts:/dev/ttyACM0`, `parallel`, `gpio`, `ft232h`, `labjackt4:HOST`, `null` |
+| `-ttl-line N` | 0 | TTL line to pulse (0–7) |
+| `-ttl-ms N` | 5 | Pulse width in ms; must be shorter than the shortest trial |
+| `-photodiode` | on | Flash a white square in the top-left corner for one frame at every trial onset (habituation flashes included), drawn in the same flip as the onset; the square is black on every other frame, instructions included, because grey→white is too small a step for reliable photodiode detection. The TTL marker is raised when that flip returns, which is one to three frames *before* the square reaches the screen; the photodiode measures that lag. `-photodiode=false` disables it |
 | `-photodiode-size N` | 100 | Side of the photodiode square, in pixels |
+| `-marker-frames N` | 1 | Frames the square stays white from each onset |
 
-Hardware triggers are desktop-only: `triggers/` does not build for the browser,
-so it is behind a `!js` build tag and the browser build accepts only
-`-trigger=none`.
+The photodiode square and the TTL pulse are the library's onset marker
+(`control.MarkerFlags`, `exp.Marker`). The pulse is raised with one `SetHigh`
+right after the onset flip and lowered by a timer `-ttl-ms` later. Until
+October 2026 the device was chosen with `-trigger NAME -trigger-device S
+-trigger-line N -trigger-ms N`; `-trigger megttl -trigger-device /dev/ttyACM0`
+is now `-ttl megttl:/dev/ttyACM0` (`megttl` and `parport` are still accepted as
+names). A device that cannot be opened stops the program before any window
+opens. Hardware triggers are desktop-only: the browser build refuses `-ttl`;
+`-photodiode` works there.
+
+Checked in software (windowed, 60 Hz, `-autostart -habituation 1 -trials 3
+-ttl-line 2`, a logging stand-in device): at each of the 4 onsets the corner
+was white for exactly one frame, line 2 was raised 2–21 µs after the onset
+flip timestamp and lowered 5.2–5.5 ms later. Not measured on hardware.
 
 ## Data
 

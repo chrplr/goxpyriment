@@ -297,6 +297,50 @@ replacements are `control.Experiment.ShowFrames(stim, n)` and
 `control.Experiment.BlankFrames(n)`, which run the explicit loop and return the
 first flip's timestamp. Do not reintroduce a hold that skips the redraw.
 
+## Onset marker (marker.go)
+
+`Screen.SetMarker(m)` attaches an `apparatus.Marker`, and `Update` drives it.
+That puts it in the one function every library flip goes through: Show, streams,
+video, `PlaySyncedWithFlip`, menus. `CalibrateRefresh` is the only exception; it
+calls `present()` directly, and it runs before a marker is attached.
+
+- **Before `present()`:** `drawSquare` paints the photodiode square on top of
+  everything the caller drew. It is white while an armed onset's frames last and
+  black on every other frame. Black, not background grey, because black→white is
+  the step a photodiode detects reliably.
+  - The rect is the constant `FRect{0,0,side,side}`, i.e. the top-left corner of
+    the drawing area in drawing-space units. With letterboxing that is the
+    corner of the logical area, not of the panel.
+  - The draw colour and blend mode are saved and restored. The blend mode is
+    forced to NONE, as in `fillWholeTarget`.
+- **After `recordOnset()`:** `afterFlip(lastFlipNS)` writes the armed code. It
+  does that first, because the write is the timing-critical part.
+- **Clearing the code:** a single goroutine with a reused timer drives the lines
+  back to 0 `TTLDuration` later.
+  - All device writes go through the marker's mutex, because the devices are not
+    internally synchronised.
+  - A new code pushes the clear later; it is counted as an `Overlap`.
+  - A single-bit code written to all-low lines goes out as one `SetHigh` and is
+    cleared with one `SetLow`, when the output has those methods (every
+    `triggers.OutputTTLDevice` does). On the DLP boxes `Send` writes the eight
+    lines one command at a time, and a recording can latch the half-written
+    code. Anything else is a `Send`.
+  - The first write error is logged and the rest are counted.
+- **Thread rules:** `Arm` and the hooks are flip-thread only. `Fire` and `Stats`
+  may be called from any goroutine.
+- **No per-frame allocation:** the hooks must not allocate, since timing loops
+  run with GC off. `marker_test.go` checks this with `AllocsPerRun`.
+- **Holding until black:** a presentation that stops flipping (a key wait) after
+  an armed onset must keep presenting while `Busy()`, so the square doesn't stay
+  white. That is Frames+1 flips. `control.Experiment.ShowTS` does this.
+- **Reading back pixels:** `SetPrePresentHook(f)` runs `f` after the square is
+  drawn and before present. It is the only place the finished frame can be read
+  back (`ReadPixels`): see "Never present a frame with no draw calls" above.
+  `tests/test_onset_marker` uses it.
+
+`apparatus` does not import `triggers`. `MarkerOutput{Send, AllLow, Close}` is a
+structural interface that `triggers.OutputTTLDevice` satisfies.
+
 ## Key conventions
 
 - `Clear()` + `Update()` on `Screen` maps to SDL clear + present; `Update()` blocks on VSYNC (browser: until next requestAnimationFrame).

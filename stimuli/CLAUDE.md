@@ -86,6 +86,31 @@ events, timing, err := stimuli.PresentStreamOfStimuliFunc(screen, elements, 0, 0
 
 `FrameContext` carries `Screen, Index, Frame, OnPhase, FirstFrame, NowNS` (pre-flip `sdl.TicksNS()`), `Elapsed`, and `Events` (through the previous frame). Return `nil` to continue, `sdl.EndLoop` to stop gracefully, any other error to abort. This unlocks persistent overlays (trial counters, frame borders, fixation) and mid-stream feedback that the plain stream functions can't express. On held (audio) frames the stream re-renders the carried-over visual before the callback, so overlays no longer accumulate. Content drawn *outside* the stream is not carried over at all — the stream cannot reconstruct what it did not draw, so a held slot with no preceding stream visual shows the background. Put such content in the stream as a `VisualStimulus` if it must persist.
 
+### Marking onsets for a recording
+
+To mark each element onset with the onset marker (photodiode square plus TTL
+code), arm it from the callback on frame 0 of the on-phase:
+
+```go
+cb := func(ctx stimuli.FrameContext) error {
+    if ctx.OnPhase && ctx.Frame == 0 {
+        exp.Marker.Arm(code) // 0 = square only
+    }
+    return nil
+}
+```
+
+The callback runs before the flip, so the square and the code land on the flip
+whose timestamp is `TimingLog.OnsetNS`. One exception: an audio element whose
+`DurationOn` rounds to zero frames starts on an off-frame. That is never armed
+this way, so send its code from the `OnsetCallback` with `exp.Marker.Fire`.
+
+### DrawFunc
+
+`stimuli.DrawFunc(func(*apparatus.Screen) error)` is a composite scene as a
+`VisualStimulus`. That lets it go through `exp.Show`/`ShowTS`, and so get the
+onset-marker hold. The function must be safe to run once per held frame.
+
 ## MPEG-1 video (with MP2 audio)
 
 `Video` plays an MPEG-1 program stream (`.mpg` / `.mpeg`) decoded in pure Go by
@@ -128,6 +153,8 @@ events, logs, err := stimuli.PlayGvFunc(screen, "stim.gv", 0, 0, func(ctx stimul
 `GvFrameContext` carries `Screen`, `Frame` (0-based video frame index), `OnsetNS` (SDL timestamp of that frame's **first** flip — same clock as event timestamps), and `Hold` (refreshes this frame is shown for). The callback runs once per video frame, immediately after the onset flip and before the remaining hold flips, so a trigger raised there lands as close to the onset as possible.
 
 It runs inside the GC-disabled VSYNC loop: do not allocate heavily, never sleep, and never call a blocking `Pulse` — raise the line here and lower it from a later frame. `PlayGv` is `PlayGvFunc` with a nil callback.
+
+**Marking frames for a recording:** pass `GvMark{Frame, Code}` values after the callback (`PlayGvFunc(screen, path, x, y, nil, stimuli.GvMark{Frame: 186, Code: 2})`). The loop arms the screen's onset marker before each listed frame's *first* refresh, so the square and the code land on the flip logged as that frame's `FlipNS` at any hold. Arming from the callback cannot: it runs after the first flip, so it marks a hold refresh when hold > 1. Frames are validated up front (`gvMarkTable`); a mark near the end is completed by holding the last frame while `Marker().Busy()`. `tests/test_onset_marker` checks it on `wedges.gv` (30 fps, hold 2 at 60 Hz).
 
 **Frame rate:** plays at the rate in the `.gv` header, holding each frame for `refresh / fps` refreshes (30 fps on 60 Hz → 2 refreshes per frame). Both rates are rounded first (59.94 Hz + 29.97 fps behave as 60 + 30). Only exact integer ratios work; 24 fps on 60 Hz needs 2.5 and returns an error naming a workable rate, because the pulldown would make onsets uneven. Before this was enforced, `PlayGv` presented one video frame per refresh and a 30 fps clip played at double speed.
 

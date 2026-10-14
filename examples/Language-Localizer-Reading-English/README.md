@@ -29,12 +29,14 @@ go run . -autostart -s 999   # no SPACE prompt, no trigger: start immediately
 | `-trigger KEY` | Key the scanner sends to start the run (default `t`) |
 | `-autostart` | Skip the SPACE prompt and the trigger; start the clock immediately. For timing audits |
 | `-fontsize N` | Point size of the RSVP words (default 72) |
-| `-dlpio8 PORT` | Send EEG/MEG TTL triggers through a DLP-IO8-G on that port (`/dev/ttyUSB0`, `COM3`), or `auto` to detect one. Omit for no triggers |
+| `-ttl KIND[:PORT]` | Send EEG/MEG TTL triggers: `dlpio8` (auto-detected), `dlpio8:/dev/ttyUSB0` or `dlpio8:COM3`, or any other kind in `triggers.DeviceSpecUsage`. Omit for no triggers. (This was `-dlpio8 PORT` until October 2026.) |
+| `-ttl-ms N` | TTL pulse width in ms (default 10) |
 | `-ttl-pin-sentence N` | Board pin pulsed at each word onset of a sentence trial (default 1) |
 | `-ttl-pin-nonword N` | Board pin pulsed at each word onset of a nonword trial (default 2) |
 | `-ttl-pin-probe N` | Board pin pulsed at the press-probe (default 3; 0 = no probe marker) |
 | `-photodiode` | Flash a white square in the top-left corner for one frame at every word onset and at the probe |
 | `-photodiode-size N` | Side of that square in pixels (default 200) |
+| `-marker-frames N` | Frames the square stays white from each onset (default 1) |
 | `-w`, `-d N`, `-s N` | Windowed mode, display index, subject ID (standard goxpyriment flags) |
 
 The operator presses SPACE at the instruction screen; a **green** fixation cross
@@ -146,8 +148,9 @@ stimuli to commercial use. See the repository `NOTICE` file.
 
 ## EEG/MEG triggers
 
-`-dlpio8` drives a [DLP-IO8-G](https://www.dlpdesign.com/usb/io8.php) so the
-recording can be segmented on the stimulus itself. The condition is carried by
+`-ttl dlpio8` drives a [DLP-IO8-G](https://www.dlpdesign.com/usb/io8.php) so the
+recording can be segmented on the stimulus itself (other devices work too:
+`-ttl` takes any kind the library's onset marker knows). The condition is carried by
 *which* pin pulses:
 
 | Pin | Signal | Flag |
@@ -156,33 +159,41 @@ recording can be segmented on the stimulus itself. The condition is carried by
 | 2 | pulsed at every word onset of a **nonword** trial | `-ttl-pin-nonword` |
 | 3 | pulsed (10 ms) at the **press-probe**, which ends the trial | `-ttl-pin-probe` (0 = none) |
 
-A trial reads as 12 pulses on pin 1 or on pin 2, followed by one on pin 3. A
-word pulse is dropped by the first frame callback at least 10 ms after its
-rising edge, which on a 60 Hz display makes it one frame wide — **measured
-16.675 ms, SD 0.022 ms** (n = 72, AD3 at 100 kS/s).
+A trial reads as 12 pulses on pin 1 or on pin 2, followed by one on pin 3.
+Since October 2026 the pins are driven by the library's onset marker
+(`control.MarkerFlags`, `exp.Marker`): each pulse is raised right after the
+onset flip and lowered by a timer **10 ms** later (`-ttl-ms`) — measured in
+software at 10.15–10.34 ms over the 13 pulses of one trial (a logging stand-in
+device, windowed, 60 Hz). The previous implementation dropped the pulse at the
+first frame callback at least 10 ms after the rising edge, which made it one
+frame wide: measured 16.675 ms, SD 0.022 ms (n = 72, AD3 at 100 kS/s). The new
+width has not yet been measured on the device.
 
 Do not clear such a pulse by counting display frames: the render loop runs a
 frame ahead of scan-out, so the next frame callback arrives ~0.1 ms after the
 onset hook, not 16.7 ms after it. An earlier version of this program counted
 frames and emitted **0.087 ms** pulses, which most EEG/MEG inputs would miss
 entirely. The photodiode patch, being about what is on screen, is still
-specified in frames.
+specified in frames (`-marker-frames`, 1 here).
 
 Pins are numbered **1–8 as labelled on the board**, like `tests/test_dlpio8`.
-The `triggers` package counts lines from 0, so pin 1 is line 0; the conversion
+Pin N is the code with bit N−1 set, so pin 1 is line 0; the conversion
 happens inside this program.
 
 **Why one pin per condition rather than 8-bit codes.** The DLP-IO8-G has no
 write-all command: `triggers.DLPIO8.Send` writes one ASCII byte per line, so an
 8-bit code arrives as eight sequential edges and a system latching on any edge
 would record the intermediate values. Only one pin is ever changed at a time
-here.
+here: the onset marker writes a single-bit code as one `SetHigh` and clears it
+with one `SetLow`.
 
-**Where the pulse falls, measured.** The rising edge is emitted from the
-stream's post-flip `OnsetCallback`, at the same SDL-clock instant as the
-`TimingLog.OnsetNS` recorded in the data file. Against a photodiode on the
-patch (AD3, both channels on one timebase, fullscreen under the `wayland`
-video driver — see *Conditions these numbers describe* above):
+**Where the pulse falls, measured.** The rising edge is written right after
+the flip that shows the word, at the same SDL-clock instant as the
+`TimingLog.OnsetNS` recorded in the data file. (The measurements below date
+from 2026-08-19, when it was written from the stream's post-flip
+`OnsetCallback` — the same instant.) Against a photodiode on the patch (AD3,
+both channels on one timebase, fullscreen under the `wayland` video driver —
+see *Conditions these numbers describe* above):
 
 * the trigger **leads the photons by 9.9–24.4 ms**, i.e. by up to one frame;
 * within a trial that lead is **constant to ~0.1 ms** — all 12 words of a trial
@@ -215,16 +226,22 @@ scope sees the real photons; put the other channel on the TTL pin and the gap
 between the two traces is the display pipeline's latency (scan-out plus panel
 response), the one part of the chain software cannot measure.
 
-It costs the presentation nothing. The square is not a stream element: it is
-drawn from the stream's `FrameCallback`, on top of the word, in a frame that was
-being rendered anyway — one more filled rect. The stream's own element timing is
-untouched, which is why this is compatible with `PresentStreamOfStimuli*` rather
-than a workaround for it.
+It costs the presentation nothing. The square is not a stream element: the
+library's onset marker draws it inside the flip itself, on top of the word, in
+a frame that was being rendered anyway — one more filled rect. The stream's own
+element timing is untouched. Between onsets it is drawn black, which on this
+black background is invisible.
 
 Verified by reading the rendered frames back with `SDL_RenderReadPixels`
-(1024×768 window, 200 px patch): pixel (195,195) is white and (205,205) black on
-frame 0 of every word, and both are black on frames 1 and 2 — the square is
-exactly 200×200 in the corner and lasts exactly one frame per onset.
+(1024×768 window, 200 px patch, 2026-08-19): pixel (195,195) is white and
+(205,205) black on frame 0 of every word, and both are black on frames 1 and 2
+— the square is exactly 200×200 in the corner and lasts exactly one frame per
+onset. Rechecked after the move to the onset marker: one white frame per word
+and one for the probe (13 per trial).
+
+Until October 2026 the probe's TTL pulse was sent about one frame late when
+`-photodiode` was on (after the probe's second flip); it now goes out right
+after the probe's onset flip, like the word pulses.
 
 Measured with a photodiode on it (AD3 at 100 kS/s, fullscreen): the light rises
 10–90 % in 3.4 ms, and the flash is 29.6 ms wide at half amplitude (SD 0.76,
@@ -236,14 +253,17 @@ The square is drawn on top of the stimulus, so on the participant's display it
 is visible unless the sensor housing covers it. In an EEG/MEG booth that is
 normally what the photodiode's mount does.
 
-A port that is named but cannot be opened is a fatal error before the run
-starts: a session whose triggers are silently missing is a wasted session.
-`auto` is forgiving — if no board is found it logs the fact and runs without
-triggers, so the same command line works on a machine without the hardware.
-Failures during the run are counted, reported at the end, and written to the
-session metadata as `ttl_device=DLP-IO8-G port=… errors=N`.
+A device that cannot be opened is a fatal error before any window opens: a
+session whose triggers are silently missing is a wasted session. That now
+includes `-ttl dlpio8` finding no board — `-dlpio8 auto` used to run on
+without triggers. To run on a machine without the hardware, leave `-ttl` out
+(or use `-ttl null`, which exercises the code path and records that no
+hardware was used). Failures during the run are counted, logged once, and
+written to the session metadata in a `marker stats:` line (it was
+`ttl_device=DLP-IO8-G port=… errors=N`).
 
-The browser build rejects `-dlpio8`: the `triggers` package is desktop-only.
+The browser build rejects `-ttl`: the `triggers` package is desktop-only.
+`-photodiode` works there.
 
 ## Data
 

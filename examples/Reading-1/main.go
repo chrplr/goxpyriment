@@ -510,9 +510,8 @@ func main() {
 	practice := buildPracticeTrials(*nPractice, *nFrames)
 
 	// Session constants go to the -info.txt companion, so a session is
-	// reproducible from its own data file. WriteComment is the call that
-	// actually reaches that file; Experiment.AddExperimentInfo only appends to
-	// a slice in the Design that nothing writes out.
+	// reproducible from its own data file. Written with WriteComment, under
+	// their own section header, rather than as AddExperimentInfo "e" lines.
 	exp.Data.WriteComment("--SESSION PARAMETERS")
 	for _, line := range []string{
 		fmt.Sprintf("stimulus_list: %s", stimListName(*stimFile)),

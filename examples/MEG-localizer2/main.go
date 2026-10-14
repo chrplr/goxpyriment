@@ -43,10 +43,11 @@
 // Hardware triggers: a table may carry a "code" column (1-255; 0 or absent
 // means none), and with -ttl DEVICE[:PORT] that code is written to the eight
 // TTL lines at the row's onset -- immediately after the VSYNC flip that shows
-// the stimulus, or that starts the sound -- and cleared -ttl-ms later. The
-// code is also written to the data file, so the recording and the log can be
-// matched row by row. Devices: megttlbox, mmbts, dlpio8, parallel (see
-// ttl.go). Not available in the browser build.
+// the stimulus, or that starts the sound -- and cleared -ttl-ms later (by
+// default 3 frames, 50 ms at 60 Hz). The code is also written to the data
+// file, so the recording and the log can be matched row by row. Devices:
+// megttlbox, mmbts, dlpio8, parallel and the others control.MarkerFlags lists.
+// Not available in the browser build.
 //
 //	go run . -ttl megttlbox:/dev/ttyACM0
 //
@@ -56,6 +57,7 @@
 // turns white in the flip that fires the TTL code, so a photodiode on the
 // corner and the trigger channel mark the same event. It is on by default;
 // -photodiode=false turns it off, -photodiode-size sets its side in pixels.
+// Both are the library's onset marker (control.MarkerFlags, exp.Marker).
 package main
 
 import (
@@ -94,15 +96,6 @@ var assetFS embed.FS
 // the final stimulus is not cut off by the window closing. It matches the grace
 // period of the gostim2 implementation this is ported from.
 const gracePeriodMs = 500
-
-// defaultPhotodiodeSize is the side, in pixels, of the square shown in the
-// top-left corner from every stimulus onset (see -photodiode).
-const defaultPhotodiodeSize = 100
-
-// photodiodeFrames is how many frames the photodiode square stays up from each
-// stimulus onset. More than one, so a single frame lost in the display stack
-// cannot erase a marker: the square is then late by a frame, not missing.
-const photodiodeFrames = 3
 
 // element is one item of a row's stimulus sequence: a single stimulus for the
 // scalar types, one of the "~"-separated items for the *_STREAM types.
@@ -150,22 +143,6 @@ type logEntry struct {
 	code       int    // the row's TTL code; 0 for a row without one, and for a response
 	stim       string // the row's stimuli field, or the key name for a response
 }
-
-// ttlDevice is the subset of triggers.OutputTTLDevice this program needs. It
-// is declared here, rather than importing the interface, so the browser build
-// compiles: the triggers package is desktop-only (see ttl.go / ttl_js.go).
-type ttlDevice interface {
-	Send(mask byte) error
-	AllLow() error
-	Close() error
-}
-
-// nullTTL is the do-nothing device used when -ttl is not given.
-type nullTTL struct{}
-
-func (nullTTL) Send(byte) error { return nil }
-func (nullTTL) AllLow() error   { return nil }
-func (nullTTL) Close() error    { return nil }
 
 // defaultProtocol is the table a session runs when nothing else selects one,
 // so a colleague who has only the executable can double-click it and be
@@ -314,15 +291,10 @@ func main() {
 	noCrosshair := flag.Bool("no-crosshair", false, "do not superimpose the fixation cross on the stimuli "+
 		"(it is still shown between them and on EMPTY rows)")
 	skipWait := flag.Bool("skip-wait", false, "start immediately, without the instruction screen or the scanner trigger")
-	ttlSpec := flag.String("ttl", "", "send each row's \"code\" as a TTL at its onset, through "+
-		"DEVICE[:PORT]: megttlbox:/dev/ttyACM0, mmbts:/dev/ttyACM0, dlpio8[:PORT|auto], "+
-		"parallel[:/dev/parport0]; empty means no triggers")
-	photodiode := flag.Bool("photodiode", true, fmt.Sprintf("show a white square in the top-left corner for %d frames "+
-		"from every stimulus onset, sounds included, black otherwise, for a photodiode (-photodiode=false to disable)", photodiodeFrames))
-	photodiodeSize := flag.Float64("photodiode-size", defaultPhotodiodeSize,
-		"side of the photodiode square, in pixels")
-	ttlMs := flag.Int("ttl-ms", 10, "TTL pulse width in ms (the code is held at least this long, "+
-		"and at most one frame longer)")
+	// -photodiode (on by default here), -photodiode-size, -marker-frames, -ttl
+	// and -ttl-ms: each row's "code" goes to the TTL device at its onset, and
+	// the corner square marks every stimulus onset.
+	control.MarkerFlags(control.MarkerConfig{Photodiode: true})
 
 	// Black on mid-grey, unlike MEG-localizer. Grey, not white, so that the
 	// white photodiode square stands out from the background; the hand
@@ -375,17 +347,10 @@ func main() {
 	lastMs := rows[len(rows)-1].onsetMs + rows[len(rows)-1].totalMs()
 	log.Printf("loaded %d rows from %s (%.1f s)", len(rows), source, float64(lastMs)/1000)
 
-	// TTL output for the recording. A device that was asked for and cannot be
-	// opened is fatal, and so is a table without a single code: either way the
-	// run would record without its triggers, and that is only found out when
-	// the data are useless. All lines are driven LOW before the first row, so
-	// the recording starts from a known state.
-	ttl, ttlDesc, err := openTTL(*ttlSpec)
-	if err != nil {
-		log.Fatalf("-ttl: %v", err)
-	}
-	defer ttl.Close()
-	if ttlDesc != "" {
+	// A table without a single code would record without triggers, and that
+	// is only found out when the data are useless. (A device that cannot be
+	// opened has already stopped the program, in NewExperimentFromFlags.)
+	if exp.Marker.TTLEnabled() {
 		coded := 0
 		for i := range rows {
 			if rows[i].code != 0 {
@@ -394,29 +359,9 @@ func main() {
 		}
 		if coded == 0 {
 			log.Fatalf("-ttl %s: %s has no \"code\" column (or every code is 0), so no trigger would ever fire",
-				*ttlSpec, source)
+				exp.Marker.OutputDesc(), source)
 		}
-		if *ttlMs <= 0 {
-			log.Fatalf("-ttl-ms: pulse width must be positive, got %d", *ttlMs)
-		}
-		if lerr := ttl.AllLow(); lerr != nil {
-			log.Fatalf("-ttl: cannot drive %s low: %v", ttlDesc, lerr)
-		}
-		log.Printf("TTL codes on %s: %d of %d rows carry a code, pulse %d ms", ttlDesc, coded, len(rows), *ttlMs)
-	}
-
-	// A failing trigger must not abort a run in progress, but it must not pass
-	// unnoticed either: the first failure is logged and counted, and the count
-	// is reported at the end and written to the session metadata.
-	ttlErrors := 0
-	ttlFail := func(what string, err error) {
-		if err == nil {
-			return
-		}
-		ttlErrors++
-		if ttlErrors == 1 {
-			log.Printf("WARNING: TTL %s failed: %v (further failures counted silently)", what, err)
-		}
+		log.Printf("TTL codes on %s: %d of %d rows carry a code", exp.Marker.OutputDesc(), coded, len(rows))
 	}
 
 	// The one fixation cross of the run. It fills every gap between stimuli, is
@@ -431,35 +376,6 @@ func main() {
 	}
 	if err := stimuli.PreloadVisualOnScreen(exp.Screen, fixGreen); err != nil {
 		log.Fatalf("cannot preload fixation cross: %v", err)
-	}
-
-	// Photodiode patch, in the top-left corner of the drawable area. Positions
-	// are centre-relative with +Y up, so the corner is at (-w/2 + side/2,
-	// +h/2 - side/2), in the same size CenterToSDL works from: LogicalSize when
-	// one is set, the renderer output size otherwise. White at onsets, black
-	// otherwise (onFrame and show set the colour). nil when -photodiode is off.
-	var patch *stimuli.Rectangle
-	if *photodiode {
-		var w, h float32
-		if ls := exp.Screen.LogicalSize; ls != nil {
-			w, h = ls.X, ls.Y
-		} else {
-			ow, oh, serr := exp.Screen.Size()
-			if serr != nil {
-				log.Fatalf("-photodiode: cannot read the screen size: %v", serr)
-			}
-			w, h = float32(ow), float32(oh)
-		}
-		side := float32(*photodiodeSize)
-		if side <= 0 || side > w || side > h {
-			log.Fatalf("-photodiode-size: %.0f px does not fit on a %.0fx%.0f screen", side, w, h)
-		}
-		patch = stimuli.NewRectangle(-w/2+side/2, h/2-side/2, side, side, control.White)
-		if err := stimuli.PreloadVisualOnScreen(exp.Screen, patch); err != nil {
-			log.Fatalf("cannot preload photodiode square: %v", err)
-		}
-		log.Printf("photodiode: %.0f px square in the top-left corner of the %.0fx%.0f drawable area, "+
-			"white %d frames from every stimulus onset, black otherwise", side, w, h, photodiodeFrames)
 	}
 
 	// Build and preload every stimulus up front: identical items (the four
@@ -479,36 +395,8 @@ func main() {
 	exp.AddDataVariableNames([]string{"intended_ms", "actual_ms", "event", "cond", "stimuli", "code"})
 	exp.AddExperimentInfo("protocol: " + selected)
 	exp.AddExperimentInfo("protocol_source: " + source)
-	if ttlDesc != "" {
-		exp.AddExperimentInfo(fmt.Sprintf("ttl: %s, pulse %d ms", ttlDesc, *ttlMs))
-	}
-	if patch != nil {
-		exp.AddExperimentInfo(fmt.Sprintf("photodiode: %.0f px square, top-left, white "+
-			"%d frames from every stimulus onset (sounds: the flip that starts them), black otherwise",
-			*photodiodeSize, photodiodeFrames))
-	}
 
 	isRun := selected != "instructions"
-
-	// show is exp.Show plus the black photodiode patch, for the screens of the
-	// run that are not part of a stream (the stream draws the patch itself, in
-	// onFrame), so the corner is black from the green cross to the end.
-	show := func(v stimuli.VisualStimulus) error {
-		if patch == nil {
-			return exp.Show(v)
-		}
-		if err := exp.Screen.Clear(); err != nil {
-			return err
-		}
-		if err := v.Draw(exp.Screen); err != nil {
-			return err
-		}
-		patch.Color = control.Black
-		if err := patch.Draw(exp.Screen); err != nil {
-			return err
-		}
-		return exp.Screen.Flip()
-	}
 
 	// Entries accumulate outside the run closure so a run aborted with ESC
 	// still writes everything recorded up to that point.
@@ -529,7 +417,7 @@ func main() {
 			// version this waited for the scanner's synchronisation pulse; a
 			// MEG run has no such pulse, so the same key starts the clock by
 			// hand until a trigger box drives it.
-			if serr := show(fixGreen); serr != nil {
+			if serr := exp.Show(fixGreen); serr != nil {
 				return serr
 			}
 			if kerr := exp.Keyboard.WaitKey(control.K_T); kerr != nil {
@@ -550,7 +438,7 @@ func main() {
 		// The per-call disable nests harmlessly inside this one.
 		defer debug.SetGCPercent(debug.SetGCPercent(-1))
 
-		if serr := show(fix); serr != nil {
+		if serr := exp.Show(fix); serr != nil {
 			return serr
 		}
 		// The clock starts at the trigger, so every onset is measured from it.
@@ -569,62 +457,29 @@ func main() {
 			frameMs = 1000.0 / float64(mode.RefreshRate)
 		}
 
-		// TTL hooks. onOnset runs immediately AFTER the flip that puts the
-		// row's first stimulus on screen (or starts its sound), on the same SDL
-		// clock instant as the logged TimingLog.OnsetNS, so the code marks the
-		// displayed onset rather than GPU-submission time. It must stay short
-		// -- one write to the device is -- and never block; the lines are
-		// cleared by onFrame once the pulse width has elapsed. Both closures
-		// read curCode and curLead, which are set per row before its stream,
-		// so the timing-critical path does nothing but the write.
+		// Onset marking. onFrame runs just before each flip; on frame 0 of an
+		// element's on-phase -- the frame whose flip is logged as the onset --
+		// it arms the marker, so the photodiode square turns white in that flip
+		// and the row's code is written right after it, on the same SDL clock
+		// instant as TimingLog.OnsetNS. Every element but the fixation lead gets
+		// the square; only the row's first one gets the code (Arm(0) is the
+		// square alone). For a sound the flip is when the sound is started, not
+		// when it is heard: the audio latency is not in either signal.
 		//
-		// pulseEndNS is when the current code may be cleared, on the SDL
-		// clock; 0 means no code is up. Timing the width rather than counting
-		// frames makes it a real -ttl-ms edge: the achieved width is between
-		// ttlMs and one frame more than it. The clearing frame may belong to
-		// the next row's stream, which is fine: the closure outlives the rows.
-		// The photodiode patch turns white on frame 0 of every element but the
-		// fixation lead -- the frame whose flip onOnset follows and whose
-		// timestamp is logged as the onset -- so at a row onset it reaches the
-		// screen in the same flip as the TTL code. For a sound that flip is when
-		// the sound is started, not when it is heard: the audio latency is not
-		// in the photodiode signal.
-		//
-		// patchLeft is how many more frames the patch is white, counting the
-		// one about to be flipped. Like pulseEndNS it outlives the rows, so a
-		// patch begun late in one row finishes in the next. An onset less than
-		// photodiodeFrames after the previous one restarts the count, merging
-		// the two patches into one.
+		// onOnset is the fallback for an element whose on-phase rounded to zero
+		// frames (a sound shorter than half a frame): the stream starts it on
+		// an off-frame, which onFrame does not arm, so its code is sent there,
+		// without the square. armedIdx is the element onFrame last armed.
 		var curCode, curLead int
-		var pulseEndNS uint64
-		patchLeft := 0
-		onOnset := func(index int, onsetNS uint64) error {
-			if curCode == 0 || index != curLead {
-				return nil // a fixation lead, or a later element of a stream row
-			}
-			ttlFail("code "+strconv.Itoa(curCode), ttl.Send(byte(curCode)))
-			pulseEndNS = onsetNS + uint64(*ttlMs)*1_000_000
-			return nil
-		}
+		armedIdx := -1
 		onFrame := func(ctx stimuli.FrameContext) error {
-			if pulseEndNS != 0 && ctx.NowNS >= pulseEndNS {
-				ttlFail("clear", ttl.Send(0))
-				pulseEndNS = 0
-			}
-			if patch != nil {
-				if ctx.Index >= curLead && ctx.OnPhase && ctx.Frame == 0 {
-					patchLeft = photodiodeFrames
+			if ctx.Index >= curLead && ctx.OnPhase && ctx.Frame == 0 {
+				code := 0
+				if ctx.Index == curLead {
+					code = curCode
 				}
-				// Black whenever it is not white: grey→white is too small a
-				// step for the photodiode to detect reliably, black→white is not.
-				patch.Color = control.Black
-				if patchLeft > 0 {
-					patchLeft--
-					patch.Color = control.White
-				}
-				if derr := patch.Draw(exp.Screen); derr != nil {
-					return derr
-				}
+				exp.Marker.Arm(byte(code))
+				armedIdx = ctx.Index
 			}
 			// The same cross as between stimuli, drawn on top of the picture
 			// so it never disappears or changes size. On a fixation lead or an
@@ -632,6 +487,12 @@ func main() {
 			// is harmless.
 			if !*noCrosshair {
 				return fix.Draw(exp.Screen)
+			}
+			return nil
+		}
+		onOnset := func(index int, _ uint64) error {
+			if index == curLead && index != armedIdx && curCode != 0 {
+				exp.Marker.Fire(byte(curCode))
 			}
 			return nil
 		}
@@ -661,7 +522,7 @@ func main() {
 				lead = 1
 			}
 
-			curCode, curLead = r.code, lead
+			curCode, curLead, armedIdx = r.code, lead, -1
 			events, timing, perr := stimuli.PresentStreamOfStimuliHooks(
 				exp.Screen, elems, 0, 0, onFrame, onOnset)
 
@@ -676,7 +537,7 @@ func main() {
 		}
 
 		// Hold the fixation cross briefly so the last stimulus is not cut off.
-		if serr := show(fix); serr != nil {
+		if serr := exp.Show(fix); serr != nil {
 			return serr
 		}
 		if remaining := lastMs + gracePeriodMs - int(clk.NowMillis()); remaining > 0 {
@@ -697,20 +558,6 @@ func main() {
 			intended = strconv.Itoa(e.intendedMs)
 		}
 		exp.Data.Add(intended, e.actualMs, e.event, e.cond, e.stim, e.code)
-	}
-
-	// Leave the recording system with every line low -- a code may still be
-	// up after an ESC -- and record how the trigger link behaved: a count in
-	// the session metadata outlives the terminal it was printed to.
-	if ttlDesc != "" {
-		ttlFail("all low", ttl.AllLow())
-		exp.Data.WriteComment(fmt.Sprintf("ttl_device=%s errors=%d", ttlDesc, ttlErrors))
-		if ttlErrors > 0 {
-			log.Printf("WARNING: %d TTL operations failed during this run — check the triggers in the recording",
-				ttlErrors)
-		} else {
-			log.Printf("TTL: all codes sent without error on %s", ttlDesc)
-		}
 	}
 
 	printSummary(entries)

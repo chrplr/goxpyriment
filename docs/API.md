@@ -158,8 +158,8 @@ control.ErrCancelled  // returned when the user cancels the dialog
 | Method | Description |
 |---|---|
 | `exp.Show(stim VisualStimulus) error` | Clear → draw → flip. The standard one-call stimulus presentation. |
-| `exp.ShowTS(stim VisualStimulus) (uint64, error)` | Clear → draw → flip, and return the SDL nanosecond timestamp captured immediately after the VSYNC flip. Use with `GetKeyEventTS` for hardware-precision RT measurement. |
-| `exp.ShowTimed(stim VisualStimulus, durationMs int) error` | `Show(stim)` + `Wait(durationMs)` in one call. For fixation crosses, cues, and passive stimulus viewing. |
+| `exp.ShowTS(stim VisualStimulus) (uint64, error)` | Clear → draw → flip, and return the SDL nanosecond timestamp captured immediately after the VSYNC flip. Use with `GetKeyEventTS` for hardware-precision RT measurement. With an armed onset marker it keeps the stimulus up (redrawn) until the photodiode square is black again — see *Onset markers* below. |
+| `exp.ShowTimed(stim VisualStimulus, durationMs int) error` | `Show(stim)` + `Wait` for what remains of `durationMs` since the onset flip, in one call. For fixation crosses, cues, and passive stimulus viewing. |
 | `exp.ShowFrames(stim VisualStimulus, n int) (uint64, error)` | Hold the stimulus for exactly `n` display frames, returning the onset timestamp of the first flip. The stimulus is redrawn every frame — see *Holding a stimulus for a fixed number of frames* below. |
 | `exp.BlankFrames(n int) (uint64, error)` | Frame-locked counterpart of `Blank(ms)`: clear and hold blank for exactly `n` frames, returning the timestamp of the first flip (i.e. the previous stimulus's offset). |
 | `exp.ShowAndGetRT(stim VisualStimulus, keys []Keycode, timeoutMs int) (Keycode, int64, error)` | Clears stale keyboard events, shows stim with hardware-precise onset timing, waits for a key, and returns `(key, rtMs, error)`. Pass `timeoutMs = -1` for no timeout; returns `(0, 0, nil)` on timeout. This is the canonical single-stimulus RT measurement call. |
@@ -167,7 +167,7 @@ control.ErrCancelled  // returned when the user cancels the dialog
 | `exp.ShowInstructions(text string) error` | Display centered text and wait for spacebar. Laid out by `FittedTextBox`. |
 | `exp.FittedTextBox(text string) *stimuli.TextBox` | A centered `TextBox` wrapped to the drawing area and rendered at the largest point size — never above the default — at which the whole block fits. See *Laying out a block of text* below. |
 | `exp.DrawArea() (w, h float32)` | Size of the coordinate space stimuli are drawn in (the logical resolution). What layout code should measure against. |
-| `exp.Blank(ms int) error` | Clear and flip screen, then wait `ms` milliseconds. |
+| `exp.Blank(ms int) error` | Clear and flip screen, then wait until `ms` milliseconds have passed since that flip. |
 | `exp.Wait(ms int) error` | Wait `ms` ms while pumping SDL events (ESC-abortable). |
 | `exp.ShowSplash(waitForKey bool) error` | Show experiment name + version splash. |
 | `exp.Flip() error` | Present the backbuffer and hold to the frame boundary (one call = one display frame). |
@@ -287,6 +287,39 @@ control.BUTTON_LEFT, BUTTON_RIGHT
 
 > **Tip:** The full alphabet, digit row, keypad, and common punctuation keys are re-exported, so experiment code never needs to import `go-sdl3` just to name a key. For a rarely-used code not listed in `defaults.go`, import `go-sdl3/sdl` directly and use `sdl.K_…`.
 
+### Onset markers (photodiode square and TTL codes)
+
+```go
+control.MarkerFlags(defaults ...control.MarkerConfig) // before NewExperimentFromFlags: registers
+                                                      // -photodiode -photodiode-size -marker-frames -ttl -ttl-ms
+type control.MarkerConfig struct {
+    Photodiode     bool
+    PhotodiodeSize float32                // drawing-space units; 0 = DefaultPhotodiodeSize (100)
+    Frames         int                    // white frames per onset; 0 = DefaultMarkerFrames (3)
+    TTL            string                 // device spec for triggers.Open; "" = no TTL
+    TTLDevice      apparatus.MarkerOutput // an already-open output, used instead of TTL
+    TTLDuration    time.Duration          // 0 = Frames frame periods
+}
+exp.MarkerConfig                          // set before Initialize when not using flags
+exp.Marker *apparatus.Marker              // never nil after Initialize (does nothing if unconfigured)
+
+exp.Marker.Arm(code byte)                 // the next flip is an onset: square white, code written after it (0 = square only)
+exp.Marker.Fire(code byte) uint64         // write a code now, no square (responses, Play); returns sdl.TicksNS before the write
+exp.Marker.Busy() bool                    // the square still needs flips before it is black
+exp.Marker.PhotodiodeEnabled() bool; TTLEnabled() bool; Size() float32; Frames() int
+exp.Marker.TTLDuration() time.Duration; OutputDesc() string; LastOnsetNS() uint64
+exp.Marker.Stats() apparatus.MarkerStats  // Onsets Codes Fires Clears WriteErrors Overlaps Merged
+```
+
+A code with a single bit set is written as one `SetHigh(line)` and cleared with one
+`SetLow(line)` (on the DLP boxes `Send` writes the 8 lines one command at a time);
+other codes use `Send`.
+
+The marker is drawn and fired from inside `Screen.Update`, so it works with every
+presentation path. A device that cannot be opened makes `Initialize` fail before
+any window opens; the browser build refuses `-ttl`. The configuration and final
+stats are written to the `-info.txt`. See UserManual Section 17.
+
 ### Audio
 
 ```go
@@ -330,6 +363,11 @@ type VisualStimulus interface {
 }
 ```
 
+`stimuli.DrawFunc(func(screen *apparatus.Screen) error)` turns a function that draws a
+whole scene into a `VisualStimulus` (no position, no resources of its own), so a
+composite display can go through `exp.Show` / `exp.ShowTS`. The function may run once
+per held frame.
+
 GPU textures are **lazily allocated** on the first `Draw`. To force early allocation (for timing-sensitive code), use:
 
 ```go
@@ -369,7 +407,8 @@ Both support a `Font *ttf.Font` field — set it to override the screen default.
 | `(*SpriteSheet) GridWithSpacing(screen, cols, rows int, margin, spacing float32) ([]*Sprite, error)` | As `Grid`, for sheets with a border or gutters. |
 | `(*SpriteSheet) Sprites(screen, clips []sdl.FRect) ([]*Sprite, error)` | Explicit source rectangles, for irregular sheets. |
 | `(*SpriteSheet) Unload() error` | Destroys the shared texture. `Sprite.Unload` is a no-op by design. |
-| `PlayGv(screen, path string, x, y float32) ([]UserEvent, error)` | Play a `.gv` (LZ4-compressed RGBA) video file, VSYNC-locked. |
+| `PlayGv(screen, path string, x, y float32) ([]UserEvent, []VideoFrameLog, error)` | Play a `.gv` (LZ4-compressed RGBA) video file, VSYNC-locked. |
+| `PlayGvFunc(screen, path string, x, y float32, onFrame GvFrameCallback, marks ...GvMark) ([]UserEvent, []VideoFrameLog, error)` | `PlayGv` with a post-flip per-frame callback (may be nil), and optional `GvMark{Frame int; Code byte}` values: each listed frame's onset is marked with the screen's onset marker (photodiode square + TTL code, code 0 = square only) on that frame's first refresh. |
 | `NewGvVideo(path string) (*GvVideo, error)` | Open a `.gv` file for frame-by-frame access. |
 
 #### Psychophysics Stimuli
@@ -719,8 +758,15 @@ screen.CalibrateRefresh(n int) (time.Duration, error)  // measured frame period,
 screen.SetLogicalSize(w, h int32) error                // also updates screen.Width/Height
 screen.SetVSync(vsync int) error
 screen.DisplayInfo() apparatus.DisplayInfo                    // monitor properties
+screen.SetMarker(m *apparatus.Marker)                  // drive an onset marker from Update (nil detaches)
+screen.Marker() *apparatus.Marker
+screen.SetPrePresentHook(f func() error)               // run f after drawing, just before present (frame read-back)
 screen.Destroy()
 ```
+
+`apparatus.NewMarker(apparatus.MarkerOptions{Photodiode, Size, Frames, Output, OutputDesc, TTLDuration})`
+builds the onset marker that `control` sets up from `MarkerConfig`; `apparatus.MarkerOutput`
+(`Send`, `AllLow`, `Close`) is satisfied by `triggers.OutputTTLDevice`.
 
 ### Laying out a block of text
 
@@ -1444,6 +1490,21 @@ status, _ := pp.ReadStatus()                    // Linux only: status register
 ### Null devices
 
 `NullOutputTTLDevice` and `NullInputTTLDevice` are silent no-ops, safe to call without hardware. `AutoDetectDLPIO8` and `AutoDetectFT232H` return a `NullOutputTTLDevice` when no device is found.
+
+### Opening a device by name
+
+```go
+triggers.Open(spec string) (OutputTTLDevice, string, error)   // "" → nil, "", nil; the string is a description
+triggers.ParseDeviceSpec(spec string) (DeviceSpec, error)
+triggers.OpenDeviceSpec(spec DeviceSpec) (OpenedDevice, error) // .Device .Where .GPIOPins .Note .Description()
+triggers.DeviceSpecUsage                                      // help text for the syntax
+triggers.DeviceKinds                                          // dlpio8 dlpio20 megttlbox mmbts parallel gpio ft232h labjackt4 null
+```
+
+Syntax: `KIND[:PORT][,key=value,...]` — `megttlbox:/dev/ttyACM0`, `dlpio8` (auto-detect),
+`mmbts:/dev/ttyACM0,mode=s`, `labjackt4:192.168.1.100`, `gpio:pins=17+27+22+5+6+13+19+26`.
+An open failure is an error, never a silent null device. This is what the `-ttl` flag of
+`control.MarkerFlags` uses.
 
 ---
 

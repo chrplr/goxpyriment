@@ -58,8 +58,50 @@ go run ./examples/Wisconsin-Card-Sorting-Task -s 1 -w     # windowed
 | `-soa` | 0 | Fixed stimulus-onset asynchrony (ms). 0 = self-paced trials; any positive value puts every trial on a fixed grid (scanner mode, below) |
 | `-trigger` | off | Wait for the scanner trigger (the first `t` keypress after the instructions) before starting |
 | `-all-cards` | off | Use the full 60-card deck instead of the 24 unambiguous cards |
+| `-max_duration` | 0 | Time limit for the session, as a Go duration (`10m`, `90s`, `1m30s`); 0 = no limit. See below |
+| `-photodiode` | off | White square in the top-left corner for 3 frames from every card onset, black otherwise. See below |
+| `-photodiode-size` | 100 | Side of the photodiode square, in pixels |
+| `-marker-frames` | 3 | Frames the square stays white from each onset; also the default TTL pulse length |
+| `-ttl KIND[:PORT]` | none | Send a TTL code at every card onset: `dlpio8[:PORT\|auto]`, `dlpio20`, `megttlbox:/dev/ttyACM0`, `mmbts:/dev/ttyACM0`, `parallel[:/dev/parport0]`, `gpio`, `ft232h`, `labjackt4:HOST`, `null` |
+| `-ttl-ms` | 0 | How long the code stays on the lines, in ms; 0 = `-marker-frames` frame periods (50 ms at 60 Hz) |
+| `-ttl-code` | 1 | Code sent at each onset (1–255; 1 raises line 0) |
 
 ESC quits at any point; the data collected so far are saved.
+
+### Time limit
+
+`-max_duration` ends the task after a fixed time, whichever comes first of the limit and the `-n` trials (so set `-n` high enough for the limit to be the one that binds):
+
+```bash
+go run ./examples/Wisconsin-Card-Sorting-Task -s 1 -n 1000 -max_duration 10m
+```
+
+- The time is counted from the same zero as the trials: after the instructions screen, or from the scanner pulse with `-trigger`.
+- No trial starts once the limit has passed.
+- A card still waiting for an answer when the limit expires is withdrawn; that trial is **not recorded** (it is not logged as a miss).
+- A trial answered before the limit is completed with its feedback, so the session can end up to one feedback duration (`-fb`) after the limit — or, self-paced, up to one inter-trial interval (`-iti`) if the limit falls during the blank.
+- The limit is written into the `-info.txt`, and so, when it is reached, are the number of trials completed and the elapsed time (also printed on the console). The CSV holds exactly the completed trials; the end screen counts only those.
+
+
+### Onset markers: photodiode and TTL
+
+For a recording (MEG, EEG, or checking the display timing), every card onset can be marked on the screen and on a trigger line:
+
+```bash
+go run ./examples/Wisconsin-Card-Sorting-Task -s 1 -photodiode -ttl dlpio8
+go run ./examples/Wisconsin-Card-Sorting-Task -s 1 -photodiode -ttl megttlbox:/dev/ttyACM0 -ttl-code 4
+```
+
+These flags are the library's onset marker (`control.MarkerFlags`; see UserManual Section 17), so they behave the same in every paradigm that uses it.
+
+- `-photodiode` shows a square in the top-left corner (100 px, `-photodiode-size`) that is **white for 3 frames from each card onset** (50 ms at 60 Hz) and black on every other frame of the session, instructions included. It is black rather than background grey, because black→white is a much larger step than grey→white and a photodiode detects it more reliably. The 100 px square leaves the first key card clear; a size above 160 px overlaps it, and the program warns.
+- `-ttl` writes `-ttl-code` to the TTL lines right after the onset flip — the same flip that turns the square white — and clears them by timer 3 frame periods later (50 ms at 60 Hz; `-ttl-ms` to change). A device that cannot be opened stops the program before any window opens; a write that fails during the run is reported on the console and counted in the `-info.txt`.
+- With `-photodiode` the card is held, redrawn, until the square has gone black again (4 flips) before the response wait starts. A response given meanwhile is kept, with its own timestamp, so RTs are unaffected. `-ttl` alone adds no frames.
+- The TTL edge lands a few microseconds after the flip returns, while the square reaches the screen one or more frames later, depending on the display stack. That lag is what a photodiode on the corner measures: subtract it in analysis.
+- Hardware triggers are desktop-only. In the browser build `-ttl` is refused; `-photodiode` works.
+- The settings are written into the `-info.txt`, and at the end of the session a `marker stats:` line (onsets, codes written and cleared, write errors).
+
+Checked on this machine (windowed, Wayland, 60 Hz, `-n 2 -soa 2000 -photodiode`, with a logging TTL device swapped in that records each write's SDL timestamp): the corner pixel read back just before each present was black on the blank and feedback screens and white on card frames 0–2, black from frame 3. The code was written 0–2 µs after the onset flip timestamp and cleared 50.5 and 51.0 ms later (the clearing timer's slack is about a millisecond). Not yet measured: the real devices' latency, and the photons, which need a photodiode on the screen.
 
 ---
 

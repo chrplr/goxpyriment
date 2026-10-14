@@ -62,10 +62,11 @@ and every onset is measured from it. ESC, or closing the window, aborts.
 | `-dir DIR` | read `protocols/` and `stimuli/` from `DIR` instead of the copies embedded in the binary |
 | `-no-crosshair` | do not superimpose the fixation crosshair on the stimuli |
 | `-skip-wait` | no instruction screen and no start key |
-| `-ttl DEVICE[:PORT]` | send each row's `code` as a TTL at its onset — see *Triggers*; default none |
-| `-ttl-ms N` | TTL pulse width in ms; default 10 |
+| `-ttl KIND[:PORT]` | send each row's `code` as a TTL at its onset — see *Triggers*; default none |
+| `-ttl-ms N` | how long each code stays on the lines, in ms; default 0 = `-marker-frames` frame periods (50 ms at 60 Hz) |
 | `-photodiode` | white square in the top-left corner for 3 frames from every stimulus onset, sounds included, black otherwise — see *Photodiode*; on by default, `-photodiode=false` disables it |
 | `-photodiode-size N` | side of that square, in pixels; default 100 |
+| `-marker-frames N` | frames the square stays white from each onset; default 3 |
 
 **Record in fullscreen, never windowed.** A compositing desktop may throttle an
 unfocused window: measured here, a windowed run reported a refresh of 5690 Hz
@@ -146,17 +147,21 @@ everything, stimuli included.
 Triggers
 --------
 
-With `-ttl DEVICE[:PORT]` the row's `code` is written to the eight TTL lines
-at the row's onset — from the stream's post-flip hook, immediately after the
-VSYNC flip that shows the row's first stimulus or starts its sound, the same
-instant recorded as `actual_ms` — and cleared `-ttl-ms` later (10 ms by
-default, up to one frame more). For a stream row only the first element is
-marked, matching the single `_ONSET` line in the data file. Devices:
-`megttlbox:/dev/ttyACM0`, `mmbts:/dev/ttyACM0`, `dlpio8[:PORT|auto]`,
-`parallel[:/dev/parport0]`; the details, and the caveats per device, are in
-[`MEG-localizer2/README.md`](../MEG-localizer2/README.md#triggers), which
-shares this program. A device that cannot be opened, or a table without a
-single code, stops the program before the window opens.
+With `-ttl KIND[:PORT]` the row's `code` is written to the eight TTL lines
+at the row's onset — immediately after the VSYNC flip that shows the row's
+first stimulus or starts its sound, the same instant recorded as `actual_ms` —
+and cleared by timer `-ttl-ms` later (by default 3 frame periods, 50 ms at
+60 Hz; until October 2026 the default was 10 ms, which `-ttl-ms 10` restores).
+For a stream row only the first element is marked, matching the single
+`_ONSET` line in the data file. Devices: `megttlbox:/dev/ttyACM0`,
+`mmbts:/dev/ttyACM0`, `dlpio8[:PORT|auto]`, `parallel[:/dev/parport0]` and the
+other kinds of `triggers.DeviceSpecUsage`; the details, and the caveats per
+device, are in [`MEG-localizer2/README.md`](../MEG-localizer2/README.md#triggers),
+which shares this program. Both the TTL and the photodiode square are the
+library's onset marker (`control.MarkerFlags`, `exp.Marker`). A device that
+cannot be opened stops the program before any window opens; a table without a
+single code stops it before the run. Write failures are counted in a
+`marker stats:` line of the session metadata (it was `ttl_device=… errors=N`).
 
 Photodiode
 ----------
@@ -168,7 +173,7 @@ recorded as that stimulus's onset and held for 3 frames, so a single frame lost
 in the display stack delays it by a frame instead of erasing it. Two onsets
 closer than 3 frames merge into one longer square. The fixation cross that
 fills the gap before a row is not marked. Between onsets the square is drawn
-black, from the green waiting cross to the end of the run, so the photodiode
+black, from the instruction screen to the end of the run, so the photodiode
 always sees a black-to-white step, even if a stimulus reaches the corner.
 
 For a sound, the square marks the flip right after which playback is started;

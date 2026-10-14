@@ -29,6 +29,49 @@ When `-s` is **absent** (e.g. the binary was launched by double-clicking its ico
 - `exp.DrawArea()` — the logical drawing space (`Screen.LogicalSize`, else `Screen.Width/Height`). Layout code wants this, not the window size.
 - `exp.HandleEvents()` — Returns `(lastKey, lastMouseButton, error)`. Prefer `PollEvents` for new code.
 
+## Onset markers for recordings (marker.go)
+
+A photodiode square and TTL codes at the moments a paradigm marks. The square
+and the code are switched by the same flip, so the photodiode and the trigger
+channel mark the same frame. The machinery is `apparatus.Marker`, driven by
+`Screen.Update`. This package sets it up:
+
+- **Flags are opt-in.** `control.MarkerFlags(defaults...)` must be called
+  *before* `NewExperimentFromFlags`; calling it after the parse, or twice, is
+  fatal. It registers `-photodiode`, `-photodiode-size`, `-marker-frames`,
+  `-ttl KIND[:PORT]` and `-ttl-ms`. Programs that don't call it don't have these
+  flags.
+- **Without flags,** set `exp.MarkerConfig` before `Initialize`. Its `TTLDevice`
+  field takes an already-open output or a fake.
+- **Opening the device:** `Initialize` opens it *before* SDL starts
+  (`openMarkerOutput`), so a bad `-ttl` fails without a window.
+  - Desktop goes through `triggers.Open` (`marker_ttl_notjs.go`).
+  - The browser build refuses a device (`marker_ttl_js.go`). The square works
+    there.
+- **Metadata:** `attachMarker` writes `e marker photodiode: …` / `e marker ttl: …`
+  to the -info.txt, and `finalizeData` writes `e marker stats: …`.
+- **Shutdown:** `End`, and the signal handler, close the device with the lines
+  driven low.
+- **`exp.Marker` is never nil after `Initialize`.** Unconfigured, it is a marker
+  that does nothing, so paradigms call it unconditionally:
+  - `exp.Marker.Arm(code)` marks the next flip. Code 0 means the square only.
+    Call it on the `exp.Run` goroutine.
+  - `exp.Marker.Fire(code)` writes a code now, with no square, for an event with
+    no flip (a response, a sound started with `Play`). It is safe on any
+    goroutine.
+- **Which helpers hold:**
+  - `ShowTS`, and through it `Show`, `ShowAndGetRT` and `ShowInstructions`,
+    **hold an armed onset** until the square is black again: Frames+1 flips.
+    They still return the first flip's timestamp.
+  - `ShowTimed` and `Blank` count that hold inside their duration.
+  - `ShowFrames` and `BlankFrames` never hold: their contract is exactly n
+    frames.
+  - A per-frame loop built on `ShowTS` with a marker armed would therefore run
+    long; use `ShowFrames(v, 1)` or a stream.
+- **Streams:** arm from the `FrameCallback` on `ctx.OnPhase && ctx.Frame == 0`.
+  It runs before the flip, so the marker lands on the onset flip.
+- **Custom scenes:** wrap them in `stimuli.DrawFunc` to go through `ShowTS`.
+
 ## Calibrating a gaze tracker (eyetracker_calib.go)
 
 ```go

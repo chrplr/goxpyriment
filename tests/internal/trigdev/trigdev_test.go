@@ -72,7 +72,9 @@ func TestParseSpecRejects(t *testing.T) {
 		// A typo must not be silently ignored: it would leave the probe on a
 		// line the program never drives.
 		{"unknown key", "dlpio8:pins=17+27+22+5+6+13+19+26", `takes no "pins"`},
-		{"not key=value", "dlpio8:/dev/ttyUSB0", "is not key=value"},
+		// A bare value is the port only in first position (dlpio8:/dev/ttyUSB0).
+		{"not key=value", "dlpio8:pin=1,/dev/ttyUSB0", "is not key=value"},
+		{"bare value on a kind with no port", "ft232h:/dev/x", "is not key=value"},
 		{"repeated key", "dlpio8:pin=1,pin=2", "given twice"},
 		// Nothing to auto-detect for these two.
 		{"megttlbox needs port", "megttlbox:pin=1", "needs port="},
