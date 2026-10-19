@@ -16,8 +16,9 @@
 // The session has three phases:
 //
 //  1. practice — 6 trials at a long duration, with feedback;
-//  2. staircase — single letters, 1-up/3-down on the number of frames, which
-//     sets the duration for the main task (skipped with -frames N);
+//  2. staircase — single letters with the list's letter pairs, 1-up/3-down on
+//     the number of frames, which sets the duration for the main task
+//     (skipped with -frames N);
 //  3. main — every item in the three materials, shuffled, no feedback.
 //
 // Usage:
@@ -217,7 +218,7 @@ func loadItems(path, lang string) ([]item, string, error) {
 type trial struct {
 	phase       string // practice, staircase or main
 	material    string // word, anagram or letter
-	item        string // the base word ("" in the staircase)
+	item        string // the base word the letter pair comes from
 	displayed   string // the 4 slots as shown; '_' is an empty slot
 	pos         int    // 1-based critical position
 	target      byte   // the letter that was shown at pos
@@ -299,21 +300,17 @@ func buildPracticeTrials(items []item) []trial {
 	return trials
 }
 
-// staircaseTrial is a single random letter at a random slot with a random foil,
-// as in Reicher's single-letter threshold sessions.
-func staircaseTrial() trial {
-	pos := design.RandInt(1, nSlots)
-	target := byte('A' + design.RandInt(0, 25))
-	foil := target
-	for foil == target {
-		foil = byte('A' + design.RandInt(0, 25))
-	}
-	s := []byte(strings.Repeat(string(blank), nSlots))
-	s[pos-1] = target
-	return trial{
-		phase: "staircase", material: "letter", displayed: string(s),
-		pos: pos, target: target, foil: foil, targetOnTop: design.CoinFlip(0.5),
-	}
+// staircaseTrial is a single-letter trial built from a random item of the list:
+// its critical letter pair, at its critical position, either member shown.
+//
+// Reicher's threshold sessions paired each letter with a random foil instead.
+// A random foil is usually easy to tell from the target (Q vs L), while the
+// list's pairs are often similar (A/O, I/U), so a staircase on random foils
+// settles on a duration at which the main-task letter condition is near
+// chance. Using the list's pairs calibrates the discrimination that condition
+// actually tests.
+func staircaseTrial(items []item) trial {
+	return makeTrial(design.RandElement(items), "letter", design.CoinFlip(0.5), design.CoinFlip(0.5), "staircase")
 }
 
 // ── Rendering ─────────────────────────────────────────────────────────────────
@@ -681,7 +678,7 @@ func main() {
 				NReversalsForThreshold: staircaseLastN,
 			})
 			for !sc.Done() {
-				correct, err := runTrial(staircaseTrial(), int(math.Round(sc.Intensity())))
+				correct, err := runTrial(staircaseTrial(items), int(math.Round(sc.Intensity())))
 				if err != nil {
 					return err
 				}
@@ -692,7 +689,7 @@ func main() {
 			if frames < 1 {
 				frames = 1
 			}
-			exp.Data.WriteComment(fmt.Sprintf("staircase: 1-up/3-down on single letters, %d trials, %d reversals %v",
+			exp.Data.WriteComment(fmt.Sprintf("staircase: 1-up/3-down on single letters with the list's letter pairs, %d trials, %d reversals %v",
 				len(sc.History()), sc.NReversals(), sc.Reversals()))
 			exp.Data.WriteComment(fmt.Sprintf("staircase_threshold_frames: %.2f (mean of last %d reversals)", threshold, staircaseLastN))
 			fmt.Printf("Staircase threshold: %.2f frames -> %d frames (%.2f ms)\n", threshold, frames, float64(frames)*frameMS)
