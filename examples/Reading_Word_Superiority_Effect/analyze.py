@@ -11,7 +11,8 @@ Usage
 
 Each file is analysed on its own. The companion -info.txt is read when present
 (language, display mode, frame duration). With several files, a group summary
-follows: one row per file and an exact sign test across files.
+follows: one row per file (with the median measured main-task duration) and
+an exact sign test across files.
 
 Per file:
   - session: language, fullscreen mode, frame duration, main-task duration
@@ -19,6 +20,7 @@ Per file:
   - staircase: the track, accuracy at each duration, threshold
   - main task: accuracy per material (Wilson 95 % interval), median RT,
     item-paired exact McNemar tests, accuracy by critical position,
+    accuracy by measured stimulus duration (stim_dur_ms in whole frames),
     response bias (top/bottom), first vs second half
   - calibration: staircase accuracy at the main-task duration vs main-task
     letter accuracy (they should agree if the staircase calibrates the task)
@@ -68,6 +70,11 @@ def pct(k, n):
     return f"{k}/{n} = {100 * k / n:5.1f}%" if n else "n/a"
 
 
+def measured_frames(r, frame_ms):
+    """Measured stimulus duration of a trial, in whole frames."""
+    return round(r["dur"] / frame_ms)
+
+
 # ── Reading ──────────────────────────────────────────────────────────────────
 
 def read_trials(path):
@@ -107,6 +114,11 @@ def analyse(path, list_errors=False):
     main = [r for r in rows if r["phase"] == "main"]
     stair = [r for r in rows if r["phase"] == "staircase"]
 
+    if not rows:
+        # A session quit before the first trial leaves a header-only CSV.
+        print(f"{path.name}: no trials, skipped")
+        return None
+
     print("=" * 78)
     print(path.name)
     print("=" * 78)
@@ -124,8 +136,9 @@ def analyse(path, list_errors=False):
     print(f"subject {subject}, language {info.get('language', '?')}, "
           f"video {info.get('video_driver', '?')}, "
           f"fullscreen {info.get('fullscreen', '?')}{mode}")
-    print(f"frame {frame_ms:.3f} ms; main task at {main_frames} frames "
-          f"= {main_frames * frame_ms:.1f} ms; session {info.get('duration', '?')}")
+    main_dur = (f"main task at {main_frames} frames = {main_frames * frame_ms:.1f} ms"
+                if main else "main task not reached")
+    print(f"frame {frame_ms:.3f} ms; {main_dur}; session {info.get('duration', '?')}")
     print(f"trials: " + ", ".join(f"{k} {v}" for k, v in Counter(r['phase'] for r in rows).items()))
 
     # Timing: a quarter of a frame either way is beyond timestamp jitter.
@@ -147,6 +160,12 @@ def analyse(path, list_errors=False):
             byf[r["frames"]].append(r["correct"])
         print("  accuracy by frames: " + ", ".join(
             f"{f}: {sum(v)}/{len(v)}" for f, v in sorted(byf.items())))
+        bym = defaultdict(list)
+        for r in stair:
+            bym[measured_frames(r, frame_ms)].append(r["correct"])
+        if bym.keys() != byf.keys() or any(len(bym[f]) != len(byf[f]) for f in byf):
+            print("  accuracy by measured frames: " + ", ".join(
+                f"{f}: {sum(v)}/{len(v)}" for f, v in sorted(bym.items())))
         if "staircase_threshold_frames" in info:
             print(f"  threshold: {info['staircase_threshold_frames']}")
     else:
@@ -194,8 +213,28 @@ def analyse(path, list_errors=False):
             cells.append(f"{sum(r['correct'] for r in R)}/{len(R)}")
         print(f"    {p:>3s}  " + "  ".join(f"{c:>8s}" for c in cells))
 
+    # By measured duration: the main task requests one number of frames, but a
+    # late flip shows the stimulus for longer. Trials are binned to the nearest
+    # whole frame of their measured stim_dur_ms.
+    bins = defaultdict(list)
+    for r in main:
+        bins[measured_frames(r, frame_ms)].append(r)
+    print("\n  By measured duration (stim_dur_ms, binned to the nearest frame):")
+    print(f"    {'frames':>6s}  {'ms (min–max)':>15s}  {'n':>3s}  " +
+          "  ".join(f"{m:>8s}" for m in MATERIALS))
+    for f in sorted(bins):
+        R = bins[f]
+        durs = [r["dur"] for r in R]
+        cells = []
+        for m in MATERIALS:
+            Rm = [r for r in R if r["material"] == m]
+            cells.append(f"{sum(r['correct'] for r in Rm)}/{len(Rm)}")
+        tag = "  (requested)" if f == main_frames else ""
+        print(f"    {f:>6d}  {min(durs):6.1f}–{max(durs):6.1f}   {len(R):>3d}  " +
+              "  ".join(f"{c:>8s}" for c in cells) + tag)
+
     # Response bias
-    up = sum(r["response"] == "up" for r in main)
+    up =sum(r["response"] == "up" for r in main)
     top = [r for r in main if r["top_letter"] == r["target"]]
     bottom = [r for r in main if r["top_letter"] != r["target"]]
     print(f"\n  Response bias: 'up' on {up}/{len(main)} trials "
@@ -236,14 +275,15 @@ def analyse(path, list_errors=False):
                       f"shown {r['displayed']}  {r['target']} vs {r['foil']}, chose {r['chosen']}")
 
     return {"file": path.name, "subject": subject, "language": info.get("language", "?"),
-            "frames": main_frames, "acc": acc}
+            "frames": main_frames, "ms": statistics.median(r["dur"] for r in main),
+            "acc": acc}
 
 
 def group_summary(results):
     print("\n" + "=" * 78)
     print(f"Group summary ({len(results)} files)")
     print("=" * 78)
-    print(f"  {'subject':>7s}  {'lang':4s}  {'frames':>6s}  " +
+    print(f"  {'subject':>7s}  {'lang':4s}  {'frames':>6s}  {'ms':>6s}  " +
           "  ".join(f"{m:>8s}" for m in MATERIALS))
     rates = {m: [] for m in MATERIALS}
     for res in results:
@@ -252,8 +292,9 @@ def group_summary(results):
             k, n = res["acc"][m]
             rates[m].append(k / n)
             cells.append(f"{100 * k / n:7.1f}%")
-        print(f"  {res['subject']:>7s}  {res['language']:4s}  {res['frames']:>6d}  " + "  ".join(cells))
-    print(f"  {'mean':>7s}  {'':4s}  {'':>6s}  " +
+        print(f"  {res['subject']:>7s}  {res['language']:4s}  {res['frames']:>6d}  "
+              f"{res['ms']:6.1f}  " + "  ".join(cells))
+    print(f"  {'mean':>7s}  {'':4s}  {'':>6s}  {'':>6s}  " +
           "  ".join(f"{100 * statistics.mean(rates[m]):7.1f}%" for m in MATERIALS))
 
     print("\n  Exact sign test across files (ties dropped):")
