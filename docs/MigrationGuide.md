@@ -250,7 +250,7 @@ Psychtoolbox-3 (PTB) and goxpyriment share a lower-level philosophy: you open a 
 | `Screen('DrawTexture', win, tex)` | `exp.Show(pic)` | |
 | `Screen('MakeTexture', win, sheet)` (one texture for many stimuli) | `stimuli.NewSpriteSheet("sheet.png")` or `NewSpriteSheetFromMemory(data)` | The PTB idiom of packing a condition into one image. |
 | `Screen('DrawTexture', win, tex, sourceRect)` | `sprites, _ := sheet.Grid(exp.Screen, cols, rows)` then `exp.Show(sprites[i])` | `sourceRect` becomes the sprite's `Clip`. One upload for the whole set. |
-| `Screen('DrawLine', ...)` | `stimuli.NewLine(x1, y1, x2, y2, color)` then `exp.Show(line)` | |
+| `Screen('DrawLine', ...)` | `stimuli.NewLine(start, end, color, 1)` then `exp.Show(line)` | |
 | `DrawFormattedText(win, text, 'center', 'center', color)` | `exp.ShowInstructions(text)` | Centered, waits for spacebar. |
 | `WaitSecs(secs)` | `exp.Wait(ms)` | PTB uses seconds; goxpyriment uses **milliseconds**. |
 | `GetSecs()` | `clock.GetTime()` (ms) or `clock.GetTimeNS()` (ns) | See clock-domain note below. |

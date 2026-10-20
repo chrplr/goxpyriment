@@ -67,16 +67,6 @@ func newMovingDot(cloudRadius, dotRadius, speedPxPerSec, dt float32) movingDot {
 	return movingDot{x: x, y: y, vx: vx, vy: vy}
 }
 
-// drawFilledCircle draws a solid filled circle into the renderer at SDL-space
-// coordinates (cx, cy) with the given radius. The draw color must be set
-// by the caller before calling this helper.
-func drawFilledCircle(r *sdl.Renderer, cx, cy, radius float32) {
-	for dy := -radius; dy <= radius; dy++ {
-		dx := float32(math.Sqrt(float64(radius*radius - dy*dy)))
-		r.RenderLine(cx-dx, cy+dy, cx+dx, cy+dy)
-	}
-}
-
 // drainStaleEvents empties the SDL event queue. The motion loops call it once
 // before the first frame so presses left over from the previous trial are not
 // reported as responses.
@@ -173,6 +163,24 @@ func PresentMovingDotCloud(
 	// SDL-space centre coordinates (computed once).
 	cx, cy := screen.CenterToSDL(center.X, center.Y)
 
+	// The background and every dot go into one vertex buffer, drawn with a
+	// single RenderGeometry call per frame. Building the frame once here
+	// sizes the buffers, so the loop below never grows them.
+	bgFC, dotFC := toFColor(bgColor), toFColor(dotColor)
+	var verts []sdl.Vertex
+	var indices []int32
+	buildFrame := func() {
+		verts, indices = verts[:0], indices[:0]
+		if bgColor.A > 0 {
+			verts, indices = appendDisc(verts, indices, cx, cy, cloudRadius, bgFC, false)
+		}
+		for _, d := range dots {
+			px, py := screen.CenterToSDL(center.X+d.x, center.Y+d.y)
+			verts, indices = appendDisc(verts, indices, px, py, dotRadius, dotFC, false)
+		}
+	}
+	buildFrame()
+
 	start := time.Now()
 
 	for {
@@ -182,21 +190,11 @@ func PresentMovingDotCloud(
 			return MotionResult{}, err
 		}
 
-		// Optional cloud background.
-		if bgColor.A > 0 {
-			if err := screen.Renderer.SetDrawColor(bgColor.R, bgColor.G, bgColor.B, bgColor.A); err != nil {
-				return MotionResult{}, err
-			}
-			drawFilledCircle(screen.Renderer, cx, cy, cloudRadius)
-		}
-
-		// Dots.
-		if err := screen.Renderer.SetDrawColor(dotColor.R, dotColor.G, dotColor.B, dotColor.A); err != nil {
+		// Optional cloud background, then the dots, antialiased so that their
+		// sub-pixel positions show instead of snapping to whole pixels.
+		buildFrame()
+		if err := drawGeometry(screen, verts, indices); err != nil {
 			return MotionResult{}, err
-		}
-		for _, d := range dots {
-			px, py := screen.CenterToSDL(center.X+d.x, center.Y+d.y)
-			drawFilledCircle(screen.Renderer, px, py, dotRadius)
 		}
 
 		// ── Present (VSYNC-locked) ────────────────────────────────────────────

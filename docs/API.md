@@ -393,7 +393,16 @@ Both support a `Font *ttf.Font` field — set it to override the screen default.
 | `NewFixCross(size, lineWidth float32, color Color) *FixCross` | Fixation cross centered at (0, 0). |
 | `NewCircle(radius float32, color Color) *Circle` | Filled circle. |
 | `NewRectangle(cx, cy, w, h float32, color Color) *Rectangle` | Filled rectangle. |
-| `NewLine(x1, y1, x2, y2 float32, color Color) *Line` | Line segment. |
+| `NewLine(start, end FPoint, color Color, lineWidth float32) *Line` | Line segment; always 1 px wide (`lineWidth` is ignored — use `NewPolyLine` for thicker strokes). |
+
+`Circle`, `Shape`, `PolyLine` and `DotCloud` have antialiased edges: each
+outline gets a 1-pixel ring whose alpha fades to zero, so edge pixels take
+intermediate values between the shape and the background. Those values are
+blended in display (gamma-encoded) space, so their luminance depends on the
+monitor and on any `SetGamma` correction. Set `Aliased: true` on the stimulus
+when every pixel must be either the shape colour or the background. With a
+translucent colour (alpha < 255) these shapes blend over what is already drawn.
+`Rectangle`, `FixCross` and `Line` are not antialiased.
 
 #### Images and Video
 

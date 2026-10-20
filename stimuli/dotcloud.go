@@ -22,6 +22,9 @@ type DotCloud struct {
 	BackgroundColor sdl.Color
 	DotColor        sdl.Color
 	Dots            []*Circle
+	Aliased         bool // true = no edge antialiasing, for the background and every dot
+
+	bg *Circle // background disc, kept so Draw does not allocate
 }
 
 // NewDotCloud creates a new DotCloud.
@@ -82,14 +85,18 @@ func (dc *DotCloud) Make(nDots int, dotRadius float32, gap float32) bool {
 func (dc *DotCloud) Draw(screen *apparatus.Screen) error {
 	// If background color is not transparent (A > 0), draw it
 	if dc.BackgroundColor.A > 0 {
-		bgCircle := NewCircle(dc.Radius, dc.BackgroundColor)
-		bgCircle.Position = dc.Position
-		if err := bgCircle.Draw(screen); err != nil {
+		if dc.bg == nil {
+			dc.bg = &Circle{}
+		}
+		dc.bg.Radius, dc.bg.Color = dc.Radius, dc.BackgroundColor
+		dc.bg.Position, dc.bg.Aliased = dc.Position, dc.Aliased
+		if err := dc.bg.Draw(screen); err != nil {
 			return fmt.Errorf("stimuli.DotCloud.Draw: background: %w", err)
 		}
 	}
 
 	for _, dot := range dc.Dots {
+		dot.Aliased = dc.Aliased
 		if err := dot.Draw(screen); err != nil {
 			return fmt.Errorf("stimuli.DotCloud.Draw: dot: %w", err)
 		}

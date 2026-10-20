@@ -4,17 +4,29 @@
 package stimuli
 
 import (
+	"fmt"
+
 	"github.com/Zyko0/go-sdl3/sdl"
 	"github.com/chrplr/goxpyriment/apparatus"
 )
 
-// Shape is a filled polygon defined by Points (relative to the shape center) and a single color.
+// Shape is a filled polygon defined by Points (relative to the shape center,
+// +Y up) and a single color.
+//
+// The polygon is triangulated as a fan from Points[0], so it must be convex,
+// or at least star-shaped from that point. The edges are antialiased (see
+// feather.go) unless Aliased is set, which gives hard pixel edges with no
+// intermediate grey levels.
 //
 // Embeds BaseVisual for position management and lifecycle no-ops.
 type Shape struct {
 	BaseVisual // Position, GetPosition, SetPosition, Preload, Unload
 	Points     []sdl.FPoint
 	Color      sdl.Color
+	Aliased    bool // true = no edge antialiasing
+
+	verts   []sdl.Vertex // reused across Draw calls
+	indices []int32
 }
 
 // NewShape creates a new polygon shape. Points are relative to the shape's center.
@@ -26,33 +38,15 @@ func NewShape(points []sdl.FPoint, color sdl.Color) *Shape {
 	}
 }
 
+// Draw draws the polygon as one RenderGeometry call. The vertex buffers are
+// kept between calls, so redrawing allocates nothing.
 func (s *Shape) Draw(screen *apparatus.Screen) error {
-	if len(s.Points) < 3 {
-		return nil // Not a polygon
-	}
-
 	cX, cY := screen.CenterToSDL(s.Position.X, s.Position.Y)
-
-	// Create vertices for RenderGeometry
-	// For a simple filled polygon, we treat it as a fan from the first point (simplistic)
-	// A more robust implementation would use a triangulation algorithm.
-	vertices := make([]sdl.Vertex, len(s.Points))
-	for i, p := range s.Points {
-		vertices[i] = sdl.Vertex{
-			Position: sdl.FPoint{X: cX + p.X, Y: cY - p.Y},
-			Color:    sdl.FColor{R: float32(s.Color.R) / 255, G: float32(s.Color.G) / 255, B: float32(s.Color.B) / 255, A: float32(s.Color.A) / 255},
-		}
+	s.verts, s.indices = appendConvexFill(s.verts[:0], s.indices[:0], cX, cY, s.Points, toFColor(s.Color), s.Aliased)
+	if err := drawGeometry(screen, s.verts, s.indices); err != nil {
+		return fmt.Errorf("stimuli.Shape.Draw: %w", err)
 	}
-
-	// Create indices for a triangle fan
-	indices := make([]int32, (len(s.Points)-2)*3)
-	for i := 0; i < len(s.Points)-2; i++ {
-		indices[i*3] = 0
-		indices[i*3+1] = int32(i + 1)
-		indices[i*3+2] = int32(i + 2)
-	}
-
-	return screen.Renderer.RenderGeometry(nil, vertices, indices)
+	return nil
 }
 
 // Present delegates to PresentDrawable — the standard clear → draw → update cycle.

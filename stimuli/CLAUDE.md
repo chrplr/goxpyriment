@@ -20,10 +20,17 @@ stimuli.PreloadAllVisual(screen, stims)      // batch
 
 ### Geometric shapes
 
+**Antialiasing** (`feather.go`). `Circle`, `Shape`, `PolyLine`, `DotCloud` and `PresentMovingDotCloud` feather their edges: an extra ring of vertices from edge − 0.5 px (shape alpha) to edge + 0.5 px (alpha 0), in the same `RenderGeometry` call. SDL's 2D renderer has no multisampling, so this is the only way to get smooth edges without a render-target pass.
+- On by default; `Aliased: true` on the stimulus restores hard edges (`DotCloud.Aliased` applies to its background and every dot). Psychophysics that needs exact edge luminance should set it: fringe pixels are blended in gamma-encoded space, so their luminance depends on the monitor. `PresentMovingDotCloud` is always antialiased — sub-pixel dot positions are the point there.
+- An axis-aligned edge on integer coordinates stays crisp in both modes (the ramp is centred on the pixel boundary).
+- `drawGeometry` forces `BLENDMODE_BLEND` around the call and restores the previous mode — untextured geometry uses the renderer's draw blend mode, and under `NONE` the alpha-0 fringe would be written as a solid border. Consequence: translucent colours now blend over what is beneath, aliased or not (they used to overwrite).
+- `Circle`/`Shape`/`PolyLine` keep their vertex buffers between `Draw` calls, so redrawing allocates nothing.
+- `Rectangle`, `FixCross` and `Line` are not feathered: an antialiased 1-px grid line on integer coordinates would straddle two pixels at half intensity.
+
 **`PolyLine`** — Stroked poly-line, open or closed. `NewPolyLine(points, closed, lineWidth, color)`.
 - The thick-stroke counterpart of `Line` and the *unfilled* counterpart of `Shape`. Use it for outlined polygons, open angles, arbitrary contours.
 - `Points` are relative to the stimulus centre, **+Y up** (same convention as `Shape.Points`); `SetPosition` moves the whole figure without rewriting them. `Closed` connects the last point back to the first.
-- One `RenderGeometry` call: a quad per segment plus a disc per vertex, giving **round joins and round caps**. Round joins matter for sharp angles — a mitre would shoot a long spike out of a 20° vertex.
+- One `RenderGeometry` call: a quad per segment, a wedge on the outer side of each join and a half-disc at each open end, giving **round joins and round caps**. Round joins matter for sharp angles — a mitre would shoot a long spike out of a 20° vertex. The wedge is exactly what a full disc would add to the two quads, but it does not overlap their fringes (overlapping fringes draw a heavier edge at every join). A translucent stroke still shows the quads' overlap on the inner side of each join.
 - Vertex/index buffers are retained between `Draw` calls and only grow, so redrawing every frame allocates nothing after the first call. Safe inside a GC-disabled VSYNC loop.
 
 > **`Line.LineWidth` is not honoured.** `Line.Draw` calls `RenderLine`, which is always 1 px, so `NewLine(a, b, c, 5)` silently draws a hairline. Use `PolyLine` for any stroke wider than one pixel.

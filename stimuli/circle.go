@@ -14,11 +14,18 @@ import (
 
 // Circle is a filled circle with the given radius and color; Position is center-based.
 //
+// The edge is antialiased (see feather.go) unless Aliased is set, which gives
+// hard pixel edges with no intermediate grey levels.
+//
 // Embeds BaseVisual for position management and lifecycle no-ops.
 type Circle struct {
 	BaseVisual // Position, GetPosition, SetPosition, Preload, Unload
 	Radius     float32
 	Color      sdl.Color
+	Aliased    bool // true = no edge antialiasing
+
+	verts   []sdl.Vertex // reused across Draw calls
+	indices []int32
 }
 
 // NewCircle creates a new Circle stimulus.
@@ -30,15 +37,14 @@ func NewCircle(radius float32, color sdl.Color) *Circle {
 	}
 }
 
-// Draw draws the circle using horizontal scanlines.
-// For better performance, we could use a texture.
+// Draw draws the circle as one RenderGeometry triangle fan. The vertex
+// buffers are kept between calls, so redrawing allocates nothing.
 func (c *Circle) Draw(screen *apparatus.Screen) error {
-	if err := screen.Renderer.SetDrawColor(c.Color.R, c.Color.G, c.Color.B, c.Color.A); err != nil {
-		return fmt.Errorf("stimuli.Circle.Draw: setting draw color: %w", err)
-	}
-
 	cX, cY := screen.CenterToSDL(c.Position.X, c.Position.Y)
-	drawFilledCircle(screen.Renderer, cX, cY, c.Radius)
+	c.verts, c.indices = appendDisc(c.verts[:0], c.indices[:0], cX, cY, c.Radius, toFColor(c.Color), c.Aliased)
+	if err := drawGeometry(screen, c.verts, c.indices); err != nil {
+		return fmt.Errorf("stimuli.Circle.Draw: %w", err)
+	}
 	return nil
 }
 
