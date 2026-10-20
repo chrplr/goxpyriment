@@ -311,8 +311,12 @@ calls `present()` directly, and it runs before a marker is attached.
   - The rect is the constant `FRect{0,0,side,side}`, i.e. the top-left corner of
     the drawing area in drawing-space units. With letterboxing that is the
     corner of the logical area, not of the panel.
-  - The draw colour and blend mode are saved and restored. The blend mode is
-    forced to NONE, as in `fillWholeTarget`.
+  - It is drawn as `RenderGeometry` with the colour in its vertices, so the
+    renderer's draw colour is never changed. Do not go back to
+    `SetDrawColor` + `RenderFillRect` with a save/restore: reading the draw
+    colour (`SDL_GetRenderDrawColor`) is a panic stub in the browser build, and
+    that crashed every browser run with the photodiode on. The blend mode is
+    forced to NONE and restored, as in `fillWholeTarget`.
 - **After `recordOnset()`:** `afterFlip(lastFlipNS)` writes the armed code. It
   does that first, because the write is the timing-critical part.
 - **Clearing the code:** a single goroutine with a reused timer drives the lines

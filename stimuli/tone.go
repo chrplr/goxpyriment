@@ -12,6 +12,10 @@ import (
 	"github.com/chrplr/goxpyriment/apparatus"
 )
 
+// toneSpec is the format of every Tone's samples and stream: 32-bit float,
+// mono, 44.1 kHz.
+var toneSpec = sdl.AudioSpec{Format: sdl.AUDIO_F32LE, Channels: 1, Freq: 44100}
+
 // Tone is a procedural sine-wave tone with configurable frequency (Hz),
 // duration (ms), and amplitude.
 //
@@ -108,13 +112,8 @@ func (t *Tone) PreloadDevice(audioDevice sdl.AudioDeviceID) error {
 		}
 	}
 
-	spec := &sdl.AudioSpec{
-		Format:   sdl.AUDIO_F32LE,
-		Channels: 1,
-		Freq:     44100,
-	}
-
-	stream, err := sdl.CreateAudioStream(spec, spec)
+	spec := toneSpec
+	stream, err := sdl.CreateAudioStream(&spec, &spec)
 	if err != nil {
 		return fmt.Errorf("stimuli.Tone.PreloadDevice: creating audio stream: %w", err)
 	}
@@ -135,7 +134,7 @@ func (t *Tone) PlaySyncedWithFlip(screen *apparatus.Screen) (uint64, error) {
 // OutputLatency estimates how long after queueing the tone it will be heard.
 // See Sound.OutputLatency.
 func (t *Tone) OutputLatency() (time.Duration, error) {
-	return streamOutputLatency(t.Stream)
+	return streamOutputLatency(t.Stream, toneSpec)
 }
 
 // PlayTS plays the tone and returns the estimated onset timestamp on the SDL
@@ -143,7 +142,7 @@ func (t *Tone) OutputLatency() (time.Duration, error) {
 // estimate from the device buffer size, good to ±one callback period, and
 // blind to the DAC and analog path.
 func (t *Tone) PlayTS() (uint64, error) {
-	return playStreamTS(t.Stream, t.Data)
+	return playStreamTS(t.Stream, toneSpec, t.Data)
 }
 
 func (t *Tone) Play() error {

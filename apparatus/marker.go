@@ -97,7 +97,8 @@ type MarkerStats struct {
 // Create it with NewMarker and attach it with Screen.SetMarker.
 type Marker struct {
 	photodiode bool
-	rect       sdl.FRect // the square, at the top-left corner of the drawing area
+	rect       sdl.FRect     // the square, at the top-left corner of the drawing area
+	quad       [4]sdl.Vertex // rect as geometry; drawSquare sets the colour
 	frames     int
 	out        MarkerOutput
 	outDesc    string
@@ -136,13 +137,18 @@ func NewMarker(opts MarkerOptions) *Marker {
 	if frames < 1 {
 		frames = 3
 	}
+	side := opts.Size
 	m := &Marker{
 		photodiode: opts.Photodiode,
-		rect:       sdl.FRect{X: 0, Y: 0, W: opts.Size, H: opts.Size},
-		frames:     frames,
-		out:        opts.Output,
-		outDesc:    opts.OutputDesc,
-		ttlDur:     opts.TTLDuration,
+		rect:       sdl.FRect{X: 0, Y: 0, W: side, H: side},
+		quad: [4]sdl.Vertex{
+			{Position: sdl.FPoint{X: 0, Y: 0}}, {Position: sdl.FPoint{X: side, Y: 0}},
+			{Position: sdl.FPoint{X: side, Y: side}}, {Position: sdl.FPoint{X: 0, Y: side}},
+		},
+		frames:  frames,
+		out:     opts.Output,
+		outDesc: opts.OutputDesc,
+		ttlDur:  opts.TTLDuration,
 	}
 	if m.out != nil {
 		m.poke = make(chan struct{}, 1)
@@ -335,18 +341,20 @@ func (m *Marker) afterFlip(flipNS uint64) {
 	m.lastWhite = m.white
 }
 
+// squareIndices splits the quad into two triangles.
+var squareIndices = [6]int32{0, 1, 2, 0, 2, 3}
+
 // drawSquare draws the square on top of the finished frame, white or black.
-// Draw colour and blend mode are restored: the square must not leak state
-// into the next frame's stimuli. Blend mode is forced to NONE, as in
+// It must not leak state into the next frame's stimuli. The square is
+// geometry whose colour is in its vertices, so the renderer's draw colour is
+// never changed and needs no restoring; reading it back (SDL_GetRenderDrawColor)
+// is not implemented in the browser build, where it crashed every program with
+// the photodiode on. Blend mode is forced to NONE and restored, as in
 // fillWholeTarget, so a stimulus that left a blending mode set cannot tint it.
 func (m *Marker) drawSquare(r *sdl.Renderer) error {
 	white := m.beginFrame()
 	if !m.photodiode {
 		return nil
-	}
-	prevColor, err := r.DrawColor()
-	if err != nil {
-		return fmt.Errorf("apparatus.Marker: reading draw color: %w", err)
 	}
 	prevBlend, err := r.DrawBlendMode()
 	if err != nil {
@@ -358,17 +366,17 @@ func (m *Marker) drawSquare(r *sdl.Renderer) error {
 		}
 		defer func() { _ = r.SetDrawBlendMode(prevBlend) }()
 	}
-	var v uint8
+	var v float32
 	if white {
-		v = 255
+		v = 1
 	}
-	if err := r.SetDrawColor(v, v, v, 255); err != nil {
-		return fmt.Errorf("apparatus.Marker: setting draw color: %w", err)
+	for i := range m.quad {
+		m.quad[i].Color = sdl.FColor{R: v, G: v, B: v, A: 1}
 	}
-	if err := r.RenderFillRect(&m.rect); err != nil {
+	if err := r.RenderGeometry(nil, m.quad[:], squareIndices[:]); err != nil {
 		return fmt.Errorf("apparatus.Marker: drawing the square: %w", err)
 	}
-	return r.SetDrawColor(prevColor.R, prevColor.G, prevColor.B, prevColor.A)
+	return nil
 }
 
 // ── TTL output ───────────────────────────────────────────────────────────────

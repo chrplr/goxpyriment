@@ -207,7 +207,7 @@ func (s *Sound) PlaySyncedWithFlip(screen *apparatus.Screen) (uint64, error) {
 //
 // See PlayTS for what this estimate can and cannot account for.
 func (s *Sound) OutputLatency() (time.Duration, error) {
-	return streamOutputLatency(s.Stream)
+	return streamOutputLatency(s.Stream, s.Spec)
 }
 
 // PlayTS plays the sound and returns the estimated onset timestamp — the SDL
@@ -240,12 +240,17 @@ func (s *Sound) OutputLatency() (time.Duration, error) {
 // photodiode and a microphone/TTL box — and treat PlayTS as the software-side
 // bound rather than ground truth.
 func (s *Sound) PlayTS() (uint64, error) {
-	return playStreamTS(s.Stream, s.Data)
+	return playStreamTS(s.Stream, s.Spec, s.Data)
 }
 
 // streamOutputLatency is the shared estimate used by Sound.OutputLatency and
-// Tone.OutputLatency.
-func streamOutputLatency(stream *sdl.AudioStream) (time.Duration, error) {
+// Tone.OutputLatency. src is the spec the stream was created with, which is
+// the format of the data queued in it.
+//
+// src is passed in rather than read back with stream.Format because
+// SDL_GetAudioStreamFormat is not implemented in the browser build: there it
+// panics, and took down any program that asked for a latency or a PlayTS.
+func streamOutputLatency(stream *sdl.AudioStream, src sdl.AudioSpec) (time.Duration, error) {
 	if stream == nil {
 		return 0, fmt.Errorf("stimuli: audio not loaded (call PreloadDevice first)")
 	}
@@ -268,8 +273,7 @@ func streamOutputLatency(stream *sdl.AudioStream) (time.Duration, error) {
 	// Anything already queued plays first. SDL_GetAudioStreamQueued counts
 	// bytes of INPUT still to be converted, so this converts with the stream's
 	// source spec, not the device's.
-	var src, dst sdl.AudioSpec
-	if err := stream.Format(&src, &dst); err == nil && src.Freq > 0 {
+	if src.Freq > 0 {
 		if bytesPerFrame := int(src.Channels) * sampleByteWidth(src.Format); bytesPerFrame > 0 {
 			if queued, qErr := stream.Queued(); qErr == nil && queued > 0 {
 				frames := float64(int(queued) / bytesPerFrame)
@@ -282,7 +286,7 @@ func streamOutputLatency(stream *sdl.AudioStream) (time.Duration, error) {
 
 // playStreamTS is the shared clear-stamp-queue-flush implementation used by
 // Sound.PlayTS and Tone.PlayTS.
-func playStreamTS(stream *sdl.AudioStream, data []byte) (uint64, error) {
+func playStreamTS(stream *sdl.AudioStream, src sdl.AudioSpec, data []byte) (uint64, error) {
 	if stream == nil {
 		return 0, fmt.Errorf("stimuli: audio not loaded (call PreloadDevice first)")
 	}
@@ -291,7 +295,7 @@ func playStreamTS(stream *sdl.AudioStream, data []byte) (uint64, error) {
 	if err := stream.Clear(); err != nil {
 		return 0, fmt.Errorf("stimuli: clearing audio stream: %w", err)
 	}
-	latency, err := streamOutputLatency(stream)
+	latency, err := streamOutputLatency(stream, src)
 	if err != nil {
 		return 0, err
 	}
