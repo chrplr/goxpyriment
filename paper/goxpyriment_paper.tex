@@ -243,6 +243,19 @@ session the participant's browser downloads a single \texttt{.zip}
 holding the data CSV and the \texttt{-info.txt} companion, byte for
 byte what a native run writes.
 
+For online data collection, the browser build can also be deployed on a
+JATOS server \parencite{lange2015}, which hosts the study, distributes
+links to participants and stores their results. \texttt{make jatos-NAME}
+packages an experiment, again without changes to its source, as a
+JATOS study archive (\texttt{.jzip}) that the experimenter imports
+through the JATOS web interface. Parameters appended to the study link
+reach the experiment as they would on the command line, and each call
+to \texttt{exp.Data.Save()} sends the rows recorded so far to the
+server, so that a participant who closes the tab halfway through
+leaves behind every block completed until then. The researcher
+retrieves the same CSV and \texttt{-info.txt} files as from a lab
+session with JATOS's \emph{Export Results}.
+
 Two honest caveats. First, a browser cannot offer the display-stack
 guarantees of the native build: there is no hardware retrace clock,
 no real-time priority, and we have not validated pixel onset with a
