@@ -2,7 +2,7 @@
 // Licensed under the Apache License, Version 2.0 (see LICENSE.txt).
 
 // Command MEG-left-right is a two-button task for MEG: a dark-grey fixation
-// cross on a mid-grey background is replaced, every 3-8 s, for 800 ms by a '<'
+// cross on a mid-grey background is replaced, every 1.5-4 s, for 800 ms by a '<'
 // (press the LEFT button) or a '>' (press the RIGHT button). Exactly half the
 // arrows ask for each button, in random order. Every arrow onset is marked by
 // the photodiode square and a TTL pulse on a line of its own side. A sync code
@@ -51,7 +51,7 @@ const (
 	fixCrossLinePx = 3
 
 	// Onset-marker defaults for this paradigm (see control.MarkerFlags): the
-	// photodiode square is white for one frame at every arrow onset, in the
+	// photodiode square is white for three frames from every arrow onset, from the
 	// flip whose timestamp is recorded as onset_ms, and the TTL pulse is 5 ms.
 	markerFrames = 3
 	markerTTLMs  = 5

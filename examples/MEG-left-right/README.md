@@ -1,15 +1,15 @@
 # MEG left-right: a two-button arrow task
 
-A dark-grey fixation cross sits on a mid-grey background. Every 3–8 s it is
+A dark-grey fixation cross sits on a mid-grey background. Every 1.5–4 s it is
 replaced for 800 ms by a **`<`** (press the **left** button) or a **`>`**
-(press the **right** button). The arrows have the cross's height (16 px), line
+(press the **right** button). The arrows have the cross's height (32 px), line
 width (3 px) and colour, so only the shape changes.
 
-The run lasts `-duration` seconds (default 300) and holds as many arrows as
-the timing rules allow, about one every 6.3 s; exactly half ask for the left
+The run lasts `-duration` seconds (default 180) and holds as many arrows as
+the timing rules allow, about one every 3.6 s; exactly half ask for the left
 button and half for the right, in random order (an odd count loses its last
-arrow). A press counts only within 2 s of an arrow's onset, and arrows are at
-least 3.8 s apart, so every press belongs to at most one arrow.
+arrow). A press counts only within 1.5 s of an arrow's onset, and arrows are at
+least 2.3 s apart, so every press belongs to at most one arrow.
 
 This is the visual task of [`../MEG-localizer3/`](../MEG-localizer3/) without
 the retinotopic stimulation and the sounds. It yields left/right motor
@@ -38,7 +38,7 @@ Besides the standard `-w`, `-d N` and `-s <id>`:
 
 | Flag | Default | Meaning |
 |---|---|---|
-| `-duration S` | 300 | Run duration, in s |
+| `-duration S` | 180 | Run duration, in s |
 | `-autostart` | off | Skip the instruction and end screens (unattended runs) |
 | `-seed N` | 1 | Seed for the arrow schedule (combined with the subject ID) |
 | `-left-key K` / `-right-key K` | `left` / `right` | Keys sent by the two response buttons: `left`, `right`, `up`, `down`, `space`, `a`–`z`, `0`–`9` |
@@ -47,9 +47,9 @@ Besides the standard `-w`, `-d N` and `-s <id>`:
 | `-ttl-arrow-left N` / `-ttl-arrow-right N` | 0 / 1 | TTL line (0–7) pulsed at the onset of a `<` / `>` (codes 1 / 2 by default); they must differ |
 | `-ttl-sync-code N` | 4 | TTL code (1–255) written at the start and at the end of the run, for a clock-drift check; `0` disables |
 | `-ttl-ms N` | 5 | Pulse width in ms; must be shorter than an arrow |
-| `-photodiode` | on | Flash a white square in the top-left corner for one frame at every arrow onset, drawn in the same flip as the onset; the square is black on every other frame. `-photodiode=false` disables it |
+| `-photodiode` | on | Flash a white square in the top-left corner for three frames from every arrow onset, drawn in the same flip as the onset; the square is black on every other frame. `-photodiode=false` disables it |
 | `-photodiode-size N` | 100 | Side of the photodiode square, in pixels |
-| `-marker-frames N` | 1 | Frames the square stays white from each onset |
+| `-marker-frames N` | 3 | Frames the square stays white from each onset |
 
 The photodiode square and the TTL pulse are the library's onset marker
 (`control.MarkerFlags`, `exp.Marker`). The pulse is raised right after the
@@ -68,10 +68,10 @@ One row per event, in `goxpy_data/MEG-left-right_sub-NNN_date-….csv`.
 | `onset_ms` | Flip time of the arrow onset, or time of the press, in ms from the start of the run |
 | `side` | The button the arrow asks for: `left` or `right` (blank for a false alarm) |
 | `button` | For a response, the button pressed |
-| `outcome` | For a response: `correct`, `wrong` (other button), `extra` (a second press to the same arrow) or `false_alarm` (no arrow in the last 2 s); `miss` on a miss row |
+| `outcome` | For a response: `correct`, `wrong` (other button), `extra` (a second press to the same arrow) or `false_alarm` (no arrow in the last 1.5 s); `miss` on a miss row |
 | `rt_ms` | For a response attributed to an arrow, ms since that arrow's onset |
 
-A `miss` row is written when an arrow's 2 s window closes with no press; its
+A `miss` row is written when an arrow's 1.5 s window closes with no press; its
 `onset_ms` is the arrow's onset. The end of the `-info.txt` summarises events,
 correct, wrong and misses per side.
 
