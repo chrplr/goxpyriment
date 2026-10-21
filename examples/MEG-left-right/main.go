@@ -33,27 +33,27 @@ const (
 	expName = "MEG-left-right"
 
 	// Default run duration, in seconds.
-	durationSec = 300.0
+	durationSec = 180.0
 
 	// Duration of an arrow replacing the fixation cross, in seconds.
 	targetDurSec = 0.800
 	// Bounds on the gap between the end of one arrow and the start of the
 	// next.
-	targetGapMinSec = 3.0
-	targetGapMaxSec = 8.0
+	targetGapMinSec = 1.5
+	targetGapMaxSec = 4.0
 
 	// A press is attributed to an arrow only within respWindowSec of its
 	// onset. The window must not exceed the arrow plus the shortest gap, or a
 	// press could belong to two arrows.
-	respWindowSec = 2.0
+	respWindowSec = 1.5
 
-	fixCrossSizePx = 16
+	fixCrossSizePx = 32
 	fixCrossLinePx = 3
 
 	// Onset-marker defaults for this paradigm (see control.MarkerFlags): the
 	// photodiode square is white for one frame at every arrow onset, in the
 	// flip whose timestamp is recorded as onset_ms, and the TTL pulse is 5 ms.
-	markerFrames = 1
+	markerFrames = 3
 	markerTTLMs  = 5
 )
 
@@ -64,7 +64,7 @@ var fixColor = control.DarkGray
 
 // arrowHalfWidthPx is half the width of a '<' or '>'; its height is the
 // cross's, fixCrossSizePx.
-const arrowHalfWidthPx = 5
+const arrowHalfWidthPx = 10
 
 // newArrow returns a '<' (side left) or '>' (side right) centred on the
 // fixation point, drawn with the cross's line width. Points are +Y up.
