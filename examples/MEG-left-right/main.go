@@ -5,7 +5,10 @@
 // cross on a mid-grey background is replaced, every 3-8 s, for 800 ms by a '<'
 // (press the LEFT button) or a '>' (press the RIGHT button). Exactly half the
 // arrows ask for each button, in random order. Every arrow onset is marked by
-// the photodiode square and a TTL pulse on a line of its own side.
+// the photodiode square and a TTL pulse on a line of its own side. A sync code
+// is also written at the start and at the end of the run, so that the
+// interval between them on the stimulus PC's clock can be compared with the
+// same interval on the MEG acquisition's clock, to check for drift.
 //
 // It is the visual task of examples/MEG-localizer3 without the retinotopic
 // stimulation and the sounds.
@@ -85,8 +88,9 @@ func main() {
 		flagRightKey = flag.String("right-key", "right", "Key sent by the RIGHT response button")
 
 		flagWaitTrig  = flag.Bool("wait-trigger", false, "Wait for the scanner pulse (key 't') before starting the run")
-		flagTTLArrowL = flag.Int("ttl-arrow-left", 1, "TTL line (0-7) pulsed at the onset of a '<'")
-		flagTTLArrowR = flag.Int("ttl-arrow-right", 2, "TTL line (0-7) pulsed at the onset of a '>'")
+		flagTTLArrowL = flag.Int("ttl-arrow-left", 0, "TTL line (0-7) pulsed at the onset of a '<'")
+		flagTTLArrowR = flag.Int("ttl-arrow-right", 1, "TTL line (0-7) pulsed at the onset of a '>'")
+		flagTTLSync   = flag.Int("ttl-sync-code", 4, "TTL code (1-255) written at the start and at the end of the run, for clock-drift checks; 0 disables")
 	)
 	// -photodiode (on by default here), -photodiode-size, -marker-frames, -ttl
 	// and -ttl-ms mark every arrow onset for the recording.
@@ -106,6 +110,9 @@ func main() {
 		if l.line < 0 || l.line > 7 {
 			log.Fatalf("%s=%d out of range (0-7)", l.name, l.line)
 		}
+	}
+	if *flagTTLSync < 0 || *flagTTLSync > 255 {
+		log.Fatalf("-ttl-sync-code=%d out of range (0-255)", *flagTTLSync)
 	}
 	if *flagTTLArrowL == *flagTTLArrowR {
 		log.Fatalf("-ttl-arrow-left and -ttl-arrow-right are both line %d; each side needs its own line",
@@ -180,9 +187,11 @@ func main() {
 			targetDurSec*1000, targetGapMinSec, targetGapMaxSec))
 		exp.Data.WriteComment(fmt.Sprintf("m planned_arrows: %d (half left, half right, in random order)", len(plan)))
 		exp.Data.WriteComment(fmt.Sprintf("m response_window_s: %.1f", respWindowSec))
+		syncCode := byte(*flagTTLSync)
 		if exp.Marker.TTLEnabled() {
 			exp.Data.WriteComment(fmt.Sprintf("m ttl_lines: arrow_left=%d arrow_right=%d",
 				*flagTTLArrowL, *flagTTLArrowR))
+			exp.Data.WriteComment(fmt.Sprintf("m ttl_sync_code: %d (start and end of the run)", syncCode))
 		}
 		exp.AddDataVariableNames([]string{"event_type", "onset_ms", "side", "button", "outcome", "rt_ms"})
 		log.Printf("planned arrows: %d, exactly half left/half right, over %.1f s", len(plan), *flagDuration)
@@ -215,8 +224,26 @@ func main() {
 		// stamps flips (FlipTS) and key events, so onsets and responses are
 		// directly comparable without crossing clocks.
 		r.t0NS = control.TicksNS()
+		// Clock-drift check: the sync code goes out at the start and at the
+		// end of the run, outside any flip, and Fire returns the SDL time
+		// taken just before each write (0 when there is no TTL output). The
+		// first arrow is GapMin seconds away, so the pulses cannot overlap.
+		startNS := r.exp.Marker.Fire(syncCode)
+		if startNS != 0 {
+			r.addRow(row{event: "sync_start", tsNS: startNS})
+		}
 
-		if rerr := r.run(plan, totalFrames); rerr != nil {
+		rerr := r.run(plan, totalFrames)
+		// Sent even when the run was aborted (ESC), so the interval can
+		// still be compared with the MEG file.
+		if endNS := r.exp.Marker.Fire(syncCode); startNS != 0 && endNS != 0 {
+			r.addRow(row{event: "sync_end", tsNS: endNS})
+			exp.Data.WriteComment(fmt.Sprintf("m sync_start_ns: %d  sync_end_ns: %d  (SDL clock)", startNS, endNS))
+			exp.Data.WriteComment(fmt.Sprintf("m sync_interval_ms: %.3f", float64(endNS-startNS)/1e6))
+			log.Printf("sync code %d: start-to-end interval %.3f ms on the stimulus PC's clock",
+				syncCode, float64(endNS-startNS)/1e6)
+		}
+		if rerr != nil {
 			return rerr
 		}
 		// An arrow still inside its window when the run ends is scored now.

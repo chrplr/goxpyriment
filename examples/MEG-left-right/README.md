@@ -23,7 +23,7 @@ responses, time-locked to marked visual onsets.
 # A full run, fullscreen.
 go run ./examples/MEG-left-right -s 1
 
-# MEG: pulse line 1 of a DLP-IO8 at each '<', line 2 at each '>' (the
+# MEG: pulse line 0 of a DLP-IO8 at each '<', line 1 at each '>' (the
 # defaults), response box sending keys b and y.
 go run ./examples/MEG-left-right -s 1 -ttl dlpio8 -left-key b -right-key y
 
@@ -44,7 +44,8 @@ Besides the standard `-w`, `-d N` and `-s <id>`:
 | `-left-key K` / `-right-key K` | `left` / `right` | Keys sent by the two response buttons: `left`, `right`, `up`, `down`, `space`, `a`–`z`, `0`–`9` |
 | `-wait-trigger` | off | Wait for the scanner pulse (key `t`) before the run |
 | `-ttl KIND[:PORT]` | none | TTL device for the onset markers: `dlpio8`, `dlpio20`, `megttlbox:/dev/ttyACM0`, `mmbts:/dev/ttyACM0`, `parallel`, `gpio`, `ft232h`, `labjackt4:HOST`, `null` |
-| `-ttl-arrow-left N` / `-ttl-arrow-right N` | 1 / 2 | TTL line (0–7) pulsed at the onset of a `<` / `>`; they must differ |
+| `-ttl-arrow-left N` / `-ttl-arrow-right N` | 0 / 1 | TTL line (0–7) pulsed at the onset of a `<` / `>` (codes 1 / 2 by default); they must differ |
+| `-ttl-sync-code N` | 4 | TTL code (1–255) written at the start and at the end of the run, for a clock-drift check; `0` disables |
 | `-ttl-ms N` | 5 | Pulse width in ms; must be shorter than an arrow |
 | `-photodiode` | on | Flash a white square in the top-left corner for one frame at every arrow onset, drawn in the same flip as the onset; the square is black on every other frame. `-photodiode=false` disables it |
 | `-photodiode-size N` | 100 | Side of the photodiode square, in pixels |
@@ -63,7 +64,7 @@ One row per event, in `goxpy_data/MEG-left-right_sub-NNN_date-….csv`.
 
 | Column | Description |
 |---|---|
-| `event_type` | `arrow_left`, `arrow_right`, `response`, or `miss` |
+| `event_type` | `arrow_left`, `arrow_right`, `response`, `miss`, or `sync_start` / `sync_end` |
 | `onset_ms` | Flip time of the arrow onset, or time of the press, in ms from the start of the run |
 | `side` | The button the arrow asks for: `left` or `right` (blank for a false alarm) |
 | `button` | For a response, the button pressed |
@@ -79,6 +80,18 @@ correct responses over the number of arrows. An arrow counts as correct only
 if the first press in its window was the right button. The screen stays up
 until **SPACE** is pressed, so a late press on a response button cannot
 dismiss it. `-autostart` skips it.
+
+### Clock-drift check
+
+With `-ttl`, the code `-ttl-sync-code` (4 by default) is written once when the
+run starts and once when it ends, even if the run is aborted with ESC. The
+two writes are logged as `sync_start` and `sync_end` rows, timed on the SDL
+clock just before each write. The `-info.txt` file gives their raw times
+(`sync_start_ns`, `sync_end_ns`) and the interval between them
+(`sync_interval_ms`). Compare that interval with the interval between the two
+events in the MEG file: their difference is the drift between the two clocks
+over the run. With the default lines the arrows send codes 1 and 2, so the
+sync code 4 is distinct from both.
 
 `onset_ms` comes from `Screen.FlipTS`, and response times from the SDL event
 clock, so onsets and responses share one clock.
