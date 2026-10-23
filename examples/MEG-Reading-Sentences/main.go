@@ -242,15 +242,30 @@ func main() {
 		// t0 anchors every onset, on the SDL clock that also stamps flips and
 		// key events.
 		r.t0NS = control.TicksNS()
-		if ts := exp.Marker.Fire(byte(codes.sync)); ts != 0 {
-			r.addRow("sync_start", 0, 0, "", "", "", codes.sync, "", ts, "", "")
+		// Clock-drift check: the sync code goes out now and again at the very
+		// end. Fire returns the SDL time taken just before each write (0 when
+		// there is no TTL output); the interval between the two, compared with
+		// the interval between the two codes in the MEG file, gives the drift
+		// between the two clocks. The first word is leadInMs away, so the
+		// start pulse cannot merge with it.
+		startNS := exp.Marker.Fire(byte(codes.sync))
+		if startNS != 0 {
+			r.addRow("sync_start", 0, 0, "", "", "", codes.sync, "", startNS, "", "")
 		}
 
 		rerr := r.present(trials, onsets, runEndMs, blank, fixGrey, probe)
 		// Sent even when the run was aborted, so the interval can still be
-		// compared with the MEG file.
-		if ts := exp.Marker.Fire(byte(codes.sync)); ts != 0 {
-			r.addRow("sync_end", 0, 0, "", "", "", codes.sync, "", ts, "", "")
+		// compared with the MEG file. After an abort a word's code may still be
+		// on the lines; wait for it to clear so the two pulses stay distinct.
+		if rerr != nil {
+			time.Sleep(2 * exp.Marker.TTLDuration())
+		}
+		if endNS := exp.Marker.Fire(byte(codes.sync)); startNS != 0 && endNS != 0 {
+			r.addRow("sync_end", 0, 0, "", "", "", codes.sync, "", endNS, "", "")
+			exp.Data.WriteComment(fmt.Sprintf("m sync_start_ns: %d  sync_end_ns: %d  (SDL clock)", startNS, endNS))
+			exp.Data.WriteComment(fmt.Sprintf("m sync_interval_ms: %.3f", float64(endNS-startNS)/1e6))
+			log.Printf("sync code %d: start-to-end interval %.3f ms on the stimulus PC's clock",
+				codes.sync, float64(endNS-startNS)/1e6)
 		}
 		r.save()
 		if rerr != nil {

@@ -95,6 +95,23 @@ SDL-clock instant as the `onset_ms` recorded in the data file, and cleared
 
 The program refuses overlapping code ranges and codes outside 1–255.
 
+**Clock drift.** The sync code goes out right after the instruction screen
+(after the start key, with `-wait-trigger`) and again at the very end of the
+run, after the last fixation period — or at ESC, once any word code still on
+the lines has cleared. Each is timestamped on the stimulus PC's SDL clock just
+before the write. The data file gets `sync_start` and `sync_end` rows, and the
+session's `-info.txt` gets the raw timestamps and their difference:
+
+```
+# m sync_start_ns: …  sync_end_ns: …  (SDL clock)
+# m sync_interval_ms: …
+```
+
+The drift is the difference between that interval and the interval between
+the two code-100 events on the MEG STI channel, divided by the interval (in
+ppm, × 10⁶). Without a TTL device (`-ttl` omitted) nothing is sent and none of
+this is recorded; `-ttl-sync-code 0` disables it.
+
 **The codes have several bits set, so all 8 lines must change at once.** The
 DLP-IO8-G and DLP-IO20 write a code line by line, and the STI channel would
 record the partial values on the way. The program therefore refuses
