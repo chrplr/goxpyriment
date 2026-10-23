@@ -50,8 +50,9 @@ Bundled stimulus material
 --------------------------------------------------------------------------------
 
 The sentence and nonword lists of the English reading language localizer
-(examples/Language-Localizer-Reading-English/stim/langloc_fmri_run*_stim_set*.csv)
-come from the EvLab materials published at https://osf.io/vc2bw, where they are
+(examples/Language-Localizer-Reading-English/stim/langloc_fmri_run*_stim_set*.csv),
+and the same items re-tabulated for the MEG reading paradigm
+(examples/MEG-Reading-Sentences/stimuli/*.csv), come from the EvLab materials published at https://osf.io/vc2bw, where they are
 distributed under the Creative Commons Attribution-NonCommercial 4.0
 International license (CC BY-NC 4.0):
 
