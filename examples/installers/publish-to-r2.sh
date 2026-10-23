@@ -16,6 +16,7 @@
 #   builds/latest/…           the same page, plus each browser experiment's
 #                             launcher at builds/latest/wasm/<app>/ -- HTML
 #                             only, loading everything else from builds/<sha>/
+#   builds/latest/sha.txt     the commit SHA of that build, one line
 #
 # Then deletes every builds/<sha>/ beyond the KEEP most recent, ranked by the
 # last-modified time of each folder's index.html.
@@ -86,9 +87,20 @@ s3 s3 cp "${R2_DIR}/index.html" "${DEST}/index.html" \
 
 echo "=== Updating the latest pages ==="
 # --delete keeps builds/latest/ free of experiments that no longer exist. The
-# whole tree is HTML pages, a few hundred KB, so this is cheap.
+# whole tree is HTML pages, a few hundred KB, so this is cheap. sha.txt is
+# excluded so --delete never removes it; it is replaced just below.
 s3 s3 sync "${LATEST_DIR}" "s3://${R2_BUCKET}/builds/latest" --delete \
+  --exclude sha.txt \
   --content-type "${HTML_TYPE}" --cache-control "public, max-age=60" \
+  --no-progress "${DRYFLAG[@]}"
+
+# builds/latest/sha.txt holds just the commit SHA, for scripts:
+#   sha=$(curl -fsS https://downloads.pallier.org/builds/latest/sha.txt)
+SHA_FILE="$(mktemp)"
+trap 'rm -f "${SHA_FILE}"' EXIT
+printf '%s\n' "${COMMIT_SHA}" > "${SHA_FILE}"
+s3 s3 cp "${SHA_FILE}" "s3://${R2_BUCKET}/builds/latest/sha.txt" \
+  --content-type "text/plain; charset=utf-8" --cache-control "public, max-age=60" \
   --no-progress "${DRYFLAG[@]}"
 
 s3 s3 cp "${LATEST_DIR}/index.html" "s3://${R2_BUCKET}/builds/index.html" \

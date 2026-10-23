@@ -17,6 +17,7 @@ as **one zip per program per platform** in a Cloudflare R2 bucket.
 builds/index.html                                     newest build's download page
 builds/latest/index.html                              newest build's download page
 builds/latest/wasm/{app}/index.html                   newest build's launcher page
+builds/latest/sha.txt                                 newest build's commit SHA, one line
 builds/{commit_sha}/index.html                        generated download page
 builds/{commit_sha}/wasm/_runtime/sdl.js              ┐ the SDL runtime, shared
 builds/{commit_sha}/wasm/_runtime/sdl.wasm            │ by every browser build
@@ -60,6 +61,26 @@ redirects here, which left the commit hash in the address bar.
 The trade-off of not copying the binaries is that the zip links themselves are
 commit-pinned: a zip URL copied from the page goes stale when that build is
 pruned. `builds/latest/…` itself never does.
+
+### Downloading from a script
+
+`builds/latest/sha.txt` holds the newest build's commit SHA, so a script can
+fetch programs without hard-coding a hash that will be pruned:
+
+```bash
+BASE=https://downloads.pallier.org/builds
+PLATFORM=Linux_x86_64   # or Linux_arm64, Windows_x86_64, MacOS_arm64
+sha=$(curl -fsS "$BASE/latest/sha.txt")
+for app in Stroop_task Retinotopy-multifocal; do
+  curl -fL --retry 3 -o "$app.zip" "$BASE/$sha/$PLATFORM/$app.zip"
+  unzip -oq "$app.zip" && rm "$app.zip"
+done
+```
+
+Keep the `-f`: without it a mistyped name saves R2's "object does not exist"
+HTML page under the `.zip` name instead of failing. rsync is not an option —
+the domain serves plain HTTPS with no directory listing; for sync semantics use
+`aws s3 sync` or `rclone` against the bucket endpoint with an R2 key.
 
 ## Browser versions
 
