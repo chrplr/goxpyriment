@@ -3,8 +3,10 @@
 Tagged releases publish the example and test programs twice: as the four
 whole-collection archives attached to the [GitHub
 release](https://github.com/chrplr/goxpyriment/releases), and — so a visitor who
-wants one experiment need not download a ~500 MB bundle containing 113 others —
-as **one zip per program per platform** in a Cloudflare R2 bucket.
+wants one experiment need not download a ~500 MB bundle containing 128 others —
+as **one zip per program per platform** in a Cloudflare R2 bucket. A manual run
+of the workflow (`workflow_dispatch`) publishes to R2 too, without making a
+release.
 
 * Bucket: `christophe-pallier-apps`
 * Endpoint: `https://ce24dc0e8bb587a06d4cfdcf226ccfa9.r2.cloudflarestorage.com`
@@ -73,9 +75,14 @@ PLATFORM=Linux_x86_64   # or Linux_arm64, Windows_x86_64, MacOS_arm64
 sha=$(curl -fsS "$BASE/latest/sha.txt")
 for app in Stroop_task Retinotopy-multifocal; do
   curl -fL --retry 3 -o "$app.zip" "$BASE/$sha/$PLATFORM/$app.zip"
-  unzip -oq "$app.zip" && rm "$app.zip"
+  unzip -oq "$app.zip"
+  rm "$app.zip"
 done
 ```
+
+Run it under `set -euo pipefail`. Keep `unzip` and `rm` on separate lines:
+written as `unzip … && rm …`, a failed unzip does not stop the script even with
+`set -e`, because bash ignores failures on the left of `&&`.
 
 Keep the `-f`: without it a mistyped name saves R2's "object does not exist"
 HTML page under the `.zip` name instead of failing. rsync is not an option —
@@ -84,8 +91,8 @@ the domain serves plain HTTPS with no directory listing; for sync semantics use
 
 ## Browser versions
 
-86 of the 98 examples (as of 2026-09-17) are also published as WebAssembly and run straight from a
-URL — `https://downloads.pallier.org/builds/latest/wasm/{app}/` — with no
+90 of the 102 examples (counted on the live download page, 2026-10-23) are also
+published as WebAssembly and run straight from a URL — `https://downloads.pallier.org/builds/latest/wasm/{app}/` — with no
 download and no install. The remaining 12 cannot: they read their stimuli from
 disk, and the browser has no filesystem. `examples/installers/wasm-skip.txt`
 lists them with a reason each; converting one to `//go:embed` and deleting its
@@ -99,7 +106,8 @@ build. Each launcher page therefore loads them from `../_runtime/` and sets
 Emscripten's `Module.locateFile` so the glue fetches `sdl.wasm` from there too —
 without that one line the page loads and then cannot find its runtime.
 
-Measured 2026-08-29: **607 MB for 79 bundles**, median ~5.5 MB. One outlier
+Measured 2026-08-29, when there were 79 bundles (90 now, not re-measured):
+**607 MB**, median ~5.5 MB. One outlier
 dominates — `Retinotopy` is 129 MB, 21% of the whole tree, because its stimuli
 are embedded in the binary. `MEG-localizer` (29 MB) and `Language-Localizer`
 (17 MB) come next.
@@ -111,7 +119,11 @@ letting coarser reaction times go unnoticed.
 
 ## Retention — staying inside the 10 GB free tier
 
-Measured on the 114 programs as of August 2026:
+Measured on the 114 programs as of August 2026. There are 129 now (2026-10-23)
+and the sizes below have not been re-measured, so treat them as a lower bound;
+`aws s3 ls s3://christophe-pallier-apps/builds/ --recursive --summarize` with
+the R2 key, or the bucket's usage in the Cloudflare dashboard, gives the
+current figure.
 
 | | Windows | macOS | Linux x86-64 | Linux arm64 | total |
 |---|---|---|---|---|---|
@@ -119,7 +131,7 @@ Measured on the 114 programs as of August 2026:
 | collection archives (on GitHub, not here) | 556 MB | 920 MB | 486 MB | 468 MB | 2.4 GB |
 | browser (WASM) bundles | — | — | — | — | **607 MB** |
 
-**One build in the bucket is therefore ~3.0 GB.**
+**One build in the bucket was therefore ~3.0 GB** in August.
 
 `publish-to-r2.sh` keeps the `KEEP` most recent builds — **2 by default**, so the
 bucket settles at ~6.0 GB of the 10 GB tier. The prune runs *after* the upload,
@@ -214,6 +226,15 @@ resolution — **Rules → Transform Rules → Modify Response Header**, named
 * **Set static** — two headers:
   * `Cross-Origin-Opener-Policy` = `same-origin`
   * `Cross-Origin-Embedder-Policy` = `require-corp`
+
+Verified 2026-10-23 (the rule had been missing until then; re-created that
+day):
+
+```bash
+curl -s -D - -o /dev/null https://downloads.pallier.org/builds/latest/wasm/Stroop_task/index.html | grep -i cross-origin
+```
+
+must print both headers.
 
 This raises SDL timestamps from ~100 µs to ~5 µs. Everything the pages load is
 same-origin, so `require-corp` costs nothing, and it constrains only what a

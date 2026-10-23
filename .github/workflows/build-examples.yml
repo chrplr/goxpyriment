@@ -89,9 +89,11 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
           COMMIT_SHA: ${{ github.sha }}
-          # A build is ~2.4 GB of per-app zips (the collection archives live
-          # on the GitHub release, not here), so two fit in R2's 10 GB free
-          # tier: 4.8 GB steady, peaking near 7.2 GB while a new build lands.
+          # A build was ~3.0 GB in August 2026 (2.4 GB of per-app zips plus
+          # 0.6 GB of browser bundles; the collection archives live on the
+          # GitHub release, not here), so two fit in R2's 10 GB free tier:
+          # ~6 GB steady, ~9 GB while a new build lands. See
+          # docs/copy_apps_to_cloudflare_R2.md before raising KEEP.
           KEEP: "2"
         run: bash examples/installers/publish-to-r2.sh
 
