@@ -79,7 +79,7 @@ jobs:
             -commit "${GITHUB_SHA}" \
             -tag "${TAG}"
           go run ./cmd/gen-download-index \
-            -redirect "${GITHUB_SHA}" \
+            -latest "${GITHUB_SHA}" \
             -root _build/r2 \
             -out-tree _build/latest
 

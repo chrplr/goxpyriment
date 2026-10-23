@@ -161,27 +161,3 @@ full release history:
 </body>
 </html>
 `))
-
-// redirectTmpl renders the small forwarding pages that make builds/latest/ a
-// stable entry point: one for the download page itself, and one per browser
-// experiment at builds/latest/wasm/<app>/. Each costs ~2 KB instead of
-// duplicating the build it points at.
-var redirectTmpl = template.Must(template.New("redirect").Parse(`<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="refresh" content="0; url={{.Target}}">
-<link rel="canonical" href="{{.Canonical}}">
-<title>{{.Title}}</title>
-<style>` + pageCSS + `</style>
-</head>
-<body>
-<main class="center">
-<h1>{{.Title}}</h1>
-<p>Redirecting to the latest build, <code>{{.ShortSHA}}</code>&hellip;</p>
-<p><a href="{{.Target}}">Continue to {{.What}}</a></p>
-</main>
-</body>
-</html>
-`))

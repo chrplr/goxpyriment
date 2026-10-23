@@ -8,13 +8,14 @@
 # Expects the tree produced by package-per-app.sh and the pages produced by
 # cmd/gen-download-index:
 #   _build/r2/      the per-app zips, the browser bundles and index.html
-#   _build/latest/  the forwarding pages for builds/ and builds/latest/
+#   _build/latest/  copies of its pages for builds/ and builds/latest/
 #
 # Uploads to:
 #   builds/<COMMIT_SHA>/  the whole build
-#   builds/index.html         redirect to the build just uploaded
-#   builds/latest/…           the same redirect, plus one per browser
-#                             experiment at builds/latest/wasm/<app>/
+#   builds/index.html         the download page of the build just uploaded
+#   builds/latest/…           the same page, plus each browser experiment's
+#                             launcher at builds/latest/wasm/<app>/ -- HTML
+#                             only, loading everything else from builds/<sha>/
 #
 # Then deletes every builds/<sha>/ beyond the KEEP most recent, ranked by the
 # last-modified time of each folder's index.html.
@@ -50,7 +51,7 @@ LATEST_DIR="${LATEST_DIR:-${REPO_ROOT}/_build/latest}"
 
 [[ -d "${R2_DIR}" ]] || { echo "error: ${R2_DIR} not found — run package-per-app.sh first" >&2; exit 1; }
 [[ -f "${R2_DIR}/index.html" ]] || { echo "error: ${R2_DIR}/index.html not found — run gen-download-index first" >&2; exit 1; }
-[[ -f "${LATEST_DIR}/index.html" ]] || { echo "error: ${LATEST_DIR}/index.html not found — run gen-download-index -redirect first" >&2; exit 1; }
+[[ -f "${LATEST_DIR}/index.html" ]] || { echo "error: ${LATEST_DIR}/index.html not found — run gen-download-index -latest first" >&2; exit 1; }
 command -v aws >/dev/null 2>&1 || { echo "error: the AWS CLI is not installed" >&2; exit 1; }
 
 # R2 rejects some of the integrity headers recent AWS CLI v2 builds send by
@@ -83,9 +84,9 @@ s3 s3 cp "${R2_DIR}/index.html" "${DEST}/index.html" \
 # Written only after the sync above succeeded, so a failed upload never leaves
 # the "latest" links aimed at a half-built folder.
 
-echo "=== Updating the redirect pages ==="
+echo "=== Updating the latest pages ==="
 # --delete keeps builds/latest/ free of experiments that no longer exist. The
-# whole tree is redirects, a few hundred KB, so this is cheap.
+# whole tree is HTML pages, a few hundred KB, so this is cheap.
 s3 s3 sync "${LATEST_DIR}" "s3://${R2_BUCKET}/builds/latest" --delete \
   --content-type "${HTML_TYPE}" --cache-control "public, max-age=60" \
   --no-progress "${DRYFLAG[@]}"

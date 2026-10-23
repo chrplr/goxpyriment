@@ -14,9 +14,9 @@ as **one zip per program per platform** in a Cloudflare R2 bucket.
 ## Layout in the bucket
 
 ```
-builds/index.html                                     redirect to the newest build
-builds/latest/index.html                              redirect to the newest build
-builds/latest/wasm/{app}/index.html                   redirect to that experiment
+builds/index.html                                     newest build's download page
+builds/latest/index.html                              newest build's download page
+builds/latest/wasm/{app}/index.html                   newest build's launcher page
 builds/{commit_sha}/index.html                        generated download page
 builds/{commit_sha}/wasm/_runtime/sdl.js              ┐ the SDL runtime, shared
 builds/{commit_sha}/wasm/_runtime/sdl.wasm            │ by every browser build
@@ -40,21 +40,30 @@ both would double the bucket for no gain. The page's "Download everything"
 section links `github.com/chrplr/goxpyriment/releases/latest/download/…`
 instead, where they are kept indefinitely.
 
-`latest` is **redirect pages, not a copy** of the newest build — the whole tree
-is ~640 KB against the 3.0 GB it points at. Besides the download page there is
-one stub per browser experiment, so
-`downloads.pallier.org/builds/latest/wasm/Stroop_task/` is a link you can hand
-someone directly. Without those stubs it would 404: the Run links on the
-download page are relative and resolve fine once the browser has followed the
-top-level redirect, but nobody expects a URL they can read to not exist.
+`latest` holds **only the HTML pages** of the newest build, not the build
+itself — a few hundred KB against the 3.0 GB it points at. Each page is a copy
+with one line added to its `<head>`:
 
-The trade-off of redirecting rather than copying is that the final download
-links are commit-pinned, so a link that has been followed goes stale when that
-build is pruned. `builds/latest/…` itself never does.
+```html
+<base href="/builds/{commit_sha}/">                 (download page)
+<base href="/builds/{commit_sha}/wasm/{app}/">      (launcher page)
+```
+
+so its relative links, `<script src>` and `fetch('main.wasm')` resolve into the
+commit's folder while the address bar keeps showing `builds/latest/…`. That
+makes `downloads.pallier.org/builds/latest/wasm/Stroop_task/` a link you can
+hand someone directly, and it stays the address they see. The base is an
+absolute path because the same download page is also uploaded one level higher,
+as `builds/index.html`. Earlier versions used `<meta http-equiv="refresh">`
+redirects here, which left the commit hash in the address bar.
+
+The trade-off of not copying the binaries is that the zip links themselves are
+commit-pinned: a zip URL copied from the page goes stale when that build is
+pruned. `builds/latest/…` itself never does.
 
 ## Browser versions
 
-79 of the 91 examples are also published as WebAssembly and run straight from a
+86 of the 98 examples (as of 2026-09-17) are also published as WebAssembly and run straight from a
 URL — `https://downloads.pallier.org/builds/latest/wasm/{app}/` — with no
 download and no install. The remaining 12 cannot: they read their stimuli from
 disk, and the browser has no filesystem. `examples/installers/wasm-skip.txt`
@@ -111,11 +120,11 @@ release and then stops working. Documentation should link `builds/latest/`.
 |---|---|
 | `examples/installers/build-all-platforms.sh` | Cross-compiles everything. `KEEP_STAGE=1` keeps the per-platform staging directories; `ONLY=<name>` builds a single program, for quick local checks. |
 | `examples/installers/package-per-app.sh` | Zips each staged program into `_build/r2/<OS_ARCH>/<app>.zip`. Fails loudly if a name is used by both an example and a test. |
-| `cmd/gen-download-index` | Generates `index.html` by scanning `_build/r2/`, taking each program's description from its `meta.yaml` (the same files that feed `GalleryOfExamples.md`). `-redirect <sha>` emits the small forwarding page instead. |
+| `cmd/gen-download-index` | Generates `index.html` by scanning `_build/r2/`, taking each program's description from its `meta.yaml` (the same files that feed `GalleryOfExamples.md`). `-latest <sha>` copies the download and launcher pages into the `builds/latest/` tree, each with a `<base href>` pointing back at the commit. |
 | `examples/installers/build-wasm-apps.sh` | Bundles every eligible example for the browser into `_build/r2/wasm/`, sharing one copy of the SDL runtime. Reports every failure at the end rather than stopping at the first. `ONLY=<name>` builds one. |
 | `cmd/gen-gallery` | Also injects the "Try it without building" block into each `examples/<app>/README.md` and the ▶ Run links into `docs/GalleryOfExamples.md`, from the same `wasm-skip.txt`. Run it with `make update-examples-gallery`. |
 | `cmd/gen-wasm-launcher` | Writes each app's launcher page — generated from its `meta.yaml`, or adapted from the example's own `web/index.html` when it has one. |
-| `examples/installers/publish-to-r2.sh` | Uploads, repoints the redirects, prunes old builds (`KEEP`, default 2). `DRY_RUN=1` changes nothing. |
+| `examples/installers/publish-to-r2.sh` | Uploads, replaces the `latest` pages, prunes old builds (`KEEP`, default 2). `DRY_RUN=1` changes nothing. |
 | `.github/workflows/build-examples.yml` | Runs all of the above in the existing `build-all` job, on `v*` tags and on `workflow_dispatch`. |
 
 The publishing steps are skipped unless the R2 credentials are present, so forks
