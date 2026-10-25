@@ -52,6 +52,22 @@ defer exp.End()
 | `-d N` | Display ID: open on monitor N (-1 = primary display) |
 | `-s N` | Set subject ID to N (integer); written to the data file automatically |
 | `-headless` | Skip the setup dialog (below) and use field defaults — for batch/automated runs |
+| `-version` | Print the version of the program and of goxpyriment, then exit (see below) |
+
+`-version` is available in every program that imports `control`, including
+those that call `flag.Parse()` themselves. It prints, for example:
+
+```
+program: github.com/me/my-experiments v0.3.0 (commit 329e41c4b1f2, 2026-10-25T09:00:00Z)
+goxpyriment: v0.20.2
+```
+
+The same `program` line is written into every `-info.txt`, so each data file
+records which version of the experiment produced it. The version is the git tag
+of the commit the program was built from, or a pseudo-version derived from the
+last tag, with `+dirty` (or `modified`) when the working tree had uncommitted
+changes. It is recorded by `go build` and `go install`; `go run` records no
+commit, and the program then shows as `(devel)`.
 
 ### Automatic setup dialog (launch without `-s`)
 
@@ -1021,7 +1037,7 @@ When `exp.End()` is called, two files are written to `~/goxpy_data/`:
 | File | Contents |
 |------|----------|
 | `<expName>_sub-<NNN>_date-<YYYYMMDD>-<HHMMSS>.csv` | Pure CSV data rows — directly importable by Excel, R, or pandas |
-| `<expName>_sub-<NNN>_date-<YYYYMMDD>-<HHMMSS>-info.txt` | Session metadata: start/end time, hostname, framework version, participant info, the machine and OS it ran on (model, kernel, desktop/compositor, CPU, every GPU and its driver, sound server and version), and the display and audio configuration SDL actually opened |
+| `<expName>_sub-<NNN>_date-<YYYYMMDD>-<HHMMSS>-info.txt` | Session metadata: start/end time, hostname, the program's version and git commit, the framework version, participant info, the machine and OS it ran on (model, kernel, desktop/compositor, CPU, every GPU and its driver, sound server and version), and the display and audio configuration SDL actually opened |
 
 Both files open automatically on `Initialize()` and are flushed to disk when `exp.End()` is called. Any spaces in `<expName>` are replaced by `-` so the resulting filenames never contain whitespace.
 

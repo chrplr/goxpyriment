@@ -145,6 +145,9 @@ func TestNewDataFileDefaultDir(t *testing.T) {
 	if !strings.Contains(string(infoContent), "EXPERIMENT INFO") {
 		t.Errorf("Info file should contain EXPERIMENT INFO section, got:\n%s", infoContent)
 	}
+	if want := "# e program: " + ProgramVersion + "\n"; !strings.Contains(string(infoContent), want) {
+		t.Errorf("Info file should contain %q, got:\n%s", want, infoContent)
+	}
 }
 
 func TestWriteHostInfoSection(t *testing.T) {
