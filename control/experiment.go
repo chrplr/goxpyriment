@@ -23,6 +23,7 @@ import (
 	"github.com/chrplr/goxpyriment/apparatus"
 	"github.com/chrplr/goxpyriment/assets_embed"
 	"github.com/chrplr/goxpyriment/clock"
+	"github.com/chrplr/goxpyriment/config"
 	"github.com/chrplr/goxpyriment/design"
 	"github.com/chrplr/goxpyriment/results"
 	"github.com/chrplr/goxpyriment/stimuli"
@@ -242,10 +243,31 @@ const DefaultRealTimePriority = 50
 //   - `-w`    windowed mode: opens a 1024×768 window instead of fullscreen
 //   - `-d N`  display ID: open the window / fullscreen on monitor N (0 = primary; default -1 = primary)
 //   - `-s N`  subject ID (default 0)
+//   - `-config FILE`  TOML file setting the defaults of the flags (see below)
 //
 // Any extra flags the caller registered with the flag package before calling
 // this function are parsed at the same time, so register experiment-specific
 // flags first, then call NewExperimentFromFlags.
+//
+// # Configuration file
+//
+// -config names a TOML file whose keys set the flags not given on the command
+// line, so that the settings of a lab (monitor, TTL device, response keys) are
+// written once (see package config):
+//
+//	d = 1
+//	ttl = "parallel:/dev/parport1"
+//
+//	[MEG-localizer]         # a table named after the program's executable
+//	left-key = "b"          # (without .exe) applies to it alone, and
+//	                        # overrides the top-level keys
+//
+// A top-level key that the program does not define is ignored, since it may be
+// meant for another program; an unknown key in the program's own table, a
+// subject ID (s), or a missing file is fatal. SetDefaultConfigFile sets the
+// default of -config. The file and every value taken from it are recorded in
+// the -info.txt ("config: ..." and "config flag: name=value") and printed on
+// stderr. -h shows the built-in defaults, not those of the file.
 //
 // # Automatic session-setup dialog
 //
@@ -292,10 +314,12 @@ func NewExperimentFromFlags(name string, bg, fg sdl.Color, fontSize float32, ext
 		"Do not request real-time scheduling priority (see -realtime-priority)")
 	realtimePrio := flag.Int("realtime-priority", 50,
 		"Real-time scheduling priority to request at startup (1-99); must not exceed the RLIMIT_RTPRIO granted to this user")
+	flag.String(config.FlagName, defaultConfigFile,
+		"TOML file setting the defaults of these flags: keys are flag names, a [table] named after the program overrides the top-level keys; the command line wins")
 	// In the browser (GOOS=js) there is no command line: synthesize os.Args
 	// from the page URL's query string (?s=3&w) now that all flags exist.
 	platformPrepareFlags()
-	flag.Parse()
+	configInfo := parseFlags()
 
 	// Detect whether -s was set explicitly: the default (0) is a valid subject
 	// ID, so the value alone cannot distinguish "not given" from "given as 0".
@@ -403,6 +427,9 @@ func NewExperimentFromFlags(name string, bg, fg sdl.Color, fontSize float32, ext
 	}
 	if mc, ok := markerConfigFromFlags(); ok {
 		exp.MarkerConfig = mc
+	}
+	for _, line := range configInfo {
+		exp.AddExperimentInfo(line)
 	}
 	if err := exp.Initialize(); err != nil {
 		log.Fatalf("failed to initialize experiment: %v", err)

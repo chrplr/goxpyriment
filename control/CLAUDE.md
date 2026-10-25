@@ -16,6 +16,15 @@ the plain one and ran the whole 2026 campaign at `SCHED_OTHER` as a result. The
 decision now travels on `Experiment.RealTimePriority`; the flags only set it. Set
 it to 0 before `Initialize()` to decline (see `docs/SettingPriorityUnderLinux.md`).
 
+**`-config FILE` (config.go):** `NewExperimentFromFlags` registers `-config`
+(default: `SetDefaultConfigFile`, else none) and parses with
+`config.ParseFlags` instead of `flag.Parse`. Top-level keys and the table named
+after the executable (`programName(os.Args[0])`, not the experiment `name`,
+which may contain spaces) set the flags the command line did not give. The
+file and the values taken from it go to stderr and, via `AddExperimentInfo`,
+into the -info.txt — `os.Args` alone would hide them. A bad file is fatal. See
+`config/CLAUDE.md` for the rules.
+
 When `-s` is **absent** (e.g. the binary was launched by double-clicking its icon), `NewExperimentFromFlags` opens an automatic setup dialog (subject code + display + fullscreen + results folder) via `GetParticipantInfo` before `Initialize()`. It is skipped when `-s N` is passed, under `-headless`, or if the program already called `GetParticipantInfo` itself (guarded by the package-level `participantInfoCollected`). Cancelling exits via `os.Exit(0)`. Programs that collect custom participant fields still use `GetParticipantInfo` + `NewExperiment` and never reach this path.
 
 **Browser (GOOS=js):** there is no command line, so `platformPrepareFlags` (`platform_js.go`) synthesizes `os.Args` from the page URL's query string before `flag.Parse` — `?s=3&w` behaves like `-s 3 -w`, and experiment-specific flags work too. Unknown query keys are ignored with a console note. The setup dialog never opens (`platformInteractiveSetup` returns false); without `s` the subject ID defaults to 0 like `-headless`. Audio works: `platformInitAudio` opens the default device like desktop (the browser keeps the AudioContext suspended until the first click/keypress, which SDL auto-resumes — the "press SPACE" screen satisfies this); if the device cannot be opened the experiment continues with a silent no-op `AudioManager` instead of crashing. See `docs/WASM.md` for the full browser story.

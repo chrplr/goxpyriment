@@ -8,6 +8,8 @@ require (
 	github.com/funatsufumiya/go-gv-video v0.0.2
 	github.com/gen2brain/mpeg v0.5.0
 	github.com/goburrow/modbus v0.1.0
+	github.com/pelletier/go-toml/v2 v2.4.3
+	github.com/peterbourgon/ff/v3 v3.4.0
 	github.com/pierrec/lz4/v4 v4.1.26
 	go.bug.st/serial v1.6.4
 	golang.org/x/sys v0.41.0

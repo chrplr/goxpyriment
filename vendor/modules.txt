@@ -32,6 +32,16 @@ github.com/goburrow/modbus
 # github.com/goburrow/serial v0.1.0
 ## explicit
 github.com/goburrow/serial
+# github.com/pelletier/go-toml/v2 v2.4.3
+## explicit; go 1.21.0
+github.com/pelletier/go-toml/v2
+github.com/pelletier/go-toml/v2/internal/parserbridge
+github.com/pelletier/go-toml/v2/internal/tracker
+github.com/pelletier/go-toml/v2/unstable
+# github.com/peterbourgon/ff/v3 v3.4.0
+## explicit; go 1.18
+github.com/peterbourgon/ff/v3
+github.com/peterbourgon/ff/v3/internal
 # github.com/pierrec/lz4/v4 v4.1.26
 ## explicit; go 1.17
 github.com/pierrec/lz4/v4

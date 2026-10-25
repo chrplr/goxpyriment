@@ -24,7 +24,7 @@ jobs:
         run: go build ./...
 
       - name: Unit tests
-        run: go test ./control/ ./apparatus/ ./triggers/ ./clock/ ./design/ ./results/ ./geometry/ ./units/ ./staircase/ ./sysinfo/ ./eyetracker/
+        run: go test ./config/ ./control/ ./apparatus/ ./triggers/ ./clock/ ./design/ ./results/ ./geometry/ ./units/ ./staircase/ ./sysinfo/ ./eyetracker/
 
       # The browser target. triggers/ is desktop-only (serial ports) and is
       # excluded by design — see docs/WASM.md.

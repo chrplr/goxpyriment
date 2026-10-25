@@ -53,6 +53,7 @@ defer exp.End()
 | `-s N` | Set subject ID to N (integer); written to the data file automatically |
 | `-headless` | Skip the setup dialog (below) and use field defaults — for batch/automated runs |
 | `-version` | Print the version of the program and of goxpyriment, then exit (see below) |
+| `-config FILE` | Read the defaults of the flags from a TOML file (see below) |
 
 `-version` is available in every program that imports `control`, including
 those that call `flag.Parse()` themselves. It prints, for example:
@@ -68,6 +69,41 @@ of the commit the program was built from, or a pseudo-version derived from the
 last tag, with `+dirty` (or `modified`) when the working tree had uncommitted
 changes. It is recorded by `go build` and `go install`; `go run` records no
 commit, and the program then shows as `(devel)`.
+
+### Configuration file (`-config`)
+
+Settings that belong to the lab rather than to the session — which monitor,
+which TTL device, which keys the response box sends — can be written once in a
+TOML file instead of on every command line. Its keys are flag names without the
+dash; a table named after the program's executable (without `.exe`) applies to
+that program alone and overrides the top-level keys:
+
+```toml
+d = 1
+ttl = "parallel:/dev/parport1"
+left-key = "b"
+
+[MEG-Reading-Sentences]
+resp-key = "1"
+```
+
+```
+my-experiment -config lab.toml -s 3
+```
+
+- A flag given on the command line always wins over the file.
+- A top-level key that the program does not define is ignored, since the file
+  may be shared by several programs. A key in the program's own table that it
+  does not define stops the program, as do a missing file, a value of the wrong
+  type, and `s` (a subject ID never comes from a configuration file).
+- The file and every value taken from it are printed on stderr and recorded in
+  the `-info.txt` (`e config: /path/lab.toml`, `e config flag: d=1`), so a data
+  file says which settings produced it. `-h` shows the built-in defaults, not
+  those of the file.
+- A program can call `control.SetDefaultConfigFile(path)` before
+  `NewExperimentFromFlags` to read a file from a known place without `-config`.
+- Package `config` does the parsing and has no SDL dependency, so a launcher
+  can read the same file (`config.Load(path, program)`).
 
 ### Automatic setup dialog (launch without `-s`)
 

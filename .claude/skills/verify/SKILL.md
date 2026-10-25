@@ -15,7 +15,7 @@ Run from the repo root (so `go.work` covers the library, `examples/` and
 do not claim success.
 
 1. `CGO_ENABLED=0 go build ./...` then `go vet ./...`
-2. `go test ./control/ ./apparatus/ ./triggers/ ./clock/ ./design/ ./results/ ./geometry/ ./units/ ./staircase/ ./sysinfo/ ./eyetracker/`
+2. `go test ./config/ ./control/ ./apparatus/ ./triggers/ ./clock/ ./design/ ./results/ ./geometry/ ./units/ ./staircase/ ./sysinfo/ ./eyetracker/`
 3. Browser build (`triggers/` is desktop-only and excluded by design):
    ```bash
    GOOS=js GOARCH=wasm go build $(go list ./... | grep -v /triggers)
