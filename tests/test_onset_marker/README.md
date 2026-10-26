@@ -26,6 +26,7 @@ prints PASS/FAIL per check (also written to the data file); the exit status is
 | `Fire` | code written at once and cleared; no white frame |
 | two onsets one frame apart | the flashes merge (`Merged` = 1), the second code overlaps the first (`Overlaps` = 1), one clear after the second |
 | `.gv` video, frames 0, 10 and 32 marked with `GvMark` | each code < 1 ms after that frame's logged `FlipNS` and cleared after the TTL duration; the square white on the 3 refreshes from each marked frame's first refresh (the clip is 30 fps, so each frame is held for 2 refreshes at 60 Hz), and the last frame held until the square is black |
+| logical size 1600×600 (`SetLogicalSize`, letterbox bars above and below) | the square stays at the corner of the window and `-photodiode-size` window units wide, not at the corner of the letterboxed area; a stimulus at the logical top-right corner is still drawn there; `Screen.MarkerRect` is the square in logical units |
 
 Measured on the development laptop (Intel Arc, Wayland, windowed, 60 Hz, 4
 runs): all 19 checks passed every time; codes were written 0.7–1.3 µs after
@@ -34,6 +35,14 @@ ms; the clearing timer's slack is about a millisecond). With the `.gv` check
 added (27 checks, 3 runs): all passed; the video codes were written 0.8–3.6 µs
 after their frames' flips, and the square was white on refreshes 0–2, 20–22
 and 64–66 of 68 (33 frames × 2 refreshes, plus 2 to finish the last mark).
+
+With the logical-size check added (34 checks): passed in 2 windowed runs
+(1024×768) and 1 fullscreen run (3840×2400 output, pixel density 2: the square
+was 200 output pixels). The same build of the old marker code, which drew the
+square in the logical space, failed 3 of the 7 new checks. Over 38 windowed
+runs, 4 failed the back-to-back check (an onset flip held up ~50 ms, so the
+codes did not overlap); the code before this check was added failed it in 1 of
+36 runs: a timing flake of the windowed Wayland session, not of the square.
 
 `wedges.gv` is a copy of `examples/demo_play_gv_videos/wedges.gv`, embedded so
 the program runs from any directory.

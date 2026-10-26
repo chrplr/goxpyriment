@@ -30,6 +30,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Zyko0/go-sdl3/sdl"
 	"github.com/chrplr/goxpyriment/control"
 	"github.com/chrplr/goxpyriment/stimuli"
 )
@@ -118,7 +119,13 @@ func main() {
 	exp.AddDataVariableNames([]string{"check", "measured", "expected", "pass"})
 
 	fl := &frameLog{}
+	var probe func() error // a one-off read-back of the next frame (check 7)
 	exp.Screen.SetPrePresentHook(func() error {
+		if probe != nil {
+			err := probe()
+			probe = nil
+			return err
+		}
 		if !fl.on {
 			return nil
 		}
@@ -325,7 +332,84 @@ func main() {
 			fmt.Sprintf("%d refreshes, white at %v", len(got), whiteAt(got)),
 			fmt.Sprintf("%d refreshes, white at %v", len(want), whiteAt(want)))
 
+		// 7. A logical size with letterbox bars (wider than the window, so
+		// bars above and below): the square stays at the corner of the window,
+		// Size window pixels wide, and does not follow the corner of the
+		// letterboxed area; the stimuli stay in the logical space, which the
+		// switch to draw the square must not disturb; MarkerRect is the
+		// square in logical units.
 		fl.on = false
+		const lw, lh = 1600, 600
+		if err := exp.Screen.SetLogicalSize(lw, lh); err != nil {
+			return err
+		}
+		density, err := exp.Screen.Window.PixelDensity()
+		if err != nil || density <= 0 {
+			density = 1
+		}
+		box, err := exp.Screen.Renderer.LogicalPresentationRect() // the letterboxed area, in output pixels
+		if err != nil {
+			return err
+		}
+		k := box.W / lw // output pixels per logical unit
+		sidePx := exp.Marker.Size() * density
+		type point struct {
+			name  string
+			x, y  float32 // output pixels
+			white bool    // expected
+		}
+		points := []point{
+			{"square: window corner", 3, 3, true},
+			{"square: far corner", sidePx - 3, sidePx - 3, true},
+			{"square: right of it", sidePx + 3, 3, false},
+			{"square: below it", 3, sidePx + 3, false},
+			{"square: not at the letterbox corner", box.X + 3, box.Y + 3, false},
+			{"stimulus: logical top-right corner", box.X + box.W - 10*k, box.Y + 10*k, true},
+		}
+		seen := make([]bool, len(points))
+		probe = func() error {
+			r := exp.Screen.Renderer
+			w, h, mode, err := r.LogicalPresentation()
+			if err != nil {
+				return err
+			}
+			// Read the whole output in pixels, bars included.
+			if err := r.SetLogicalPresentation(0, 0, sdl.LOGICAL_PRESENTATION_DISABLED); err != nil {
+				return err
+			}
+			defer func() { _ = r.SetLogicalPresentation(w, h, mode) }()
+			surf, err := r.ReadPixels(nil)
+			if err != nil {
+				return err
+			}
+			defer surf.Destroy()
+			for i, p := range points {
+				cr, cg, cb, _, err := surf.ReadPixel(int32(p.x), int32(p.y))
+				if err != nil {
+					return err
+				}
+				seen[i] = cr == 255 && cg == 255 && cb == 255
+			}
+			return nil
+		}
+		corner := stimuli.NewRectangle(lw/2-10, lh/2-10, 20, 20, control.White)
+		exp.Marker.Arm(0)
+		if _, err := exp.ShowTS(corner); err != nil {
+			return err
+		}
+		for i, p := range points {
+			check(fmt.Sprintf("logical %dx%d: %s", lw, lh, p.name), seen[i] == p.white,
+				fmt.Sprintf("white=%v at (%.0f,%.0f)", seen[i], p.x, p.y), fmt.Sprintf("white=%v", p.white))
+		}
+		mr := exp.Screen.MarkerRect()
+		kw := k / density // window units per logical unit
+		wantR := sdl.FRect{X: -box.X / density / kw, Y: -box.Y / density / kw, W: exp.Marker.Size() / kw, H: exp.Marker.Size() / kw}
+		near := func(a, b float32) bool { return math.Abs(float64(a-b)) < 0.5 }
+		check(fmt.Sprintf("logical %dx%d: MarkerRect", lw, lh),
+			near(mr.X, wantR.X) && near(mr.Y, wantR.Y) && near(mr.W, wantR.W) && near(mr.H, wantR.H),
+			fmt.Sprintf("%.1f,%.1f %.1fx%.1f", mr.X, mr.Y, mr.W, mr.H),
+			fmt.Sprintf("%.1f,%.1f %.1fx%.1f", wantR.X, wantR.Y, wantR.W, wantR.H))
+
 		return control.EndLoop
 	})
 	if err != nil && !control.IsEndLoop(err) {

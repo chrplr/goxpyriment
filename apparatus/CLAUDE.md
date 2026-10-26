@@ -308,9 +308,14 @@ calls `present()` directly, and it runs before a marker is attached.
   everything the caller drew. It is white while an armed onset's frames last and
   black on every other frame. Black, not background grey, because black→white is
   the step a photodiode detects reliably.
-  - The rect is the constant `FRect{0,0,side,side}`, i.e. the top-left corner of
-    the drawing area in drawing-space units. With letterboxing that is the
-    corner of the logical area, not of the panel.
+  - The rect is the constant `FRect{0,0,side,side}`, drawn by
+    `Screen.drawMarker` in the presentation the screen had before the first
+    `SetLogicalSize` (window coordinates): the top-left corner of the panel and
+    `side` pixels, whatever logical size the program draws in. Drawing it in
+    the logical space instead put it at the corner of the letterboxed area,
+    scaled, so it moved between programs and missed the photodiode. A program
+    checking that its stimuli clear the square uses `Screen.MarkerRect`, the
+    square in its drawing space.
   - It is drawn as `RenderGeometry` with the colour in its vertices, so the
     renderer's draw colour is never changed. Do not go back to
     `SetDrawColor` + `RenderFillRect` with a save/restore: reading the draw

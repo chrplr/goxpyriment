@@ -388,6 +388,10 @@ func NewScreen(title string, width, height int, bgColor sdl.Color, fullscreen bo
 		}
 
 		logicalSize := &sdl.FPoint{X: float32(logW), Y: float32(logH)}
+		var native presentation // none when the size was not found
+		if logW > 0 && logH > 0 {
+			native = presentation{logW, logH, sdl.LOGICAL_PRESENTATION_STRETCH}
+		}
 
 		// In KMS/DRM mode (bare TTY), SDL3 has no desktop compositor to supply a
 		// cursor shape — it must manage the cursor itself via a DRM cursor plane
@@ -406,6 +410,7 @@ func NewScreen(title string, width, height int, bgColor sdl.Color, fullscreen bo
 			Width:       int(logW),
 			Height:      int(logH),
 			LogicalSize: logicalSize,
+			native:      native,
 		}, nil
 	}
 

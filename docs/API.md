@@ -294,7 +294,7 @@ control.MarkerFlags(defaults ...control.MarkerConfig) // before NewExperimentFro
                                                       // -photodiode -photodiode-size -marker-frames -ttl -ttl-ms
 type control.MarkerConfig struct {
     Photodiode     bool
-    PhotodiodeSize float32                // drawing-space units; 0 = DefaultPhotodiodeSize (100)
+    PhotodiodeSize float32                // screen pixels, whatever the logical size; 0 = DefaultPhotodiodeSize (100)
     Frames         int                    // white frames per onset; 0 = DefaultMarkerFrames (3)
     TTL            string                 // device spec for triggers.Open; "" = no TTL
     TTLDevice      apparatus.MarkerOutput // an already-open output, used instead of TTL
@@ -768,6 +768,7 @@ screen.SetLogicalSize(w, h int32) error                // also updates screen.Wi
 screen.SetVSync(vsync int) error
 screen.DisplayInfo() apparatus.DisplayInfo                    // monitor properties
 screen.SetMarker(m *apparatus.Marker)                  // drive an onset marker from Update (nil detaches)
+screen.MarkerRect() sdl.FRect                          // the photodiode square in the current drawing space (top-left coords)
 screen.Marker() *apparatus.Marker
 screen.SetPrePresentHook(f func() error)               // run f after drawing, just before present (frame read-back)
 screen.Destroy()

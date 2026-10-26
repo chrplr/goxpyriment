@@ -17,7 +17,7 @@ import (
 // Onset markers for recordings (MEG, EEG, fMRI, display-timing checks).
 //
 // A Marker marks an event two ways at once: a square in the top-left corner of
-// the drawing area, white for a few frames from the event and black on every
+// the screen, white for a few frames from the event and black on every
 // other frame (for a photodiode taped to the screen), and a code written to a
 // TTL device (for the recording system's trigger channel). Attached to a
 // Screen with SetMarker, it is driven from inside Update — the one function
@@ -60,9 +60,9 @@ type markerLineOutput interface {
 
 // MarkerOptions configures NewMarker.
 type MarkerOptions struct {
-	// Photodiode draws the corner square. Size is its side in drawing-space
-	// units: logical units when Screen.SetLogicalSize is in effect, pixels
-	// otherwise.
+	// Photodiode draws the corner square. Size is its side in screen pixels
+	// (window coordinates), whatever Screen.SetLogicalSize is in effect: the
+	// square is at the same place and of the same size in every program.
 	Photodiode bool
 	Size       float32
 
@@ -97,7 +97,7 @@ type MarkerStats struct {
 // Create it with NewMarker and attach it with Screen.SetMarker.
 type Marker struct {
 	photodiode bool
-	rect       sdl.FRect     // the square, at the top-left corner of the drawing area
+	rect       sdl.FRect     // the square, at the top-left corner of the screen
 	quad       [4]sdl.Vertex // rect as geometry; drawSquare sets the colour
 	frames     int
 	out        MarkerOutput
@@ -172,6 +172,71 @@ func (s *Screen) SetMarker(m *Marker) {
 // Marker returns the attached Marker, or nil.
 func (s *Screen) Marker() *Marker { return s.marker }
 
+// presentation is a renderer's logical presentation. The Screen keeps its own
+// record of the ones it sets rather than asking SDL, because
+// SDL_GetRenderLogicalPresentation is a panic stub in the browser build. The
+// zero value is no logical presentation.
+type presentation struct {
+	w, h int32
+	mode sdl.RendererLogicalPresentation
+}
+
+// drawMarker draws the marker's square in the presentation NewScreen set: at
+// the corner of the screen and Size pixels wide, whatever logical size the
+// stimuli are drawn in. Under SetLogicalSize's letterbox, the corner of the
+// drawing area is inset by the bars and its units are scaled, so the square of
+// a program with a logical size would miss a photodiode placed for the others.
+// The presentation is switched for the square alone and restored before the
+// present; SDL queues the change with the draws, so the stimuli already drawn
+// keep the logical one.
+func (s *Screen) drawMarker() error {
+	if s.logical == nil || !s.marker.photodiode {
+		return s.marker.drawSquare(s.Renderer)
+	}
+	if err := s.Renderer.SetLogicalPresentation(s.native.w, s.native.h, s.native.mode); err != nil {
+		return fmt.Errorf("apparatus.Marker: setting the screen's presentation: %w", err)
+	}
+	err := s.marker.drawSquare(s.Renderer)
+	if rerr := s.Renderer.SetLogicalPresentation(s.logical.w, s.logical.h, s.logical.mode); rerr != nil && err == nil {
+		err = fmt.Errorf("apparatus.Marker: restoring the logical presentation: %w", rerr)
+	}
+	return err
+}
+
+// MarkerRect is the photodiode square in the current drawing space, in SDL's
+// top-left coordinates, for a program that checks its stimuli stay clear of
+// it. Without a logical size it is the square itself; with one, the square
+// converted to logical units, partly or wholly outside the drawing area when it
+// falls in a letterbox bar. A zero rect without a photodiode square.
+func (s *Screen) MarkerRect() sdl.FRect {
+	m := s.marker
+	if !m.PhotodiodeEnabled() {
+		return sdl.FRect{}
+	}
+	side := m.Size()
+	if s.logical == nil {
+		return sdl.FRect{W: side, H: side}
+	}
+	// The square's units are those of the screen's own presentation: window
+	// coordinates when NewScreen set one (fullscreen), output pixels when it
+	// did not (a window), which differ on a HiDPI display. Converted with
+	// calls the browser build implements.
+	ws := side
+	if s.native.mode == sdl.LOGICAL_PRESENTATION_DISABLED {
+		ow, _, oerr := s.Renderer.RenderOutputSize()
+		ww, _, werr := s.Window.Size()
+		if oerr == nil && werr == nil && ow > 0 {
+			ws = side * float32(ww) / float32(ow)
+		}
+	}
+	x0, y0, err0 := s.Renderer.RenderCoordinatesFromWindow(0, 0)
+	x1, y1, err1 := s.Renderer.RenderCoordinatesFromWindow(ws, ws)
+	if err0 != nil || err1 != nil {
+		return sdl.FRect{W: side, H: side}
+	}
+	return sdl.FRect{X: x0, Y: y0, W: x1 - x0, H: y1 - y0}
+}
+
 // SetPrePresentHook installs f to run inside Update after everything,
 // the marker square included, has been drawn and just before the frame is
 // presented; nil removes it. It is the only place the finished frame can be
@@ -227,7 +292,8 @@ func (m *Marker) PhotodiodeEnabled() bool { return m != nil && m.photodiode }
 // TTLEnabled reports whether codes go to a TTL output.
 func (m *Marker) TTLEnabled() bool { return m != nil && m.out != nil }
 
-// Size is the side of the square in drawing-space units.
+// Size is the side of the square in screen pixels (window coordinates). In
+// the drawing space of a program with a logical size, see Screen.MarkerRect.
 func (m *Marker) Size() float32 {
 	if m == nil {
 		return 0

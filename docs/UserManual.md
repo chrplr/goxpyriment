@@ -2545,7 +2545,7 @@ For marking stimulus onsets in a recording, use the library's **onset marker**
 rather than driving a device yourself. At each marked onset it does two things
 on the same flip:
 
-- a square in the top-left corner of the drawing area turns white for 3 frames
+- a square in the top-left corner of the screen turns white for 3 frames
   (black on every other frame), for a photodiode taped to the screen;
 - a TTL code is written to the trigger device right after the flip, and the
   lines are cleared 3 frame periods later (50 ms at 60 Hz).

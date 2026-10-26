@@ -89,6 +89,8 @@ type Screen struct {
 	DefaultFont  *ttf.Font
 	CanvasOffset *sdl.FPoint   // If not nil, use this instead of true center
 	LogicalSize  *sdl.FPoint   // If not nil, use this for CenterToSDL
+	native       presentation  // the presentation NewScreen set (window coordinates); the marker's square is drawn in it
+	logical      *presentation // the one SetLogicalSize set; nil until then
 	frameDur     time.Duration // cached nominal frame duration used by Update's pacing (0 = not yet computed)
 	vsyncCached  int           // cached renderer VSync state; pacing is off when 0
 	vsyncKnown   bool          // whether vsyncCached has been filled in
@@ -289,9 +291,13 @@ func (s *Screen) MousePosition() (float32, float32) {
 // size would put the two halves of the layout in different coordinate systems,
 // with CenterToSDL positioning a stimulus in the logical space while code that
 // sized it had measured against the window.
+//
+// The onset marker's square is not scaled with it: it stays in the presentation
+// NewScreen set (see drawMarker).
 func (s *Screen) SetLogicalSize(width, height int32) error {
 	s.LogicalSize = &sdl.FPoint{X: float32(width), Y: float32(height)}
 	s.Width, s.Height = int(width), int(height)
+	s.logical = &presentation{width, height, sdl.LOGICAL_PRESENTATION_LETTERBOX}
 	return s.Renderer.SetLogicalPresentation(width, height, sdl.LOGICAL_PRESENTATION_LETTERBOX)
 }
 
@@ -541,7 +547,7 @@ func (s *Screen) Update() error {
 	}
 	// The onset marker's square goes on top of everything the caller drew.
 	if s.marker != nil {
-		if err := s.marker.drawSquare(s.Renderer); err != nil {
+		if err := s.drawMarker(); err != nil {
 			return fmt.Errorf("apparatus.Screen.Update: %w", err)
 		}
 	}
