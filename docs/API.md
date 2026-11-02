@@ -714,6 +714,8 @@ snd := stimuli.NewSound(filePath)
 snd.PreloadDevice(exp.AudioDevice)
 snd.Play()
 snd.Wait()                                    // block until done
+snd.IsPlaying()                               // still queued? (poll responses while it plays)
+snd.Duration()                                // length of the loaded WAV (time.Duration)
 snd.PlaySegment(onset, offset, rampSec)       // time-delimited segment with optional fade
 
 // Embedded WAV
