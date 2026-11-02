@@ -91,6 +91,9 @@ type Screen struct {
 	LogicalSize  *sdl.FPoint   // If not nil, use this for CenterToSDL
 	native       presentation  // the presentation NewScreen set (window coordinates); the marker's square is drawn in it
 	logical      *presentation // the one SetLogicalSize set; nil until then
+	shiftX       float32       // display transform (SetDisplayTransform): shift in screen pixels, +Y up
+	shiftY       float32
+	mag          float32       // display magnification; 0 means 1
 	frameDur     time.Duration // cached nominal frame duration used by Update's pacing (0 = not yet computed)
 	vsyncCached  int           // cached renderer VSync state; pacing is off when 0
 	vsyncKnown   bool          // whether vsyncCached has been filled in
@@ -293,12 +296,19 @@ func (s *Screen) MousePosition() (float32, float32) {
 // sized it had measured against the window.
 //
 // The onset marker's square is not scaled with it: it stays in the presentation
-// NewScreen set (see drawMarker).
+// NewScreen set (see drawMarker). A display transform is recomputed for the new
+// drawing space, so its shift stays the same number of screen pixels.
 func (s *Screen) SetLogicalSize(width, height int32) error {
 	s.LogicalSize = &sdl.FPoint{X: float32(width), Y: float32(height)}
 	s.Width, s.Height = int(width), int(height)
 	s.logical = &presentation{width, height, sdl.LOGICAL_PRESENTATION_LETTERBOX}
-	return s.Renderer.SetLogicalPresentation(width, height, sdl.LOGICAL_PRESENTATION_LETTERBOX)
+	if err := s.Renderer.SetLogicalPresentation(width, height, sdl.LOGICAL_PRESENTATION_LETTERBOX); err != nil {
+		return err
+	}
+	if !s.transformed() {
+		return nil
+	}
+	return s.applyTransform()
 }
 
 // SystemInfo holds SDL, renderer, and audio runtime properties captured once
@@ -326,6 +336,9 @@ type SystemInfo struct {
 	AudioChannels  int32   // number of audio output channels (1=mono, 2=stereo)
 	AudioFrames    int32   // hardware buffer size in sample frames
 	VblankBackend  string  // kernel vblank clock in use; "" when onsets are estimated
+	ShiftX         float32 // display transform (SetDisplayTransform) at startup: shift in screen pixels, +Y up
+	ShiftY         float32
+	Magnification  float32 // display magnification at startup; 1 = none
 }
 
 // GatherSystemInfo collects SDL and renderer properties from this Screen.
@@ -374,6 +387,7 @@ func (s *Screen) GatherSystemInfo() SystemInfo {
 	// from a schedule is the one fact a reader cannot recover afterwards, so it
 	// goes in the file rather than the log.
 	info.VblankBackend = s.VblankBackend()
+	info.ShiftX, info.ShiftY, info.Magnification = s.DisplayTransform()
 	return info
 }
 
@@ -487,6 +501,8 @@ func (s *Screen) Clear() error {
 // perfect on the kmsdrm backend, where no compositor is involved.
 //
 // The rendered image is unchanged — the fill uses the colour Clear just used.
+// Under a display transform the fill covers the viewport only; the clear has
+// already painted the rest.
 // Blend mode is forced to NONE for the fill and restored afterwards, because
 // SDL_RenderClear ignores the blend mode while SDL_RenderFillRect honours it,
 // and a translucent background colour would otherwise blend instead of replace.

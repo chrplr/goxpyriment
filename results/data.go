@@ -226,6 +226,10 @@ func (df *DataFile) WriteSystemInfo(info apparatus.SystemInfo) {
 	}
 	df.WriteComment(fmt.Sprintf("sys physical_resolution: %dx%d px", info.PhysicalW, info.PhysicalH))
 	df.WriteComment(fmt.Sprintf("sys logical_resolution: %dx%d px", info.LogicalW, info.LogicalH))
+	// Always written, the identity included: a shift is invisible in the data
+	// and changes where every stimulus was on the screen.
+	df.WriteComment(fmt.Sprintf("sys display_transform: shift=(%g, %g) px magnification=%g",
+		info.ShiftX, info.ShiftY, info.Magnification))
 	df.WriteComment(fmt.Sprintf("sys fullscreen: %v", info.Fullscreen))
 	if info.FullscreenMode != "" {
 		df.WriteComment(fmt.Sprintf("sys fullscreen_mode: %s", info.FullscreenMode))

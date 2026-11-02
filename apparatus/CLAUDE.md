@@ -51,6 +51,20 @@ SDL_RENDER_DRIVER=software ./my_experiment    # force software (always works)
 ./my_experiment -w                            # windowed (avoids fullscreen path)
 ```
 
+### Display transform
+
+`SetDisplayTransform(shiftX, shiftY, magnification)` (flags `-center-shift-x`,
+`-center-shift-y`, `-magnification`) is the window target's render viewport +
+render scale, so it moves every draw call, raw `Renderer` calls included, and
+leaves `Width`/`Height`/`CenterToSDL` alone. Measured with SDL 3.4.0: SDL maps
+p to `scale·(viewport origin + p)`, the origin being scaled too (see
+`displayView`); `SetLogicalPresentation` does not reset viewport or scale;
+`Renderer.Clear` ignores the viewport but `RenderFillRect(nil)` and
+`ReadPixels(nil)` cover the viewport only. The Screen keeps the transform itself
+because `SDL_GetRenderViewport`/`SDL_RenderViewportSet` panic on js. The
+photodiode square is drawn outside it (`withoutTransform` in `drawMarker`).
+Tested on SDL's offscreen driver in `display_transform_test.go`.
+
 ### CanvasOffset
 
 `screen.CanvasOffset` is an optional `*sdl.FPoint` that temporarily shifts the coordinate origin. Used internally by `stimuli.Canvas.Blit`; do not set it in experiment code unless implementing custom offscreen rendering.

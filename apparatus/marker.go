@@ -188,47 +188,45 @@ type presentation struct {
 // a program with a logical size would miss a photodiode placed for the others.
 // The presentation is switched for the square alone and restored before the
 // present; SDL queues the change with the draws, so the stimuli already drawn
-// keep the logical one.
+// keep the logical one. A display transform (SetDisplayTransform) is lifted the
+// same way: the photodiode is fixed to the screen, not to the image.
 func (s *Screen) drawMarker() error {
-	if s.logical == nil || !s.marker.photodiode {
+	if !s.marker.photodiode {
 		return s.marker.drawSquare(s.Renderer)
 	}
-	if err := s.Renderer.SetLogicalPresentation(s.native.w, s.native.h, s.native.mode); err != nil {
-		return fmt.Errorf("apparatus.Marker: setting the screen's presentation: %w", err)
-	}
-	err := s.marker.drawSquare(s.Renderer)
-	if rerr := s.Renderer.SetLogicalPresentation(s.logical.w, s.logical.h, s.logical.mode); rerr != nil && err == nil {
-		err = fmt.Errorf("apparatus.Marker: restoring the logical presentation: %w", rerr)
-	}
-	return err
+	return s.withoutTransform(func() error {
+		if s.logical == nil {
+			return s.marker.drawSquare(s.Renderer)
+		}
+		if err := s.Renderer.SetLogicalPresentation(s.native.w, s.native.h, s.native.mode); err != nil {
+			return fmt.Errorf("apparatus.Marker: setting the screen's presentation: %w", err)
+		}
+		err := s.marker.drawSquare(s.Renderer)
+		if rerr := s.Renderer.SetLogicalPresentation(s.logical.w, s.logical.h, s.logical.mode); rerr != nil && err == nil {
+			err = fmt.Errorf("apparatus.Marker: restoring the logical presentation: %w", rerr)
+		}
+		return err
+	})
 }
 
 // MarkerRect is the photodiode square in the current drawing space, in SDL's
 // top-left coordinates, for a program that checks its stimuli stay clear of
-// it. Without a logical size it is the square itself; with one, the square
-// converted to logical units, partly or wholly outside the drawing area when it
-// falls in a letterbox bar. A zero rect without a photodiode square.
+// it. Without a logical size or a display transform it is the square itself;
+// with either, the square converted to the drawing space, partly or wholly
+// outside the drawing area when it falls in a letterbox bar or in the strip a
+// shift uncovers. A zero rect without a photodiode square.
 func (s *Screen) MarkerRect() sdl.FRect {
 	m := s.marker
 	if !m.PhotodiodeEnabled() {
 		return sdl.FRect{}
 	}
 	side := m.Size()
-	if s.logical == nil {
+	if s.logical == nil && !s.transformed() {
 		return sdl.FRect{W: side, H: side}
 	}
-	// The square's units are those of the screen's own presentation: window
-	// coordinates when NewScreen set one (fullscreen), output pixels when it
-	// did not (a window), which differ on a HiDPI display. Converted with
-	// calls the browser build implements.
-	ws := side
-	if s.native.mode == sdl.LOGICAL_PRESENTATION_DISABLED {
-		ow, _, oerr := s.Renderer.RenderOutputSize()
-		ww, _, werr := s.Window.Size()
-		if oerr == nil && werr == nil && ow > 0 {
-			ws = side * float32(ww) / float32(ow)
-		}
-	}
+	// Converted with calls the browser build implements, which account for
+	// the viewport and scale of a display transform.
+	ws := side * s.windowPerScreenPixel()
 	x0, y0, err0 := s.Renderer.RenderCoordinatesFromWindow(0, 0)
 	x1, y1, err1 := s.Renderer.RenderCoordinatesFromWindow(ws, ws)
 	if err0 != nil || err1 != nil {

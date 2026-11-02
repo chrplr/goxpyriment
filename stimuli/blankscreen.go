@@ -33,10 +33,13 @@ func (b *BlankScreen) Draw(screen *apparatus.Screen) error {
 	if err := screen.Renderer.SetDrawColor(b.Color.R, b.Color.G, b.Color.B, b.Color.A); err != nil {
 		return fmt.Errorf("stimuli.BlankScreen.Draw: setting draw color: %w", err)
 	}
-	// We draw a large rectangle covering the screen area
+	// We draw a large rectangle covering the screen area, outside any display
+	// transform so that the strip a shift uncovers is filled too.
 	w, h, _ := screen.Renderer.RenderOutputSize()
 	rect := &sdl.FRect{X: 0, Y: 0, W: float32(w), H: float32(h)}
-	return screen.Renderer.RenderFillRect(rect)
+	return screen.WithoutDisplayTransform(func() error {
+		return screen.Renderer.RenderFillRect(rect)
+	})
 }
 
 // Present draws the blank screen. The `clear` flag is intentionally ignored

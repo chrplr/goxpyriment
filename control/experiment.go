@@ -134,6 +134,16 @@ type Experiment struct {
 	// leave the desktop unresponsive until the process is killed (see
 	// docs/SettingPriorityUnderLinux.md).
 	RealTimePriority int
+	// CenterShiftX, CenterShiftY and Magnification are the display transform
+	// Initialize sets (see apparatus.Screen.SetDisplayTransform): everything
+	// drawn is magnified about the centre of the screen, then shifted by
+	// (CenterShiftX, CenterShiftY) screen pixels, +Y up — for a display whose
+	// centre is not where the participant looks. Magnification 0 means 1.
+	// NewExperimentFromFlags fills them from -center-shift-x, -center-shift-y
+	// and -magnification; otherwise set them before Initialize.
+	CenterShiftX  float32
+	CenterShiftY  float32
+	Magnification float32
 	// MarkerConfig chooses the onset marker Initialize sets up (photodiode
 	// square, TTL output). NewExperimentFromFlags fills it from the flags
 	// MarkerFlags registered; otherwise set it before Initialize.
@@ -314,6 +324,12 @@ func NewExperimentFromFlags(name string, bg, fg sdl.Color, fontSize float32, ext
 		"Do not request real-time scheduling priority (see -realtime-priority)")
 	realtimePrio := flag.Int("realtime-priority", 50,
 		"Real-time scheduling priority to request at startup (1-99); must not exceed the RLIMIT_RTPRIO granted to this user")
+	shiftX := flag.Float64("center-shift-x", 0,
+		"Shift everything drawn by this many screen pixels to the right (negative = left), for a display whose centre is off; the photodiode square stays put")
+	shiftY := flag.Float64("center-shift-y", 0,
+		"Shift everything drawn by this many screen pixels up (negative = down)")
+	magnification := flag.Float64("magnification", 1,
+		"Scale everything drawn about the centre of the screen by this factor (> 0), before -center-shift-x/-y")
 	flag.String(config.FlagName, defaultConfigFile,
 		"TOML file setting the defaults of these flags: keys are flag names, a [table] named after the program overrides the top-level keys; the command line wins")
 	// In the browser (GOOS=js) there is no command line: synthesize os.Args
@@ -338,6 +354,9 @@ func NewExperimentFromFlags(name string, bg, fg sdl.Color, fontSize float32, ext
 		log.Fatalf("-exclusive-fullscreen: %v", policyErr)
 	}
 	SetFullscreenPolicy(policy)
+	if !(*magnification > 0) {
+		log.Fatalf("-magnification: %v is not a positive number", *magnification)
+	}
 
 	// Session settings, seeded from the command-line flags.
 	windowedMode := *windowed
@@ -412,6 +431,8 @@ func NewExperimentFromFlags(name string, bg, fg sdl.Color, fontSize float32, ext
 	exp := NewExperiment(name, width, height, fullscreen, bg, fg, fontSize)
 	exp.SubjectID = subjectID
 	exp.ScreenNumber = screenNumber
+	exp.CenterShiftX, exp.CenterShiftY = float32(*shiftX), float32(*shiftY)
+	exp.Magnification = float32(*magnification)
 	// The flags now only choose what Initialize asks for; the request itself is
 	// made there, so both constructors take the same path.
 	if *noRealtime {
@@ -1159,6 +1180,15 @@ func (e *Experiment) Initialize() error {
 		return fmt.Errorf("NewScreen: %w", err)
 	}
 	e.Screen = screen
+	if e.CenterShiftX != 0 || e.CenterShiftY != 0 || (e.Magnification != 0 && e.Magnification != 1) {
+		mag := e.Magnification
+		if mag == 0 {
+			mag = 1
+		}
+		if err := screen.SetDisplayTransform(e.CenterShiftX, e.CenterShiftY, mag); err != nil {
+			return fmt.Errorf("display transform: %w", err)
+		}
+	}
 	e.Keyboard = &apparatus.Keyboard{
 		PollKeys: func() (sdl.Keycode, bool) {
 			state := e.PollEvents(nil)

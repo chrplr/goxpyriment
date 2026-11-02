@@ -765,6 +765,10 @@ screen.FlipTS() (uint64, error)                        // present + return SDL n
 screen.FrameDuration() time.Duration                   // nominal frame duration (falls back to 60 Hz)
 screen.CalibrateRefresh(n int) (time.Duration, error)  // measured frame period, pacing bypassed
 screen.SetLogicalSize(w, h int32) error                // also updates screen.Width/Height
+screen.SetDisplayTransform(dx, dy, m float32) error    // shift (screen px, +Y up) and magnify everything drawn; photodiode square excluded
+screen.DisplayTransform() (dx, dy, m float32)          // (0, 0, 1) by default
+screen.Magnification() float32                         // divide a degrees-of-visual-angle px size by it
+screen.WithoutDisplayTransform(f func() error) error   // draw at fixed screen positions
 screen.SetVSync(vsync int) error
 screen.DisplayInfo() apparatus.DisplayInfo                    // monitor properties
 screen.SetMarker(m *apparatus.Marker)                  // drive an onset marker from Update (nil detaches)

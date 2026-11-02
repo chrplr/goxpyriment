@@ -54,6 +54,8 @@ defer exp.End()
 | `-headless` | Skip the setup dialog (below) and use field defaults — for batch/automated runs |
 | `-version` | Print the version of the program and of goxpyriment, then exit (see below) |
 | `-config FILE` | Read the defaults of the flags from a TOML file (see below) |
+| `-center-shift-x PX`, `-center-shift-y PX` | Shift everything drawn by PX screen pixels (+Y up) — see [Display transform](#display-transform) |
+| `-magnification M` | Scale everything drawn about the screen centre by M (default 1) |
 
 `-version` is available in every program that imports `control`, including
 those that call `flag.Parse()` themselves. It prints, for example:
@@ -319,6 +321,39 @@ if err := exp.SetLogicalSize(1920, 1080); err != nil {
 }
 // Now (960, 540) is the center-right area, regardless of actual screen size.
 ```
+
+### Display transform
+
+When the centre of the display is not where the participant looks — a
+projector that cannot be moved, say — everything drawn can be shifted, and
+magnified, by a fixed amount without touching the experiment code:
+
+```bash
+./my-experiment -center-shift-x -80 -center-shift-y 12 -magnification 0.95
+```
+
+or, once for every program of a lab, in the `-config` file:
+
+```toml
+center-shift-x = -80   # screen pixels, + = right
+center-shift-y = 12    # screen pixels, + = up
+magnification = 0.95   # about the screen centre, before the shift
+```
+
+Programs that do not use flags set `exp.CenterShiftX`, `exp.CenterShiftY` and
+`exp.Magnification` before `Initialize`, or call
+`exp.Screen.SetDisplayTransform(x, y, m)` at any time.
+
+It is SDL's own view transform on the window, so it moves every draw call —
+stimuli, text, and raw `Renderer` calls alike — while the coordinate system
+(`screen.Width`, `screen.Height`, `CenterToSDL`) stays the same. Clear still
+paints the whole screen, the strip the shift uncovers included; what is drawn
+past the edges of the drawing space is clipped as without a transform. The
+photodiode square stays at the corner of the screen; `screen.MarkerRect()` and
+`screen.MousePosition()` account for the transform. A size in degrees of visual
+angle computed from the screen's physical width must be divided by
+`screen.Magnification()`. The transform is written in the data file
+(`sys display_transform:`).
 
 ### Display scaling (HiDPI / fractional scaling)
 
