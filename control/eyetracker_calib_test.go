@@ -8,12 +8,14 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Zyko0/go-sdl3/sdl"
+	"github.com/chrplr/goxpyriment/apparatus"
 	"github.com/chrplr/goxpyriment/design"
 	"github.com/chrplr/goxpyriment/eyetracker"
 )
 
 // plainTracker runs its own calibration, the way an EyeLink does through
-// pylink. It deliberately does NOT implement eyetracker.StepwiseCalibrator.
+// pylink's own window (a bridge started with --no-stepwise). It deliberately does NOT implement eyetracker.StepwiseCalibrator.
 type plainTracker struct {
 	eyetracker.NullTracker
 	calls int
@@ -123,5 +125,62 @@ func TestCalibrateTrackerSkip(t *testing.T) {
 	if !found {
 		t.Errorf("a skipped calibration left no note in the experiment info: %v",
 			exp.Design.ExperimentInfo)
+	}
+}
+
+// pointsTracker is a stepwise tracker that, like an EyeLink, has to be told
+// the targets before calibration starts. It refuses to enter, so the test
+// stops before anything has to be drawn or waited for.
+type pointsTracker struct {
+	bridgeLikeTracker
+	order  []string
+	points [][2]float64
+}
+
+func (p *pointsTracker) SetCalibrationPoints(pts [][2]float64) {
+	p.order = append(p.order, "set")
+	p.points = pts
+}
+
+func (p *pointsTracker) CalibrationEnter() error {
+	p.order = append(p.order, "enter")
+	return errors.New("stop here")
+}
+
+// TestCalibrateTrackerSetsPointsBeforeEnter checks that a tracker which
+// sequences the targets itself is told them, all of them, in the order they
+// will be shown, before calibration mode is entered — afterwards is too late
+// for an EyeLink's Host PC.
+func TestCalibrateTrackerSetsPointsBeforeEnter(t *testing.T) {
+	t.Setenv("SDL_VIDEO_DRIVER", "offscreen")
+	lib := loadSDL()
+	defer lib.Unload()
+	if err := sdl.Init(sdl.INIT_VIDEO); err != nil {
+		t.Skipf("SDL offscreen video unavailable: %v", err)
+	}
+	defer sdl.Quit()
+	screen, err := apparatus.NewScreen("calib-test", 320, 200, Black, false, 0)
+	if err != nil {
+		t.Skipf("no offscreen screen: %v", err)
+	}
+	defer screen.Destroy()
+
+	exp := &Experiment{Screen: screen, Design: design.NewExperiment("test")}
+	tr := &pointsTracker{bridgeLikeTracker: bridgeLikeTracker{stepwise: true}}
+	err = exp.CalibrateTracker(tr, eyetracker.CalibrationOptions{Points: 13})
+	if err == nil || !strings.Contains(err.Error(), "stop here") {
+		t.Fatalf("CalibrateTracker = %v, want the tracker's refusal to enter", err)
+	}
+	if strings.Join(tr.order, ",") != "set,enter" {
+		t.Errorf("calls %v, want set,enter", tr.order)
+	}
+	want := exp.CalibrationPoints(13, calTargetOuterRadius)
+	if len(tr.points) != len(want) {
+		t.Fatalf("got %d points, want %d", len(tr.points), len(want))
+	}
+	for i := range want {
+		if tr.points[i] != want[i] {
+			t.Errorf("point %d = %v, want %v", i, tr.points[i], want[i])
+		}
 	}
 }

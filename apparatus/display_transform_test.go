@@ -334,3 +334,24 @@ func TestMain(m *testing.M) {
 	lib.Unload()
 	os.Exit(code)
 }
+
+// TestVisibleRect checks the part of the drawing space that stays on screen:
+// a shift to the left pushes the left edge off, a magnification the edges.
+func TestVisibleRect(t *testing.T) {
+	s := newOffscreenScreen(t, 200, 100)
+	if r := s.VisibleRect(); r != (sdl.FRect{W: 200, H: 100}) {
+		t.Errorf("no transform: %+v, want the whole drawing space", r)
+	}
+	if err := s.SetDisplayTransform(-80, 0, 1.05); err != nil {
+		t.Fatal(err)
+	}
+	// Drawing point p lands at c + m(p - c) + d: the screen's left edge is
+	// p = 100 + (0 - 100 + 80)/1.05 ≈ 81 (the viewport is integer), its top
+	// and bottom edges 50 ∓ 50/1.05 ≈ 2.4 and 97.6. On the right the screen
+	// edge is beyond the drawing space, whose own edge (200) clips.
+	r := s.VisibleRect()
+	near := func(got, want float32) bool { return math.Abs(float64(got-want)) <= 1.1 }
+	if !near(r.X, 81) || !near(r.Y, 2.4) || !near(r.X+r.W, 200) || !near(r.Y+r.H, 97.6) {
+		t.Errorf("shift -80, magnification 1.05: %+v, want about x 81-200, y 2.4-97.6", r)
+	}
+}

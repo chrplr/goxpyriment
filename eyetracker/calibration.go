@@ -25,9 +25,13 @@ type StepwiseCalibrationReporter interface {
 // tracker when to sample it.
 //
 // A Tobii is like this: its SDK exposes only "collect data for the point the
-// participant is looking at now" and draws nothing. An EyeLink is not — pylink
-// runs the whole setup itself behind [Tracker.Calibrate], which is why that
-// method still exists and why this interface is separate from it.
+// participant is looking at now" and draws nothing. An EyeLink can work either
+// way: pylink can run the whole setup itself, drawing in a window of its own,
+// behind [Tracker.Calibrate] — which is why that method still exists and why
+// this interface is separate from it — or the bridge can relay the Host PC's
+// target requests so that the client draws them, through this interface. The
+// latter puts the targets through goxpyriment's display transform; the former
+// does not. An EyeLink also needs [CalibrationPointsSetter].
 //
 // The payoff of driving it here is that the target onset is on goxpyriment's
 // own flip clock, in goxpyriment's own window, on one machine. Use
@@ -70,6 +74,15 @@ type StepwiseCalibrator interface {
 	CalibrationLeave() error
 }
 
+// CalibrationPointsSetter is implemented by a [StepwiseCalibrator] that must
+// know every target before [StepwiseCalibrator.CalibrationEnter]: an EyeLink,
+// whose Host PC sequences the targets itself and has to be told where the
+// client will draw them. control.Experiment.CalibrateTracker calls it, when it
+// is implemented, with the points in the order it will show them.
+type CalibrationPointsSetter interface {
+	SetCalibrationPoints(points [][2]float64)
+}
+
 // CalibrationResult is what the tracker computed from the collected points.
 type CalibrationResult struct {
 	// Status is the tracker's own verdict, verbatim — for a Tobii one of
@@ -79,6 +92,10 @@ type CalibrationResult struct {
 
 	// Points is one entry per target the tracker kept data for, in its order.
 	Points []CalibrationPoint
+
+	// Message is the tracker's own summary, verbatim, when it gives one — an
+	// EyeLink's calibration message from the Host PC. Empty for a Tobii.
+	Message string
 }
 
 // CalibrationPoint is one calibration target and how much usable data the
@@ -136,6 +153,9 @@ func (r CalibrationResult) Summary() string {
 	}
 	if len(bad) > 0 {
 		s += "; no usable data at " + strings.Join(bad, " ")
+	}
+	if m := strings.TrimSpace(r.Message); m != "" {
+		s += fmt.Sprintf("; tracker: %q", m)
 	}
 	return s
 }

@@ -182,3 +182,33 @@ func firstErr(errs ...error) error {
 	}
 	return nil
 }
+
+// VisibleRect is the part of the drawing space that reaches the screen, in
+// SDL's top-left coordinates of the drawing space: all of it without a display
+// transform, less what a shift or a magnification pushes off the screen with
+// one. A stimulus that must be seen whole — a calibration target, say — has to
+// fit inside it. Like MarkerRect, it is computed with conversions the browser
+// build implements.
+func (s *Screen) VisibleRect() sdl.FRect {
+	full := sdl.FRect{W: float32(s.Width), H: float32(s.Height)}
+	if !s.transformed() || s.Window == nil || s.Renderer == nil {
+		return full
+	}
+	ww, wh, err := s.Window.Size()
+	if err != nil {
+		return full
+	}
+	x0, y0, err0 := s.Renderer.RenderCoordinatesFromWindow(0, 0)
+	x1, y1, err1 := s.Renderer.RenderCoordinatesFromWindow(float32(ww), float32(wh))
+	if err0 != nil || err1 != nil {
+		return full
+	}
+	l := max(x0, 0)
+	t := max(y0, 0)
+	r := min(x1, full.W)
+	b := min(y1, full.H)
+	if r <= l || b <= t {
+		return sdl.FRect{}
+	}
+	return sdl.FRect{X: l, Y: t, W: r - l, H: b - t}
+}

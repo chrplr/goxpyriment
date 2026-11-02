@@ -167,12 +167,19 @@ class Session:
         commits to one. Computed from the tracker object rather than declared,
         so a back end cannot advertise what it does not have.
         """
+        if not getattr(self.tracker, "stepwise", True):
+            return []
         return [c for c in CALIBRATION_COMMANDS
                 if callable(getattr(self.tracker, c, None))]
 
     def calibration(self, cmd, args):
         """Dispatch a stepwise-calibration command to the back end."""
         fn = getattr(self.tracker, cmd, None)
+        if not getattr(self.tracker, "stepwise", True):
+            # Turned off at the command line (--no-stepwise): refuse exactly
+            # as a back end that lacks the commands does, so the client falls
+            # back to `calibrate` on the strength of the caps it was sent.
+            fn = None
         if fn is None:
             raise ValueError(
                 "%s does not support %s: this tracker calibrates through its "
@@ -181,6 +188,14 @@ class Session:
             )
         if cmd in ("calibration_collect", "calibration_discard"):
             return fn(float(args["x"]), float(args["y"]))
+        if cmd == "calibration_enter":
+            # The target list, when the client sent one: normalized (x, y)
+            # pairs in the order it will show them. A back end that sequences
+            # the targets itself (an EyeLink) needs it; others ignore it.
+            pts = args.get("points")
+            if pts is not None:
+                pts = [(float(p[0]), float(p[1])) for p in pts]
+            return fn(pts)
         return fn()
 
     def handle(self, req):

@@ -68,6 +68,8 @@ type Bridge struct {
 	calMessage  string // the tracker's summary of the last calibration
 	calVerified bool   // whether the tracker confirmed it stored one
 
+	calPoints [][2]float64 // targets announced to calibration_enter, if set
+
 	readerDone chan struct{}
 	helloCh    chan *message
 	closeOnce  sync.Once
@@ -193,8 +195,9 @@ func (b *Bridge) Simulated() bool {
 // commands.
 //
 // *Bridge implements that interface whatever it is connected to, because the
-// Go type cannot know which back end answered: an EyeLink calibrates through
-// pylink's own setup routine and rejects those commands by name. So the
+// Go type cannot know which back end answered: an EyeLink bridge started with
+// --no-stepwise, or one older than the stepwise EyeLink support, calibrates only
+// through pylink's own setup routine and rejects those commands by name. So the
 // question is a runtime one, answered by the "caps" list in the bridge's hello.
 // control.Experiment.CalibrateTracker asks this before choosing a strategy;
 // call it before driving a calibration by hand.
@@ -419,9 +422,33 @@ func (b *Bridge) CalibrationMessage() (string, bool) {
 // [StepwiseCalibrator]; see that interface before calling any of these four
 // directly, and prefer control.Experiment.CalibrateTracker, which draws the
 // targets.
+//
+// When [Bridge.SetCalibrationPoints] gave a list of targets, it is sent along:
+// an EyeLink needs it, because the Host PC sequences the targets itself and
+// must be told beforehand exactly where the client is going to draw them.
 func (b *Bridge) CalibrationEnter() error {
-	_, err := b.do("calibration_enter", nil, b.reqTimeout)
+	b.mu.RLock()
+	pts := b.calPoints
+	b.mu.RUnlock()
+	var args map[string]any
+	if len(pts) > 0 {
+		list := make([][]float64, len(pts))
+		for i, p := range pts {
+			list[i] = []float64{p[0], p[1]}
+		}
+		args = map[string]any{"points": list}
+	}
+	_, err := b.do("calibration_enter", args, b.reqTimeout)
 	return err
+}
+
+// SetCalibrationPoints declares the targets, in normalized display-area
+// coordinates and in the order they will be shown, of the next
+// [Bridge.CalibrationEnter]. It implements [CalibrationPointsSetter].
+func (b *Bridge) SetCalibrationPoints(points [][2]float64) {
+	b.mu.Lock()
+	b.calPoints = append([][2]float64(nil), points...)
+	b.mu.Unlock()
 }
 
 // CalibrationCollect samples the target at normalized (nx, ny), which must
@@ -454,6 +481,7 @@ func (b *Bridge) CalibrationCompute() (CalibrationResult, error) {
 	}
 	out := CalibrationResult{}
 	out.Status, _ = res["status"].(string)
+	out.Message, _ = res["message"].(string)
 	// JSON numbers decode into float64, so every count has to come back
 	// through one: an int assertion here silently yields zero for all of them.
 	if pts, ok := res["points"].([]any); ok {

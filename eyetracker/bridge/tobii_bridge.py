@@ -508,7 +508,9 @@ class TobiiTracker:
             "persists in the tracker)."
         )
 
-    def calibration_enter(self):
+    def calibration_enter(self, points=None):
+        # points: the client's target list. A Tobii takes each target as it
+        # is collected, so it needs none in advance.
         self.cal = self.tr.ScreenBasedCalibration(self.et)
         self.cal.enter_calibration_mode()
         return {}
@@ -631,7 +633,9 @@ class TobiiSimTracker:
             "the calibration_* commands)."
         )
 
-    def calibration_enter(self):
+    def calibration_enter(self, points=None):
+        # points: the client's target list. A Tobii takes each target as it
+        # is collected, so it needs none in advance.
         self.cal = True
         self.cal_points = []
         return {}

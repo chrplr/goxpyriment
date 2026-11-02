@@ -54,13 +54,15 @@ func (t *calTarget) Present(screen *apparatus.Screen, clear, update bool) error 
 // It handles both shapes of calibration API, so an experiment does not need to
 // know which make of tracker it is talking to:
 //
-//   - A tracker that runs its own setup routine — an EyeLink through pylink —
-//     is simply asked to do it. The Host PC's calibration screen is better
-//     tested than anything we can draw.
+//   - A tracker that runs its own setup routine — an EyeLink through a bridge
+//     started with --no-stepwise — is simply asked to do it, and draws its
+//     targets in a window of its own, outside the display transform.
 //   - A tracker that implements [eyetracker.StepwiseCalibrator] AND reports
 //     through [eyetracker.StepwiseCalibrationReporter] that the hardware
-//     really supports it — a Tobii, whose SDK draws nothing at all — is driven
-//     target by target from here.
+//     really supports it — a Tobii, whose SDK draws nothing at all, or an
+//     EyeLink whose bridge relays the Host PC's target requests — is driven
+//     target by target from here. One that implements
+//     [eyetracker.CalibrationPointsSetter] is told all the targets first.
 //     Each target is put on screen with [Experiment.ShowTS], held for
 //     opts.DwellMs, and only then does the tracker sample it. That ordering is
 //     the whole reason to do the drawing here: the target onset is on
@@ -93,9 +95,9 @@ func (e *Experiment) CalibrateTracker(t eyetracker.Tracker,
 		// The Go type says the targets can be driven from here; the tracker
 		// itself says they cannot. An eyetracker.Bridge always satisfies the
 		// interface, because the type cannot know which back end answered the
-		// socket — an EyeLink behind pylink rejects every one of those commands
-		// by name. Believing the assertion would fail at the first target,
-		// with a participant already in the chair.
+		// socket — an EyeLink bridge started with --no-stepwise rejects every
+		// one of those commands by name. Believing the assertion would fail at
+		// the first target, with a participant already in the chair.
 		ok = false
 	}
 	if !ok {
@@ -276,7 +278,16 @@ func (e *Experiment) calibrateStepwise(t eyetracker.Tracker,
 	if dwell <= 0 {
 		dwell = calDefaultDwellMs
 	}
-	points := eyetracker.StandardPoints(opts.Points)
+	// The standard layout, moved or shrunk where the display transform or the
+	// photodiode square would cut a target.
+	points := e.CalibrationPoints(opts.Points, calTargetOuterRadius)
+
+	// A tracker whose own controller sequences the targets — an EyeLink — has
+	// to know where they will be before calibration starts, or it collects
+	// each fixation against a target it placed somewhere else.
+	if ps, ok := sc.(eyetracker.CalibrationPointsSetter); ok {
+		ps.SetCalibrationPoints(points)
+	}
 
 	if err := sc.CalibrationEnter(); err != nil {
 		return fmt.Errorf("control.CalibrateTracker: entering calibration mode: %w", err)

@@ -171,6 +171,31 @@ onset of the patch.
 
 ## Calibration
 
+There are two ways to calibrate an EyeLink from goxpyriment.
+
+- **Stepwise, targets drawn by goxpyriment** (`control.Experiment.CalibrateTracker`,
+  the default with a current bridge). The Host PC still runs the sequence and
+  computes the calibration, but the bridge relays its target requests instead
+  of drawing them: goxpyriment draws each target in its own window, so the
+  targets go through the display transform (`-center-shift-x/-y`,
+  `-magnification`) like every other stimulus. Calibration must use 9 or 13
+  points (HV9, HV13). The camera image stays on the Host PC's monitor. Check the
+  mechanism against a real Host, with no Go program involved, with:
+
+  ```bash
+  python3 eyetracker/bridge/eyelink_bridge.py --check-calibration \
+      --tracker-host 100.1.1.1 --width 1920 --height 1080
+  ```
+
+  It logs every target the Host asks for (`Host: draw target at ...`) and
+  every key the bridge sends, then prints the Host's calibration message.
+  The bridge sends the targets in HV9/HV13 slot order and sets
+  `calibration_sequence` to the client's order; that is the check that the
+  Host presents them as asked.
+- **pylink's own setup window** (`Bridge.Calibrate`, what `-calibrate` below
+  uses, and what `CalibrateTracker` falls back to when the bridge is started
+  with `--no-stepwise`). It ignores the display transform.
+
 `-calibrate` asks the tracker to run its own setup routine. pylink draws the
 targets from the **bridge process**, so they appear over whatever goxpyriment
 has on screen; the tracker owns the display until the operator leaves setup.
