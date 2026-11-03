@@ -110,6 +110,30 @@ func (s *Sound) Wait() {
 	}
 }
 
+// IsPlaying reports whether audio queued by Play, PlayTS or PlaySyncedWithFlip
+// is still waiting to be played, i.e. whether Wait would still block. Like
+// Wait it only sees SDL's software stream buffer, so it turns false up to one
+// hardware callback period (see OutputLatency) before the last sample is
+// heard. Use it to poll for responses while a sound plays.
+func (s *Sound) IsPlaying() bool {
+	if s.Stream == nil {
+		return false
+	}
+	n, err := s.Stream.Queued()
+	return err == nil && n > 0
+}
+
+// Duration returns the length of the loaded sound, from its sample data and
+// spec. It is 0 before PreloadDevice has loaded the WAV.
+func (s *Sound) Duration() time.Duration {
+	bytesPerFrame := int(s.Spec.Channels) * sampleByteWidth(s.Spec.Format)
+	if bytesPerFrame <= 0 || s.Spec.Freq <= 0 || len(s.Data) == 0 {
+		return 0
+	}
+	frames := len(s.Data) / bytesPerFrame
+	return time.Duration(float64(frames) / float64(s.Spec.Freq) * float64(time.Second))
+}
+
 // CurrentSampleFrame returns a best-effort estimate of the sample frame that
 // is currently being played by the audio hardware.
 //
