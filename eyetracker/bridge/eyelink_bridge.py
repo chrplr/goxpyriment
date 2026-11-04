@@ -176,6 +176,7 @@ class _CalState:
         self.keys = queue.Queue()
         self.target = None   # (x, y) the Host is showing, None when erased
         self.draws = 0       # draw_cal_target calls so far
+        self.polled = False  # the core has polled for a key at least once
         self.finished = False
         self.error = None
         self.thread = None
@@ -221,6 +222,14 @@ def _make_relay(pylink, cal):
             self.erase_cal_target()
 
         def get_input_key(self):
+            # do_tracker_setup opens by throwing away every pending key, until
+            # a poll comes back empty: a "c" handed over before that never
+            # reaches the Host, and no target is ever asked for. So the first
+            # poll answers nothing, which ends the flush, and "c" follows.
+            if not cal.polled:
+                cal.polled = True
+                cal.key(ord("c"))
+                return None
             try:
                 k = cal.keys.get_nowait()
             except queue.Empty:
@@ -569,7 +578,6 @@ class EyeLinkTracker:
 
         cal.thread = threading.Thread(target=run, daemon=True)
         cal.thread.start()
-        cal.key(ord("c"))
         return {"points": len(points)}
 
     def _require_cal(self):
