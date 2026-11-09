@@ -1,8 +1,8 @@
 # Lexical Decision (French)
 
-A French **lexical decision** task: participants decide as quickly and as accurately as possible whether a string of letters is a French word. Words cross **length** (4 vs 6 characters) with **frequency** (high vs low). Instructions are in French.
+A French **lexical decision** task: participants decide as quickly and as accurately as possible whether a string of letters is a French word. The words contrast **length** (4 vs 6 characters) and **frequency** (high vs low). Instructions are in French.
 
-Each item is presented once, in a new random order for each session.
+Each item is shown once, in random order.
 
 ---
 
@@ -13,7 +13,7 @@ Blank screen  →  Letter string  →  Response  →  next trial
    2000 ms       until response     J or F
 ```
 
-There is no response deadline, no feedback and no practice block.
+There is no response deadline, feedback or practice block.
 
 ---
 
@@ -30,7 +30,7 @@ There is no response deadline, no feedback and no practice block.
 
 ## Materials
 
-[`stimuli/materiel_lexdec.csv`](stimuli/materiel_lexdec.csv) is **embedded into the binary**, so changing it requires a rebuild. It has no header, and each row is `item,length,code`:
+[`stimuli/materiel_lexdec.csv`](stimuli/materiel_lexdec.csv) is **embedded in the binary**, so changing it requires a rebuild. It has no header, and each row is `item,length,category`:
 
 ```
 silo,4,LF
@@ -38,7 +38,7 @@ chance,6,HF
 flac,4,PW
 ```
 
-`code` is `HF` or `LF` for a word and `PW` for a pseudoword. The program stops with an error on a malformed row, an unknown code, or a length that doesn't match the item.
+`category` is `HF` or `LF` for a word and `PW` for a pseudoword. The program stops with an error on a malformed row, an unknown category, or a length that doesn't match the item.
 
 | | 4 characters | 6 characters |
 |---|---|---|
@@ -46,7 +46,7 @@ flac,4,PW
 | LF | 23 | 21 |
 | PW | 25 | 27 |
 
-That makes 146 trials: 94 words and 52 pseudowords. Every row in the file is presented, so items added to the CSV are picked up automatically.
+That makes 146 trials: 94 words and 52 pseudowords.
 
 ---
 
@@ -74,7 +74,7 @@ Data are saved to `goxpy_data/` as a `.csv` file, with one row per trial after t
 | `trial` | 0-based position in the session |
 | `item` | The letter string shown |
 | `length` | Number of characters (4 or 6) |
-| `freq` | `HF`, `LF` or `PW` |
+| `category` | `HF`, `LF` or `PW` |
 | `lexicality` | `word` or `pseudoword` |
 | `response` | `word` or `pseudoword` |
 | `rt` | Reaction time in milliseconds, from the stimulus flip to the key press |

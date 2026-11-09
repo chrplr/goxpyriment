@@ -1,7 +1,7 @@
 // Copyright (2026) Christophe Pallier <christophe@pallier.org>
 // Licensed under the Apache License, Version 2.0 (see LICENSE.txt).
 
-// French lexical decision crossing word length (4 vs 6 characters) with
+// French lexical decision contrasting word length (4 vs 6 characters) and word
 // frequency (HF vs LF). Each item stays on screen until the participant
 // responds: J for a word, F for a pseudoword.
 package main
@@ -20,8 +20,8 @@ import (
 	"github.com/chrplr/goxpyriment/stimuli"
 )
 
-// materials holds one item per row, without a header: item,length,code, where
-// code is HF or LF for a word and PW for a pseudoword.
+// materials has one item per row and no header: item,length,category, where
+// category is HF or LF for a word and PW for a pseudoword.
 //
 //go:embed stimuli/materiel_lexdec.csv
 var materials string
@@ -30,59 +30,65 @@ const (
 	wordKey   = control.K_J
 	pseudoKey = control.K_F
 
-	itiMs = 2000
+	interTrialMs = 2000
 
-	wordLabel   = "word"
-	pseudoLabel = "pseudoword"
+	categoryHF     = "HF"
+	categoryLF     = "LF"
+	categoryPseudo = "PW"
+
+	labelWord   = "word"
+	labelPseudo = "pseudoword"
 
 	instructions = "Des suites de lettres vont apparaître une par une au centre de l'écran.\n\n" +
-		"Pour chacune, décidez le plus vite et le plus exactement possible s'il s'agit d'un mot français.\n\n" +
-		"Mot français : appuyez sur J\n\n" +
-		"Pas un mot français : appuyez sur F\n\n" +
+		"Pour chacune, décidez aussi vite et aussi correctement que possible s'il s'agit d'un mot français.\n\n" +
+		"C'est un mot : appuyez sur J\n\n" +
+		"Ce n'est pas un mot : appuyez sur F\n\n" +
 		"Appuyez sur la barre d'espace pour commencer."
 
 	endMessage = "L'expérience est terminée.\n\nMerci de votre participation !\n\nAppuyez sur une touche pour quitter."
 )
 
-type lexTrial struct {
-	item   string
-	length int
-	freq   string // HF, LF or PW
+type trial struct {
+	item     string
+	length   int
+	category string // categoryHF, categoryLF or categoryPseudo
 }
 
-// lexicality returns the correct response for the trial.
-func (t lexTrial) lexicality() string {
-	if t.freq == "PW" {
-		return pseudoLabel
+// lexicality is the correct response for the trial.
+func (t trial) lexicality() string {
+	if t.category == categoryPseudo {
+		return labelPseudo
 	}
-	return wordLabel
+	return labelWord
 }
 
-// parseTrials reads the materials. A malformed row is an error rather than a
-// skipped row, since a dropped item would silently unbalance the design.
-func parseTrials(data string) ([]lexTrial, error) {
+// parseTrials reads the materials. A bad row is an error rather than a skipped
+// row, since a dropped item would silently unbalance the design.
+func parseTrials(data string) ([]trial, error) {
 	reader := csv.NewReader(strings.NewReader(data))
 	reader.FieldsPerRecord = 3
-	records, err := reader.ReadAll()
+	rows, err := reader.ReadAll()
 	if err != nil {
 		return nil, fmt.Errorf("reading materials: %w", err)
 	}
 
-	trials := make([]lexTrial, 0, len(records))
-	for i, record := range records {
-		item, freq := record[0], record[2]
-		length, err := strconv.Atoi(record[1])
+	trials := make([]trial, 0, len(rows))
+	for i, row := range rows {
+		item, category := row[0], row[2]
+		length, err := strconv.Atoi(row[1])
 		if err != nil {
 			return nil, fmt.Errorf("materials row %d (%q): bad length: %w", i+1, item, err)
 		}
-		// Count characters, not bytes: "étui" has 4 characters but 5 bytes.
+		// Count characters, not bytes: "étui" is 4 characters but 5 bytes.
 		if n := utf8.RuneCountInString(item); n != length {
 			return nil, fmt.Errorf("materials row %d (%q): has %d characters, listed as %d", i+1, item, n, length)
 		}
-		if freq != "HF" && freq != "LF" && freq != "PW" {
-			return nil, fmt.Errorf("materials row %d (%q): unknown code %q", i+1, item, freq)
+		switch category {
+		case categoryHF, categoryLF, categoryPseudo:
+		default:
+			return nil, fmt.Errorf("materials row %d (%q): unknown category %q", i+1, item, category)
 		}
-		trials = append(trials, lexTrial{item: item, length: length, freq: freq})
+		trials = append(trials, trial{item: item, length: length, category: category})
 	}
 	return trials, nil
 }
@@ -97,7 +103,7 @@ func main() {
 	exp := control.NewExperimentFromFlags("Lexical Decision French", control.Black, control.White, 32)
 	defer exp.End()
 
-	exp.AddDataVariableNames([]string{"trial", "item", "length", "freq", "lexicality", "response", "rt", "correct"})
+	exp.AddDataVariableNames([]string{"trial", "item", "length", "category", "lexicality", "response", "rt", "correct"})
 
 	responseKeys := []control.Keycode{wordKey, pseudoKey}
 
@@ -107,7 +113,7 @@ func main() {
 		}
 
 		for i, t := range trials {
-			if err := exp.Blank(itiMs); err != nil {
+			if err := exp.Blank(interTrialMs); err != nil {
 				return err
 			}
 
@@ -120,11 +126,11 @@ func main() {
 				return err
 			}
 
-			response := pseudoLabel
+			response := labelPseudo
 			if key == wordKey {
-				response = wordLabel
+				response = labelWord
 			}
-			exp.Data.Add(i, t.item, t.length, t.freq, t.lexicality(), response, rt, response == t.lexicality())
+			exp.Data.Add(i, t.item, t.length, t.category, t.lexicality(), response, rt, response == t.lexicality())
 		}
 
 		if err := exp.ShowEndMessage(endMessage); err != nil {
