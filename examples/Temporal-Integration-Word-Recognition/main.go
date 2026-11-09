@@ -739,7 +739,10 @@ func main() {
 		log.Fatalf("dialog: %v", err)
 	}
 
-	subjectID, _ := strconv.Atoi(info["subject_id"])
+	subject, err := control.SubjectFromInfo(info)
+	if err != nil {
+		log.Fatalf("%v", err)
+	}
 	expNum, _ := strconv.Atoi(info["experiment"])
 	fullscreen := info["fullscreen"] == "true"
 	width, height := 0, 0
@@ -752,7 +755,7 @@ func main() {
 		width, height, fullscreen,
 		control.Black, control.White, fontSizePt,
 	)
-	exp.SubjectID = subjectID
+	exp.Subject = subject
 	exp.Info = info
 	if err := exp.Initialize(); err != nil {
 		log.Fatal(err)

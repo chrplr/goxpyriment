@@ -11,7 +11,6 @@ import (
 	"os"
 	"os/signal"
 	"runtime"
-	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -83,7 +82,7 @@ type Experiment struct {
 	Keyboard        *apparatus.Keyboard
 	Mouse           *apparatus.Mouse
 	Data            *results.DataFile
-	SubjectID       int
+	Subject         results.Subject // participant ID: letters and digits (see results.ParseSubject)
 	BackgroundColor sdl.Color
 	ForegroundColor sdl.Color
 	DefaultFontSize float32
@@ -227,7 +226,7 @@ func NewExperiment(name string, width, height int, fullscreen bool, bg, fg sdl.C
 		BackgroundColor: bg,
 		ForegroundColor: fg,
 		DefaultFontSize: defaultFontSize,
-		SubjectID:       0, // Default subject ID
+		Subject:         results.NoSubject,
 		WindowWidth:     width,
 		WindowHeight:    height,
 		Fullscreen:      fullscreen,
@@ -319,7 +318,7 @@ func NewExperimentFromFlags(name string, bg, fg sdl.Color, fontSize float32, ext
 	display := flag.Int("d", -1, "Display ID: monitor index where the window/fullscreen will open (-1 = primary)")
 	exclusive := flag.String("exclusive-fullscreen", "auto",
 		"Fullscreen presentation: auto | on (exclusive, bypasses the compositor where possible) | off (fullscreen-desktop)")
-	subject := flag.Int("s", 0, "Subject ID")
+	subject := flag.String("s", "", "Subject ID: "+results.SubjectRule+"; a number loses its leading zeros (007 is 7)")
 	noRealtime := flag.Bool("no-realtime", false,
 		"Do not request real-time scheduling priority (see -realtime-priority)")
 	realtimePrio := flag.Int("realtime-priority", 50,
@@ -337,14 +336,22 @@ func NewExperimentFromFlags(name string, bg, fg sdl.Color, fontSize float32, ext
 	platformPrepareFlags()
 	configInfo := parseFlags()
 
-	// Detect whether -s was set explicitly: the default (0) is a valid subject
-	// ID, so the value alone cannot distinguish "not given" from "given as 0".
+	// Detect whether -s was set explicitly: without it, the setup dialog asks
+	// for the subject.
 	sProvided := false
 	flag.Visit(func(f *flag.Flag) {
 		if f.Name == "s" {
 			sProvided = true
 		}
 	})
+	subjectID := results.NoSubject
+	if sProvided {
+		id, err := results.ParseSubject(*subject)
+		if err != nil {
+			log.Fatalf("-s: %v", err)
+		}
+		subjectID = id
+	}
 
 	// Applies to the window created inside Initialize below, so it must be set
 	// before then. A bad value is fatal rather than ignored: silently falling
@@ -364,7 +371,6 @@ func NewExperimentFromFlags(name string, bg, fg sdl.Color, fontSize float32, ext
 	if *display >= 0 {
 		screenNumber = *display
 	}
-	subjectID := *subject
 	outputDir := ""
 	var info map[string]string
 
@@ -407,9 +413,14 @@ func NewExperimentFromFlags(name string, bg, fg sdl.Color, fontSize float32, ext
 			log.Fatalf("session-setup dialog: %v", err)
 		}
 		info = gathered
-		if id, convErr := strconv.Atoi(strings.TrimSpace(info["subject_id"])); convErr == nil {
-			subjectID = id
+		// An empty field (or -headless, which returns the defaults) is
+		// subject 0, as before; anything else must be a valid ID, rather
+		// than silently becoming subject 0.
+		id, err := SubjectFromInfo(info)
+		if err != nil {
+			log.Fatalf("session-setup dialog: %v", err)
 		}
+		subjectID = id
 		screenNumber = DisplayIDFromInfo(info)
 		windowedMode = info["fullscreen"] != "true"
 		outputDir = strings.TrimSpace(info["output_dir"])
@@ -429,7 +440,7 @@ func NewExperimentFromFlags(name string, bg, fg sdl.Color, fontSize float32, ext
 	}
 
 	exp := NewExperiment(name, width, height, fullscreen, bg, fg, fontSize)
-	exp.SubjectID = subjectID
+	exp.Subject = subjectID
 	exp.ScreenNumber = screenNumber
 	exp.CenterShiftX, exp.CenterShiftY = float32(*shiftX), float32(*shiftY)
 	exp.Magnification = float32(*magnification)
@@ -1249,7 +1260,7 @@ func (e *Experiment) Initialize() error {
 
 	// Initialize DataFile
 	outDir := e.OutputDirectory
-	dataFile, err := results.NewDataFile(outDir, e.SubjectID, e.Name)
+	dataFile, err := results.NewDataFile(outDir, e.Subject, e.Name)
 	if err != nil {
 		return fmt.Errorf("control.Experiment: creating data file: %w", err)
 	}
@@ -1486,16 +1497,18 @@ func (e *Experiment) ShuffleBlocks() {
 
 // AddBWSFactor registers a between-subjects factor with the given condition levels.
 // Use GetPermutedBWSFactorCondition to retrieve the condition assigned to the
-// current subject (determined by SubjectID via Latin-square permutation).
+// current subject (determined by the subject number via Latin-square permutation).
 func (e *Experiment) AddBWSFactor(name string, conditions []interface{}) {
 	e.Design.AddBWSFactor(name, conditions)
 }
 
 // GetPermutedBWSFactorCondition returns the condition assigned to the current
-// subject for the named between-subjects factor, using the SubjectID to index
-// into a Latin-square permutation of conditions.
+// subject for the named between-subjects factor, using the subject number to
+// index into a Latin-square permutation of conditions. The subject ID must be a
+// number: an ID such as "AB12" has no rank, and the program stops with an error
+// rather than assign the conditions out of balance.
 func (e *Experiment) GetPermutedBWSFactorCondition(name string) interface{} {
-	return e.Design.GetPermutedBWSFactorCondition(name, e.SubjectID)
+	return e.Design.GetPermutedBWSFactorCondition(name, e.SubjectNumber())
 }
 
 // Summary returns a human-readable summary of the experiment design,

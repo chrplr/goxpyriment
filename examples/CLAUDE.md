@@ -90,8 +90,8 @@ it is where the browser build hooks its frame loop and its crash overlay.
 `exp.Data` writes **two files** per session under the data directory (see
 `../results/CLAUDE.md`):
 
-- `<name>_sub-<NNN>_date-….csv` — pure CSV, directly importable by R/Excel.
-- `<name>_sub-<NNN>_date-…-info.txt` — `#`-prefixed session metadata.
+- `<name>_sub-<label>_date-….csv` — pure CSV, directly importable by R/Excel.
+- `<name>_sub-<label>_date-…-info.txt` — `#`-prefixed session metadata.
 
 Workflow: call `exp.AddDataVariableNames([...])` once (header — do **not** include
 `subject_id`, it's prepended), then `exp.Data.Add(...)` once per trial. Numbers and

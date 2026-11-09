@@ -133,9 +133,10 @@ func main() {
 	// and 1 get the identical stream with every visual field flipped -- the
 	// point of the paper's matched lists, and what makes each word appear in
 	// each visual field across participants.
-	listIdx := (exp.SubjectID / 4) % nLists
-	vfReversed := exp.SubjectID%2 == 1
-	oldOnRightHand := (exp.SubjectID/2)%2 == 1
+	subjectNum := exp.SubjectNumber()
+	listIdx := (subjectNum / 4) % nLists
+	vfReversed := subjectNum%2 == 1
+	oldOnRightHand := (subjectNum/2)%2 == 1
 	if *seed >= 0 {
 		listIdx = *seed
 		vfReversed = false

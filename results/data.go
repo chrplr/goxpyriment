@@ -4,6 +4,7 @@
 package results
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/user"
@@ -62,7 +63,7 @@ type DataFile struct {
 	*OutputFile
 	InfoFile      *OutputFile // receives all WriteComment / metadata lines
 	Delimiter     string
-	SubjectID     int
+	Subject       Subject
 	VariableNames []string
 	StartTime     time.Time
 
@@ -109,14 +110,18 @@ func DefaultDataDir() string {
 
 // NewDataFile creates a new DataFile in the given directory (or in the
 // default directory from DefaultDataDir, e.g. "$HOME/goxpy_data", if empty).
-// The filename is derived from the experiment name, subject ID, and a timestamp.
-func NewDataFile(directory string, subjectID int, expName string) (*DataFile, error) {
+// The filename is derived from the experiment name, the subject's Label, and a
+// timestamp: <expName>_sub-<label>_date-<YYYYMMDD>-<HHMMSS>.csv.
+func NewDataFile(directory string, subject Subject, expName string) (*DataFile, error) {
+	if subject == "" {
+		return nil, errors.New("results.NewDataFile: no subject ID")
+	}
 	if directory == "" {
 		directory = DefaultDataDir()
 	}
 
 	now := time.Now()
-	basename := fmt.Sprintf("%s_sub-%03d_date-%s-%s", expName, subjectID, now.Format("20060102"), now.Format("150405"))
+	basename := fmt.Sprintf("%s_sub-%s_date-%s-%s", expName, subject.Label(), now.Format("20060102"), now.Format("150405"))
 	filename := basename + ".csv"
 	infoFilename := basename + "-info.txt"
 
@@ -134,7 +139,7 @@ func NewDataFile(directory string, subjectID int, expName string) (*DataFile, er
 		OutputFile:    base,
 		InfoFile:      infoFile,
 		Delimiter:     DataFileDelimiter,
-		SubjectID:     subjectID,
+		Subject:       subject,
 		VariableNames: make([]string, 0),
 		StartTime:     start,
 	}
@@ -154,7 +159,7 @@ func NewDataFile(directory string, subjectID int, expName string) (*DataFile, er
 	df.WriteComment(fmt.Sprintf("e framework: goxpyriment %s --- see http://chrplr.github.io/goxpyriment", Version))
 	df.WriteComment("e framework_author: Christophe Pallier <christophe@pallier.org>")
 	df.WriteComment("--SUBJECT INFO")
-	df.WriteComment(fmt.Sprintf("s id: %d", subjectID))
+	df.WriteComment(fmt.Sprintf("s id: %s", subject))
 	df.WriteComment("#")
 
 	if err := df.Save(); err != nil {
@@ -170,14 +175,15 @@ func NewDataFile(directory string, subjectID int, expName string) (*DataFile, er
 // always quoted (with internal double-quotes doubled per RFC 4180).
 func (df *DataFile) Add(data ...interface{}) {
 	parts := make([]string, 0, len(data)+1)
-	parts = append(parts, fmt.Sprint(df.SubjectID))
+	parts = append(parts, df.Subject.String())
 
 	for _, d := range data {
 		s := fmt.Sprint(d)
 		switch d.(type) {
 		case int, int8, int16, int32, int64,
 			uint, uint8, uint16, uint32, uint64,
-			float32, float64, bool:
+			float32, float64, bool,
+			Subject: // letters and digits only, so never needs quoting
 			parts = append(parts, s)
 		default:
 			s = strings.ReplaceAll(s, "\"", "\"\"")

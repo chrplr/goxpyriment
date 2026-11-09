@@ -8,13 +8,13 @@ Experiment data file and buffered output file. Writes trial data to a plain `.cs
 ## DataFile
 
 ```go
-df, err := results.NewDataFile(directory, subjectID, expName)
+df, err := results.NewDataFile(directory, subject, expName) // subject: results.Subject
 ```
 
 Creates two files in `<directory>`:
 
-- `<expName>_sub-<NNN>_date-<YYYYMMDD>-<HHMMSS>.csv` — pure CSV data, directly importable by Excel and R.
-- `<expName>_sub-<NNN>_date-<YYYYMMDD>-<HHMMSS>-info.txt` — `#`-prefixed metadata (start time, hostname, OS, framework version, host info, system info, display info, participant info).
+- `<expName>_sub-<label>_date-<YYYYMMDD>-<HHMMSS>.csv` — pure CSV data, directly importable by Excel and R.
+- `<expName>_sub-<label>_date-<YYYYMMDD>-<HHMMSS>-info.txt` — `#`-prefixed metadata (start time, hostname, OS, framework version, host info, system info, display info, participant info).
 
 The directory is created if absent.
 

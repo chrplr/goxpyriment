@@ -85,12 +85,12 @@ func (r *Retinotopy) showStatus(msg string) error {
 	return nil
 }
 
-func (r *Retinotopy) LoadStimuli(subjID int, runID int) error {
+func (r *Retinotopy) LoadStimuli(subj control.Subject, runID int) error {
 	// 1. Load Orders
 	if err := r.showStatus("Loading orders..."); err != nil {
 		return err
 	}
-	if err := r.loadOrders(subjID, runID); err != nil {
+	if err := r.loadOrders(subj, runID); err != nil {
 		return err
 	}
 
@@ -199,7 +199,7 @@ func (r *Retinotopy) LoadStimuli(subjID int, runID int) error {
 	return nil
 }
 
-func (r *Retinotopy) loadOrders(subjID int, runID int) error {
+func (r *Retinotopy) loadOrders(subj control.Subject, runID int) error {
 	// Mask Order
 	f, err := assetsFS.Open("assets/StimuliOrder/maskOrderRetinotopy.csv")
 	if err != nil {
@@ -230,9 +230,9 @@ func (r *Retinotopy) loadOrders(subjID int, runID int) error {
 	}
 
 	// Pattern and Dot Order
-	f2, err := assetsFS.Open(fmt.Sprintf("assets/StimuliOrder/sub-%03d_stimuliOrderRetinotopy.csv", subjID))
+	f2, err := assetsFS.Open(fmt.Sprintf("assets/StimuliOrder/sub-%s_stimuliOrderRetinotopy.csv", subj.Label()))
 	if err != nil {
-		return fmt.Errorf("failed to open embedded subject order (sub-%03d): %v", subjID, err)
+		return fmt.Errorf("failed to open embedded subject order (sub-%s): %v", subj.Label(), err)
 	}
 	defer f2.Close()
 	reader2 := csv.NewReader(f2)
@@ -533,10 +533,9 @@ func main() {
 		log.Fatalf("Invalid run selected: %s", runLabel)
 	}
 
-	subjectID, err := strconv.Atoi(info["subject_id"])
+	subject, err := control.SubjectFromInfo(info)
 	if err != nil {
-		log.Printf("Warning: subject_id %q is not an integer, defaulting to 0", info["subject_id"])
-		subjectID = 0
+		log.Fatalf("%v", err)
 	}
 	widthCm, err := strconv.ParseFloat(info["screen_width_cm"], 64)
 	if err != nil || widthCm < 10 || widthCm > 300 {
@@ -553,7 +552,7 @@ func main() {
 	}
 
 	exp := control.NewExperiment("Retinotopy", width, height, fullscreen, BackgroundColor, control.White, 32)
-	exp.SubjectID = subjectID
+	exp.Subject = subject
 	exp.ScreenNumber = control.DisplayIDFromInfo(info)
 	exp.Info = info
 	if err := exp.Initialize(); err != nil {
@@ -599,7 +598,7 @@ func main() {
 
 		// ── Step 4: load stimuli and run ──────────────────────────────────────
 		retino := NewRetinotopy(exp, runLabel, scaling)
-		if err2 := retino.LoadStimuli(exp.SubjectID, runID); err2 != nil {
+		if err2 := retino.LoadStimuli(exp.Subject, runID); err2 != nil {
 			return err2
 		}
 		if err2 := retino.Instructions(); err2 != nil {

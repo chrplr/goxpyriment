@@ -146,7 +146,7 @@ func main() {
 	}
 
 	// ── Trial list ──────────────────────────────────────────────────────────
-	rng := rand.New(rand.NewPCG(*flagSeed, uint64(exp.SubjectID)))
+	rng := rand.New(rand.NewPCG(*flagSeed, exp.Subject.Seed()))
 	var trials []item
 	runLabel := strconv.Itoa(*flagRun)
 	if *flagPractice {

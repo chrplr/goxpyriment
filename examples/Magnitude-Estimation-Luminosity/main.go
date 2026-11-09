@@ -225,7 +225,7 @@ func main() {
 				}
 
 				exp.Data.Add(
-					exp.SubjectID,
+					exp.Subject,
 					trialNum,
 					block,
 					lum,

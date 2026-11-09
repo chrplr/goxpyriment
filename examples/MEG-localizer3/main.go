@@ -374,7 +374,7 @@ func main() {
 		// ── Trial durations and task-event schedule ─────────────────────────
 		// Every trial duration is drawn before the run, so the task events can
 		// be planned over the whole run and their sides exactly balanced.
-		rng := rand.New(rand.NewPCG(*flagSeed, uint64(exp.SubjectID)))
+		rng := rand.New(rand.NewPCG(*flagSeed, exp.Subject.Seed()))
 		trialFrames := make([]int, *flagHabit+seqs.NTrials)
 		for i := range trialFrames {
 			trialFrames[i] = minFrames + rng.IntN(maxFrames-minFrames+1)

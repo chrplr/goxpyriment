@@ -78,7 +78,7 @@ func main() {
 	develop := flag.Bool("d", false, "Developer mode (windowed 1024x1024)")
 	scaling := flag.Float64("scaling", 0.6, "Scaling factor for stimuli")
 	fullscreenFlag := flag.Bool("F", false, "Force Fullscreen")
-	subject := flag.Int("s", 0, "Subject ID")
+	subject := flag.String("s", "0", "Subject ID: "+control.SubjectRule)
 	flag.Parse()
 
 	// Scaled dimensions
@@ -96,7 +96,11 @@ func main() {
 		fullscreen = true
 	}
 	exp := control.NewExperiment("Mental Logic Card Game", width, height, fullscreen, control.Black, control.White, 22)
-	exp.SubjectID = *subject
+	subjectID, subjectErr := control.ParseSubject(*subject)
+	if subjectErr != nil {
+		log.Fatalf("-s: %v", subjectErr)
+	}
+	exp.Subject = subjectID
 	if err := exp.Initialize(); err != nil {
 		log.Fatalf("failed to initialize experiment: %v", err)
 	}
@@ -105,7 +109,7 @@ func main() {
 	// Prepare event log header and write it as comments in the data file.
 	// We log condition, response key, RT, and correctness.
 	evLog := exp.CollectEventLog()
-	evLog.SetSubjectID(fmt.Sprintf("%d", exp.SubjectID))
+	evLog.SetSubjectID(exp.Subject.String())
 	evLog.SetCSVHeader([]string{"condition", "response", "rt", "correct"})
 	exp.Data.WriteComment("--EVENT LOG")
 	exp.Data.WriteComment(evLog.String())

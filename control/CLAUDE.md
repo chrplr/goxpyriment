@@ -25,9 +25,20 @@ file and the values taken from it go to stderr and, via `AddExperimentInfo`,
 into the -info.txt — `os.Args` alone would hide them. A bad file is fatal. See
 `config/CLAUDE.md` for the rules.
 
-When `-s` is **absent** (e.g. the binary was launched by double-clicking its icon), `NewExperimentFromFlags` opens an automatic setup dialog (subject code + display + fullscreen + results folder) via `GetParticipantInfo` before `Initialize()`. It is skipped when `-s N` is passed, under `-headless`, or if the program already called `GetParticipantInfo` itself (guarded by the package-level `participantInfoCollected`). Cancelling exits via `os.Exit(0)`. Programs that collect custom participant fields still use `GetParticipantInfo` + `NewExperiment` and never reach this path.
+When `-s` is **absent** (e.g. the binary was launched by double-clicking its icon), `NewExperimentFromFlags` opens an automatic setup dialog (subject code + display + fullscreen + results folder) via `GetParticipantInfo` before `Initialize()`. It is skipped when `-s ID` is passed, under `-headless`, or if the program already called `GetParticipantInfo` itself (guarded by the package-level `participantInfoCollected`). Cancelling exits via `os.Exit(0)`. Programs that collect custom participant fields still use `GetParticipantInfo` + `NewExperiment` and never reach this path.
 
 **Browser (GOOS=js):** there is no command line, so `platformPrepareFlags` (`platform_js.go`) synthesizes `os.Args` from the page URL's query string before `flag.Parse` — `?s=3&w` behaves like `-s 3 -w`, and experiment-specific flags work too. Unknown query keys are ignored with a console note. The setup dialog never opens (`platformInteractiveSetup` returns false); without `s` the subject ID defaults to 0 like `-headless`. Audio works: `platformInitAudio` opens the default device like desktop (the browser keeps the AudioContext suspended until the first click/keypress, which SDL auto-resumes — the "press SPACE" screen satisfies this); if the device cannot be opened the experiment continues with a silent no-op `AudioManager` instead of crashing. See `docs/WASM.md` for the full browser story.
+
+**Subject ID (subject.go, results/subject.go):** `exp.Subject` is a
+`results.Subject` (re-exported as `control.Subject`): letters and digits, checked
+by `results.ParseSubject` when `-s` or the dialog's `subject_id` is read (an
+invalid ID is fatal, never subject 0; an empty field is `NoSubject`, "0"). A
+numeric ID is stored without leading zeros, and `Seed()`, `Label()` and
+`String()` give exactly what the former `SubjectID int` gave (`uint64(id)`,
+`%03d`, `%d`) — `results/subject_test.go` pins this for 0..100000, so
+existing studies keep their random sequences and file names. Counterbalancing
+by subject goes through `exp.SubjectNumber()`, which is fatal for a
+non-numeric ID: hashing it would silently unbalance the design.
 
 `exp.Run` wraps the SDL event loop. User code panicked with `exitPanic` is recovered there; callers never see it directly. Return `control.EndLoop` (or `sdl.EndLoop`) to exit cleanly.
 

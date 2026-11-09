@@ -573,7 +573,7 @@ func main() {
 
 	cbGroup := *cbFlag
 	if cbGroup < 0 {
-		cbGroup = exp.SubjectID % 4
+		cbGroup = exp.SubjectNumber() % 4
 	}
 	cbGroup %= 4
 	trials := buildTrials(cond, p.nTrials, cbGroup)
@@ -690,8 +690,8 @@ func main() {
 			_ = exp.Data.Save()
 
 			for slot := range left {
-				writeFrameRow(frames, exp.SubjectID, i+1, slot, "left", left[slot], onsets[slot])
-				writeFrameRow(frames, exp.SubjectID, i+1, slot, "right", right[slot], onsets[slot])
+				writeFrameRow(frames, exp.Subject, i+1, slot, "left", left[slot], onsets[slot])
+				writeFrameRow(frames, exp.Subject, i+1, slot, "right", right[slot], onsets[slot])
 			}
 			_ = frames.Save()
 
@@ -728,8 +728,8 @@ func main() {
 	}
 }
 
-func writeFrameRow(f *results.OutputFile, subject, trial, slot int, side string, pl placement, onset uint64) {
-	f.WriteLine(fmt.Sprintf("%d,%d,%d,%s,%s,%s,%d,%.3f,%.4f,%t,%.2f,%.2f",
+func writeFrameRow(f *results.OutputFile, subject results.Subject, trial, slot int, side string, pl placement, onset uint64) {
+	f.WriteLine(fmt.Sprintf("%s,%d,%d,%s,%s,%s,%d,%.3f,%.4f,%t,%.2f,%.2f",
 		subject, trial, slot, side, pl.stream, pl.figureID, onset,
 		pl.rotDeg, pl.scale, pl.flip, pl.dx, pl.dy))
 }

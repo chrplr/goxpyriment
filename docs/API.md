@@ -118,8 +118,12 @@ if !fullscreen {
 exp := control.NewExperiment("My Experiment", width, height, fullscreen,
     control.Black, control.White, 32)
 
-// Set Info (and SubjectID) BEFORE Initialize — they are written to the info file automatically
-exp.SubjectID, _ = strconv.Atoi(info["subject_id"])
+// Set Info (and Subject) BEFORE Initialize — they are written to the info file automatically
+subject, err := control.SubjectFromInfo(info) // "" gives subject 0; an invalid ID is an error
+if err != nil {
+    log.Fatal(err)
+}
+exp.Subject = subject
 exp.Info = info
 
 if err := exp.Initialize(); err != nil { log.Fatal(err) }
@@ -140,7 +144,7 @@ control.ErrCancelled  // returned when the user cancels the dialog
 
 | Function | Description |
 |---|---|
-| `NewExperimentFromFlags(name string, bg, fg Color, fontSize float32, extra ...InfoField) *Experiment` | Creates and fully initializes an experiment from `-w` (windowed 1024×768), `-d N` (display index, -1 = primary), and `-s N` (subject ID) command-line flags. Calls `log.Fatal` on error. **This is the preferred entry point.** Any `extra` fields are appended to the session-setup dialog that opens when `-s` is absent, and read back from `exp.Info` (nil when the dialog does not open, so keep a flag as the fallback); an extra field named like one of the four built-ins replaces it. |
+| `NewExperimentFromFlags(name string, bg, fg Color, fontSize float32, extra ...InfoField) *Experiment` | Creates and fully initializes an experiment from `-w` (windowed 1024×768), `-d N` (display index, -1 = primary), and `-s ID` (subject ID: letters and digits) command-line flags. Calls `log.Fatal` on error. **This is the preferred entry point.** Any `extra` fields are appended to the session-setup dialog that opens when `-s` is absent, and read back from `exp.Info` (nil when the dialog does not open, so keep a flag as the fallback); an extra field named like one of the four built-ins replaces it. |
 | `NewExperiment(name string, width, height int, fullscreen bool, bg, fg Color, fontSize float32) *Experiment` | Lower-level constructor; call `Initialize()` before use. |
 
 ### Lifecycle Methods
@@ -1068,8 +1072,8 @@ Two files are written to `~/goxpy_data/` for each session:
 
 | File | Contents |
 |------|----------|
-| `<expname>_sub-<NNN>_date-<YYYYMMDD>-<HHMMSS>.csv` | Pure CSV data rows — directly importable by Excel, R, or pandas |
-| `<expname>_sub-<NNN>_date-<YYYYMMDD>-<HHMMSS>-info.txt` | `#`-prefixed metadata: start/end time, hostname, OS, framework version, display and audio configuration, participant info |
+| `<expname>_sub-<ID>_date-<YYYYMMDD>-<HHMMSS>.csv` | Pure CSV data rows — directly importable by Excel, R, or pandas |
+| `<expname>_sub-<ID>_date-<YYYYMMDD>-<HHMMSS>-info.txt` | `#`-prefixed metadata: start/end time, hostname, OS, framework version, display and audio configuration, participant info |
 
 ---
 

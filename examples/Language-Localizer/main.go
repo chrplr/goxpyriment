@@ -105,7 +105,7 @@ func main() {
 		csvName = "bilingue_localizer_training.csv"
 		raw = trainingCSV
 	} else {
-		csvName = fmt.Sprintf("stim/bilingue_localizer_subj%d.csv", exp.SubjectID)
+		csvName = fmt.Sprintf("stim/bilingue_localizer_subj%d.csv", exp.SubjectNumber())
 		raw, err = fs.ReadFile(stimFS, csvName)
 		if err != nil {
 			log.Fatalf("cannot read stimulus table %q: %v\n"+

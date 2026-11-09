@@ -146,8 +146,8 @@ func main() {
 				if *saveWav && len(pcm) > 0 {
 					wavPath := filepath.Join(
 						exp.OutputDirectory,
-						fmt.Sprintf("sub-%03d_trial-%03d_rep%d_%s.wav",
-							exp.SubjectID, trial, rep+1, it.label),
+						fmt.Sprintf("sub-%s_trial-%03d_rep%d_%s.wav",
+							exp.Subject.Label(), trial, rep+1, it.label),
 					)
 					if werr := apparatus.WriteWAV(wavPath, exp.Microphone.Spec, pcm); werr != nil {
 						log.Printf("trial %d: could not save WAV: %v", trial, werr)

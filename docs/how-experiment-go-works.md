@@ -19,7 +19,7 @@ The doc comment (lines 47–54) states the design intent: **most methods are thi
 ## 2. Construction & initialization
 
 - **`NewExperiment(...)`** (148) — just fills the struct; no SDL yet.
-- **`NewExperimentFromFlags(...)`** (177) — the standard entry point. Parses `-w` / `-d N` / `-s N`, builds the struct, then calls `Initialize()` and `log.Fatal`s on failure.
+- **`NewExperimentFromFlags(...)`** (177) — the standard entry point. Parses `-w` / `-d N` / `-s ID`, builds the struct, then calls `Initialize()` and `log.Fatal`s on failure.
 - **`Initialize()`** (476) does the real setup, in order:
   1. Loads the embedded SDL/TTF/IMG binaries (reusing loaders cached by `GetParticipantInfo` to avoid a double-load crash on macOS).
   2. `sdl.Init` + `ttf.Init`, audio device, then `apparatus.NewScreen`.

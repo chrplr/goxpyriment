@@ -214,7 +214,7 @@ func main() {
 
 	// Counterbalance the starting mapping by subject ID; mappings alternate.
 	first, second := mappingA, mappingB
-	if exp.SubjectID%2 == 0 {
+	if exp.SubjectNumber()%2 == 0 {
 		first, second = mappingB, mappingA
 	}
 

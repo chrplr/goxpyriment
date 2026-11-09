@@ -55,7 +55,7 @@ func platformParticipantInfo(_ []InfoField) (map[string]string, bool) {
 
 // platformDefaultSubjectID supplies no default on desktop: without -s the
 // setup dialog asks, and under -headless subject 0 is used.
-func platformDefaultSubjectID() (int, bool) { return 0, false }
+func platformDefaultSubjectID() (results.Subject, bool) { return "", false }
 
 // platformReportOutcome is a no-op on desktop: the end of the process is the
 // end of the session, and the log says how it went.

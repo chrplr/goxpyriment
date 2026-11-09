@@ -251,7 +251,7 @@ func main() {
 			targetFrames: maxInt(1, int(math.Round(targetDurSec*refresh))),
 			gapMinFrames: maxInt(1, int(math.Round(targetGapMinSec*refresh))),
 			gapMaxFrames: maxInt(2, int(math.Round(targetGapMaxSec*refresh))),
-			rng:          rand.New(rand.NewPCG(*flagSeed, uint64(exp.SubjectID))),
+			rng:          rand.New(rand.NewPCG(*flagSeed, exp.Subject.Seed())),
 		}
 
 		// ── Data file header ────────────────────────────────────────────────

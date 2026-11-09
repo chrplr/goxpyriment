@@ -162,7 +162,7 @@ func main() {
 		}
 
 		// ── Arrow schedule ──────────────────────────────────────────────────
-		rng := rand.New(rand.NewPCG(*flagSeed, uint64(exp.SubjectID)))
+		rng := rand.New(rand.NewPCG(*flagSeed, exp.Subject.Seed()))
 		plan, perr := planArrows(totalFrames, scheduleParams{
 			TargetFrames: r.targetFrames,
 			GapMinFrames: secToFrames(targetGapMinSec),

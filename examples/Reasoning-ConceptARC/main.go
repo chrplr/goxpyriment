@@ -484,7 +484,7 @@ func main() {
 	}
 	// The draw depends only on the subject ID, so a session can be rebuilt
 	// from the results file alone.
-	session, err := BuildSession(tasks, opts, rand.New(rand.NewSource(int64(exp.SubjectID))))
+	session, err := BuildSession(tasks, opts, rand.New(rand.NewSource(int64(exp.Subject.Seed()))))
 	if err != nil {
 		exp.Fatal("Reasoning-ConceptARC: %v", err)
 	}

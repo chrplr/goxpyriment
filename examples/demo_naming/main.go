@@ -138,7 +138,7 @@ func main() {
 			if saveWav && len(pcm) > 0 {
 				wavPath := filepath.Join(
 					exp.OutputDirectory,
-					fmt.Sprintf("sub-%03d_trial-%02d_%s.wav", exp.SubjectID, trial, digit),
+					fmt.Sprintf("sub-%s_trial-%02d_%s.wav", exp.Subject.Label(), trial, digit),
 				)
 				var cues []apparatus.WAVCue
 				if detected {

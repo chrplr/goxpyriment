@@ -266,7 +266,7 @@ func main() {
 	}
 
 	var blocks []blockMapping
-	if exp.SubjectID%2 == 0 {
+	if exp.SubjectNumber()%2 == 0 {
 		blocks = []blockMapping{blockA, blockB}
 	} else {
 		blocks = []blockMapping{blockB, blockA}

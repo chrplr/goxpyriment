@@ -142,7 +142,7 @@ func main() {
 			}
 
 			exp.Data.Add(trialCount, t.color, t.position, responseKey, rt, correct, congruency)
-			fmt.Printf("Subject %d, Trial %d: Color=%s, Pos=%s, Key=%d, RT=%d, Correct=%v, Congruency=%s\n", exp.SubjectID, trialCount, t.color, t.position, responseKey, rt, correct, congruency)
+			fmt.Printf("Subject %s, Trial %d: Color=%s, Pos=%s, Key=%d, RT=%d, Correct=%v, Congruency=%s\n", exp.Subject, trialCount, t.color, t.position, responseKey, rt, correct, congruency)
 
 			if !correct {
 				_ = exp.Audio.PlayBuzzer()

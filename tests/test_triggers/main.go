@@ -85,7 +85,7 @@ var (
 	fLoopMap  = flag.String("loopback-map", "", "Which witness input line each source is wired to, comma-separated, 1-8,\n\tin -device order with the witness skipped (default 1,2,3,...).")
 	fPrio     = flag.Int("realtime-priority", 50, "SCHED_FIFO priority requested for each firing thread (1-99), or 0 to\n\tdecline. Needs privileges; a failure is reported and the run continues.")
 	fGC       = flag.Bool("gc", false, "Leave the garbage collector RUNNING during the pulse train.\n\tBy default it is suspended; pass -gc to measure its effect.")
-	fSubj     = flag.Int("s", 999, "Subject id used in the data-file name")
+	fSubj     = flag.String("s", "999", "Subject id used in the data-file name: "+results.SubjectRule)
 	fOutDir   = flag.String("outdir", "", "Directory for the .csv/-info.txt results (default: $HOME/goxpy_data)")
 	fNoPrompt = flag.Bool("no-prompt", false, "Do not wait for Enter after printing the wiring table")
 )
@@ -139,7 +139,11 @@ func main() {
 	printWiring(devices, witness, isi, total)
 	confirm()
 
-	df, err := results.NewDataFile(*fOutDir, *fSubj, "test_triggers")
+	subject, err := results.ParseSubject(*fSubj)
+	if err != nil {
+		log.Fatalf("-s: %v", err)
+	}
+	df, err := results.NewDataFile(*fOutDir, subject, "test_triggers")
 	if err != nil {
 		log.Fatalf("creating the data file: %v", err)
 	}

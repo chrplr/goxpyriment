@@ -23,7 +23,7 @@ func TestDataFileFormatting(t *testing.T) {
 			Buffer: make([]string, 0),
 		},
 		Delimiter: ",",
-		SubjectID: 42,
+		Subject:   "42",
 	}
 
 	// 1. Simple data — numbers bare, strings always quoted
@@ -95,7 +95,7 @@ func TestNewDataFileDefaultDir(t *testing.T) {
 	}
 	defer os.RemoveAll(tmpDir)
 
-	df, err := NewDataFile(tmpDir, 1, "test_exp")
+	df, err := NewDataFile(tmpDir, "1", "test_exp")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -152,7 +152,7 @@ func TestNewDataFileDefaultDir(t *testing.T) {
 
 func TestWriteHostInfoSection(t *testing.T) {
 	dir := t.TempDir()
-	df, err := NewDataFile(dir, 999, "hostinfo")
+	df, err := NewDataFile(dir, "999", "hostinfo")
 	if err != nil {
 		t.Fatalf("NewDataFile: %v", err)
 	}
@@ -190,7 +190,7 @@ func TestWriteHostInfoSkipsEmptySection(t *testing.T) {
 	// On a system where every probe failed, the header must not be written on
 	// its own: a section with no lines under it reads as a truncated file.
 	dir := t.TempDir()
-	df, err := NewDataFile(dir, 999, "empty")
+	df, err := NewDataFile(dir, "999", "empty")
 	if err != nil {
 		t.Fatalf("NewDataFile: %v", err)
 	}
@@ -202,5 +202,50 @@ func TestWriteHostInfoSkipsEmptySection(t *testing.T) {
 	b, _ := os.ReadFile(matches[0])
 	if strings.Contains(string(b), "HOST INFO") {
 		t.Errorf("empty SysInfo still wrote a --HOST INFO header:\n%s", b)
+	}
+}
+
+// TestNewDataFileSubject checks the file name and the "s id:" line for a
+// numeric ID (as with the former int ID) and an alphanumeric one, and that a
+// missing ID is refused.
+func TestNewDataFileSubject(t *testing.T) {
+	for _, c := range []struct {
+		subject     Subject
+		prefix, sID string
+	}{
+		{"7", "x_sub-007_date-", "# s id: 7\n"},
+		{"AB12", "x_sub-AB12_date-", "# s id: AB12\n"},
+	} {
+		df, err := NewDataFile(t.TempDir(), c.subject, "x")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.HasPrefix(df.Filename, c.prefix) {
+			t.Errorf("%s: file name %q, want the prefix %q", c.subject, df.Filename, c.prefix)
+		}
+		info, err := os.ReadFile(df.InfoFile.FullPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(string(info), c.sID) {
+			t.Errorf("%s: info file lacks %q:\n%s", c.subject, c.sID, info)
+		}
+		df.Add(1)
+		if want := c.subject.String() + ",1\n"; df.Buffer[len(df.Buffer)-1] != want {
+			t.Errorf("%s: row %q, want %q", c.subject, df.Buffer[len(df.Buffer)-1], want)
+		}
+	}
+	if _, err := NewDataFile(t.TempDir(), "", "x"); err == nil {
+		t.Error(`NewDataFile with subject "": no error`)
+	}
+}
+
+// TestAddSubjectBare checks that a Subject given as a column is written bare,
+// as an int ID was.
+func TestAddSubjectBare(t *testing.T) {
+	df := &DataFile{OutputFile: &OutputFile{Buffer: make([]string, 0)}, Delimiter: ",", Subject: "7"}
+	df.Add(Subject("7"), Subject("AB12"), "s")
+	if want := "7,7,AB12,\"s\"\n"; df.Buffer[0] != want {
+		t.Errorf("row %q, want %q", df.Buffer[0], want)
 	}
 }

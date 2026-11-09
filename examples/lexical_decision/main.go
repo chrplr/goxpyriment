@@ -11,7 +11,6 @@ import (
 	"log"
 	"os"
 	"sort"
-	"strconv"
 	"strings"
 
 	"github.com/chrplr/goxpyriment/control"
@@ -205,7 +204,10 @@ func main() {
 	if err != nil {
 		log.Fatalf("setup cancelled: %v", err)
 	}
-	subjectID, _ := strconv.Atoi(info["subject_id"])
+	subject, err := control.SubjectFromInfo(info)
+	if err != nil {
+		log.Fatalf("%v", err)
+	}
 
 	// 3. Build the experiment from the collected info.
 	fullscreen := info["fullscreen"] == "true"
@@ -214,7 +216,7 @@ func main() {
 		width, height = 1024, 768
 	}
 	exp := control.NewExperiment("Lexical Decision", width, height, fullscreen, control.Black, control.White, 32)
-	exp.SubjectID = subjectID
+	exp.Subject = subject
 	exp.Info = info
 	if err := exp.Initialize(); err != nil {
 		log.Fatalf("failed to initialize experiment: %v", err)
@@ -229,7 +231,7 @@ func main() {
 
 	// Prepare event log header and write it as comments in the data file
 	evLog := exp.CollectEventLog()
-	evLog.SetSubjectID(fmt.Sprintf("%d", exp.SubjectID))
+	evLog.SetSubjectID(exp.Subject.String())
 	evLog.SetCSVHeader([]string{"item", "category", "nchar", "key", "rt"})
 	exp.Data.WriteComment("--EVENT LOG")
 	exp.Data.WriteComment(evLog.String())

@@ -108,7 +108,7 @@ func main() {
 	)
 	defer exp.End()
 
-	csvName := fmt.Sprintf("stim_lists/sub-%03d_task-MathLang.csv", exp.SubjectID)
+	csvName := fmt.Sprintf("stim_lists/sub-%s_task-MathLang.csv", exp.Subject.Label())
 	raw, err := fs.ReadFile(stimFS, csvName)
 	if err != nil {
 		log.Fatalf("cannot read stimulus table %q: %v\n"+

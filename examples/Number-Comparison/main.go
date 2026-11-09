@@ -35,7 +35,6 @@ import (
 	"log"
 	"math"
 	"math/rand"
-	"strconv"
 
 	gxio "github.com/chrplr/goxpyriment/apparatus"
 	"github.com/chrplr/goxpyriment/assets_embed"
@@ -226,7 +225,10 @@ func main() {
 		log.Fatalf("dialog: %v", err)
 	}
 
-	subjectID, _ := strconv.Atoi(info["subject_id"])
+	subject, err := control.SubjectFromInfo(info)
+	if err != nil {
+		log.Fatalf("%v", err)
+	}
 	group := info["group"]
 	fullscreen := info["fullscreen"] == "true"
 	width, height := 0, 0
@@ -235,7 +237,7 @@ func main() {
 	}
 
 	exp := control.NewExperiment("Number Comparison", width, height, fullscreen, control.Gray, control.Black, 32)
-	exp.SubjectID = subjectID
+	exp.Subject = subject
 	exp.ScreenNumber = control.DisplayIDFromInfo(info)
 	exp.Info = info
 	if err := exp.Initialize(); err != nil {
@@ -299,7 +301,7 @@ func main() {
 	// ── Trial list ────────────────────────────────────────────────────────────
 
 	baseTrials := buildBaseTrials()
-	rng := rand.New(rand.NewSource(int64(exp.SubjectID)*1234567 + 42))
+	rng := rand.New(rand.NewSource(int64(exp.Subject.Seed())*1234567 + 42))
 
 	// ── Experiment run loop ───────────────────────────────────────────────────
 

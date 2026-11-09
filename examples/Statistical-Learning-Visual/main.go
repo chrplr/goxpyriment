@@ -75,7 +75,7 @@ func main() {
 
 	// 4. Generate familiarization stream
 	attendedColorName := "red"
-	if exp.SubjectID%2 == 1 {
+	if exp.SubjectNumber()%2 == 1 {
 		attendedColorName = "green"
 	}
 

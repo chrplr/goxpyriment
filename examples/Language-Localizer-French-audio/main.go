@@ -217,8 +217,8 @@ func waitLoggingKeys(exp *control.Experiment, clk *clock.Clock, targetMs int64, 
 			return err
 		}
 		if ev.Key != 0 {
-			kp.WriteLine(fmt.Sprintf("%d,%d,%d,%s",
-				exp.SubjectID, clk.NowMillis(), int(ev.Key), keyLabel(ev.Key)))
+			kp.WriteLine(fmt.Sprintf("%s,%d,%d,%s",
+				exp.Subject, clk.NowMillis(), int(ev.Key), keyLabel(ev.Key)))
 		}
 	}
 }

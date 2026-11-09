@@ -225,8 +225,8 @@ func writeLocalizationRow(exp *control.Experiment, f *results.OutputFile, cfg co
 	// error_y follows the paper's sign convention: y_true − y_clicked in the
 	// screen frame, so a POSITIVE value means the click fell short of the true
 	// vertex — the underestimation the paper reports.
-	f.WriteLine(fmt.Sprintf("%d,%s,%s,%s,%d,%s,%g,%g,%.6f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%d,%d",
-		exp.SubjectID, quoteCSV(ageYears), quoteCSV(ageMonths), quoteCSV(gender),
+	f.WriteLine(fmt.Sprintf("%s,%s,%s,%s,%d,%s,%g,%g,%.6f,%.2f,%.2f,%.2f,%.2f,%.2f,%.2f,%d,%d",
+		exp.Subject, quoteCSV(ageYears), quoteCSV(ageMonths), quoteCSV(gender),
 		trial, t.id, t.baseUnits, t.leftDeg, leg,
 		trueX, trueY, clickX, clickY,
 		clickX-trueX, trueY-clickY, r.rtMs, r.onsetNS))

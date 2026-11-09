@@ -112,14 +112,14 @@ func platformDataDestination(d *results.DataFile) string {
 // be subject 0; the study result ID is unique per run on the server, so it
 // keeps file names, and the subject_id column, distinct. Outside JATOS there is
 // no default (ok is false).
-func platformDefaultSubjectID() (int, bool) {
+func platformDefaultSubjectID() (results.Subject, bool) {
 	if !results.JatosAvailable() {
-		return 0, false
+		return "", false
 	}
-	id, err := strconv.Atoi(js.Global().Get("jatos").Get("studyResultId").String())
+	id, err := results.ParseSubject(js.Global().Get("jatos").Get("studyResultId").String())
 	if err != nil {
-		log.Printf("control: JATOS study result ID is not a number (%v); subject ID stays 0", err)
-		return 0, false
+		log.Printf("control: JATOS study result ID: %v; subject ID stays %s", err, results.NoSubject)
+		return "", false
 	}
 	return id, true
 }

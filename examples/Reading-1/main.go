@@ -506,7 +506,7 @@ func main() {
 	}
 	exp.AddDataVariableNames(cols)
 
-	trials := buildTrials(items, exp.SubjectID, *nTrials, *nFrames)
+	trials := buildTrials(items, exp.SubjectNumber(), *nTrials, *nFrames)
 	practice := buildPracticeTrials(*nPractice, *nFrames)
 
 	// Session constants go to the -info.txt companion, so a session is

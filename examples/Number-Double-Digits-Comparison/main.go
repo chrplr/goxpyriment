@@ -252,7 +252,7 @@ Press SPACE to start.`, func() int {
 
 	// ── build trial lists ─────────────────────────────────────────────────────
 
-	rng := rand.New(rand.NewSource(int64(exp.SubjectID)*1234567 + 17))
+	rng := rand.New(rand.NewSource(int64(exp.Subject.Seed())*1234567 + 17))
 
 	var allTrials []trial
 	if *expNum == 1 {

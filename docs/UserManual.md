@@ -50,7 +50,7 @@ defer exp.End()
 |------|--------|
 | `-w` | Windowed mode: opens a 1024×768 window instead of going fullscreen |
 | `-d N` | Display ID: open on monitor N (-1 = primary display) |
-| `-s N` | Set subject ID to N (integer); written to the data file automatically |
+| `-s ID` | Set the subject ID: letters and digits (`7`, `007`, `P12`); written to the data file automatically. See *Subject IDs* below |
 | `-headless` | Skip the setup dialog (below) and use field defaults — for batch/automated runs |
 | `-version` | Print the version of the program and of goxpyriment, then exit (see below) |
 | `-config FILE` | Read the defaults of the flags from a TOML file (see below) |
@@ -117,12 +117,41 @@ folder**. It seeds its defaults from any `-w`/`-d` you did pass and remembers th
 display/fullscreen/folder choices across sessions (the subject code is always
 asked fresh). Cancelling the dialog exits the program.
 
-The dialog is skipped when `-s N` is given (that value is used directly, as
+The dialog is skipped when `-s ID` is given (that value is used directly, as
 before), when `-headless` is passed, or when the program already collected
 participant information via `GetParticipantInfo` itself — so no program is ever
 prompted twice.
 
 `defer exp.End()` must appear immediately after construction. It saves the data file, releases fonts, destroys the window, and shuts down SDL — even if the experiment panics or returns early.
+
+### Subject IDs
+
+A subject ID (`-s`, or the *Subject ID* field of the dialog) is one or more
+letters and digits: `7`, `007`, `P12`. Anything else (`sub-01`, `a b`, `x/y`) is
+refused with an error, never replaced by subject 0. A run without an ID (an empty
+dialog field, `-headless`) is subject `0`.
+
+A **number** is read in base 10 and loses its leading zeros: `007`, `07` and `7`
+are the same subject, with the same files and the same random sequences. Any
+other ID is kept as written, and case matters (`P12` and `p12` are different
+subjects; on macOS and Windows, whose file names ignore case, their files would
+collide).
+
+`exp.Subject` (type `control.Subject`) holds the ID:
+
+| Use | Write |
+|---|---|
+| Print it, or write it to a data column | `exp.Subject` (it prints as `7` or `P12`) |
+| Put it in a file name | `exp.Subject.Label()` (`007`, `P12`) |
+| Seed a random generator per subject | `exp.Subject.Seed()`: the number itself for a numeric ID, else a hash of the ID |
+| Counterbalance by subject number (odd/even, groups, Latin squares) | `exp.SubjectNumber()`: it stops the program for an ID that is not a number, since `P12` has no rank |
+| Check an ID read elsewhere (your own flag or dialog) | `control.ParseSubject(s)`, or `control.SubjectFromInfo(info)` for a dialog's `subject_id` field |
+
+Before v0.26.0 the field was `exp.SubjectID int`. To migrate: `uint64(exp.SubjectID)`
+becomes `exp.Subject.Seed()` (same value for numeric IDs), `exp.SubjectID % 2`
+becomes `exp.SubjectNumber() % 2`, `%d` with `exp.SubjectID` becomes `%s` with
+`exp.Subject`, and `sub-%03d` becomes `sub-%s` with `exp.Subject.Label()`. The
+former `-s` also read `010` as octal (subject 8); it is now 10.
 
 ### Key fields
 
@@ -134,7 +163,7 @@ exp.AudioDevice  sdl.AudioDeviceID    // SDL audio device for Sound/Tone
 exp.Audio        *control.AudioManager // high-level audio helpers
 exp.Data         *results.DataFile         // output data file
 exp.Design       *design.Experiment   // block/trial structure
-exp.SubjectID    int
+exp.Subject      control.Subject      // participant ID: letters and digits (see "Subject IDs")
 exp.DefaultFont  *ttf.Font
 exp.Info         map[string]string    // values collected by GetParticipantInfo, if used
 ```
@@ -212,8 +241,12 @@ if !fullscreen {
 exp := control.NewExperiment("My Experiment", width, height, fullscreen,
     control.Black, control.White, 32)
 
-// Set Info and SubjectID BEFORE Initialize so they are written to the .csv header
-exp.SubjectID, _ = strconv.Atoi(info["subject_id"])
+// Set Info and Subject BEFORE Initialize so they are written to the data files
+subject, err := control.SubjectFromInfo(info) // "" gives subject 0; an invalid ID is an error
+if err != nil {
+    log.Fatal(err)
+}
+exp.Subject = subject
 exp.Info = info
 
 if err := exp.Initialize(); err != nil {
@@ -1107,10 +1140,10 @@ When `exp.End()` is called, two files are written to `~/goxpy_data/`:
 
 | File | Contents |
 |------|----------|
-| `<expName>_sub-<NNN>_date-<YYYYMMDD>-<HHMMSS>.csv` | Pure CSV data rows — directly importable by Excel, R, or pandas |
-| `<expName>_sub-<NNN>_date-<YYYYMMDD>-<HHMMSS>-info.txt` | Session metadata: start/end time, hostname, the program's version and git commit, the framework version, participant info, the machine and OS it ran on (model, kernel, desktop/compositor, CPU, every GPU and its driver, sound server and version), and the display and audio configuration SDL actually opened |
+| `<expName>_sub-<ID>_date-<YYYYMMDD>-<HHMMSS>.csv` | Pure CSV data rows — directly importable by Excel, R, or pandas |
+| `<expName>_sub-<ID>_date-<YYYYMMDD>-<HHMMSS>-info.txt` | Session metadata: start/end time, hostname, the program's version and git commit, the framework version, participant info, the machine and OS it ran on (model, kernel, desktop/compositor, CPU, every GPU and its driver, sound server and version), and the display and audio configuration SDL actually opened |
 
-Both files open automatically on `Initialize()` and are flushed to disk when `exp.End()` is called. Any spaces in `<expName>` are replaced by `-` so the resulting filenames never contain whitespace.
+Both files open automatically on `Initialize()` and are flushed to disk when `exp.End()` is called. Any spaces in `<expName>` are replaced by `-` so the resulting filenames never contain whitespace. `<ID>` is the subject ID, padded to three digits when it is a number (`sub-007`), else as written (`sub-P12`).
 
 ### Choosing the output directory
 
@@ -1627,7 +1660,7 @@ Always save a WAV file for each trial and spot-check a random subset after the s
 
 ```go
 apparatus.WriteWAV(
-    fmt.Sprintf("sub-%03d_trial-%02d.wav", exp.SubjectID, trial),
+    fmt.Sprintf("sub-%s_trial-%02d.wav", exp.Subject.Label(), trial),
     exp.Microphone.Spec,
     pcm,
 )

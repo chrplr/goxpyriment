@@ -24,7 +24,7 @@ func main() {
 	// Prepare event log header and write it as comments in the data file.
 	// We will log word, ink color, response, RT, correctness and congruency.
 	evLog := exp.CollectEventLog()
-	evLog.SetSubjectID(fmt.Sprintf("%d", exp.SubjectID))
+	evLog.SetSubjectID(exp.Subject.String())
 	evLog.SetCSVHeader([]string{"trial", "word", "ink_color", "response", "rt", "correct", "congruent"})
 	exp.Data.WriteComment("--EVENT LOG")
 	exp.Data.WriteComment(evLog.String())

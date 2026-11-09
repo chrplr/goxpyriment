@@ -485,7 +485,10 @@ func main() {
 		log.Fatalf("setup dialog: %v", err)
 	}
 
-	subjectID, _ := strconv.Atoi(info["subject_id"])
+	subject, err := control.SubjectFromInfo(info)
+	if err != nil {
+		log.Fatalf("%v", err)
+	}
 	expType := info["exp_type"]
 
 	screenWidthCm, err := strconv.ParseFloat(info["screen_width_cm"], 64)
@@ -503,7 +506,7 @@ func main() {
 	}
 
 	exp := control.NewExperiment("Number Change Detection", width, height, fullscreen, control.White, control.Black, 24)
-	exp.SubjectID = subjectID
+	exp.Subject = subject
 	exp.ScreenNumber = control.DisplayIDFromInfo(info)
 	exp.Info = info
 	if err := exp.Initialize(); err != nil {
@@ -515,7 +518,7 @@ func main() {
 		log.Printf("warning: SetLogicalSize: %v", err)
 	}
 
-	trials := buildTrials(expType, subjectID)
+	trials := buildTrials(expType, exp.SubjectNumber())
 
 	exp.AddDataVariableNames([]string{
 		"trial", "exp_type", "param_cond",

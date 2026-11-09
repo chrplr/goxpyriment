@@ -21,7 +21,7 @@ func TestAddExperimentInfoReachesInfoFile(t *testing.T) {
 	exp := &Experiment{Design: design.NewExperiment("test")}
 	exp.AddExperimentInfo("protocol: before")
 
-	df, err := results.NewDataFile(t.TempDir(), 999, "test")
+	df, err := results.NewDataFile(t.TempDir(), "999", "test")
 	if err != nil {
 		t.Fatalf("NewDataFile: %v", err)
 	}

@@ -44,7 +44,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"strconv"
 	"time"
 
 	"github.com/chrplr/goxpyriment/assets_embed"
@@ -172,8 +171,15 @@ func main() {
 	}
 
 	// Block order: odd subject ID → simple first; even → choice first.
-	subjectID, _ := strconv.Atoi(info["subject_id"])
-	simpleFirst := subjectID%2 == 1
+	subject, err := control.SubjectFromInfo(info)
+	if err != nil {
+		log.Fatalf("%v", err)
+	}
+	subjectNum, ok := subject.Number()
+	if !ok {
+		log.Fatalf("subject ID %q is not a number, and the block order is set by subject number", subject)
+	}
+	simpleFirst := subjectNum%2 == 1
 
 	// ── Experiment initialisation ─────────────────────────────────────────────
 	fullscreen := info["fullscreen"] == "true"
@@ -183,6 +189,7 @@ func main() {
 	}
 	exp := control.NewExperiment("Stop-Signal-Logan1984", winW, winH, fullscreen,
 		control.Black, control.White, 32)
+	exp.Subject = subject
 	if initErr := exp.Initialize(); initErr != nil {
 		log.Fatalf("Initialize: %v", initErr)
 	}
