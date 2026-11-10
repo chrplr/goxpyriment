@@ -82,6 +82,34 @@ var fullscreenPolicy = FullscreenAuto
 // exclusive is known to mis-handle cross-display requests under Mutter.
 func SetFullscreenPolicy(p FullscreenPolicy) { fullscreenPolicy = p }
 
+// fullscreenResolution is the display mode a fullscreen window asks for, staged
+// like fullscreenPolicy; 0×0 means the display's current mode.
+var fullscreenResolution struct{ w, h int }
+
+// SetFullscreenResolution makes the next fullscreen window switch its display
+// to a w×h mode, at the desktop refresh rate where the display offers it there.
+// (0, 0) restores the default: keep the display's current mode, so no
+// resolution change is ever requested. Call it BEFORE NewScreen (i.e. before
+// Experiment.Initialize). It does not affect a windowed screen, whose size
+// NewScreen takes as arguments.
+//
+// A display mode is only set in exclusive fullscreen, so a requested
+// resolution makes FullscreenAuto exclusive on every platform, Wayland
+// included (see exclusiveFullscreenWanted for what that costs there).
+// NewScreen fails, rather than opening at another size, when the policy is
+// FullscreenDesktop, when the display has no w×h mode, or when the window does
+// not end up w×h. The sizes are in screen coordinates, as the display's modes
+// are listed: pixels, except on a HiDPI display.
+func SetFullscreenResolution(w, h int) { fullscreenResolution.w, fullscreenResolution.h = w, h }
+
+// FullscreenResolution reports the mode set by SetFullscreenResolution; (0, 0)
+// when none is requested.
+func FullscreenResolution() (w, h int) { return fullscreenResolution.w, fullscreenResolution.h }
+
+func fullscreenResolutionRequested() bool {
+	return fullscreenResolution.w > 0 && fullscreenResolution.h > 0
+}
+
 // FullscreenPolicyInEffect reports the policy that will be (or was) applied,
 // resolving FullscreenAuto to what it actually chose on this platform. Record it
 // alongside timing results: "exclusive" and "desktop" are not comparable.
@@ -124,14 +152,19 @@ func FullscreenPolicyInEffect() FullscreenPolicy {
 //   - dummy/offscreen and any future backend: an allowlist rather than an
 //     exclusion list, so an unfamiliar driver gets the conservative path.
 //
-// The mode passed is always the display's CURRENT mode, so no resolution or
-// refresh-rate change is ever requested — only the fullscreen style changes.
+// The mode passed is the display's CURRENT mode, so no resolution or
+// refresh-rate change is requested — only the fullscreen style changes —
+// unless SetFullscreenResolution asked for one. A requested resolution is only
+// reachable through a mode, so it makes FullscreenAuto exclusive everywhere.
 func exclusiveFullscreenWanted() bool {
 	switch fullscreenPolicy {
 	case FullscreenExclusive:
 		return true
 	case FullscreenDesktop:
 		return false
+	}
+	if fullscreenResolutionRequested() {
+		return true
 	}
 	if runtime.GOOS == "windows" {
 		return true
@@ -141,6 +174,46 @@ func exclusiveFullscreenWanted() bool {
 		return true
 	}
 	return false
+}
+
+// requestedDisplayMode finds the display mode set by SetFullscreenResolution on
+// target, at the desktop refresh rate where the display has one at that size.
+// The size must match exactly: SDL's closest mode may be larger.
+func requestedDisplayMode(target sdl.DisplayID, displayIndex int) (*sdl.DisplayMode, error) {
+	w, h := fullscreenResolution.w, fullscreenResolution.h
+	if fullscreenPolicy == FullscreenDesktop {
+		return nil, fmt.Errorf("apparatus.NewScreen: a %dx%d resolution needs exclusive fullscreen, but the fullscreen policy is %s", w, h, fullscreenPolicy)
+	}
+	mode, err := target.ClosestFullscreenDisplayMode(int32(w), int32(h), 0, false)
+	if err != nil || mode == nil {
+		return nil, fmt.Errorf("apparatus.NewScreen: display %d has no %dx%d mode (%v); its modes are: %s",
+			displayIndex, w, h, err, listModes(target))
+	}
+	if int(mode.W) != w || int(mode.H) != h {
+		return nil, fmt.Errorf("apparatus.NewScreen: display %d has no %dx%d mode (the closest is %dx%d); its modes are: %s",
+			displayIndex, w, h, mode.W, mode.H, listModes(target))
+	}
+	log.Printf("apparatus.NewScreen: requesting the %[2]dx%[3]d mode at %.2[4]f Hz on display %[1]d", displayIndex, mode.W, mode.H, mode.RefreshRate)
+	return mode, nil
+}
+
+// listModes lists the fullscreen modes of a display, for an error message.
+func listModes(target sdl.DisplayID) string {
+	modes, err := target.FullscreenDisplayModes()
+	if err != nil {
+		return fmt.Sprintf("unknown (%v)", err)
+	}
+	s := ""
+	for i, m := range modes {
+		if i > 0 {
+			s += ", "
+		}
+		s += fmt.Sprintf("%dx%d@%.0f", m.W, m.H, m.RefreshRate)
+	}
+	if s == "" {
+		return "none listed"
+	}
+	return s
 }
 
 // displayByIndex resolves a 0-based display index to an SDL DisplayID.
@@ -215,6 +288,17 @@ func NewScreen(title string, width, height int, bgColor sdl.Color, fullscreen bo
 	}
 
 	if fullscreen || (width == 0 && height == 0) {
+		// A requested resolution is looked up before any window exists, so a
+		// display without that mode fails here instead of flashing a window.
+		var wantMode *sdl.DisplayMode
+		if fullscreenResolutionRequested() {
+			mode, err := requestedDisplayMode(target, displayIndex)
+			if err != nil {
+				return nil, err
+			}
+			wantMode = mode
+		}
+
 		// Create the window directly with the FULLSCREEN flag.
 		// Two-step approach (create then SetFullscreen) is unreliable on
 		// KMS/DRM: SetFullscreen is asynchronous there, so window.Size()
@@ -281,6 +365,11 @@ func NewScreen(title string, width, height int, bgColor sdl.Color, fullscreen bo
 				props.Destroy()
 			}
 		}
+		if window == nil && wantMode != nil {
+			// The degraded path below cannot set a mode.
+			return nil, fmt.Errorf("apparatus.NewScreen: cannot set the %dx%d mode: no window could be created on display %d (%v)",
+				wantMode.W, wantMode.H, displayIndex, werr)
+		}
 		if window == nil {
 			// Degraded path: the target display could not be resolved or the
 			// properties could not be built. Open fullscreen wherever SDL picks
@@ -296,7 +385,15 @@ func NewScreen(title string, width, height int, bgColor sdl.Color, fullscreen bo
 			// A display that reports no current mode is not fatal: fall through
 			// to fullscreen-desktop on whatever output the creation properties
 			// managed to reach.
-			if mode, merr := target.CurrentDisplayMode(); merr == nil && mode != nil {
+			if wantMode != nil {
+				// Unlike the current mode, a requested one must take: opening
+				// at another resolution would change every size in pixels.
+				if err := window.SetFullscreenMode(wantMode); err != nil {
+					window.Destroy()
+					return nil, fmt.Errorf("apparatus.NewScreen: setting the %dx%d mode on display %d: %w",
+						wantMode.W, wantMode.H, displayIndex, err)
+				}
+			} else if mode, merr := target.CurrentDisplayMode(); merr == nil && mode != nil {
 				_ = window.SetFullscreenMode(mode)
 			}
 			if err := window.SetFullscreen(true); err != nil {
@@ -375,6 +472,15 @@ func NewScreen(title string, width, height int, bgColor sdl.Color, fullscreen bo
 			} else {
 				logW, logH = 0, 0
 			}
+		}
+
+		if wantMode != nil && (logW != wantMode.W || logH != wantMode.H) {
+			// SetFullscreenMode succeeding does not prove the mode is shown: a
+			// compositor may keep the window at the desktop size.
+			renderer.Destroy()
+			window.Destroy()
+			return nil, fmt.Errorf("apparatus.NewScreen: asked display %d for %dx%d, but the fullscreen window is %dx%d (video driver %s)",
+				displayIndex, wantMode.W, wantMode.H, logW, logH, sdl.GetCurrentVideoDriver())
 		}
 
 		if logW > 0 && logH > 0 {

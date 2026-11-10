@@ -249,7 +249,10 @@ const DefaultRealTimePriority = 50
 // NewExperimentFromFlags creates and initializes an experiment using the
 // standard command-line flags accepted by every goxpyriment program:
 //
-//   - `-w`    windowed mode: opens a 1024×768 window instead of fullscreen
+//   - `-w`    windowed mode: opens a 1024×768 window (or -resolution) instead of fullscreen
+//   - `-resolution WxH`  fullscreen: switch the display to that mode (see
+//     SetFullscreenResolution; fatal if the display has none); with -w: the
+//     size of the window. Empty (the default): the display's current mode.
 //   - `-d N`  display ID: open the window / fullscreen on monitor N (0 = primary; default -1 = primary)
 //   - `-s N`  subject ID (default 0)
 //   - `-config FILE`  TOML file setting the defaults of the flags (see below)
@@ -314,7 +317,9 @@ const DefaultRealTimePriority = 50
 // being returned. If initialization fails the program exits via log.Fatal.
 // The caller should defer exp.End() immediately after this call.
 func NewExperimentFromFlags(name string, bg, fg sdl.Color, fontSize float32, extra ...InfoField) *Experiment {
-	windowed := flag.Bool("w", false, "Windowed mode (1024×768 window instead of fullscreen)")
+	windowed := flag.Bool("w", false, "Windowed mode (1024×768 window, or -resolution, instead of fullscreen)")
+	resolution := flag.String("resolution", "",
+		"WIDTHxHEIGHT, e.g. 1920x1080: in fullscreen, switch the display to that mode (exclusive fullscreen; fatal if the display has no such mode); with -w, the window size. Empty = the display's current mode")
 	display := flag.Int("d", -1, "Display ID: monitor index where the window/fullscreen will open (-1 = primary)")
 	exclusive := flag.String("exclusive-fullscreen", "auto",
 		"Fullscreen presentation: auto | on (exclusive, bypasses the compositor where possible) | off (fullscreen-desktop)")
@@ -363,6 +368,10 @@ func NewExperimentFromFlags(name string, bg, fg sdl.Color, fontSize float32, ext
 	SetFullscreenPolicy(policy)
 	if !(*magnification > 0) {
 		log.Fatalf("-magnification: %v is not a positive number", *magnification)
+	}
+	resW, resH, resErr := ParseResolution(*resolution)
+	if resErr != nil {
+		log.Fatalf("-resolution: %v", resErr)
 	}
 
 	// Session settings, seeded from the command-line flags.
@@ -434,9 +443,17 @@ func NewExperimentFromFlags(name string, bg, fg sdl.Color, fontSize float32, ext
 		}
 	}
 
+	// The dialog may have changed windowedMode, so the resolution is applied
+	// only now: the window size when windowed, the display mode otherwise.
 	width, height, fullscreen := 0, 0, true
 	if windowedMode {
 		width, height, fullscreen = 1024, 768, false
+		if resW > 0 {
+			width, height = resW, resH
+		}
+		SetFullscreenResolution(0, 0)
+	} else {
+		SetFullscreenResolution(resW, resH)
 	}
 
 	exp := NewExperiment(name, width, height, fullscreen, bg, fg, fontSize)

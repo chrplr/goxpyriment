@@ -7,6 +7,7 @@ package control
 import (
 	"errors"
 	"fmt"
+	"strconv"
 	"strings"
 	"time"
 
@@ -300,6 +301,37 @@ const (
 // "sys fullscreen_mode", because exclusive and desktop results are not
 // comparable.
 func SetFullscreenPolicy(p FullscreenPolicy) { apparatus.SetFullscreenPolicy(p) }
+
+// SetFullscreenResolution makes the fullscreen window switch its display to a
+// w×h mode; (0, 0), the default, keeps the display's current mode. Call it
+// before Initialize() (NewExperimentFromFlags does this for you from
+// -resolution). It makes the fullscreen exclusive, and Initialize fails rather
+// than opening at another size when the display has no such mode or the
+// policy is FullscreenDesktop. The mode in use is recorded in every data file
+// with the other display properties.
+func SetFullscreenResolution(w, h int) { apparatus.SetFullscreenResolution(w, h) }
+
+// ParseResolution reads a resolution written WIDTHxHEIGHT ("1920x1080"; X or
+// × also separate). An empty string is (0, 0), no resolution; anything else
+// that is not two positive integers is an error.
+func ParseResolution(s string) (w, h int, err error) {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return 0, 0, nil
+	}
+	norm := strings.NewReplacer("×", "x", "X", "x").Replace(s)
+	ws, hs, ok := strings.Cut(norm, "x")
+	if ok {
+		w, err = strconv.Atoi(strings.TrimSpace(ws))
+		if err == nil {
+			h, err = strconv.Atoi(strings.TrimSpace(hs))
+		}
+	}
+	if !ok || err != nil || w <= 0 || h <= 0 {
+		return 0, 0, fmt.Errorf("invalid resolution %q (want WIDTHxHEIGHT, e.g. 1920x1080)", s)
+	}
+	return w, h, nil
+}
 
 // ParseFullscreenPolicy maps the -exclusive-fullscreen values auto|on|off onto
 // a FullscreenPolicy. Unrecognised input returns an error rather than silently

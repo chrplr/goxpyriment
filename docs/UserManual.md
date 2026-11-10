@@ -50,6 +50,7 @@ defer exp.End()
 |------|--------|
 | `-w` | Windowed mode: opens a 1024×768 window instead of going fullscreen |
 | `-d N` | Display ID: open on monitor N (-1 = primary display) |
+| `-resolution WxH` | Fullscreen: switch the display to that mode, e.g. `1920x1080`, in exclusive fullscreen; the program stops if the display has no such mode (the error lists its modes) or if `-exclusive-fullscreen=off`. With `-w`: the size of the window. Default: the display's current mode |
 | `-s ID` | Set the subject ID: letters and digits (`7`, `007`, `P12`); written to the data file automatically. See *Subject IDs* below |
 | `-headless` | Skip the setup dialog (below) and use field defaults — for batch/automated runs |
 | `-version` | Print the version of the program and of goxpyriment, then exit (see below) |

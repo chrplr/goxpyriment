@@ -32,6 +32,13 @@ func (p FullscreenPolicy) String() string { return "n/a (browser)" }
 // SetFullscreenPolicy is a no-op on WASM.
 func SetFullscreenPolicy(FullscreenPolicy) {}
 
+// SetFullscreenResolution is a no-op on WASM: the page cannot set a display
+// mode.
+func SetFullscreenResolution(w, h int) {}
+
+// FullscreenResolution always reports (0, 0) on WASM.
+func FullscreenResolution() (w, h int) { return 0, 0 }
+
 // FullscreenPolicyInEffect always reports FullscreenAuto on WASM: there is no
 // exclusive/desktop distinction to report.
 func FullscreenPolicyInEffect() FullscreenPolicy { return FullscreenAuto }
