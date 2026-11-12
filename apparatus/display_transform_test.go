@@ -84,36 +84,18 @@ func (b box) empty() bool { return b.x1 < b.x0 }
 // pixels of the whole window.
 func readBoxes(t *testing.T, s *Screen) (white, black box) {
 	t.Helper()
-	var surf *sdl.Surface
-	// ReadPixels(nil) reads the viewport, which a letterbox insets too, so
-	// the window's own presentation is put back for the read.
-	err := s.withoutTransform(func() error {
-		if s.logical != nil {
-			if err := s.Renderer.SetLogicalPresentation(s.native.w, s.native.h, s.native.mode); err != nil {
-				return err
-			}
-			defer s.Renderer.SetLogicalPresentation(s.logical.w, s.logical.h, s.logical.mode)
-		}
-		var err error
-		surf, err = s.Renderer.ReadPixels(nil)
-		return err
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	c, err := surf.Convert(sdl.PIXELFORMAT_RGBA32)
+	img, err := s.Capture()
 	if err != nil {
 		t.Fatal(err)
 	}
 	white, black = box{1 << 30, 1 << 30, -1, -1}, box{1 << 30, 1 << 30, -1, -1}
-	px := c.Pixels()
 	grow := func(b *box, x, y int) {
 		b.x0, b.y0 = min(b.x0, x), min(b.y0, y)
 		b.x1, b.y1 = max(b.x1, x), max(b.y1, y)
 	}
-	for y := 0; y < int(c.H); y++ {
-		for x := 0; x < int(c.W); x++ {
-			switch v := px[y*int(c.Pitch)+4*x]; {
+	for y := range img.Rect.Dy() {
+		for x := range img.Rect.Dx() {
+			switch v := img.Pix[y*img.Stride+4*x]; {
 			case v > 200:
 				grow(&white, x, y)
 			case v < 50:

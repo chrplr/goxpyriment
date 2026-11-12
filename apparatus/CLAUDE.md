@@ -360,6 +360,11 @@ calls `present()` directly, and it runs before a marker is attached.
   drawn and before present. It is the only place the finished frame can be read
   back (`ReadPixels`): see "Never present a frame with no draw calls" above.
   `tests/test_onset_marker` uses it.
+- **Screenshots:** `Capture()` reads the whole window output (letterbox and
+  display transform lifted for the read, as on the screen) into an
+  `*image.RGBA`; `ScreenshotNextFrame(path)` makes the next `Update` capture
+  the finished frame just before present and write the PNG after the stamp
+  and the marker code (`screenshot.go`). Both stall the GPU: debugging only.
 
 `apparatus` does not import `triggers`. `MarkerOutput{Send, AllLow, Close}` is a
 structural interface that `triggers.OutputTTLDevice` satisfies.

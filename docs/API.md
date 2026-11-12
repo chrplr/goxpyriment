@@ -779,6 +779,8 @@ screen.SetMarker(m *apparatus.Marker)                  // drive an onset marker 
 screen.MarkerRect() sdl.FRect                          // the photodiode square in the current drawing space (top-left coords)
 screen.Marker() *apparatus.Marker
 screen.SetPrePresentHook(f func() error)               // run f after drawing, just before present (frame read-back)
+screen.Capture() (*image.RGBA, error)                  // what is drawn so far, as the screen will show it (call before Update or in the hook)
+screen.ScreenshotNextFrame(path string)                // save the next presented frame, photodiode square included, as a PNG (debugging: delays that frame)
 screen.Destroy()
 ```
 

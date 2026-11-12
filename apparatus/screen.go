@@ -111,8 +111,9 @@ type Screen struct {
 	heldToTarget  bool   // whether the last hold actually waited
 	anchorIsHW    bool   // whether anchorNS is a measured vblank rather than a schedule
 
-	marker     *Marker      // onset marker drawn and fired by Update; nil when none (see SetMarker)
-	prePresent func() error // see SetPrePresentHook
+	marker         *Marker      // onset marker drawn and fired by Update; nil when none (see SetMarker)
+	prePresent     func() error // see SetPrePresentHook
+	screenshotPath string       // see ScreenshotNextFrame; "" when none is pending
 
 	vbl        vblank.Timer // kernel vblank clock, nil when none is available
 	vblChecked bool         // whether the one-time probe for it has run
@@ -572,6 +573,11 @@ func (s *Screen) Update() error {
 			return fmt.Errorf("apparatus.Screen.Update: pre-present hook: %w", err)
 		}
 	}
+	// The last moment the finished frame can be read back (see Capture).
+	shot, shotPath, err := s.takeScreenshot()
+	if err != nil {
+		return fmt.Errorf("apparatus.Screen.Update: %w", err)
+	}
 	// The deadline is one frame after the PREVIOUS frame's anchor, so it has to
 	// be sampled before this frame overwrites it.
 	anchor := s.anchorNS
@@ -592,6 +598,13 @@ func (s *Screen) Update() error {
 	// 4. The marker's code, right after the timestamp it marks.
 	if s.marker != nil {
 		s.marker.afterFlip(s.lastFlipNS)
+	}
+	// 5. A screenshot is written last, so that it delays neither the stamp
+	// nor the code.
+	if shot != nil {
+		if err := saveScreenshot(shot, shotPath); err != nil {
+			return fmt.Errorf("apparatus.Screen.Update: %w", err)
+		}
 	}
 	return nil
 }
