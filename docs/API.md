@@ -219,7 +219,7 @@ type EventState struct {
 | `exp.LoadFontFromMemory(data []byte, size float32) error` | Load a TTF font from a byte slice. |
 | `exp.SetVSync(vsync int) error` | Toggle vertical sync (1 = on, 0 = off). |
 | `exp.SetLogicalSize(w, h int32) error` | Set device-independent logical resolution. |
-| `exp.SetOutputDirectory(dir string)` | Override default data file directory (`~/goxpy_data`). |
+| `exp.SetOutputDirectory(dir string)` | Override default data file directory (`$GOXPY_DATA`, else `~/goxpy_data`). |
 
 ### Gamma Correction
 

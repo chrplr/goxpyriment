@@ -249,3 +249,46 @@ func TestAddSubjectBare(t *testing.T) {
 		t.Errorf("row %q, want %q", df.Buffer[0], want)
 	}
 }
+
+// GOXPY_DATA, when set, replaces $HOME/goxpy_data as the default directory;
+// blank, it is ignored.
+func TestDefaultDataDirEnv(t *testing.T) {
+	home := t.TempDir()
+	t.Setenv("HOME", home)        // os.UserHomeDir on Unix
+	t.Setenv("USERPROFILE", home) // and on Windows
+	t.Setenv("home", home)        // and on Plan 9
+
+	t.Setenv(EnvDataDir, "")
+	if got, want := DefaultDataDir(), filepath.Join(home, DataFileDirectory); got != want {
+		t.Errorf("GOXPY_DATA unset: DefaultDataDir() = %q, want %q", got, want)
+	}
+	t.Setenv(EnvDataDir, "   ")
+	if got, want := DefaultDataDir(), filepath.Join(home, DataFileDirectory); got != want {
+		t.Errorf("GOXPY_DATA blank: DefaultDataDir() = %q, want %q", got, want)
+	}
+
+	dir := filepath.Join(t.TempDir(), "results")
+	t.Setenv(EnvDataDir, dir)
+	if got := DefaultDataDir(); got != dir {
+		t.Errorf("GOXPY_DATA=%s: DefaultDataDir() = %q", dir, got)
+	}
+	// NewDataFile with no directory writes there, creating it.
+	df, err := NewDataFile("", "1", "test_env")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if df.Directory != dir {
+		t.Errorf("NewDataFile(\"\") directory %q, want %q", df.Directory, dir)
+	}
+	if err := df.Save(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(df.FullPath); err != nil {
+		t.Errorf("data file not in GOXPY_DATA: %v", err)
+	}
+	// An explicit directory still wins.
+	other := t.TempDir()
+	if df, err := NewDataFile(other, "1", "test_env"); err != nil || df.Directory != other {
+		t.Errorf("explicit directory with GOXPY_DATA set: %v, %v", df, err)
+	}
+}

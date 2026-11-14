@@ -98,10 +98,23 @@ func (df *DataFile) Save() error {
 // served by JATOS and otherwise packs them into a single .zip download. See
 // data_wasm.go for why the browser must not fire two downloads.
 
+// EnvDataDir is the environment variable that sets the results directory
+// when the program does not choose one: GOXPY_DATA=/path/to/data. A relative
+// path is from the current directory.
+const EnvDataDir = "GOXPY_DATA"
+
 // DefaultDataDir returns the default results directory used when no output
-// directory is specified: "$HOME/goxpy_data", falling back to DataFileDirectory
+// directory is specified: the value of GOXPY_DATA (EnvDataDir) if it is set and
+// not blank, else "$HOME/goxpy_data", falling back to DataFileDirectory
 // ("goxpy_data") if the user home directory cannot be determined.
+//
+// An output directory given explicitly (Experiment.SetOutputDirectory, the
+// Results folder of the setup dialog, a program's own flag) takes precedence
+// over GOXPY_DATA. The setup dialog shows this value as its default.
 func DefaultDataDir() string {
+	if dir := strings.TrimSpace(os.Getenv(EnvDataDir)); dir != "" {
+		return dir
+	}
 	if home, err := os.UserHomeDir(); err == nil {
 		return filepath.Join(home, DataFileDirectory)
 	}
@@ -109,7 +122,8 @@ func DefaultDataDir() string {
 }
 
 // NewDataFile creates a new DataFile in the given directory (or in the
-// default directory from DefaultDataDir, e.g. "$HOME/goxpy_data", if empty).
+// default directory from DefaultDataDir, $GOXPY_DATA or "$HOME/goxpy_data",
+// if empty).
 // The filename is derived from the experiment name, the subject's Label, and a
 // timestamp: <expName>_sub-<label>_date-<YYYYMMDD>-<HHMMSS>.csv.
 func NewDataFile(directory string, subject Subject, expName string) (*DataFile, error) {

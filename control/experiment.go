@@ -1090,8 +1090,9 @@ func (e *Experiment) Wait(ms int) error {
 }
 
 // SetOutputDirectory overrides the default folder used to store .csv result
-// files. If not called, Initialize will use the user's home directory
-// with the folder name defined by results.DataFileDirectory (default "goxpy_data").
+// files. If not called, Initialize uses results.DefaultDataDir: the folder
+// named by the environment variable GOXPY_DATA if it is set, else the folder
+// results.DataFileDirectory ("goxpy_data") in the user's home directory.
 func (e *Experiment) SetOutputDirectory(dir string) {
 	e.OutputDirectory = dir
 }

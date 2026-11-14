@@ -148,7 +148,8 @@ go run . -s 007      # set the subject/participant ID to 007
 go run . -d 1        # use monitor #1 (for a second screen)
 ```
 
-When the experiment ends, two files are written to `~/goxpy_data/`: a `.csv` with
+When the experiment ends, two files are written to `~/goxpy_data/` (or to the
+folder named by the environment variable `GOXPY_DATA`, if set): a `.csv` with
 your data and a `-info.txt` with session metadata.
 
 ---

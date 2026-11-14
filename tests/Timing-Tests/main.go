@@ -54,7 +54,7 @@
 //	-d int            Display index: monitor to use (-1 = primary)
 //	-sysinfo          Print system information and exit
 //	-outdir string    Where to write the .csv/-info.txt results
-//	                  (default $HOME/goxpy_data)
+//	                  (default $GOXPY_DATA, else $HOME/goxpy_data)
 //	-gc               Leave the garbage collector running during timing loops.
 //	                  Off by default. Run a test twice, with and without, to
 //	                  measure the collector's effect.
@@ -146,7 +146,7 @@ var (
 	fExclusiveFS = flag.String("exclusive-fullscreen", "auto", "Fullscreen presentation: auto | on (exclusive, bypasses the compositor where possible) | off (fullscreen-desktop).\n\tRecorded as 'sys fullscreen_mode' in the results header; the two are not comparable.")
 	fSysInfo     = flag.Bool("sysinfo", false, "Print system information and exit")
 	fFrameMs     = flag.Bool("print-frame-ms", false, "Print the display's frame period in milliseconds and exit.\n\tFor scripts that need the refresh rate without asking a human for it;\n\thonours -d. Prints nothing but the number, so it can be captured directly.")
-	fOutDir      = flag.String("outdir", "", "Directory for the .csv/-info.txt results (default: $HOME/goxpy_data).\n\tUse it to keep a session's data files beside its other outputs.")
+	fOutDir      = flag.String("outdir", "", "Directory for the .csv/-info.txt results (default: $GOXPY_DATA, else $HOME/goxpy_data).\n\tUse it to keep a session's data files beside its other outputs.")
 	fGC          = flag.Bool("gc", false, "Leave the garbage collector RUNNING during timing-critical loops.\n\tBy default the collector is suspended; pass -gc to measure its effect on timing\n\t(run the same test twice, with and without, to obtain the comparison).")
 	fSquarePx    = flag.Int("square-px", 0, "Side of each of the five stimulus squares, in renderer pixels;\n\t0 = one quarter of the render height, which keeps each square's centre\n\tclear of the bezel and fixes the top↔bottom separation at 0.750 [av / vrr]")
 	fNoSound     = flag.Bool("no-sound", false, "Do not play the tone [av]")

@@ -48,3 +48,5 @@ Good programs to start: `Memory_span`, `Change-Blindness`, `Simon_task`, `LoT_ge
 When launched from the command line, most programs accept `-w` (windowed 1024×768 mode), `-d N` (open on monitor N, 0 = primary), and `-s <id>` (subject ID written to the `.csv` data file).
 
 **Results are saved in a folder `goxpy_data` in your Home (User) folder**
+(or in the folder named by the environment variable `GOXPY_DATA`, if you set
+one; see [Choosing the output directory](UserManual.md#choosing-the-output-directory)).

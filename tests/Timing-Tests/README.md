@@ -327,7 +327,7 @@ these tests (TTL→photodiode, scan-out, AV sync) stands as recorded.
 | `-gc` | false | Leave the collector running (suspended by default); run twice to measure its effect |
 | `-realtime-priority` | 50 | SCHED_FIFO priority to request (1–99); 0 = normal scheduling |
 | `-exclusive-fullscreen` | `auto` | `auto` \| `on` \| `off`; recorded in the info file as `sys fullscreen_mode` |
-| `-outdir` | `$HOME/goxpy_data` | Where the `.csv` and `-info.txt` are written |
+| `-outdir` | `$GOXPY_DATA`, else `$HOME/goxpy_data` | Where the `.csv` and `-info.txt` are written |
 | `-print-frame-ms` | false | Print only the frame period in ms and exit (honours `-d`) |
 
 ### `av`

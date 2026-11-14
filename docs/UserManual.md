@@ -1150,7 +1150,26 @@ Both files open automatically on `Initialize()` and are flushed to disk when `ex
 
 By default, data files are written to `~/goxpy_data/` (the folder name is the
 `results.DataFileDirectory` constant, appended to the user's home directory).
-To write them elsewhere, call `exp.SetOutputDirectory()` **before**
+
+**Without changing the program**, set the environment variable `GOXPY_DATA`
+to the folder where the results should go:
+
+```bash
+GOXPY_DATA=/data/my-study ./my-experiment -s 1                 # Linux, macOS: this run
+export GOXPY_DATA=/data/my-study                               # Linux, macOS: this terminal
+$env:GOXPY_DATA = "D:\my-study"                                # Windows PowerShell: this terminal
+[Environment]::SetEnvironmentVariable("GOXPY_DATA", "D:\my-study", "User")   # Windows: for good
+```
+
+A relative path is from the current directory; the folder is created if it
+does not exist; an empty value is ignored. `GOXPY_DATA` applies to every
+program built with goxpyriment, also when started from a launcher or a menu
+that inherits the environment, and it is the default shown in the *Results
+folder* field of the setup dialog. A directory chosen explicitly, in that
+field, by `exp.SetOutputDirectory()` or by a program's own flag (e.g.
+`-outdir`), takes precedence over it.
+
+**From the program**, call `exp.SetOutputDirectory()` **before**
 `Initialize()` opens the files:
 
 ```go

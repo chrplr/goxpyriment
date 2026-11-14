@@ -86,7 +86,7 @@ var (
 	fPrio     = flag.Int("realtime-priority", 50, "SCHED_FIFO priority requested for each firing thread (1-99), or 0 to\n\tdecline. Needs privileges; a failure is reported and the run continues.")
 	fGC       = flag.Bool("gc", false, "Leave the garbage collector RUNNING during the pulse train.\n\tBy default it is suspended; pass -gc to measure its effect.")
 	fSubj     = flag.String("s", "999", "Subject id used in the data-file name: "+results.SubjectRule)
-	fOutDir   = flag.String("outdir", "", "Directory for the .csv/-info.txt results (default: $HOME/goxpy_data)")
+	fOutDir   = flag.String("outdir", "", "Directory for the .csv/-info.txt results (default: $GOXPY_DATA, else $HOME/goxpy_data)")
 	fNoPrompt = flag.Bool("no-prompt", false, "Do not wait for Enter after printing the wiring table")
 )
 
