@@ -29,3 +29,9 @@ that starts experiments) can read the same file with `Load` without linking
   as the default of `-config`.
 - `ParseFlags` returns exactly the settings it applied, for the caller to
   record (control writes them into the -info.txt).
+- `CheckArgs` (called by control after `ParseFlags`) rejects the two
+  command-line mistakes Go's `flag` accepts silently: a boolean flag given its
+  value after a space (`-photodiode false` sets it to true and stops parsing),
+  and a flag after a non-flag argument (`list.csv -s 3`). Other positional
+  arguments stay allowed: some examples take a file name. It walks `args` the
+  way `flag.Parse` does, so `-s -photodiode false` is not misread.

@@ -58,6 +58,12 @@ defer exp.End()
 | `-center-shift-x PX`, `-center-shift-y PX` | Shift everything drawn by PX screen pixels (+Y up) — see [Display transform](#display-transform) |
 | `-magnification M` | Scale everything drawn about the screen centre by M (default 1) |
 
+A boolean flag takes its value after `=`: `-photodiode=false`, not
+`-photodiode false`. Go's `flag` package reads the latter as `-photodiode` (on)
+followed by a non-flag argument, at which it stops reading flags. The program
+refuses to start on that mistake, and on a flag written after a non-flag
+argument (`list.csv -s 3`), which would be ignored in the same way.
+
 `-version` is available in every program that imports `control`, including
 those that call `flag.Parse()` themselves. It prints, for example:
 

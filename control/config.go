@@ -41,6 +41,11 @@ func parseFlags() []string {
 	if err != nil {
 		log.Fatalf("-config %s: %v", path, err)
 	}
+	// Fatal for the same reason: -photodiode false would run with the
+	// photodiode on and every flag after it at its default.
+	if err := config.CheckArgs(flag.CommandLine, os.Args[1:]); err != nil {
+		log.Fatal(err)
+	}
 	if path == "" {
 		return nil
 	}
