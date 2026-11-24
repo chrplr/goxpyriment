@@ -20,6 +20,9 @@ func TestSoundDuration(t *testing.T) {
 		{"mono s16 16 kHz, 1 s", sdl.AudioSpec{Format: sdl.AUDIO_S16LE, Channels: 1, Freq: 16000}, 32000, time.Second},
 		{"stereo s16 24 kHz, 0.5 s", sdl.AudioSpec{Format: sdl.AUDIO_S16LE, Channels: 2, Freq: 24000}, 48000, 500 * time.Millisecond},
 		{"mono f32 44.1 kHz, 2 s", sdl.AudioSpec{Format: sdl.AUDIO_F32LE, Channels: 1, Freq: 44100}, 4 * 88200, 2 * time.Second},
+		// Not exact in binary floating point: float64 arithmetic gave
+		// 2.009999999 s here, so Milliseconds() read 2009.
+		{"mono s16 44.1 kHz, 2.010 s", sdl.AudioSpec{Format: sdl.AUDIO_S16LE, Channels: 1, Freq: 44100}, 2 * 88641, 2010 * time.Millisecond},
 		{"not loaded", sdl.AudioSpec{}, 0, 0},
 		{"zero rate", sdl.AudioSpec{Format: sdl.AUDIO_S16LE, Channels: 1}, 32000, 0},
 	}

@@ -124,14 +124,20 @@ func (s *Sound) IsPlaying() bool {
 }
 
 // Duration returns the length of the loaded sound, from its sample data and
-// spec. It is 0 before PreloadDevice has loaded the WAV.
+// spec, truncated to the nanosecond. It is 0 before PreloadDevice has loaded
+// the WAV.
+//
+// Computed in integers. It used to go through float64, where frames/freq is
+// rarely exact, and the truncation to a Duration then lost a nanosecond: a
+// 2.010 s WAV at 44.1 kHz came back as 2.009999999 s, and Milliseconds() read
+// 2009. frames*1e9 stays inside int64 up to about 58 hours at 44.1 kHz.
 func (s *Sound) Duration() time.Duration {
 	bytesPerFrame := int(s.Spec.Channels) * sampleByteWidth(s.Spec.Format)
 	if bytesPerFrame <= 0 || s.Spec.Freq <= 0 || len(s.Data) == 0 {
 		return 0
 	}
 	frames := len(s.Data) / bytesPerFrame
-	return time.Duration(float64(frames) / float64(s.Spec.Freq) * float64(time.Second))
+	return time.Duration(frames) * time.Second / time.Duration(s.Spec.Freq)
 }
 
 // CurrentSampleFrame returns a best-effort estimate of the sample frame that
