@@ -44,7 +44,10 @@ func main() {
 		for _, num := range trials {
 			exp.Blank(1500)
 			exp.ShowTimed(cross, 500)
-			key, rt, _ := exp.ShowAndGetRT(Image[num], respKeys, -1)
+			key, rt, err := exp.ShowAndGetRT(Image[num], respKeys, -1)
+			if err != nil {
+				return err // ESC: end the run, without recording this trial
+			}
 
 			correct := (num%2 == 0) == (key == EvenResponse)
 			exp.Data.Add(num, key, rt, correct)
