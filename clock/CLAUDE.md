@@ -7,7 +7,7 @@ Timing utilities: a global elapsed-time reference and a per-instance `Clock` for
 
 ## SleepUntil
 
-`SleepUntil(target)` blocks until the clock has reached `target`. It uses a polling loop — if `target` is already in the past, it returns immediately. OS scheduling determines the exact wake time; expect ±1–2 ms jitter on typical systems.
+`SleepUntil(target)` blocks until the clock has reached `target`. It is a `time.Sleep` loop, not a polling loop: it sleeps for the remaining time and re-checks, so it **never returns early, only late** — if `target` is already in the past, it returns immediately. How late is up to the OS: worst `time.Sleep` overshoot measured on one Linux host (400 sleeps at each of 1, 5, 10, 14 ms) was 0.83 ms at normal priority and 0.73 ms at `SCHED_FIFO` 50 — see `spinTailNS` in `apparatus/screen_present_notjs.go`. In the browser build `time.Sleep` goes through the JavaScript event loop's timers, whose lateness has not been measured here; do not assume the desktop figure.
 
 Useful pattern for fixed-interval trial timing without drift accumulation:
 

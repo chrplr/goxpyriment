@@ -178,11 +178,15 @@ func (k *Keyboard) WaitKey(key sdl.Keycode) error {
 // GetKeyEventTS instead, which returns the SDL3 KeyboardEvent.Timestamp
 // directly and can be subtracted from a Screen.FlipTS() onset value.
 //
-// This bundles the common three-line pattern:
+// It is equivalent to this pattern, on SDL's millisecond clock:
 //
-//	startTime := clock.GetTime()
+//	start := sdl.Ticks()
 //	key, err := kb.WaitKeys(keys, timeout)
-//	rt := clock.GetTime() - startTime
+//	rt := int64(sdl.Ticks() - start)
+//
+// Do not write that pattern with clock.GetTime: that reads the Go clock, whose
+// zero point differs from SDL's, and the habit leads to subtracting it from
+// flip or event timestamps.
 func (k *Keyboard) WaitKeysRT(keys []sdl.Keycode, timeoutMS int) (sdl.Keycode, int64, error) {
 	start := sdl.Ticks()
 	key, err := k.WaitKeys(keys, timeoutMS)

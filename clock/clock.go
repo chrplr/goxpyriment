@@ -14,7 +14,13 @@ func Wait(ms int) {
 
 var startTime = time.Now()
 
-// GetTime returns the time in milliseconds since the program started (relative to first use of this package).
+// GetTime returns the milliseconds elapsed since the program started — more
+// exactly, since this package was initialised, which happens before main runs.
+// It is not reset by the first call: a first call mid-session returns the
+// session's age, not 0.
+//
+// Like GetTimeNS it reads the Go monotonic clock, not sdl.TicksNS(); do not mix
+// it with SDL event or flip timestamps to compute reaction times.
 func GetTime() int64 {
 	return time.Since(startTime).Milliseconds()
 }
