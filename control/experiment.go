@@ -164,6 +164,7 @@ type Experiment struct {
 	event    EventState
 	quitFlag atomic.Int32 // set to 1 by signal handler goroutine; checked by pumpFrame
 	endOnce  sync.Once    // guards finalizeData so the footer is written exactly once
+	endDone  atomic.Bool  // End has run to completion; the signal handler then stands down
 	crashed  bool         // set by platformHandleCrash (js) on an unrecovered panic; suppresses the partial-data download
 }
 
@@ -1340,24 +1341,32 @@ func (e *Experiment) Initialize() error {
 	markerAttached = true
 
 	// Handle Ctrl-C and SIGTERM: set quit flag so pumpFrame exits Run() cleanly
-	// on the main goroutine. Never call End()/sdl.Quit() from here — concurrent
-	// CGo calls from two OS threads cause SIGSEGV. Save data and fall back to
-	// os.Exit after a timeout in case the main goroutine is blocked outside Run()
-	// (e.g. apparatus.Keyboard.Wait).
+	// on the main goroutine, where the deferred End saves the data. Never call
+	// End()/sdl.Quit() from here — concurrent CGo calls from two OS threads
+	// cause SIGSEGV.
+	//
+	// The data is saved here only as a fallback, if End has not run within 3 s
+	// because the main goroutine is blocked outside Run() (e.g.
+	// apparatus.Keyboard.Wait). It used to be saved here first, at the signal:
+	// the main goroutine kept running meanwhile, so a trial finishing in that
+	// window was added to the buffer after it had been flushed, and End, finding
+	// the data already finalized, never wrote it — the last trial was lost — and
+	// the two goroutines touched the buffer unsynchronised.
 	go func() {
 		ch := make(chan os.Signal, 1)
 		signal.Notify(ch, os.Interrupt, syscall.SIGTERM)
 		<-ch
 		e.quitFlag.Store(1)
+		time.Sleep(3 * time.Second)
+		if e.endDone.Load() {
+			return // End ran: data saved, lines low, nothing left to do here
+		}
+		// Last resort. finalizeData waits for one already in progress in End.
 		e.finalizeData()
-		// Lines low now: the os.Exit fallback below skips End.
+		// Lines low now: os.Exit skips the rest of End.
 		if err := e.Marker.Close(); err != nil {
 			log.Printf("onset marker: %v", err)
 		}
-		// Give pumpFrame up to 3 s to detect the flag so defer End() can run
-		// from the main goroutine. If the main goroutine is blocked outside Run(),
-		// force-exit as a last resort.
-		time.Sleep(3 * time.Second)
 		os.Exit(0)
 	}()
 
@@ -1376,13 +1385,25 @@ var getTicks = sdl.Ticks
 // Event handling
 // ---------------------------------------------------------------------------
 
-// PollEvents processes all pending SDL events, updates the experiment's
+// PollEvents processes pending SDL events, updates the experiment's
 // aggregate `EventState`, and optionally forwards each SDL event to the
 // provided handler callback.
 //
 // The handler can return true to stop processing further events for this
-// polling cycle. The returned `EventState` summarizes the last keyboard and
-// mouse button pressed and whether a quit/escape was requested.
+// polling cycle. The returned `EventState` summarizes the first keyboard and
+// mouse button event of the cycle and whether a quit/escape was requested.
+//
+// A cycle ends right after the first key or mouse-button event (down or up),
+// leaving the rest of the queue for the next call. EventState has one slot per
+// kind, and it used to drain the whole queue regardless, so a second key press
+// in the same cycle was consumed and thrown away: with F and J accepted, a
+// stray G followed by F lost the F, and the trial timed out or took a later key
+// with the wrong RT. Other events (motion, window, text) are still drained in
+// the same cycle; a handler sees every event exactly once, across calls.
+//
+// A Ctrl-C or SIGTERM caught by the signal handler is reported as
+// QuitRequested, so key waits return sdl.EndLoop and End saves the data on
+// this goroutine.
 func (e *Experiment) PollEvents(handle func(ev sdl.Event) bool) EventState {
 	// Reset transient state for this polling cycle.
 	// QuitRequested is intentionally sticky: once ESC or window-close is
@@ -1396,8 +1417,16 @@ func (e *Experiment) PollEvents(handle func(ev sdl.Event) bool) EventState {
 	e.event.LastMouseButtonUp = 0
 	e.event.LastMouseButtonUpTimestamp = 0
 
+	if e.quitFlag.Load() != 0 {
+		e.event.QuitRequested = true
+	}
+
 	var ev sdl.Event
 	for pollEvent(&ev) {
+		// Whether this event filled one of EventState's slots; the cycle ends
+		// after it (see the doc comment). Each slot is empty when its event
+		// arrives, because the cycle never runs past a filled one.
+		filled := false
 		switch ev.Type {
 		case sdl.EVENT_QUIT:
 			e.event.QuitRequested = true
@@ -1406,34 +1435,33 @@ func (e *Experiment) PollEvents(handle func(ev sdl.Event) bool) EventState {
 			if ke.Key == sdl.K_ESCAPE {
 				e.event.QuitRequested = true
 			}
-			if e.event.LastKey == 0 {
-				e.event.LastKey = ke.Key
-				e.event.LastKeyTimestamp = ke.Timestamp
-			}
+			e.event.LastKey = ke.Key
+			e.event.LastKeyTimestamp = ke.Timestamp
+			filled = true
 		case sdl.EVENT_KEY_UP:
 			ke := ev.KeyboardEvent()
-			if e.event.LastKeyUp == 0 {
-				e.event.LastKeyUp = ke.Key
-				e.event.LastKeyUpTimestamp = ke.Timestamp
-			}
+			e.event.LastKeyUp = ke.Key
+			e.event.LastKeyUpTimestamp = ke.Timestamp
+			filled = true
 		case sdl.EVENT_MOUSE_BUTTON_DOWN:
-			if e.event.LastMouseButton == 0 {
-				me := ev.MouseButtonEvent()
-				e.event.LastMouseButton = uint32(me.Button)
-				e.event.LastMouseTimestamp = me.Timestamp
-			}
+			me := ev.MouseButtonEvent()
+			e.event.LastMouseButton = uint32(me.Button)
+			e.event.LastMouseTimestamp = me.Timestamp
+			filled = true
 		case sdl.EVENT_MOUSE_BUTTON_UP:
-			if e.event.LastMouseButtonUp == 0 {
-				me := ev.MouseButtonEvent()
-				e.event.LastMouseButtonUp = uint32(me.Button)
-				e.event.LastMouseButtonUpTimestamp = me.Timestamp
-			}
+			me := ev.MouseButtonEvent()
+			e.event.LastMouseButtonUp = uint32(me.Button)
+			e.event.LastMouseButtonUpTimestamp = me.Timestamp
+			filled = true
 		}
 
 		if handle != nil {
 			if stop := handle(ev); stop {
 				break
 			}
+		}
+		if filled {
+			break
 		}
 	}
 
@@ -1715,6 +1743,7 @@ func (e *Experiment) End() {
 	if e.sdlLoader != nil {
 		e.sdlLoader.Unload()
 	}
+	e.endDone.Store(true)
 }
 
 // Fatal cleans up SDL resources, then logs the formatted message and exits.

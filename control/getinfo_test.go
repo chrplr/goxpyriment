@@ -174,3 +174,33 @@ func TestNormaliseSelectsForcesAValidOption(t *testing.T) {
 		t.Errorf("level = %q, a valid option must survive normalising", values["level"])
 	}
 }
+
+// GOXPY_DATA is an explicit choice for this run, so it beats the results
+// folder cached from the last confirmed dialog. It used to lose to it, and
+// then never took effect again on that machine. The other fields still come
+// from the cache, and subject_id never does.
+func TestInitialInfoValuesGOXPYDATABeatsTheCache(t *testing.T) {
+	cache := map[string]string{"output_dir": "/cached", "display_id": "1", "subject_id": "7"}
+	fields := []InfoField{
+		{Name: "subject_id"},
+		{Name: "display_id", Default: "0"},
+		{Name: "output_dir", Default: "/from-env"},
+	}
+
+	t.Setenv("GOXPY_DATA", "/from-env")
+	v := initialInfoValues(fields, cache)
+	if v["output_dir"] != "/from-env" {
+		t.Errorf("with GOXPY_DATA set: output_dir = %q, want %q", v["output_dir"], "/from-env")
+	}
+	if v["display_id"] != "1" {
+		t.Errorf("display_id = %q, want the cached %q", v["display_id"], "1")
+	}
+	if v["subject_id"] != "" {
+		t.Errorf("subject_id = %q, want it never taken from the cache", v["subject_id"])
+	}
+
+	t.Setenv("GOXPY_DATA", "  ") // blank counts as unset, as in DefaultDataDir
+	if v := initialInfoValues(fields, cache); v["output_dir"] != "/cached" {
+		t.Errorf("with GOXPY_DATA blank: output_dir = %q, want the cached %q", v["output_dir"], "/cached")
+	}
+}

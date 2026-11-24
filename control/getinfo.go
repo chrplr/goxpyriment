@@ -18,6 +18,7 @@ import (
 	"github.com/Zyko0/go-sdl3/sdl"
 	"github.com/Zyko0/go-sdl3/ttf"
 	"github.com/chrplr/goxpyriment/assets_embed"
+	"github.com/chrplr/goxpyriment/results"
 )
 
 // sharedSDLLoader and sharedTTFLoader hold SDL/TTF dylib handles loaded by
@@ -212,16 +213,31 @@ func dialogPresentation(outW, outH, dialogW, dialogH int32, displayScale float32
 // It is what -headless returns, and the starting point the browser overlays URL
 // parameters onto.
 func defaultInfoValues(fields []InfoField) map[string]string {
-	cache := loadInfoCache()
+	values := initialInfoValues(fields, loadInfoCache())
+	normaliseSelects(fields, values)
+	return values
+}
+
+// initialInfoValues gives each field its cached value, else its Default.
+//
+// Two fields never come from the cache. subject_id, for the reason given at
+// defaultInfoValues. And output_dir while GOXPY_DATA is set: the variable is an
+// explicit choice made for this run, and the dialog's default already shows it
+// (results.DefaultDataDir). It used to lose to the folder cached from the last
+// confirmed session, so once a dialog had been confirmed on a machine
+// GOXPY_DATA had no effect, and under -headless nothing on screen showed where
+// the data went.
+func initialInfoValues(fields []InfoField, cache map[string]string) map[string]string {
+	envDir := strings.TrimSpace(os.Getenv(results.EnvDataDir)) != ""
 	values := make(map[string]string, len(fields))
 	for _, f := range fields {
-		if cached, ok := cache[f.Name]; ok && f.Name != "subject_id" {
+		cached, ok := cache[f.Name]
+		if ok && f.Name != "subject_id" && !(f.Name == "output_dir" && envDir) {
 			values[f.Name] = cached
 		} else {
 			values[f.Name] = f.Default
 		}
 	}
-	normaliseSelects(fields, values)
 	return values
 }
 
@@ -345,16 +361,9 @@ func GetParticipantInfo(title string, fields []InfoField) (map[string]string, er
 	}
 	defer font.Close()
 
-	// Populate initial values from cache (subject_id always cleared).
-	cache := loadInfoCache()
-	values := make(map[string]string, len(fields))
-	for _, f := range fields {
-		if cached, ok := cache[f.Name]; ok && f.Name != "subject_id" {
-			values[f.Name] = cached
-		} else {
-			values[f.Name] = f.Default
-		}
-	}
+	// Populate initial values from cache (subject_id always cleared, and
+	// output_dir taken from GOXPY_DATA when it is set; see initialInfoValues).
+	values := initialInfoValues(fields, loadInfoCache())
 
 	// Split fields by type for layout and event handling.
 	var textIdx []int   // positions in fields where Type == FieldText or FieldNumber
