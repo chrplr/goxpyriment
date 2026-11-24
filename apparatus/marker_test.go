@@ -275,8 +275,9 @@ func waitForWrites(t *testing.T, out *fakeOutput, n int) []write {
 // lineOutput is a device that can also drive one line on its own, like every
 // triggers.OutputTTLDevice; it records which call each write went through.
 type lineOutput struct {
-	mu  sync.Mutex
-	ops []string
+	mu      sync.Mutex
+	ops     []string
+	failLow bool // SetLow is recorded but fails, like a device that dropped out
 }
 
 func (l *lineOutput) record(op string) error {
@@ -287,9 +288,17 @@ func (l *lineOutput) record(op string) error {
 }
 func (l *lineOutput) Send(code byte) error   { return l.record(fmt.Sprintf("Send(%d)", code)) }
 func (l *lineOutput) SetHigh(line int) error { return l.record(fmt.Sprintf("SetHigh(%d)", line)) }
-func (l *lineOutput) SetLow(line int) error  { return l.record(fmt.Sprintf("SetLow(%d)", line)) }
-func (l *lineOutput) AllLow() error          { return nil }
-func (l *lineOutput) Close() error           { return nil }
+func (l *lineOutput) SetLow(line int) error {
+	_ = l.record(fmt.Sprintf("SetLow(%d)", line))
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if l.failLow {
+		return errors.New("device unplugged")
+	}
+	return nil
+}
+func (l *lineOutput) AllLow() error { return nil }
+func (l *lineOutput) Close() error  { return nil }
 
 func (l *lineOutput) waitOps(t *testing.T, n int) []string {
 	t.Helper()
@@ -341,5 +350,37 @@ func TestMarkerSingleBitOverlapReplacesTheCode(t *testing.T) {
 	m.Fire(2)
 	if got := fmt.Sprint(out.waitOps(t, 3)); got != "[SetHigh(0) Send(2) SetLow(1)]" {
 		t.Errorf("writes = %s, want [SetHigh(0) Send(2) SetLow(1)]", got)
+	}
+}
+
+// When the worker gives up on a clear, the line may still be high. The next
+// single-bit code must then go through Send, which drives all eight lines: a
+// SetHigh would add to the stuck line, and every later code would read as
+// code|stuck.
+func TestMarkerCodeAfterAFailedClearUsesSend(t *testing.T) {
+	out := &lineOutput{failLow: true}
+	m := NewMarker(MarkerOptions{Output: out, TTLDuration: 2 * time.Millisecond})
+	defer m.Close()
+	m.Fire(1)
+	// SetHigh(0), then the clear and its maxClearRetries retries, all failing.
+	out.waitOps(t, 2+maxClearRetries)
+	time.Sleep(20 * time.Millisecond) // let the worker give up
+	out.mu.Lock()
+	out.failLow = false
+	out.ops = nil
+	out.mu.Unlock()
+
+	m.Fire(2)
+	if got := fmt.Sprint(out.waitOps(t, 2)); got != "[Send(2) SetLow(1)]" {
+		t.Errorf("writes after a failed clear = %s, want [Send(2) SetLow(1)]", got)
+	}
+	// The Send left only line 1 up and its clear succeeded, so the lines are
+	// known again and the next single-bit code may use one line.
+	out.mu.Lock()
+	out.ops = nil
+	out.mu.Unlock()
+	m.Fire(4)
+	if got := fmt.Sprint(out.waitOps(t, 2)); got != "[SetHigh(2) SetLow(2)]" {
+		t.Errorf("writes once the lines are known = %s, want [SetHigh(2) SetLow(2)]", got)
 	}
 }

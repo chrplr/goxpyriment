@@ -192,6 +192,7 @@ type Marker struct {
 	mu        sync.Mutex
 	high      bool      // a code is on the lines
 	cur       byte      // the code on the lines (valid while high)
+	unknown   bool      // a clear was given up on: the lines may still be high
 	clearAt   time.Time // when to clear them
 	closed    bool
 	poke      chan struct{} // capacity 1: wakes the worker after a write
@@ -605,11 +606,15 @@ func (m *Marker) sendCode(code byte) bool {
 	if m.high {
 		m.overlaps.Add(1)
 	}
+	viaSend := m.usesSend(code)
 	err := m.write(code)
 	if err == nil {
 		m.high = true
 		m.cur = code
 		m.clearAt = time.Now().Add(m.ttlDur)
+		if viaSend {
+			m.unknown = false // Send drives all eight lines
+		}
 	}
 	m.mu.Unlock()
 	if err != nil {
@@ -630,13 +635,26 @@ func (m *Marker) writeFailed(err error) {
 }
 
 // write puts code on the lines; m.mu must be held. A single-bit code written
-// to lines that are all low goes out as one SetHigh when the device can do
-// that (see markerLineOutput); anything else is a Send.
+// to lines that are known to be all low goes out as one SetHigh when the device
+// can do that (see markerLineOutput); anything else is a Send.
 func (m *Marker) write(code byte) error {
-	if lo, ok := m.out.(markerLineOutput); ok && !m.high && singleBit(code) {
-		return lo.SetHigh(bits.TrailingZeros8(code))
+	if !m.usesSend(code) {
+		return m.out.(markerLineOutput).SetHigh(bits.TrailingZeros8(code))
 	}
 	return m.out.Send(code)
+}
+
+// usesSend reports whether write sends code with Send rather than SetHigh;
+// m.mu must be held.
+//
+// SetHigh only adds a line, so it is right only when every line is known to be
+// low. That excludes a code still on the lines, and lines whose clear failed:
+// after the worker gave up on a clear, a SetHigh for the next code added to the
+// line left high, and every single-bit code then read as code|stuck for the
+// rest of the session.
+func (m *Marker) usesSend(code byte) bool {
+	_, ok := m.out.(markerLineOutput)
+	return !ok || m.high || m.unknown || !singleBit(code)
 }
 
 // clearLines drives the lines back to 0; m.mu must be held. A single line is
@@ -670,6 +688,8 @@ func (m *Marker) clearWorker() {
 			t.Stop()
 			return
 		case <-m.poke:
+			// A new code is on the lines; its clear gets its own retries.
+			retries = 0
 			m.mu.Lock()
 			high, at := m.high, m.clearAt
 			m.mu.Unlock()
@@ -691,9 +711,13 @@ func (m *Marker) clearWorker() {
 					continue
 				} else {
 					if err != nil {
+						// Given up: the lines may still carry the code, so the
+						// next one must drive all eight of them (see usesSend).
 						m.writeFailed(err)
+						m.unknown = true
 					} else {
 						m.clears.Add(1)
+						m.unknown = false
 					}
 					m.high = false
 					retries = 0

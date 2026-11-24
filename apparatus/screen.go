@@ -573,11 +573,12 @@ func (s *Screen) Update() error {
 			return fmt.Errorf("apparatus.Screen.Update: pre-present hook: %w", err)
 		}
 	}
-	// The last moment the finished frame can be read back (see Capture).
-	shot, shotPath, err := s.takeScreenshot()
-	if err != nil {
-		return fmt.Errorf("apparatus.Screen.Update: %w", err)
-	}
+	// The last moment the finished frame can be read back (see Capture). A
+	// failed read is returned at the end, like a failed file write, and does not
+	// stop the frame: returning here skipped the present, the onset stamp and
+	// the marker code, so a debugging screenshot cost the trial its stimulus and
+	// left an armed onset to be counted as Merged on the next flip.
+	shot, shotPath, shotErr := s.takeScreenshot()
 	// The deadline is one frame after the PREVIOUS frame's anchor, so it has to
 	// be sampled before this frame overwrites it.
 	anchor := s.anchorNS
@@ -589,6 +590,12 @@ func (s *Screen) Update() error {
 	// 2. Hold to the frame boundary.
 	if s.pacingEnabled() {
 		s.paceToFrame(anchor)
+	} else {
+		// Nothing held this frame, and recordOnset must not think otherwise.
+		// heldToTarget is only reset inside paceToFrame, so after SetVSync(0) a
+		// screen whose last paced frame had been held kept reporting that
+		// frame's scheduled boundary as the onset of every flip that followed.
+		s.heldToTarget = false
 	}
 	// 3. Report. Deliberately last: the vblank read here is the one the frame
 	// was scanned out at, which is a measurement. Reading it before the hold
@@ -601,6 +608,9 @@ func (s *Screen) Update() error {
 	}
 	// 5. A screenshot is written last, so that it delays neither the stamp
 	// nor the code.
+	if shotErr != nil {
+		return fmt.Errorf("apparatus.Screen.Update: %w", shotErr)
+	}
 	if shot != nil {
 		if err := saveScreenshot(shot, shotPath); err != nil {
 			return fmt.Errorf("apparatus.Screen.Update: %w", err)

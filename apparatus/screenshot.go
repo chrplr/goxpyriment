@@ -82,7 +82,9 @@ func (s *Screen) Capture() (*image.RGBA, error) {
 // presentation, and the file is written once Update has stamped the frame and
 // written its marker code, which delays what comes after it. So it is for
 // debugging and documentation, not for runs whose timing is analysed. An error
-// reading or writing the frame is returned by that Update.
+// reading or writing the frame is returned by that Update, after the frame has
+// been presented, stamped and marked: a failed screenshot loses the picture,
+// not the frame.
 func (s *Screen) ScreenshotNextFrame(path string) {
 	s.screenshotPath = path
 }

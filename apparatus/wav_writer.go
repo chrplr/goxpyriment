@@ -4,6 +4,7 @@
 package apparatus
 
 import (
+	"bytes"
 	"encoding/binary"
 	"fmt"
 	"os"
@@ -67,10 +68,67 @@ func WriteWAV(path string, spec sdl.AudioSpec, data []byte, cues ...WAVCue) erro
 		}
 	}
 
-	riffSize := 36 + dataSize // 4("WAVE") + 24(fmt chunk) + 8+dataSize(data chunk)
+	// RIFF chunks are word-aligned: a chunk of odd size is followed by one pad
+	// byte, which the parent's size counts and the chunk's own size does not.
+	// Only 8-bit audio with an odd frame count can produce an odd data chunk.
+	// Without the pad the cue and LIST chunks started one byte off, and editors
+	// ignored or misread the markers.
+	dataPad := dataSize % 2
+
+	riffSize := 36 + dataSize + dataPad // 4("WAVE") + 24(fmt chunk) + 8+dataSize(data chunk)
 	if len(cues) > 0 {
 		riffSize += 8 + cueDataSize  // "cue " header(8) + data
 		riffSize += 8 + listDataSize // "LIST" header(8) + data
+	}
+
+	// The header and the trailing chunks are assembled in memory (a
+	// bytes.Buffer write cannot fail), so the file sees three writes, each of
+	// which is checked.
+	le := binary.LittleEndian
+	var head bytes.Buffer
+	head.WriteString("RIFF")
+	head.Write(le.AppendUint32(nil, uint32(riffSize)))
+	head.WriteString("WAVE")
+	// fmt chunk
+	head.WriteString("fmt ")
+	head.Write(le.AppendUint32(nil, 16)) // chunk size
+	head.Write(le.AppendUint16(nil, audioFmt))
+	head.Write(le.AppendUint16(nil, uint16(channels)))
+	head.Write(le.AppendUint32(nil, uint32(sampleRate)))
+	head.Write(le.AppendUint32(nil, uint32(byteRate)))
+	head.Write(le.AppendUint16(nil, uint16(blockAlign)))
+	head.Write(le.AppendUint16(nil, uint16(bitsPerSample)))
+	// data chunk header; the samples follow it directly
+	head.WriteString("data")
+	head.Write(le.AppendUint32(nil, uint32(dataSize)))
+
+	var tail bytes.Buffer
+	if dataPad != 0 {
+		tail.WriteByte(0)
+	}
+	if len(cues) > 0 {
+		// cue chunk — sample positions of named markers
+		tail.WriteString("cue ")
+		tail.Write(le.AppendUint32(nil, uint32(cueDataSize)))
+		tail.Write(le.AppendUint32(nil, uint32(len(cues))))
+		for i, c := range cues {
+			tail.Write(le.AppendUint32(nil, uint32(i+1)))    // dwName — unique cue ID
+			tail.Write(le.AppendUint32(nil, c.SampleOffset)) // dwPosition
+			tail.WriteString("data")                         // fccChunk — references the data chunk
+			tail.Write(le.AppendUint32(nil, 0))              // dwChunkStart
+			tail.Write(le.AppendUint32(nil, 0))              // dwBlockStart
+			tail.Write(le.AppendUint32(nil, c.SampleOffset)) // dwSampleOffset
+		}
+		// LIST/adtl chunk — human-readable label for each cue point
+		tail.WriteString("LIST")
+		tail.Write(le.AppendUint32(nil, uint32(listDataSize)))
+		tail.WriteString("adtl")
+		for _, l := range labls {
+			tail.WriteString("labl")
+			tail.Write(le.AppendUint32(nil, uint32(4+len(l.label)))) // ckSize = cueID(4) + label bytes
+			tail.Write(le.AppendUint32(nil, l.id))
+			tail.Write(l.label)
+		}
 	}
 
 	f, err := os.CreateTemp(filepath.Dir(path), "goxpyriment-wav-*.wav")
@@ -78,74 +136,30 @@ func WriteWAV(path string, spec sdl.AudioSpec, data []byte, cues ...WAVCue) erro
 		return fmt.Errorf("WriteWAV: create temp: %w", err)
 	}
 	tmpPath := f.Name()
-
-	write := func(v any) {
-		if err != nil {
-			return
-		}
-		err = binary.Write(f, binary.LittleEndian, v)
+	fail := func(stage string, err error) error {
+		_ = f.Close()
+		_ = os.Remove(tmpPath)
+		return fmt.Errorf("WriteWAV: %s: %w", stage, err)
 	}
 
-	// RIFF header
-	f.WriteString("RIFF")
-	write(uint32(riffSize))
-	f.WriteString("WAVE")
-
-	// fmt chunk
-	f.WriteString("fmt ")
-	write(uint32(16)) // chunk size
-	write(uint16(audioFmt))
-	write(uint16(channels))
-	write(uint32(sampleRate))
-	write(uint32(byteRate))
-	write(uint16(blockAlign))
-	write(uint16(bitsPerSample))
-
-	// data chunk
-	f.WriteString("data")
-	write(uint32(dataSize))
-	_, writeErr := f.Write(data)
-	if err == nil {
-		err = writeErr
-	}
-
-	// cue chunk — sample positions of named markers
-	if len(cues) > 0 {
-		f.WriteString("cue ")
-		write(uint32(cueDataSize))
-		write(uint32(len(cues)))
-		for i, c := range cues {
-			write(uint32(i + 1))          // dwName — unique cue ID
-			write(uint32(c.SampleOffset)) // dwPosition
-			f.WriteString("data")         // fccChunk — references the data chunk
-			write(uint32(0))              // dwChunkStart
-			write(uint32(0))              // dwBlockStart
-			write(uint32(c.SampleOffset)) // dwSampleOffset
-		}
-
-		// LIST/adtl chunk — human-readable label for each cue point
-		f.WriteString("LIST")
-		write(uint32(listDataSize))
-		f.WriteString("adtl")
-		for _, le := range labls {
-			f.WriteString("labl")
-			write(uint32(4 + len(le.label))) // ckSize = cueID(4) + label bytes
-			write(le.id)
-			_, wErr := f.Write(le.label)
-			if err == nil {
-				err = wErr
-			}
+	for _, part := range [][]byte{head.Bytes(), data, tail.Bytes()} {
+		if _, err := f.Write(part); err != nil {
+			return fail("write", err)
 		}
 	}
-
-	f.Close()
-
-	if err != nil {
-		os.Remove(tmpPath)
-		return fmt.Errorf("WriteWAV: write: %w", err)
+	// A write that only fails when the data reaches the disk (disk full, a
+	// network filesystem) is reported by Sync or Close. Both used to be
+	// ignored, so a truncated recording was renamed into place and reported as
+	// saved.
+	if err := f.Sync(); err != nil {
+		return fail("sync", err)
+	}
+	if err := f.Close(); err != nil {
+		_ = os.Remove(tmpPath)
+		return fmt.Errorf("WriteWAV: close: %w", err)
 	}
 	if err := os.Rename(tmpPath, path); err != nil {
-		os.Remove(tmpPath)
+		_ = os.Remove(tmpPath)
 		return fmt.Errorf("WriteWAV: rename: %w", err)
 	}
 	return nil

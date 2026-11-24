@@ -24,7 +24,11 @@ var ErrVoiceTimeout = errors.New("voice key: response timeout")
 // Recommended threshold: 0.02–0.05 (F32LE scale 0–1). Start low and raise if
 // you get false triggers from breathing or room noise.
 //
-// Recommended WindowSz: 128 samples at 44100 Hz ≈ 2.9 ms resolution.
+// Recommended WindowSz: 128 frames at 44100 Hz ≈ 2.9 ms resolution. A frame is
+// one sample per channel, so the resolution does not depend on channel count.
+//
+// The microphone must deliver AUDIO_F32LE, as DefaultRecordingSpec does; Arm
+// and WaitOnset return an error for any other format.
 //
 // OnOnset, if non-nil, is called on the calling goroutine immediately after
 // onset is detected and before the post-onset recording window begins. Use it
@@ -55,8 +59,36 @@ func NewVoiceKey(mic *Microphone, threshold float32, windowSz int) *VoiceKey {
 //
 // Call Arm as close as possible to — or just before — showing the stimulus,
 // then pass the returned timestamp to WaitOnset.
+//
+// It refuses a microphone whose format the voice key cannot measure (see
+// checkSpec) before starting the capture.
 func (vk *VoiceKey) Arm() (captureStartNS uint64, err error) {
+	if err := vk.checkSpec(); err != nil {
+		return 0, err
+	}
 	return vk.Mic.StartCapture()
+}
+
+// checkSpec reports whether the microphone delivers audio the voice key can
+// measure: 32-bit float samples (the default recording spec), any number of
+// channels, a positive rate. SDL converts the device's own format to Mic.Spec,
+// so this is a check on what was asked for, not on the hardware.
+//
+// It exists because the format used to be assumed. Every sample was taken to be
+// one mono F32 frame, so a stereo microphone counted two samples per frame and
+// put each onset about twice as far from the capture start as it was, and S16
+// audio was decoded as float and compared with a meaningless threshold.
+func (vk *VoiceKey) checkSpec() error {
+	s := vk.Mic.Spec
+	switch {
+	case s.Format != sdl.AUDIO_F32LE:
+		return fmt.Errorf("voice key: microphone format 0x%04X is not supported; open it as AUDIO_F32LE (DefaultRecordingSpec)", uint32(s.Format))
+	case s.Channels < 1:
+		return fmt.Errorf("voice key: microphone has %d channels", s.Channels)
+	case s.Freq <= 0:
+		return fmt.Errorf("voice key: microphone sample rate %d Hz is not positive", s.Freq)
+	}
+	return nil
 }
 
 // WaitOnset polls the microphone until a vocal onset is detected or the timeout
@@ -75,16 +107,23 @@ func (vk *VoiceKey) Arm() (captureStartNS uint64, err error) {
 // that was captured before the timeout.
 //
 // timeoutMS < 0 means no timeout (wait indefinitely).
+//
+// WindowSz counts frames (one sample per channel), and the RMS is taken over
+// every sample in the window, all channels together.
 func (vk *VoiceKey) WaitOnset(captureStartNS uint64, timeoutMS int, postOnsetMS int) (onsetNS uint64, pcm []byte, err error) {
 	const readBufBytes = 2048 // read up to 2048 bytes at a time (~11.6 ms at 44100 Hz F32LE mono)
 
+	if err := vk.checkSpec(); err != nil {
+		_ = vk.Mic.StopCapture()
+		return 0, nil, err
+	}
 	sampleRate := uint64(vk.Mic.Spec.Freq)
-	bytesPerSample := 4 // F32LE = 4 bytes per sample
-	windowBytes := vk.WindowSz * bytesPerSample
+	bytesPerFrame := 4 * int(vk.Mic.Spec.Channels) // F32LE = 4 bytes per sample
+	windowBytes := vk.WindowSz * bytesPerFrame
 
 	readBuf := make([]byte, readBufBytes)
 	var accumulated []byte // leftover bytes from previous read that haven't formed a full window
-	var totalSamplesRead uint64
+	var totalFramesRead uint64
 
 	var deadline time.Time
 	if timeoutMS >= 0 {
@@ -116,7 +155,7 @@ func (vk *VoiceKey) WaitOnset(captureStartNS uint64, timeoutMS int, postOnsetMS 
 		for len(accumulated) >= windowBytes {
 			window := accumulated[:windowBytes]
 			if rmsF32(window) > vk.Threshold {
-				onsetNS = captureStartNS + totalSamplesRead*1_000_000_000/sampleRate
+				onsetNS = captureStartNS + totalFramesRead*1_000_000_000/sampleRate
 				if vk.OnOnset != nil {
 					vk.OnOnset()
 				}
@@ -138,7 +177,7 @@ func (vk *VoiceKey) WaitOnset(captureStartNS uint64, timeoutMS int, postOnsetMS 
 				_ = vk.Mic.StopCapture()
 				return onsetNS, pcm, nil
 			}
-			totalSamplesRead += uint64(vk.WindowSz)
+			totalFramesRead += uint64(vk.WindowSz)
 			accumulated = accumulated[windowBytes:]
 		}
 	}
@@ -172,6 +211,10 @@ func SampleOnsetNS(captureStartNS uint64, sampleIndex int, sampleRate int) uint6
 // ScanOnset scans a PCM buffer for the first window exceeding threshold and
 // returns its sample index (or -1 if not found). Useful for post-hoc analysis
 // of saved WAV files.
+//
+// It assumes mono AUDIO_F32LE, the default recording spec: the index counts
+// 4-byte samples. For a multi-channel buffer, divide it by the channel count to
+// get a frame index for SampleOnsetNS.
 func ScanOnset(pcm []byte, threshold float32, windowSz int) int {
 	if windowSz <= 0 {
 		windowSz = 128
