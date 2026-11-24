@@ -155,7 +155,10 @@ func NewMMBTS(portPath string, opts ...MMBTSOption) (*MMBTS, error) {
 		p.Close()
 		return nil, fmt.Errorf("mmbts: open %s: pulse width %v is not positive", portPath, b.pulseWidth)
 	}
-	if err := b.AllLow(); err != nil {
+	// Written unconditionally, in either mode: this is the documented
+	// initialisation, not a clear, so the Pulse-mode skip in Send must not
+	// apply to it.
+	if err := b.write(0x00); err != nil {
 		p.Close()
 		return nil, fmt.Errorf("mmbts: open %s: %w", portPath, err)
 	}
@@ -186,7 +189,29 @@ func (b *MMBTS) current() byte {
 // In Pulse mode the firmware clears the lines 8 ms later, and a mask sent less
 // than 8 ms after the previous one is queued behind it rather than replacing
 // it: 8 ms is the shortest usable interval between codes.
+//
+// For the same reason, in Pulse mode Send(0) writes nothing. The host cannot
+// lower the lines in this mode — the firmware does, 8 ms after each byte — and
+// a 0x00 byte is not a clear but one more 8 ms pulse, during which a real code
+// is queued. That is what the falling edge FireTriggerSync and the onset marker
+// issue after every code did: it held the box, and the next frame's code went
+// out late. Only the shadow is updated. Any non-zero mask is a code and is
+// always sent, even one that is a subset of the lines still up: Send cannot
+// tell a new code from an attempt to lower some lines, and dropping a code
+// would be worse.
 func (b *MMBTS) Send(mask byte) error {
+	if b.port == nil {
+		return ErrMMBTSNotOpen
+	}
+	if b.mode == MMBTSPulseMode && mask == 0 {
+		b.mask = 0
+		return nil
+	}
+	return b.write(mask)
+}
+
+// write puts mask on the wire unconditionally and records it as the shadow.
+func (b *MMBTS) write(mask byte) error {
 	if b.port == nil {
 		return ErrMMBTSNotOpen
 	}
@@ -212,11 +237,25 @@ func (b *MMBTS) SetHigh(line int) error {
 
 // SetLow drives a single output line LOW, leaving the others as they are.
 // line is 0-indexed (0–7). Implements [OutputTTLDevice].
+//
+// In Pulse mode it writes nothing: the firmware lowers the line itself at the
+// end of its 8 ms pulse. A write would be a new 8 ms pulse of the remaining
+// bits — SetLow(1) on 0x03 put a spurious code 0x01 on the lines — and would
+// delay the next code by occupying the box (see [MMBTS.Send]). Only the shadow
+// is updated, so a SetHigh within the pulse does not raise this line again.
 func (b *MMBTS) SetLow(line int) error {
 	if line < 0 || line > 7 {
 		return ErrMMBTSBadLine
 	}
-	return b.Send(b.current() &^ (1 << uint(line)))
+	rest := b.current() &^ (1 << uint(line))
+	if b.mode == MMBTSPulseMode {
+		if b.port == nil {
+			return ErrMMBTSNotOpen
+		}
+		b.mask = rest
+		return nil
+	}
+	return b.Send(rest)
 }
 
 // Pulse drives line HIGH then LOW, blocking for the whole pulse.
@@ -241,10 +280,14 @@ func (b *MMBTS) Pulse(line int, dur time.Duration) error {
 }
 
 // AllLow drives all eight output lines LOW. Implements [OutputTTLDevice].
+//
+// In Pulse mode it writes nothing, for the reason given at [MMBTS.Send]: the
+// lines are LOW within 8 ms of the last code whatever the host does.
 func (b *MMBTS) AllLow() error { return b.Send(0x00) }
 
 // Close drives every line LOW and closes the serial port. Safe to call more
-// than once. Implements [OutputTTLDevice].
+// than once. Implements [OutputTTLDevice]. In Pulse mode the firmware does the
+// lowering, within 8 ms of the last code.
 func (b *MMBTS) Close() error {
 	if b.port == nil {
 		return nil

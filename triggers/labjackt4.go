@@ -109,6 +109,12 @@ func NewLabJackT4(host string, opts ...LabJackT4Option) (*LabJackT4, error) {
 	handler := modbus.NewTCPClientHandler(host)
 	handler.Timeout = t4DefaultTimeout
 	handler.SlaveId = t4DefaultUnitID
+	// Never drop the connection for being idle. goburrow closes it after 60 s
+	// without traffic by default, and the next request reconnects first — so
+	// the first trigger after an instruction screen or a break went out a TCP
+	// handshake late. Sessions are idle for minutes at a time between blocks.
+	// A WithT4... option can still set IdleTimeout on the handler.
+	handler.IdleTimeout = 0
 
 	t := &LabJackT4{
 		handler:      handler,

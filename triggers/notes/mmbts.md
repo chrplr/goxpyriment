@@ -33,6 +33,15 @@ shadow expires after the pulse width: a `SetHigh` more than 8 ms after the last
 write starts from zero rather than resurrecting a code the recording has already
 seen fall.
 
+**In pulse mode the host never writes a clear.** `SetLow`, `Send(0)`, `AllLow`
+and `Close` put nothing on the wire and only update the shadow; the firmware
+lowers the lines itself. A clear byte is not a clear in this mode but one more
+8 ms pulse: the 0x00 that `FireTriggerSync` and the onset marker issue after
+each code held the box for 8 ms and queued the next code behind it, and a
+partial `SetLow` (0x03 → 0x01) went out as a spurious second code. Any non-zero
+`Send` is still sent, even a subset of the lines still up: a code is never
+dropped. Simple mode is unchanged — there the host's clear is the falling edge.
+
 **D-Sub 25 pinout** (female, standard LPT):
 
 | Pin | Function |

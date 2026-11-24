@@ -86,7 +86,17 @@ func (p *ParallelPort) Open() error {
 	}
 	p.handle.f = f
 	p.shadow = 0
-	return p.writeData(0) // ensure all lines start LOW
+	// Ensure all lines start LOW. If even that fails the port is unusable, so it
+	// is released and closed here: Open reporting an error while still holding
+	// the claim left the port busy to every later open until the process exited,
+	// since no caller calls Close on a port whose Open failed.
+	if err := p.writeData(0); err != nil {
+		syscall.Syscall(syscall.SYS_IOCTL, f.Fd(), ppRelease, 0)
+		f.Close()
+		p.handle.f = nil
+		return err
+	}
+	return nil
 }
 
 // Close sets all lines LOW, releases the port, and closes the device file.

@@ -196,7 +196,14 @@ func NewMEGTTLBox(portPath string, opts ...MEGTTLBoxOption) (*MEGTTLBox, error) 
 	if err != nil {
 		return nil, fmt.Errorf("megttlbox: open %s: %w", portPath, err)
 	}
-	p.SetReadTimeout(megReadTimeout)
+	// The timeout is what bounds every read: rx1 and rxFull rely on it, and
+	// without it a read blocks forever. Ignoring a failure here meant a box that
+	// never answers (legacy firmware, during probeInfo) hung the program before
+	// its window opened.
+	if err := p.SetReadTimeout(megReadTimeout); err != nil {
+		p.Close()
+		return nil, fmt.Errorf("megttlbox: set read timeout on %s: %w", portPath, err)
+	}
 
 	b := &MEGTTLBox{
 		port:         p,
@@ -608,7 +615,18 @@ func (b *MEGTTLBox) Close() error {
 
 // ReadAll returns the current state of all 8 input lines as a bitmask.
 // Bit N reflects line N. Implements [InputTTLDevice].
+//
+// Stale bytes are discarded before the request, as PollEvent does. Without
+// that, one reply arriving after rx1 had given up stayed in the buffer, and
+// every later call returned the reply to the call before it: a press reported
+// one poll late, for the rest of the session.
 func (b *MEGTTLBox) ReadAll() (byte, error) {
+	if b.port == nil {
+		return 0, ErrMEGNotOpen
+	}
+	if err := b.port.ResetInputBuffer(); err != nil {
+		return 0, fmt.Errorf("megttlbox.ReadAll: discarding stale input: %w", err)
+	}
 	if err := b.tx(megOpGetResponseButton); err != nil {
 		return 0, fmt.Errorf("megttlbox.ReadAll: %w", err)
 	}

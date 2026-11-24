@@ -156,6 +156,7 @@ func (t *FT232HTrigger) ft232hWriteOutputs(mask byte) error {
 func (t *FT232HTrigger) ft232hReadInputs() (byte, error) {
 	t.handle.mu.Lock()
 	defer t.handle.mu.Unlock()
+	ft232hDrainIn(t.handle.fd)
 	// SEND_IMMEDIATE (0x87) flushes the MPSSE TX buffer to USB right away so
 	// the GET_BITS_HIGH response arrives without waiting for the latency timer.
 	if err := ft232hBulkWrite(t.handle.fd, []byte{mpsseGetBitsHigh, mpsseFlushTxBuf}); err != nil {
@@ -359,6 +360,27 @@ func ft232hBulkReadRaw(fd int, n int) ([]byte, error) {
 		return nil, fmt.Errorf("bulk read: %w", errno)
 	}
 	return buf[:int(ret)], nil
+}
+
+// ft232hDrainIn discards IN packets until the chip has nothing queued, so that
+// the next read returns the reply to the next request.
+//
+// ft232hReadOneByte takes the payload of the first packet that has one. A reply
+// that arrived after an earlier read had timed out was therefore returned to the
+// read after it, and every read from then on returned the previous one's state.
+//
+// With the latency timer at 1 ms the chip sends a modem-status packet with no
+// payload whenever it has nothing else to send, so the first such packet means
+// the queue is empty and the drain costs about one latency period. It is
+// bounded, and a read error ends it: an error here means nothing is pending,
+// and a real fault shows on the read that follows.
+func ft232hDrainIn(fd int) {
+	for range 8 {
+		data, err := ft232hBulkReadRaw(fd, 64)
+		if err != nil || len(data) <= ft232hModemBytes {
+			return
+		}
+	}
 }
 
 // ft232hReadOneByte reads the 1-byte MPSSE GPIO response.

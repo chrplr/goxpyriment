@@ -172,3 +172,90 @@ func TestMMBTSModeString(t *testing.T) {
 		t.Errorf("MMBTSSimpleMode = %q, want %q", got, "simple")
 	}
 }
+
+// In Pulse mode the host cannot lower a line: every byte is a new 8 ms pulse.
+// A clear written after a code therefore held the box for 8 ms and queued the
+// next code behind it, and a partial clear was a spurious second code. The
+// lowering calls must put nothing on the wire.
+func TestMMBTSPulseModeLoweringWritesNothing(t *testing.T) {
+	b, p := newFakeMMBTS(MMBTSPulseMode)
+
+	// FireTriggerSync's pattern: raise, then lower the same line.
+	if err := b.SetHigh(0); err != nil {
+		t.Fatalf("SetHigh(0): %v", err)
+	}
+	if err := b.SetLow(0); err != nil {
+		t.Fatalf("SetLow(0): %v", err)
+	}
+	// The onset marker's pattern for a multi-bit code: send it, then send 0.
+	if err := b.Send(0x06); err != nil {
+		t.Fatalf("Send(0x06): %v", err)
+	}
+	if err := b.Send(0x00); err != nil {
+		t.Fatalf("Send(0x00): %v", err)
+	}
+	if err := b.AllLow(); err != nil {
+		t.Fatalf("AllLow: %v", err)
+	}
+	if got, want := p.written.Bytes(), []byte{0x01, 0x06}; !bytes.Equal(got, want) {
+		t.Errorf("wire = % X, want % X (only the codes, no clears)", got, want)
+	}
+}
+
+// A partial lowering used to write the remaining bits, which the firmware
+// emitted as a second, spurious code. Now it only updates the shadow, so a
+// raise inside the pulse does not bring the lowered line back.
+func TestMMBTSPulseModePartialLowerOnlyUpdatesShadow(t *testing.T) {
+	b, p := newFakeMMBTS(MMBTSPulseMode)
+	b.mask, b.maskAt = 0x03, time.Now()
+
+	if err := b.SetLow(1); err != nil {
+		t.Fatalf("SetLow(1): %v", err)
+	}
+	if n := p.written.Len(); n != 0 {
+		t.Fatalf("SetLow(1) wrote % X, want nothing", p.written.Bytes())
+	}
+	if err := b.SetHigh(2); err != nil {
+		t.Fatalf("SetHigh(2): %v", err)
+	}
+	if got, want := p.written.Bytes(), []byte{0x05}; !bytes.Equal(got, want) {
+		t.Errorf("SetHigh(2) after SetLow(1) on 0x03 wrote % X, want % X", got, want)
+	}
+}
+
+// Send cannot tell a new code from an attempt to lower some lines, so any
+// non-zero mask is a code and goes out, even a subset of the lines still up.
+// Pulse is an explicit raise and always goes out too.
+func TestMMBTSPulseModeNeverDropsACode(t *testing.T) {
+	b, p := newFakeMMBTS(MMBTSPulseMode)
+
+	if err := b.Send(0x03); err != nil {
+		t.Fatalf("Send(0x03): %v", err)
+	}
+	if err := b.Send(0x01); err != nil {
+		t.Fatalf("Send(0x01): %v", err)
+	}
+	if err := b.Send(0x01); err != nil { // an explicit repeat
+		t.Fatalf("Send(0x01) again: %v", err)
+	}
+	if err := b.Pulse(0, 0); err != nil {
+		t.Fatalf("Pulse(0): %v", err)
+	}
+	if got, want := p.written.Bytes(), []byte{0x03, 0x01, 0x01, 0x01}; !bytes.Equal(got, want) {
+		t.Errorf("wire = % X, want % X", got, want)
+	}
+}
+
+// Close in Pulse mode leaves the lowering to the firmware: no clear byte.
+func TestMMBTSPulseModeCloseWritesNothing(t *testing.T) {
+	b, p := newFakeMMBTS(MMBTSPulseMode)
+	if err := b.SetHigh(3); err != nil {
+		t.Fatalf("SetHigh(3): %v", err)
+	}
+	if err := b.Close(); err != nil {
+		t.Fatalf("Close: %v", err)
+	}
+	if got, want := p.written.Bytes(), []byte{0x08}; !bytes.Equal(got, want) {
+		t.Errorf("wire = % X, want % X", got, want)
+	}
+}

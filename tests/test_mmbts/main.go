@@ -203,8 +203,8 @@ func runSequence(ctx context.Context, box *triggers.MMBTS, line int, width time.
 
 	fmt.Println("\n--- SetHigh / SetLow: one line at a time (0.5 s each) ---")
 	if box.Mode() == triggers.MMBTSPulseMode {
-		fmt.Println("  (in pulse mode the firmware drops each line after 8 ms, so the SetLow")
-		fmt.Println("   that follows only confirms a line that is already LOW)")
+		fmt.Println("  (in pulse mode the firmware drops each line after 8 ms, and the SetLow")
+		fmt.Println("   that follows writes nothing: the line is already LOW)")
 	}
 	for l := range 8 {
 		if ctx.Err() != nil {
