@@ -21,9 +21,12 @@
 //     sound plays, and a green downward arrow marks where the line was crossed.
 //
 // Measures recorded per trial: endpoint (on the 0-40 scale), endpoint bias
-// (endpoint - target), endpoint error (|bias|), and movement time (target onset
-// to line crossing). The full trajectory is stored as one CSV column of
-// "x,y,t;..." triples (t in ms from the start press). Offline resampling to a
+// (endpoint - target), endpoint error (|bias|), the time the pointer reached the
+// threshold, the target onset (the flip that first showed the number, one frame
+// after the threshold), and movement time (target onset to line crossing). The
+// full trajectory is stored as one CSV column of "x,y,t;..." triples, sampled
+// once per display frame. All times are ms from the start press, on the SDL
+// clock (the press's event timestamp, flip timestamps). Offline resampling to a
 // fixed 100 Hz (cubic spline, as in the paper) is left to analysis.
 //
 // This v1 records data only: the paper's trial-validity rules (no backward /
@@ -77,11 +80,16 @@ const (
 	startRectH = float32(40)
 	startRectY = float32(-360) // dark-grey start rectangle, bottom-centre
 
-	maxTrialMS       = 8000 // per-trial timeout from the start press (ms)
-	itiMS            = 800  // inter-trial interval (ms)
-	feedbackMS       = 700  // how long the feedback arrow stays on (ms)
-	sampleIntervalMS = 8    // ~125 Hz trajectory sampling (paper resamples to 100 Hz offline)
+	maxTrialMS = 8000 // per-trial timeout from the start press (ms)
+	itiMS      = 800  // inter-trial interval (ms)
+	feedbackMS = 700  // how long the feedback arrow stays on (ms)
 )
+
+// The trajectory is sampled once per display frame — 60 Hz on a 60 Hz display.
+// The loop flips every iteration and Update holds to the frame boundary, so it
+// cannot sample faster; an 8 ms interval it once had, labelled "~125 Hz", was
+// never reached. The paper resamples to 100 Hz offline, which here means
+// interpolating between frame-rate samples.
 
 // ── Colors ─────────────────────────────────────────────────────────────────────
 
@@ -140,29 +148,33 @@ func feedbackArrow(crossX float32) *stimuli.Shape {
 	return arrow
 }
 
-// drawScene clears the screen and draws the provided drawables.
-func drawScene(screen *apparatus.Screen, items ...stimuli.VisualStimulus) error {
+// drawScene clears the screen, draws the provided drawables and flips. It
+// returns the flip's timestamp (SDL clock, ns), the frame's onset.
+func drawScene(screen *apparatus.Screen, items ...stimuli.VisualStimulus) (uint64, error) {
 	if err := screen.Clear(); err != nil {
-		return err
+		return 0, err
 	}
 	for _, s := range items {
 		if err := s.Draw(screen); err != nil {
-			return err
+			return 0, err
 		}
 	}
-	return screen.Update()
+	return screen.FlipTS()
 }
 
 // ── Single trial ─────────────────────────────────────────────────────────────
 
+// trialResult holds one trial's measures. Times are ms from the start press,
+// all on the SDL clock; -1 means the event did not happen.
 type trialResult struct {
-	endpoint   float32
-	bias       float32
-	errAbs     float32
-	onsetMS    int64
-	movementMS int64
-	completed  bool
-	trajectory string
+	endpoint      float32
+	bias          float32
+	errAbs        float32
+	thresholdMS   int64 // the pointer reached the movement-onset threshold
+	targetOnsetMS int64 // the flip that first showed the target number
+	movementMS    int64 // target onset to line crossing
+	completed     bool
+	trajectory    string
 }
 
 // applyTargetFont, if set, applies the large target font to a text stimulus.
@@ -185,47 +197,57 @@ func runTrial(exp *control.Experiment, target int) (trialResult, error) {
 	}
 
 	// ── Phase 1: wait for a button press inside the start rectangle ───────────
+	//
+	// The trial clock starts at the press itself: the button-down event's SDL
+	// timestamp. It used to start when the polling loop noticed the button was
+	// down, 0 to ~one frame + 5 ms after the press, which shifted every time in
+	// the trial by a different amount on each trial. When no button-down event
+	// arrived in the cycle that saw the press — the button was already held, or
+	// was pressed outside the box and slid in — the trial starts at that poll.
+	var pressNS uint64
 	for {
-		if err := drawScene(exp.Screen, numberLine, label0, label40, startRect); err != nil {
+		if _, err := drawScene(exp.Screen, numberLine, label0, label40, startRect); err != nil {
 			return trialResult{}, err
 		}
 		state := exp.PollEvents(nil)
 		if state.QuitRequested {
 			return trialResult{}, control.EndLoop
 		}
+		polledNS := control.TicksNS()
 		if exp.Mouse.IsPressed(control.BUTTON_LEFT) {
 			mx, my := exp.Screen.MousePosition()
 			if inRect(mx, my, 0, startRectY, startRectW, startRectH) {
+				pressNS = polledNS
+				if state.LastMouseButton == control.BUTTON_LEFT {
+					pressNS = state.LastMouseTimestamp
+				}
 				break
 			}
 		}
 		time.Sleep(5 * time.Millisecond)
 	}
+	msSincePress := func(ts uint64) int64 { return int64(ts-pressNS) / 1_000_000 }
 
 	// ── Phase 2: drag up while the button is held; record the trajectory ──────
-	pressMS := clock.GetTime()
 	var traj []tPoint
-	var lastSampleMS int64 = -sampleIntervalMS
-
-	onset := false
-	var onsetMS int64
-
-	res := trialResult{}
+	res := trialResult{thresholdMS: -1, targetOnsetMS: -1, movementMS: -1}
 
 	for {
-		nowMS := clock.GetTime() - pressMS
-
-		mx, my := exp.Screen.MousePosition()
-
-		if nowMS-lastSampleMS >= sampleIntervalMS {
-			traj = append(traj, tPoint{X: mx, Y: my, T: nowMS})
-			lastSampleMS = nowMS
+		// Pump the events first, so the position read next is as fresh as the
+		// clock read beside it. No sleep in this loop: the flip below paces it,
+		// and a sleep would only delay each sample from its frame's start.
+		state := exp.PollEvents(nil)
+		if state.QuitRequested {
+			return trialResult{}, control.EndLoop
 		}
+		nowMS := msSincePress(control.TicksNS())
+		mx, my := exp.Screen.MousePosition()
+		traj = append(traj, tPoint{X: mx, Y: my, T: nowMS})
 
 		// Movement onset: pointer reaches the 70-px-from-bottom threshold.
-		if !onset && my >= onsetThresholdY {
-			onset = true
-			onsetMS = nowMS
+		// The target replaces the fixation cross on the next flip.
+		if res.thresholdMS < 0 && my >= onsetThresholdY {
+			res.thresholdMS = nowMS
 		}
 
 		// Crossing the number line ends the trial.
@@ -236,8 +258,11 @@ func runTrial(exp *control.Experiment, target int) (trialResult, error) {
 			if res.errAbs < 0 {
 				res.errAbs = -res.errAbs
 			}
-			res.onsetMS = onsetMS
-			res.movementMS = nowMS - onsetMS
+			// -1 if the pointer passed the threshold and the line within one
+			// sample, so the target was never on screen.
+			if res.targetOnsetMS >= 0 {
+				res.movementMS = nowMS - res.targetOnsetMS
+			}
 			res.completed = true
 			res.trajectory = encodeTrajectory(traj)
 			return res, nil
@@ -245,29 +270,26 @@ func runTrial(exp *control.Experiment, target int) (trialResult, error) {
 
 		// Build the scene: number line + labels, then cross or target.
 		items := []stimuli.VisualStimulus{numberLine, label0, label40}
-		if onset {
+		showsTarget := res.thresholdMS >= 0
+		if showsTarget {
 			items = append(items, targetText)
 		} else {
 			items = append(items, fixCross)
 		}
-		if err := drawScene(exp.Screen, items...); err != nil {
+		flipNS, err := drawScene(exp.Screen, items...)
+		if err != nil {
 			return trialResult{}, err
 		}
-
-		state := exp.PollEvents(nil)
-		if state.QuitRequested {
-			return trialResult{}, control.EndLoop
+		if showsTarget && res.targetOnsetMS < 0 {
+			res.targetOnsetMS = msSincePress(flipNS)
 		}
 
 		// Button released before crossing, or timeout: incomplete (no re-presentation in v1).
 		if !exp.Mouse.IsPressed(control.BUTTON_LEFT) || nowMS > maxTrialMS {
 			res.completed = false
-			res.onsetMS = onsetMS
 			res.trajectory = encodeTrajectory(traj)
 			return res, nil
 		}
-
-		time.Sleep(5 * time.Millisecond)
 	}
 }
 
@@ -282,7 +304,7 @@ func showFeedback(exp *control.Experiment, crossX float32) error {
 
 	start := clock.GetTime()
 	for clock.GetTime()-start < feedbackMS {
-		if err := drawScene(exp.Screen, numberLine, label0, label40, arrow); err != nil {
+		if _, err := drawScene(exp.Screen, numberLine, label0, label40, arrow); err != nil {
 			return err
 		}
 		state := exp.PollEvents(nil)
@@ -323,7 +345,7 @@ func main() {
 
 	exp.AddDataVariableNames([]string{
 		"trial", "target", "endpoint", "endpoint_bias", "endpoint_error",
-		"target_onset_ms", "movement_time_ms", "completed", "trajectory",
+		"threshold_ms", "target_onset_ms", "movement_time_ms", "completed", "trajectory",
 	})
 
 	// Build 0..40 repeated `reps` times, then a single global random order.
@@ -368,11 +390,11 @@ func main() {
 				}
 				exp.Data.Add(i+1, target, fmt.Sprintf("%.3f", result.endpoint),
 					fmt.Sprintf("%.3f", result.bias), fmt.Sprintf("%.3f", result.errAbs),
-					result.onsetMS, result.movementMS, true, result.trajectory)
+					result.thresholdMS, result.targetOnsetMS, result.movementMS, true, result.trajectory)
 				fmt.Printf("Trial %3d  target=%2d  endpoint=%.2f  bias=%+.2f  MT=%dms\n",
 					i+1, target, result.endpoint, result.bias, result.movementMS)
 			} else {
-				exp.Data.Add(i+1, target, "", "", "", result.onsetMS, -1, false, result.trajectory)
+				exp.Data.Add(i+1, target, "", "", "", result.thresholdMS, result.targetOnsetMS, -1, false, result.trajectory)
 				fmt.Printf("Trial %3d  target=%2d  incomplete\n", i+1, target)
 			}
 		}

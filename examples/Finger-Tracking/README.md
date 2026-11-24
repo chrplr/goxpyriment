@@ -85,12 +85,15 @@ Data are saved to `goxpy_data/` as a `.csv` file, one row per trial:
 | `endpoint` | Position where the pointer crossed the line, on the 0–40 scale |
 | `endpoint_bias` | `endpoint − target` (positive = rightward bias) |
 | `endpoint_error` | Absolute value of the bias |
-| `target_onset_ms` | Time of movement onset, in ms from the start press |
-| `movement_time_ms` | Time from target onset to line crossing |
+| `threshold_ms` | Time the pointer reached the movement-onset threshold (70 px from the bottom), in ms from the start press; `-1` if it never did |
+| `target_onset_ms` | Time of the flip that first showed the target number (the frame after the threshold), in ms from the start press; `-1` if it never appeared |
+| `movement_time_ms` | Time from target onset to line crossing; `-1` if the line was not crossed, or was crossed before the target appeared |
 | `completed` | `true` if the line was crossed; `false` if the button was released early or the trial timed out |
 | `trajectory` | Full pointer path as `x,y,t;x,y,t;…` (t in ms from the start press) |
 
-The trajectory is sampled at ~125 Hz. The paper resamples each trajectory to a fixed 100 Hz via cubic-spline interpolation; that step is left to offline analysis.
+All times are on the SDL clock: the start press is the button-down event's own timestamp, the target onset is a flip timestamp, and trajectory samples are stamped when the pointer position is read. A flip timestamp is when the frame was handed to the display, which precedes the photons by a latency that is constant per setup and is not subtracted here.
+
+The trajectory is sampled once per display frame (60 Hz on a 60 Hz display). The paper resamples each trajectory to a fixed 100 Hz via cubic-spline interpolation; that step is left to offline analysis.
 
 ---
 

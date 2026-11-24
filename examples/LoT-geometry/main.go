@@ -8,7 +8,6 @@ import (
 	"log"
 	"math"
 
-	"github.com/chrplr/goxpyriment/clock"
 	"github.com/chrplr/goxpyriment/control"
 	"github.com/chrplr/goxpyriment/design"
 	"github.com/chrplr/goxpyriment/stimuli"
@@ -43,8 +42,17 @@ func NewSequence(name string, base []int) Sequence {
 	return Sequence{Name: name, Base: base, Indices: full}
 }
 
-// drawEnvironment renders stimuli directly on the main thread (inside exp.Run).
+// drawEnvironment renders the scene and flips, on the main thread (inside exp.Run).
 func drawEnvironment(exp *control.Experiment, dots []*stimuli.Circle, fixation *stimuli.FixCross, target *stimuli.Circle, octagonPoints []control.FPoint, activeIdx int) error {
+	if err := drawScene(exp, dots, fixation, target, octagonPoints, activeIdx); err != nil {
+		return err
+	}
+	return exp.Screen.Update()
+}
+
+// drawScene draws the dots, the fixation and, if activeIdx >= 0, the target,
+// without flipping.
+func drawScene(exp *control.Experiment, dots []*stimuli.Circle, fixation *stimuli.FixCross, target *stimuli.Circle, octagonPoints []control.FPoint, activeIdx int) error {
 	if err := exp.Screen.Clear(); err != nil {
 		return err
 	}
@@ -65,7 +73,7 @@ func drawEnvironment(exp *control.Experiment, dots []*stimuli.Circle, fixation *
 			return err
 		}
 	}
-	return exp.Screen.Update()
+	return nil
 }
 
 func flashSequence(exp *control.Experiment, dots []*stimuli.Circle, fixation *stimuli.FixCross, target *stimuli.Circle, octagonPoints []control.FPoint, indices []int) error {
@@ -82,15 +90,29 @@ func flashSequence(exp *control.Experiment, dots []*stimuli.Circle, fixation *st
 	return nil
 }
 
+// getGuess puts up the response screen (dots and fixation) and waits for a left
+// click on one of the eight locations. It returns the location and the RT in ms.
+//
+// The RT runs from the flip that puts the response screen up to the click's
+// SDL event timestamp — both on the SDL clock. It used to run from before that
+// screen was drawn and flipped, which added the render and the flip to every
+// RT, and it ended when the click was processed, not when it happened.
+//
+// A click made before that flip is accepted, as it always was: the same dots
+// are already on screen during the preceding wait, and nothing discards clicks
+// made during it. Such a click now gets a NEGATIVE RT, which is what it is;
+// before, it was recorded as a near-zero RT indistinguishable from a fast one.
 func getGuess(exp *control.Experiment, dots []*stimuli.Circle, fixation *stimuli.FixCross, octagonPoints []control.FPoint) (int, int64, error) {
-	startTime := clock.GetTime()
-	// Ensure screen is updated with dots and fixation
-	if err := drawEnvironment(exp, dots, fixation, nil, octagonPoints, -1); err != nil {
+	if err := drawScene(exp, dots, fixation, nil, octagonPoints, -1); err != nil {
+		return -1, 0, err
+	}
+	onset, err := exp.Screen.FlipTS()
+	if err != nil {
 		return -1, 0, err
 	}
 
 	for {
-		btn, err := exp.Mouse.WaitPress()
+		btn, clickTS, err := exp.Mouse.GetPressEventTS(-1)
 		if err != nil {
 			return -1, 0, err
 		}
@@ -101,7 +123,7 @@ func getGuess(exp *control.Experiment, dots []*stimuli.Circle, fixation *stimuli
 				dx := mx - p.X
 				dy := my - p.Y
 				if dx*dx+dy*dy < 40*40 { // 40px radius click zone
-					return i, clock.GetTime() - startTime, nil
+					return i, int64(clickTS-onset) / 1_000_000, nil
 				}
 			}
 		}
@@ -207,7 +229,12 @@ func main() {
 
 				// B. Wait for guess
 				targetIdx := indices[step]
-				clickIdx, rt, _ := getGuess(exp, dots, fixation, octagonPoints)
+				clickIdx, rt, err := getGuess(exp, dots, fixation, octagonPoints)
+				if err != nil {
+					// ESC or window close (or a failed flip). This used to be
+					// discarded, which wrote a row with click_idx -1 and rt 0.
+					return err
+				}
 
 				isCorrect := (clickIdx == targetIdx)
 

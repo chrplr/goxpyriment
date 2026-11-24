@@ -645,18 +645,25 @@ func main() {
 		exp.Screen.Update()
 		clock.Wait(500)
 
+		// RT runs from the flip that shows the pair to the key event, both on
+		// the SDL clock: the steps exp.ShowAndGetRT takes, spelled out because
+		// the scene is three stimuli rather than one. Presses made during the
+		// fixation are discarded first, as ShowAndGetRT does; otherwise one would
+		// be returned at once and recorded against a pair not yet on screen.
+		exp.Keyboard.Clear()
 		exp.Screen.Clear()
 		fixation.Draw(exp.Screen)
 		leftShape.Draw(exp.Screen)
 		rightShape.Draw(exp.Screen)
-		exp.Screen.Update()
-
-		startTime := clock.GetTime()
+		onset, err := exp.Screen.FlipTS()
+		if err != nil {
+			exp.Fatal("presenting the pair: %v", err)
+		}
 
 		var key control.Keycode
-		var err error
+		var keyTS uint64
 		for {
-			key, err = exp.Keyboard.WaitKeys([]control.Keycode{control.K_S, control.K_D, control.K_ESCAPE}, -1)
+			key, keyTS, err = exp.Keyboard.GetKeyEventTS([]control.Keycode{control.K_S, control.K_D, control.K_ESCAPE}, -1)
 			if err != nil {
 				if control.IsEndLoop(err) {
 					return
@@ -668,7 +675,7 @@ func main() {
 			}
 		}
 
-		rt := clock.GetTime() - startTime
+		rt := int64(keyTS-onset) / 1_000_000 // ms, as before
 
 		response := ""
 		isCorrect := false

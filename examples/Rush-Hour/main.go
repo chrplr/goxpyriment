@@ -29,7 +29,6 @@ import (
 	"log"
 	"time"
 
-	"github.com/chrplr/goxpyriment/clock"
 	"github.com/chrplr/goxpyriment/control"
 )
 
@@ -83,8 +82,28 @@ func runTrial(exp *control.Experiment, trial int, p Puzzle, nTrials int) error {
 	b := p.Fresh()
 	status := fmt.Sprintf("Puzzle %d/%d - free the RED car", trial, nTrials)
 
-	onset := clock.GetTime()
-	logRow(exp, trial, p, newRow("trial_start", 0))
+	// The puzzle's onset is the flip that first shows it, and every time in the
+	// trial is an SDL event timestamp minus that flip's — one clock throughout.
+	// t_ms used to come from the Go clock, read before the board was even drawn,
+	// and a click's t_ms was read when the loop got round to it, up to a frame
+	// after the click.
+	//
+	// Clicks queued before the board appears (on the solved screen or during the
+	// ITI) are discarded: they were made on a different screen, and were
+	// otherwise applied as moves on this puzzle's first frame.
+	exp.Keyboard.Clear() // drains the whole SDL queue, mouse included
+	if err := drawBoard(exp, b, nil, status); err != nil {
+		return err
+	}
+	onsetNS, err := exp.Screen.FlipTS()
+	if err != nil {
+		return err
+	}
+	msSinceOnset := func(ts uint64) int64 { return int64(ts-onsetNS) / 1_000_000 }
+
+	start := newRow("trial_start", 0)
+	start.tsNS = onsetNS
+	logRow(exp, trial, p, start)
 
 	// slides counts *slides*, not clicks: consecutive one-cell steps of the
 	// same vehicle in the same direction are one slide, which is the metric
@@ -97,7 +116,6 @@ func runTrial(exp *control.Experiment, trial int, p Puzzle, nTrials int) error {
 			return control.EndLoop
 		}
 		mx, my := exp.Screen.MousePosition()
-		now := clock.GetTime() - onset
 
 		// Vehicle under the cursor, outlined in white as a hover cue.
 		var hover *Car
@@ -109,7 +127,7 @@ func runTrial(exp *control.Experiment, trial int, p Puzzle, nTrials int) error {
 		// Every click is logged, including the ones that move nothing, so
 		// hesitations and blocked attempts stay in the record.
 		if state.LastMouseButton == control.BUTTON_LEFT {
-			r := newRow("click_empty", now)
+			r := newRow("click_empty", msSinceOnset(state.LastMouseTimestamp))
 			r.tsNS = state.LastMouseTimestamp
 			r.mouseX, r.mouseY = mx, my
 
@@ -136,9 +154,12 @@ func runTrial(exp *control.Experiment, trial int, p Puzzle, nTrials int) error {
 		}
 
 		// ── Solved? ───────────────────────────────────────────────────────
+		// Only a click can solve the board, so the trial ends at the click
+		// handled just above: its event time, not the moment it was noticed.
 		if b.Solved() {
-			trialMS := clock.GetTime() - onset
+			trialMS := msSinceOnset(state.LastMouseTimestamp)
 			r := newRow("trial_end", trialMS)
+			r.tsNS = state.LastMouseTimestamp
 			r.nMoves = slides.N()
 			r.solved = true
 			r.trialMS = trialMS

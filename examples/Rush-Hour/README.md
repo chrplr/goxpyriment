@@ -107,15 +107,15 @@ One CSV row per **action**, plus a summary row per puzzle.
 | `trial`, `puzzle` | Trial number (1-based) and puzzle name from `puzzles.txt` |
 | `min_moves` | Length of the shortest solution for this puzzle |
 | `event` | `trial_start`, `click_move`, `click_blocked`, `click_empty`, `trial_end` |
-| `t_ms` | Milliseconds since the onset of the puzzle |
-| `event_ts_ns` | SDL3 hardware timestamp (ns) — on the three `click_*` rows only |
+| `t_ms` | Milliseconds since the onset of the puzzle: the event's timestamp minus the onset's (`0` on `trial_start`) |
+| `event_ts_ns` | SDL clock timestamp (ns): the flip that first showed the puzzle on `trial_start`, the click's event timestamp on the `click_*` rows, and the solving click's on `trial_end` |
 | `mouse_x`, `mouse_y` | Cursor position, center-relative, +Y up |
 | `car`, `orientation` | Vehicle letter and `H`/`V` |
 | `from_row`, `from_col` | Position of the vehicle before the move |
 | `to_row`, `to_col` | Position after the move |
 | `n_moves`, `solved`, `trial_ms` | Summary — filled on the `trial_end` row only (`-1` / `false` elsewhere) |
 
-Every click produces exactly one row. `click_move` is a click that displaced a
+Every click made while a puzzle is on screen produces exactly one row; clicks made before it appears (on the previous solved screen or during the ITI) are discarded. `click_move` is a click that displaced a
 vehicle by one cell; `click_blocked` is a click on a vehicle that could not move
 that way (a wall or a neighbouring vehicle); `click_empty` is a click
 that hit no vehicle at all. The latter two are the record of hesitations and
