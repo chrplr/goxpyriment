@@ -39,7 +39,7 @@ The doc comment (lines 47–54) states the design intent: **most methods are thi
 
 ## 4. Event handling
 
-**`PollEvents(handler)`** (630) is the one place SDL events are drained. It resets transient state, loops over events, records the first key/mouse/keyup of the cycle plus their nanosecond timestamps, and sets the **sticky** `QuitRequested` on ESC or window-close. The `Keyboard`/`Mouse` closures and `WaitAnyEventTS` all sit on top of this.
+**`PollEvents(handler)`** (630) is the one place SDL events are drained. It resets transient state, loops over events, records the first key/mouse/keyup of the cycle plus their nanosecond timestamps, and sets the **sticky** `QuitRequested` on ESC, window-close or a caught Ctrl-C/SIGTERM. The cycle stops right after the first key or mouse-button event, leaving the rest queued for the next call, so a second press is never consumed and dropped. The `Keyboard`/`Mouse` closures and `WaitAnyEventTS` all sit on top of this.
 
 ## 5. Convenience methods (the ergonomic layer)
 

@@ -182,7 +182,7 @@ control.ErrCancelled  // returned when the user cancels the dialog
 |---|---|
 | `exp.Keyboard` | `*apparatus.Keyboard` — see Keyboard section |
 | `exp.Mouse` | `*apparatus.Mouse` — see Mouse section |
-| `exp.PollEvents(handle func(sdl.Event) bool) EventState` | Process all pending SDL events; optionally forward to a handler. Returns `EventState` including nanosecond timestamps. |
+| `exp.PollEvents(handle func(sdl.Event) bool) EventState` | Process pending SDL events, up to and including the first key or mouse-button event (the rest stay queued for the next call); optionally forward each to a handler. Returns `EventState` including nanosecond timestamps. |
 | `exp.HandleEvents() (Keycode, uint32, error)` | Convenience wrapper: returns `(key, mouseButton, error)`. |
 
 `EventState` now includes SDL event timestamps:
