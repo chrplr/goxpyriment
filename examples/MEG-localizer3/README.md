@@ -111,6 +111,7 @@ Besides the standard `-w`, `-d N` and `-s <id>`:
 | `-ttl-ms N` | 5 | Pulse width in ms; must be shorter than the shortest trial |
 | `-photodiode` | on | Flash a white square in the top-left corner for one frame at every trial onset (habituation flashes included), drawn in the same flip as the onset; the square is black on every other frame, instructions included, because grey→white is too small a step for reliable photodiode detection. The TTL marker is raised when that flip returns, which is one to three frames *before* the square reaches the screen; the photodiode measures that lag. `-photodiode=false` disables it |
 | `-photodiode-size N` | 100 | Side of the photodiode square, in pixels |
+| `-photodiode-corner C` | tl | Corner of the screen the square is in: `tl`, `tr`, `bl` or `br` |
 | `-marker-frames N` | 1 | Frames the square stays white from each onset |
 
 The photodiode square and the TTL pulse are the library's onset marker

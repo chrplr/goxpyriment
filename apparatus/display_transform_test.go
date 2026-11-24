@@ -4,6 +4,7 @@
 package apparatus
 
 import (
+	"fmt"
 	"math"
 	"os"
 	"testing"
@@ -233,16 +234,87 @@ func TestDisplayTransformUnderLogicalSize(t *testing.T) {
 }
 
 func TestDisplayTransformLeavesThePhotodiodeSquare(t *testing.T) {
-	for _, logical := range []bool{false, true} {
-		s := newOffscreenScreen(t, 400, 200)
-		if logical {
-			if err := s.SetLogicalSize(100, 100); err != nil {
+	const W, H, side = 400, 200, 30
+	// The square on the screen, in output pixels, for each corner.
+	at := map[MarkerCorner]box{
+		CornerTopLeft:     {0, 0, side - 1, side - 1},
+		CornerTopRight:    {W - side, 0, W - 1, side - 1},
+		CornerBottomLeft:  {0, H - side, side - 1, H - 1},
+		CornerBottomRight: {W - side, H - side, W - 1, H - 1},
+	}
+	for _, corner := range []MarkerCorner{CornerTopLeft, CornerTopRight, CornerBottomLeft, CornerBottomRight} {
+		for _, logical := range []bool{false, true} {
+			s := newOffscreenScreen(t, W, H)
+			if logical {
+				if err := s.SetLogicalSize(100, 100); err != nil {
+					t.Fatal(err)
+				}
+			}
+			s.marker = NewMarker(MarkerOptions{Photodiode: true, Size: side, Corner: corner})
+			if err := s.SetDisplayTransform(-50, 20, 0.8); err != nil {
 				t.Fatal(err)
 			}
+			if err := s.Clear(); err != nil {
+				t.Fatal(err)
+			}
+			if err := s.drawMarker(); err != nil {
+				t.Fatal(err)
+			}
+			label := fmt.Sprintf("%s logical=%v", corner.Name(), logical)
+			_, black := readBoxes(t, s)
+			want := at[corner]
+			wantBox(t, label+": photodiode square", black, want)
+
+			// MarkerRect is the square in the drawing space: screen point Q is
+			// at drawing point c + (q − c − d)/m, q being Q in drawing units.
+			sc, offX := float32(1), float32(0)
+			if logical {
+				sc, offX = 2, 100 // 100×100 letterboxed in 400×200
+			}
+			cx, cy := float32(s.Width)/2, float32(s.Height)/2
+			dx, dy := -50/sc, -20/sc
+			toDrawing := func(X, Y float32) (float32, float32) {
+				qx, qy := (X-offX)/sc, Y/sc
+				return cx + (qx-cx-dx)/0.8, cy + (qy-cy-dy)/0.8
+			}
+			x0, y0 := toDrawing(float32(want.x0), float32(want.y0))
+			x1, y1 := toDrawing(float32(want.x1+1), float32(want.y1+1))
+			r := s.MarkerRect()
+			if math.Abs(float64(r.X-x0)) > 1 || math.Abs(float64(r.Y-y0)) > 1 ||
+				math.Abs(float64(r.X+r.W-x1)) > 1 || math.Abs(float64(r.Y+r.H-y1)) > 1 {
+				t.Errorf("%s: MarkerRect = %+v, want (%v,%v)-(%v,%v)", label, r, x0, y0, x1, y1)
+			}
+			// Without a letterbox and where the image reaches the corner (only
+			// the top-left one: the shifted, shrunk image spans x -10..310,
+			// y 0..160 on the screen), the square is on the image: filled
+			// there under the transform, it covers the square on the screen.
+			// Elsewhere it is in the uncovered strip, where drawing is clipped.
+			if !logical && corner == CornerTopLeft {
+				drawWhite(t, s, r)
+				white, _ := readBoxes(t, s)
+				wantBox(t, label+": MarkerRect filled under the transform", white, want)
+			}
 		}
-		s.marker = NewMarker(MarkerOptions{Photodiode: true, Size: 30})
-		if err := s.SetDisplayTransform(-50, 20, 0.8); err != nil {
-			t.Fatal(err)
+	}
+}
+
+// Without a logical size or a transform, MarkerRect is the square itself, in
+// its corner, and MarkerOverlaps tests a rectangle against it.
+func TestMarkerRectCorners(t *testing.T) {
+	const W, H, side = 300, 200, 40
+	for _, c := range []struct {
+		corner MarkerCorner
+		want   sdl.FRect
+	}{
+		{CornerTopLeft, sdl.FRect{X: 0, Y: 0, W: side, H: side}},
+		{CornerTopRight, sdl.FRect{X: W - side, Y: 0, W: side, H: side}},
+		{CornerBottomLeft, sdl.FRect{X: 0, Y: H - side, W: side, H: side}},
+		{CornerBottomRight, sdl.FRect{X: W - side, Y: H - side, W: side, H: side}},
+	} {
+		s := newOffscreenScreen(t, W, H)
+		s.SetMarker(NewMarker(MarkerOptions{Photodiode: true, Size: side, Corner: c.corner}))
+		if r := s.MarkerRect(); r != c.want {
+			t.Errorf("%s: MarkerRect = %+v, want %+v", c.corner.Name(), r, c.want)
 		}
 		if err := s.Clear(); err != nil {
 			t.Fatal(err)
@@ -251,33 +323,66 @@ func TestDisplayTransformLeavesThePhotodiodeSquare(t *testing.T) {
 			t.Fatal(err)
 		}
 		_, black := readBoxes(t, s)
-		wantBox(t, "photodiode square", black, box{0, 0, 29, 29})
+		wantBox(t, c.corner.Name()+": square", black,
+			box{int(c.want.X), int(c.want.Y), int(c.want.X+c.want.W) - 1, int(c.want.Y+c.want.H) - 1})
 
-		// MarkerRect is the square in the drawing space: screen point Q is
-		// at drawing point c + (q − c − d)/m, q being Q in drawing units.
-		sc, offX := float32(1), float32(0)
-		if logical {
-			sc, offX = 2, 100 // 100×100 letterboxed in 400×200
+		// A rectangle next to the square: clear of it with no margin, not
+		// with a margin that reaches it.
+		var next sdl.FRect
+		if c.corner.right() {
+			next = sdl.FRect{X: W - side - 20, Y: c.want.Y, W: 15, H: side}
+		} else {
+			next = sdl.FRect{X: side + 5, Y: c.want.Y, W: 15, H: side}
 		}
-		cx, cy := float32(s.Width)/2, float32(s.Height)/2
-		dx, dy := -50/sc, -20/sc
-		toDrawing := func(X, Y float32) (float32, float32) {
-			qx, qy := (X-offX)/sc, Y/sc
-			return cx + (qx-cx-dx)/0.8, cy + (qy-cy-dy)/0.8
+		if s.MarkerOverlaps(next, 0) {
+			t.Errorf("%s: %+v 5 px from the square overlaps it", c.corner.Name(), next)
 		}
-		x0, y0 := toDrawing(0, 0)
-		x1, y1 := toDrawing(30, 30)
-		r := s.MarkerRect()
-		if math.Abs(float64(r.X-x0)) > 1 || math.Abs(float64(r.Y-y0)) > 1 ||
-			math.Abs(float64(r.X+r.W-x1)) > 1 || math.Abs(float64(r.Y+r.H-y1)) > 1 {
-			t.Errorf("logical=%v: MarkerRect = %+v, want (%v,%v)-(%v,%v)", logical, r, x0, y0, x1, y1)
+		if !s.MarkerOverlaps(next, 6) {
+			t.Errorf("%s: %+v 5 px from the square is clear of it with a 6 px margin", c.corner.Name(), next)
 		}
-		// Without a letterbox the square is on the image: filled there under
-		// the transform, it covers the square on the screen.
-		if !logical {
-			drawWhite(t, s, r)
-			white, _ := readBoxes(t, s)
-			wantBox(t, "MarkerRect filled under the transform", white, box{0, 0, 29, 29})
+		// The centre of the screen is as far from the square as its inner
+		// corner, in every corner.
+		inner := math.Hypot(W/2-side, H/2-side)
+		if d := s.MarkerDistance(W/2, H/2); math.Abs(float64(d)-inner) > 1e-3 {
+			t.Errorf("%s: MarkerDistance(centre) = %v, want %v", c.corner.Name(), d, inner)
+		}
+		if d := s.MarkerDistance(c.want.X+side/2, c.want.Y+side/2); d != 0 {
+			t.Errorf("%s: MarkerDistance inside the square = %v, want 0", c.corner.Name(), d)
+		}
+		centre := *s.CenteredRect(sdl.FPoint{}, 100, 100)
+		if s.MarkerOverlaps(centre, 0) {
+			t.Errorf("%s: the centre %+v overlaps the square", c.corner.Name(), centre)
+		}
+		whole := sdl.FRect{W: W, H: H}
+		if !s.MarkerOverlaps(whole, 0) {
+			t.Errorf("%s: the whole screen does not overlap the square", c.corner.Name())
+		}
+	}
+	s := newOffscreenScreen(t, W, H)
+	if s.MarkerOverlaps(sdl.FRect{W: W, H: H}, 0) {
+		t.Error("MarkerOverlaps is true without a marker")
+	}
+	if d := s.MarkerDistance(0, 0); !math.IsInf(float64(d), 1) {
+		t.Errorf("MarkerDistance without a marker = %v, want +Inf", d)
+	}
+}
+
+func TestParseMarkerCorner(t *testing.T) {
+	for in, want := range map[string]MarkerCorner{
+		"tl": CornerTopLeft, "TR": CornerTopRight, "bl": CornerBottomLeft, "br": CornerBottomRight,
+		"top-left": CornerTopLeft, " Bottom-Right ": CornerBottomRight, "topright": CornerTopRight,
+	} {
+		got, err := ParseMarkerCorner(in)
+		if err != nil || got != want {
+			t.Errorf("ParseMarkerCorner(%q) = %v, %v; want %v", in, got, err, want)
+		}
+		if back, err := ParseMarkerCorner(got.String()); err != nil || back != got {
+			t.Errorf("ParseMarkerCorner(%q) = %v, %v: String does not round-trip", got.String(), back, err)
+		}
+	}
+	for _, in := range []string{"", "t", "left", "center"} {
+		if _, err := ParseMarkerCorner(in); err == nil {
+			t.Errorf("ParseMarkerCorner(%q): no error", in)
 		}
 	}
 }

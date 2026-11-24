@@ -51,9 +51,10 @@
 // -ttl-pin-sentence/-nonword/-probe N. The -photodiode and -ttl flags are the
 // library's onset marker (control.MarkerFlags).
 //
-// -photodiode adds a 200 px white square in the top-left corner, flashed for
-// one frame on exactly the frames that carry a word onset and the probe, so a
-// photodiode can be compared against the TTL pin on a scope.
+// -photodiode adds a 200 px white square in a corner of the screen
+// (-photodiode-corner, top-left by default), flashed for one frame on exactly
+// the frames that carry a word onset and the probe, so a photodiode can be
+// compared against the TTL pin on a scope.
 //
 // With -ttl the experiment marks the recording on three pins of the device
 // (a DLP-IO8-G by design): pin 1 is pulsed at every word onset of a sentence

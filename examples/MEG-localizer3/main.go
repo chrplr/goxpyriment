@@ -341,15 +341,16 @@ func main() {
 		frameMs := 1000.0 / refresh
 		secToFrames := func(s float64) int { return maxInt(1, int(math.Round(s*refresh))) }
 
-		// The photodiode square sits at the top-left corner of the drawing
-		// area; its inner corner must lie outside the dartboard, or the square
-		// would hide checks and the photodiode would see the stimulus fade as
-		// well as the flash.
-		if side := exp.Marker.Size(); exp.Marker.PhotodiodeEnabled() {
+		// The photodiode square sits at a corner of the screen
+		// (-photodiode-corner); it must lie outside the dartboard, or the
+		// square would hide checks and the photodiode would see the stimulus
+		// fade as well as the flash. MarkerDistance is measured in the drawing
+		// space, display transform included.
+		if exp.Marker.PhotodiodeEnabled() {
 			w, h := exp.DrawArea()
-			if math.Hypot(float64(w/2-side), float64(h/2-side)) < ringPx[NRings] {
+			if float64(exp.Screen.MarkerDistance(w/2, h/2)) < ringPx[NRings] {
 				log.Printf("Warning: the %.0f px photodiode square overlaps the stimulus (outer radius %.0f px)",
-					side, ringPx[NRings])
+					exp.Marker.Size(), ringPx[NRings])
 			}
 		}
 

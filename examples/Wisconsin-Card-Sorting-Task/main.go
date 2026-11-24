@@ -334,12 +334,16 @@ func main() {
 		log.Printf("warning: show cursor: %v", err)
 	}
 
-	// The photodiode square sits at the top-left corner of the screen: in the
-	// letterbox bar on a wide display, next to the first key card (and the
-	// frame drawn round a chosen card) on a 4:3 one.
-	if r := exp.Screen.MarkerRect(); exp.Marker.PhotodiodeEnabled() &&
-		r.X+r.W-logicalW/2 > keyX(0)-cardW/2-8 && logicalH/2-(r.Y+r.H) < keyY+cardH/2+8 {
-		log.Printf("Warning: the %.0f px photodiode square overlaps the first key card", exp.Marker.Size())
+	// The photodiode square sits at a corner of the screen (-photodiode-corner):
+	// in the letterbox bar on a wide display, next to an outer key card (and
+	// the frame drawn round a chosen card, 8 px out) on a 4:3 one.
+	for i := 0; i < 4; i++ {
+		if exp.Screen.MarkerOverlaps(*exp.Screen.CenteredRect(control.Point(keyX(i), keyY), cardW, cardH), 8) {
+			log.Printf("Warning: the %.0f px photodiode square overlaps key card %d", exp.Marker.Size(), i+1)
+		}
+	}
+	if exp.Screen.MarkerOverlaps(*exp.Screen.CenteredRect(control.Point(0, testY), cardW, cardH), 8) {
+		log.Printf("Warning: the %.0f px photodiode square overlaps the test card", exp.Marker.Size())
 	}
 
 	exp.AddExperimentInfo(fmt.Sprintf("deck: %d cards (%s)", len(buildDeck(*allCards)),

@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"testing"
 	"time"
+
+	"github.com/chrplr/goxpyriment/apparatus"
 )
 
 // withFreshFlags runs f against an empty command line and no registered
@@ -46,14 +48,14 @@ func TestMarkerFlagsOffByDefault(t *testing.T) {
 func TestMarkerFlagsParse(t *testing.T) {
 	withFreshFlags(t, func() {
 		MarkerFlags()
-		args := []string{"-photodiode", "-photodiode-size", "80", "-marker-frames", "2",
-			"-ttl", "megttlbox:/dev/ttyACM0", "-ttl-ms", "10"}
+		args := []string{"-photodiode", "-photodiode-size", "80", "-photodiode-corner", "br",
+			"-marker-frames", "2", "-ttl", "megttlbox:/dev/ttyACM0", "-ttl-ms", "10"}
 		if err := flag.CommandLine.Parse(args); err != nil {
 			t.Fatal(err)
 		}
 		c, _ := markerConfigFromFlags()
-		want := MarkerConfig{Photodiode: true, PhotodiodeSize: 80, Frames: 2,
-			TTL: "megttlbox:/dev/ttyACM0", TTLDuration: 10 * time.Millisecond}
+		want := MarkerConfig{Photodiode: true, PhotodiodeSize: 80, PhotodiodeCorner: apparatus.CornerBottomRight,
+			Frames: 2, TTL: "megttlbox:/dev/ttyACM0", TTLDuration: 10 * time.Millisecond}
 		if c != want {
 			t.Errorf("config = %+v, want %+v", c, want)
 		}
@@ -78,6 +80,42 @@ func TestMarkerFlagsDefaults(t *testing.T) {
 		}
 		if c, _ := markerConfigFromFlags(); c.Photodiode {
 			t.Error("-photodiode=false did not override the default")
+		}
+	})
+	// A paradigm's default corner, top-left without one, overridden by the flag.
+	withFreshFlags(t, func() {
+		MarkerFlags(MarkerConfig{Photodiode: true, PhotodiodeCorner: apparatus.CornerTopRight})
+		if err := flag.CommandLine.Parse(nil); err != nil {
+			t.Fatal(err)
+		}
+		if c, _ := markerConfigFromFlags(); c.PhotodiodeCorner != apparatus.CornerTopRight {
+			t.Errorf("default corner = %v, want tr", c.PhotodiodeCorner)
+		}
+	})
+	withFreshFlags(t, func() {
+		MarkerFlags(MarkerConfig{Photodiode: true, PhotodiodeCorner: apparatus.CornerTopRight})
+		if err := flag.CommandLine.Parse([]string{"-photodiode-corner", "bottom-left"}); err != nil {
+			t.Fatal(err)
+		}
+		if c, _ := markerConfigFromFlags(); c.PhotodiodeCorner != apparatus.CornerBottomLeft {
+			t.Errorf("-photodiode-corner bottom-left gave %v", c.PhotodiodeCorner)
+		}
+	})
+}
+
+// A corner that is not one must stop the session, not fall back to top-left
+// with the photodiode taped elsewhere.
+func TestMarkerFlagsBadCornerIsFatal(t *testing.T) {
+	withFreshFlags(t, func() {
+		var msg string
+		markerFatal = func(format string, args ...any) { msg = fmt.Sprintf(format, args...) }
+		MarkerFlags(MarkerConfig{Photodiode: true})
+		if err := flag.CommandLine.Parse([]string{"-photodiode-corner", "middle"}); err != nil {
+			t.Fatal(err)
+		}
+		markerConfigFromFlags()
+		if msg == "" {
+			t.Error("-photodiode-corner middle was accepted")
 		}
 	})
 }
@@ -112,6 +150,7 @@ func TestMarkerConfigValidate(t *testing.T) {
 		{Photodiode: true, PhotodiodeSize: -1},
 		{Frames: -1},
 		{TTLDuration: -time.Millisecond},
+		{Photodiode: true, PhotodiodeCorner: apparatus.CornerBottomRight + 1},
 	} {
 		if err := c.validate(); err == nil {
 			t.Errorf("validate(%+v) accepted an invalid config", c)

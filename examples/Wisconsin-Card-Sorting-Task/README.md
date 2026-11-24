@@ -61,6 +61,7 @@ go run ./examples/Wisconsin-Card-Sorting-Task -s 1 -w     # windowed
 | `-max_duration` | 0 | Time limit for the session, as a Go duration (`10m`, `90s`, `1m30s`); 0 = no limit. See below |
 | `-photodiode` | off | White square in the top-left corner for 3 frames from every card onset, black otherwise. See below |
 | `-photodiode-size` | 100 | Side of the photodiode square, in pixels |
+| `-photodiode-corner` | tl | Corner of the screen the square is in: `tl`, `tr`, `bl` or `br` |
 | `-marker-frames` | 3 | Frames the square stays white from each onset; also the default TTL pulse length |
 | `-ttl KIND[:PORT]` | none | Send a TTL code at every card onset: `dlpio8[:PORT\|auto]`, `dlpio20`, `megttlbox:/dev/ttyACM0`, `mmbts:/dev/ttyACM0`, `parallel[:/dev/parport0]`, `gpio`, `ft232h`, `labjackt4:HOST`, `null` |
 | `-ttl-ms` | 0 | How long the code stays on the lines, in ms; 0 = `-marker-frames` frame periods (50 ms at 60 Hz) |
@@ -94,7 +95,7 @@ go run ./examples/Wisconsin-Card-Sorting-Task -s 1 -photodiode -ttl megttlbox:/d
 
 These flags are the library's onset marker (`control.MarkerFlags`; see UserManual Section 17), so they behave the same in every paradigm that uses it.
 
-- `-photodiode` shows a square in the top-left corner (100 px, `-photodiode-size`) that is **white for 3 frames from each card onset** (50 ms at 60 Hz) and black on every other frame of the session, instructions included. It is black rather than background grey, because black→white is a much larger step than grey→white and a photodiode detects it more reliably. The 100 px square leaves the first key card clear; a size above 160 px overlaps it, and the program warns.
+- `-photodiode` shows a square in a corner of the screen (top-left unless `-photodiode-corner` says otherwise; 100 px, `-photodiode-size`) that is **white for 3 frames from each card onset** (50 ms at 60 Hz) and black on every other frame of the session, instructions included. It is black rather than background grey, because black→white is a much larger step than grey→white and a photodiode detects it more reliably. The 100 px square leaves the key cards clear; a size above 160 px overlaps an outer one, and the program warns.
 - `-ttl` writes `-ttl-code` to the TTL lines right after the onset flip — the same flip that turns the square white — and clears them by timer 3 frame periods later (50 ms at 60 Hz; `-ttl-ms` to change). A device that cannot be opened stops the program before any window opens; a write that fails during the run is reported on the console and counted in the `-info.txt`.
 - With `-photodiode` the card is held, redrawn, until the square has gone black again (4 flips) before the response wait starts. A response given meanwhile is kept, with its own timestamp, so RTs are unaffected. `-ttl` alone adds no frames.
 - The TTL edge lands a few microseconds after the flip returns, while the square reaches the screen one or more frames later, depending on the display stack. That lag is what a photodiode on the corner measures: subtract it in analysis.

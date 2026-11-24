@@ -49,6 +49,7 @@ Besides the standard `-w`, `-d N` and `-s <id>`:
 | `-ttl-ms N` | 5 | Pulse width in ms; must be shorter than an arrow |
 | `-photodiode` | on | Flash a white square in the top-left corner for three frames from every arrow onset, drawn in the same flip as the onset; the square is black on every other frame. `-photodiode=false` disables it |
 | `-photodiode-size N` | 100 | Side of the photodiode square, in pixels |
+| `-photodiode-corner C` | tl | Corner of the screen the square is in: `tl`, `tr`, `bl` or `br` |
 | `-marker-frames N` | 3 | Frames the square stays white from each onset |
 
 The photodiode square and the TTL pulse are the library's onset marker

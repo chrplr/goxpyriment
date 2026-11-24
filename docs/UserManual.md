@@ -2639,14 +2639,17 @@ For marking stimulus onsets in a recording, use the library's **onset marker**
 rather than driving a device yourself. At each marked onset it does two things
 on the same flip:
 
-- a square in the top-left corner of the screen turns white for 3 frames
-  (black on every other frame), for a photodiode taped to the screen;
+- a square in a corner of the screen (top-left by default,
+  `-photodiode-corner tl|tr|bl|br`) turns white for 3 frames (black on every
+  other frame), for a photodiode taped to the screen. The panel is scanned out
+  from the top, so a square in a bottom corner lights up nearly a frame later
+  (16.7 ms at 60 Hz): measure the delay with the photodiode where it will be;
 - a TTL code is written to the trigger device right after the flip, and the
   lines are cleared 3 frame periods later (50 ms at 60 Hz).
 
 ```go
 func main() {
-    control.MarkerFlags()       // -photodiode, -photodiode-size, -marker-frames, -ttl, -ttl-ms
+    control.MarkerFlags()       // -photodiode, -photodiode-size, -photodiode-corner, -marker-frames, -ttl, -ttl-ms
     exp := control.NewExperimentFromFlags("My task", control.Gray, control.White, 32)
     defer exp.End()
     ...

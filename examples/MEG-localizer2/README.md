@@ -58,6 +58,7 @@ and every onset is measured from it. ESC, or closing the window, aborts.
 | `-ttl-ms N` | how long each code stays on the lines, in ms; default 0 = `-marker-frames` frame periods (50 ms at 60 Hz) |
 | `-photodiode` | show a white square in the top-left corner for 3 frames from every stimulus onset, sounds included, black otherwise; on by default, `-photodiode=false` disables it |
 | `-photodiode-size N` | side of the photodiode square, in pixels; default 100 |
+| `-photodiode-corner C` | corner of the screen the square is in: `tl` (default), `tr`, `bl` or `br` |
 | `-marker-frames N` | frames the square stays white from each onset; default 3 |
 
 **Record in fullscreen, never windowed** — see the note in

@@ -36,6 +36,7 @@ go run . -autostart -s 999   # no SPACE prompt, no trigger: start immediately
 | `-ttl-pin-probe N` | Board pin pulsed at the press-probe (default 3; 0 = no probe marker) |
 | `-photodiode` | Flash a white square in the top-left corner for one frame at every word onset and at the probe |
 | `-photodiode-size N` | Side of that square in pixels (default 200) |
+| `-photodiode-corner C` | corner of the screen the square is in: `tl` (default), `tr`, `bl` or `br` |
 | `-marker-frames N` | Frames the square stays white from each onset (default 1) |
 | `-w`, `-d N`, `-s N` | Windowed mode, display index, subject ID (standard goxpyriment flags) |
 

@@ -79,6 +79,31 @@ func TestFitLayoutAvoidsEdgeAndPhotodiode(t *testing.T) {
 	if got[0] == base[0] && got[1] == base[1] {
 		t.Error("the top-left target was left on the photodiode square")
 	}
+	// The square in the other corners (-photodiode-corner), with and without
+	// the transform's visible area.
+	for name, sq := range map[string]rect{
+		"top-right":    {w - 100, 0, 100, 100},
+		"bottom-left":  {0, h - 100, 100, 100},
+		"bottom-right": {w - 100, h - 100, 100, 100},
+	} {
+		for _, n := range []int{9, 13} {
+			base := eyetracker.StandardPoints(n)
+			got := fitLayout(base, w, h, full, sq, clear)
+			checkLayout(t, "photodiode "+name, got, base, w, h, full, sq, clear)
+			if equalLayouts(got, base) {
+				t.Errorf("photodiode %s, %d points: the standard layout was kept although a target is on the square", name, n)
+			}
+		}
+	}
+}
+
+func equalLayouts(a, b [][2]float64) bool {
+	for i := range a {
+		if a[i] != b[i] {
+			return false
+		}
+	}
+	return len(a) == len(b)
 }
 
 func TestFitLayoutTooSmall(t *testing.T) {

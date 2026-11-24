@@ -41,7 +41,8 @@
 //
 //	go run . -ttl megttlbox:/dev/ttyACM0
 //
-// Photodiode: a square in the top-left corner is white for 3 frames from every
+// Photodiode: a square in a corner of the screen (top-left unless
+// -photodiode-corner says otherwise) is white for 3 frames from every
 // stimulus onset -- each row, and each item of a stream row -- and black the
 // rest of the run. At a row onset it turns white in the flip that fires the
 // TTL code. It is on by default; -photodiode=false turns it off. Both are the

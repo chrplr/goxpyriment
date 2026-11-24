@@ -295,7 +295,7 @@ control.BUTTON_LEFT, BUTTON_RIGHT
 
 ```go
 control.MarkerFlags(defaults ...control.MarkerConfig) // before NewExperimentFromFlags: registers
-                                                      // -photodiode -photodiode-size -marker-frames -ttl -ttl-ms
+                                                      // -photodiode -photodiode-size -photodiode-corner -marker-frames -ttl -ttl-ms
 type control.MarkerConfig struct {
     Photodiode     bool
     PhotodiodeSize float32                // screen pixels, whatever the logical size; 0 = DefaultPhotodiodeSize (100)
@@ -779,6 +779,8 @@ screen.SetVSync(vsync int) error
 screen.DisplayInfo() apparatus.DisplayInfo                    // monitor properties
 screen.SetMarker(m *apparatus.Marker)                  // drive an onset marker from Update (nil detaches)
 screen.MarkerRect() sdl.FRect                          // the photodiode square in the current drawing space (top-left coords)
+screen.MarkerOverlaps(r sdl.FRect, margin float32) bool// r (drawing space, top-left coords) within margin of the square, whatever its corner
+screen.MarkerDistance(x, y float32) float32            // distance from a drawing-space point to the square (0 inside, +Inf without one)
 screen.Marker() *apparatus.Marker
 screen.SetPrePresentHook(f func() error)               // run f after drawing, just before present (frame read-back)
 screen.Capture() (*image.RGBA, error)                  // what is drawn so far, as the screen will show it (call before Update or in the hook)

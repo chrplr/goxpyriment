@@ -43,9 +43,12 @@ const DefaultMarkerFrames = 3
 // exp.MarkerConfig itself before Initialize.
 type MarkerConfig struct {
 	// Photodiode draws the corner square; PhotodiodeSize is its side in
-	// screen pixels, whatever the logical size (0 = DefaultPhotodiodeSize).
-	Photodiode     bool
-	PhotodiodeSize float32
+	// screen pixels, whatever the logical size (0 = DefaultPhotodiodeSize);
+	// PhotodiodeCorner is the corner of the screen it is in (default
+	// top-left).
+	Photodiode       bool
+	PhotodiodeSize   float32
+	PhotodiodeCorner apparatus.MarkerCorner
 	// Frames the square stays white from an onset (0 = DefaultMarkerFrames).
 	Frames int
 	// TTL is a device spec for triggers.Open ("dlpio8", "megttlbox:/dev/ttyACM0",
@@ -71,6 +74,7 @@ func (c MarkerConfig) enabled() bool {
 var markerFlagValues *struct {
 	photodiode *bool
 	size       *float64
+	corner     *string
 	frames     *int
 	ttl        *string
 	ttlMs      *float64
@@ -80,7 +84,7 @@ var markerFlagValues *struct {
 var markerFatal = log.Fatalf
 
 // MarkerFlags registers the onset-marker flags: -photodiode, -photodiode-size,
-// -marker-frames, -ttl and -ttl-ms. Call it before NewExperimentFromFlags,
+// -photodiode-corner, -marker-frames, -ttl and -ttl-ms. Call it before NewExperimentFromFlags,
 // which parses the command line and hands the values to Initialize. Programs
 // that do not call it have none of these flags.
 //
@@ -110,15 +114,19 @@ func MarkerFlags(defaults ...MarkerConfig) {
 	v := &struct {
 		photodiode *bool
 		size       *float64
+		corner     *string
 		frames     *int
 		ttl        *string
 		ttlMs      *float64
 	}{}
 	v.photodiode = flag.Bool("photodiode", d.Photodiode,
-		"Show a square in the top-left corner, white for -marker-frames frames from every marked onset "+
-			"and black on every other frame, for a photodiode")
+		"Show a square in a corner of the screen (-photodiode-corner), white for -marker-frames frames "+
+			"from every marked onset and black on every other frame, for a photodiode")
 	v.size = flag.Float64("photodiode-size", float64(d.PhotodiodeSize),
 		"Side of the photodiode square, in screen pixels (the same whatever the program's logical size)")
+	v.corner = flag.String("photodiode-corner", d.PhotodiodeCorner.String(),
+		"Corner of the screen the photodiode square is in: tl, tr, bl or br (top-left, top-right, bottom-left, bottom-right). "+
+			"The bottom corners light up nearly a frame later than the top ones: the panel is scanned out from the top")
 	v.frames = flag.Int("marker-frames", d.Frames,
 		"Frames the photodiode square stays white from an onset; also the default TTL pulse length")
 	v.ttl = flag.String("ttl", d.TTL,
@@ -137,12 +145,19 @@ func markerConfigFromFlags() (MarkerConfig, bool) {
 	if v == nil {
 		return MarkerConfig{}, false
 	}
+	corner, err := apparatus.ParseMarkerCorner(*v.corner)
+	if err != nil {
+		// Fatal for the same reason as a bad -photodiode: the session would
+		// otherwise run with the square somewhere the photodiode is not.
+		markerFatal("-photodiode-corner: %v", err)
+	}
 	return MarkerConfig{
-		Photodiode:     *v.photodiode,
-		PhotodiodeSize: float32(*v.size),
-		Frames:         *v.frames,
-		TTL:            *v.ttl,
-		TTLDuration:    time.Duration(*v.ttlMs * float64(time.Millisecond)),
+		PhotodiodeCorner: corner,
+		Photodiode:       *v.photodiode,
+		PhotodiodeSize:   float32(*v.size),
+		Frames:           *v.frames,
+		TTL:              *v.ttl,
+		TTLDuration:      time.Duration(*v.ttlMs * float64(time.Millisecond)),
 	}, true
 }
 
@@ -150,6 +165,9 @@ func markerConfigFromFlags() (MarkerConfig, bool) {
 func (c MarkerConfig) validate() error {
 	if c.Photodiode && c.PhotodiodeSize < 0 {
 		return fmt.Errorf("photodiode size %.0f must be positive", c.PhotodiodeSize)
+	}
+	if c.PhotodiodeCorner < apparatus.CornerTopLeft || c.PhotodiodeCorner > apparatus.CornerBottomRight {
+		return fmt.Errorf("photodiode corner %d: want one of tl, tr, bl, br", int(c.PhotodiodeCorner))
 	}
 	if c.Frames < 0 {
 		return fmt.Errorf("marker frames %d must be positive", c.Frames)
@@ -218,6 +236,7 @@ func (e *Experiment) attachMarker(out apparatus.MarkerOutput, desc string) error
 	e.Marker = apparatus.NewMarker(apparatus.MarkerOptions{
 		Photodiode:  c.Photodiode,
 		Size:        c.PhotodiodeSize,
+		Corner:      c.PhotodiodeCorner,
 		Frames:      c.Frames,
 		Output:      out,
 		OutputDesc:  desc,
@@ -229,8 +248,9 @@ func (e *Experiment) attachMarker(out apparatus.MarkerOutput, desc string) error
 		if c.Frames == 1 {
 			plural = ""
 		}
-		line := fmt.Sprintf("marker photodiode: %.0f px square at the top-left corner of the screen, "+
-			"white %d frame%s from every marked onset, black on every other frame", c.PhotodiodeSize, c.Frames, plural)
+		line := fmt.Sprintf("marker photodiode: %.0f px square at the %s corner of the screen, "+
+			"white %d frame%s from every marked onset, black on every other frame",
+			c.PhotodiodeSize, c.PhotodiodeCorner.Name(), c.Frames, plural)
 		log.Print(line)
 		e.AddExperimentInfo(line)
 	}

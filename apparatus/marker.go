@@ -6,7 +6,9 @@ package apparatus
 import (
 	"fmt"
 	"log"
+	"math"
 	"math/bits"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -16,8 +18,8 @@ import (
 
 // Onset markers for recordings (MEG, EEG, fMRI, display-timing checks).
 //
-// A Marker marks an event two ways at once: a square in the top-left corner of
-// the screen, white for a few frames from the event and black on every
+// A Marker marks an event two ways at once: a square in a corner of the screen
+// (top-left unless MarkerOptions.Corner says otherwise), white for a few frames from the event and black on every
 // other frame (for a photodiode taped to the screen), and a code written to a
 // TTL device (for the recording system's trigger channel). Attached to a
 // Screen with SetMarker, it is driven from inside Update — the one function
@@ -58,13 +60,83 @@ type markerLineOutput interface {
 	SetLow(line int) error
 }
 
+// MarkerCorner is the corner of the screen the photodiode square is drawn in.
+// The zero value is the top-left corner.
+//
+// The corner changes the photodiode's latency: the panel is scanned out from
+// the top down, so a square at the bottom lights up nearly a frame period
+// later than one at the top (16.7 ms at 60 Hz). Measure the delay with the
+// photodiode where it will be, and keep the corner the same across sessions
+// that are to be compared; the session's info file records it.
+type MarkerCorner int
+
+const (
+	CornerTopLeft MarkerCorner = iota
+	CornerTopRight
+	CornerBottomLeft
+	CornerBottomRight
+)
+
+// String is the corner's short name, as ParseMarkerCorner accepts it: "tl",
+// "tr", "bl" or "br".
+func (c MarkerCorner) String() string {
+	switch c {
+	case CornerTopLeft:
+		return "tl"
+	case CornerTopRight:
+		return "tr"
+	case CornerBottomLeft:
+		return "bl"
+	case CornerBottomRight:
+		return "br"
+	}
+	return fmt.Sprintf("MarkerCorner(%d)", int(c))
+}
+
+// Name is the corner in words, "top-left" and so on, for logs and data files.
+func (c MarkerCorner) Name() string {
+	switch c {
+	case CornerTopLeft:
+		return "top-left"
+	case CornerTopRight:
+		return "top-right"
+	case CornerBottomLeft:
+		return "bottom-left"
+	case CornerBottomRight:
+		return "bottom-right"
+	}
+	return c.String()
+}
+
+// right and bottom report which edges of the screen the corner is on.
+func (c MarkerCorner) right() bool  { return c == CornerTopRight || c == CornerBottomRight }
+func (c MarkerCorner) bottom() bool { return c == CornerBottomLeft || c == CornerBottomRight }
+
+// ParseMarkerCorner reads a corner: "tl", "tr", "bl" or "br", or the same in
+// words ("top-left", "bottom-right", ...), in any case.
+func ParseMarkerCorner(s string) (MarkerCorner, error) {
+	switch strings.ToLower(strings.TrimSpace(s)) {
+	case "tl", "top-left", "topleft":
+		return CornerTopLeft, nil
+	case "tr", "top-right", "topright":
+		return CornerTopRight, nil
+	case "bl", "bottom-left", "bottomleft":
+		return CornerBottomLeft, nil
+	case "br", "bottom-right", "bottomright":
+		return CornerBottomRight, nil
+	}
+	return CornerTopLeft, fmt.Errorf("photodiode corner %q: want tl, tr, bl or br", s)
+}
+
 // MarkerOptions configures NewMarker.
 type MarkerOptions struct {
 	// Photodiode draws the corner square. Size is its side in screen pixels
 	// (window coordinates), whatever Screen.SetLogicalSize is in effect: the
 	// square is at the same place and of the same size in every program.
+	// Corner is the corner of the screen it is in (default top-left).
 	Photodiode bool
 	Size       float32
+	Corner     MarkerCorner
 
 	// Frames is how many frames the square stays white from an onset
 	// (default 3). More than one, so a frame lost in the display stack makes
@@ -97,8 +169,9 @@ type MarkerStats struct {
 // Create it with NewMarker and attach it with Screen.SetMarker.
 type Marker struct {
 	photodiode bool
-	rect       sdl.FRect     // the square, at the top-left corner of the screen
-	quad       [4]sdl.Vertex // rect as geometry; drawSquare sets the colour
+	side       float32       // the square's side, in the presentation it is drawn in
+	corner     MarkerCorner  // where it is; place puts quad there
+	quad       [4]sdl.Vertex // the square as geometry; drawSquare sets the colour
 	frames     int
 	out        MarkerOutput
 	outDesc    string
@@ -137,19 +210,16 @@ func NewMarker(opts MarkerOptions) *Marker {
 	if frames < 1 {
 		frames = 3
 	}
-	side := opts.Size
 	m := &Marker{
 		photodiode: opts.Photodiode,
-		rect:       sdl.FRect{X: 0, Y: 0, W: side, H: side},
-		quad: [4]sdl.Vertex{
-			{Position: sdl.FPoint{X: 0, Y: 0}}, {Position: sdl.FPoint{X: side, Y: 0}},
-			{Position: sdl.FPoint{X: side, Y: side}}, {Position: sdl.FPoint{X: 0, Y: side}},
-		},
-		frames:  frames,
-		out:     opts.Output,
-		outDesc: opts.OutputDesc,
-		ttlDur:  opts.TTLDuration,
+		side:       opts.Size,
+		corner:     opts.Corner,
+		frames:     frames,
+		out:        opts.Output,
+		outDesc:    opts.OutputDesc,
+		ttlDur:     opts.TTLDuration,
 	}
+	m.place(m.side, m.side) // top-left until a screen gives the extent
 	if m.out != nil {
 		m.poke = make(chan struct{}, 1)
 		m.done = make(chan struct{})
@@ -182,7 +252,7 @@ type presentation struct {
 }
 
 // drawMarker draws the marker's square in the presentation NewScreen set: at
-// the corner of the screen and Size pixels wide, whatever logical size the
+// its corner of the screen and Size pixels wide, whatever logical size the
 // stimuli are drawn in. Under SetLogicalSize's letterbox, the corner of the
 // drawing area is inset by the bars and its units are scaled, so the square of
 // a program with a logical size would miss a photodiode placed for the others.
@@ -195,6 +265,9 @@ func (s *Screen) drawMarker() error {
 		return s.marker.drawSquare(s.Renderer)
 	}
 	return s.withoutTransform(func() error {
+		// Placed every frame: the extent can change after NewScreen (a
+		// fullscreen switch that completes late, on KMS/DRM).
+		s.marker.place(s.markerExtent())
 		if s.logical == nil {
 			return s.marker.drawSquare(s.Renderer)
 		}
@@ -209,30 +282,97 @@ func (s *Screen) drawMarker() error {
 	})
 }
 
+// markerExtent is the size of the presentation the square is drawn in (see
+// drawMarker): NewScreen's when it set one, the renderer's output in pixels
+// otherwise.
+func (s *Screen) markerExtent() (w, h float32) {
+	if s.native.mode != sdl.LOGICAL_PRESENTATION_DISABLED {
+		return float32(s.native.w), float32(s.native.h)
+	}
+	ow, oh, err := s.Renderer.RenderOutputSize()
+	if err != nil || ow <= 0 || oh <= 0 {
+		return float32(s.Width), float32(s.Height)
+	}
+	return float32(ow), float32(oh)
+}
+
+// place puts the square in its corner of a w×h presentation.
+func (m *Marker) place(w, h float32) {
+	x0, y0 := m.origin(w, h)
+	x1, y1 := x0+m.side, y0+m.side
+	m.quad[0].Position = sdl.FPoint{X: x0, Y: y0}
+	m.quad[1].Position = sdl.FPoint{X: x1, Y: y0}
+	m.quad[2].Position = sdl.FPoint{X: x1, Y: y1}
+	m.quad[3].Position = sdl.FPoint{X: x0, Y: y1}
+}
+
+// origin is the top-left corner of the square in a w×h presentation.
+func (m *Marker) origin(w, h float32) (x, y float32) {
+	if m.corner.right() {
+		x = w - m.side
+	}
+	if m.corner.bottom() {
+		y = h - m.side
+	}
+	return x, y
+}
+
 // MarkerRect is the photodiode square in the current drawing space, in SDL's
 // top-left coordinates, for a program that checks its stimuli stay clear of
-// it. Without a logical size or a display transform it is the square itself;
-// with either, the square converted to the drawing space, partly or wholly
-// outside the drawing area when it falls in a letterbox bar or in the strip a
-// shift uncovers. A zero rect without a photodiode square.
+// it (see MarkerOverlaps). Without a logical size or a display transform it is
+// the square itself; with either, the square converted to the drawing space,
+// partly or wholly outside the drawing area when it falls in a letterbox bar
+// or in the strip a shift uncovers. A zero rect without a photodiode square.
 func (s *Screen) MarkerRect() sdl.FRect {
 	m := s.marker
 	if !m.PhotodiodeEnabled() {
 		return sdl.FRect{}
 	}
 	side := m.Size()
+	ew, eh := s.markerExtent()
+	x, y := m.origin(ew, eh)
+	plain := sdl.FRect{X: x, Y: y, W: side, H: side}
 	if s.logical == nil && !s.transformed() {
-		return sdl.FRect{W: side, H: side}
+		return plain
 	}
 	// Converted with calls the browser build implements, which account for
 	// the viewport and scale of a display transform.
-	ws := side * s.windowPerScreenPixel()
-	x0, y0, err0 := s.Renderer.RenderCoordinatesFromWindow(0, 0)
-	x1, y1, err1 := s.Renderer.RenderCoordinatesFromWindow(ws, ws)
+	k := s.windowPerScreenPixel()
+	x0, y0, err0 := s.Renderer.RenderCoordinatesFromWindow(x*k, y*k)
+	x1, y1, err1 := s.Renderer.RenderCoordinatesFromWindow((x+side)*k, (y+side)*k)
 	if err0 != nil || err1 != nil {
-		return sdl.FRect{W: side, H: side}
+		return plain
 	}
 	return sdl.FRect{X: x0, Y: y0, W: x1 - x0, H: y1 - y0}
+}
+
+// MarkerOverlaps reports whether r, a rectangle in the drawing space in SDL's
+// top-left coordinates, comes within margin drawing pixels of the photodiode
+// square (MarkerRect) — whichever corner the square is in. Always false
+// without a photodiode square. For a stimulus laid out from the centre,
+// CenteredRect gives r.
+func (s *Screen) MarkerOverlaps(r sdl.FRect, margin float32) bool {
+	m := s.MarkerRect()
+	if !s.marker.PhotodiodeEnabled() || !(m.W > 0) || !(m.H > 0) {
+		return false
+	}
+	return r.X < m.X+m.W+margin && r.X+r.W > m.X-margin &&
+		r.Y < m.Y+m.H+margin && r.Y+r.H > m.Y-margin
+}
+
+// MarkerDistance is the distance, in drawing pixels, from the point (x, y) of
+// the drawing space (SDL's top-left coordinates) to the nearest point of the
+// photodiode square (MarkerRect): 0 inside it, +Inf without a square. A round
+// stimulus of radius R centred at (x, y) is clear of the square when it is
+// more than R.
+func (s *Screen) MarkerDistance(x, y float32) float32 {
+	if !s.marker.PhotodiodeEnabled() {
+		return float32(math.Inf(1))
+	}
+	m := s.MarkerRect()
+	dx := max(m.X-x, 0, x-(m.X+m.W))
+	dy := max(m.Y-y, 0, y-(m.Y+m.H))
+	return float32(math.Hypot(float64(dx), float64(dy)))
 }
 
 // SetPrePresentHook installs f to run inside Update after everything,
@@ -287,6 +427,14 @@ func (m *Marker) Busy() bool {
 // PhotodiodeEnabled reports whether the corner square is drawn.
 func (m *Marker) PhotodiodeEnabled() bool { return m != nil && m.photodiode }
 
+// Corner is the corner of the screen the square is drawn in.
+func (m *Marker) Corner() MarkerCorner {
+	if m == nil {
+		return CornerTopLeft
+	}
+	return m.corner
+}
+
 // TTLEnabled reports whether codes go to a TTL output.
 func (m *Marker) TTLEnabled() bool { return m != nil && m.out != nil }
 
@@ -296,7 +444,7 @@ func (m *Marker) Size() float32 {
 	if m == nil {
 		return 0
 	}
-	return m.rect.W
+	return m.side
 }
 
 // Frames is how many frames the square stays white from an onset.

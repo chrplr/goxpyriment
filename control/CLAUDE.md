@@ -58,7 +58,8 @@ channel mark the same frame. The machinery is `apparatus.Marker`, driven by
 
 - **Flags are opt-in.** `control.MarkerFlags(defaults...)` must be called
   *before* `NewExperimentFromFlags`; calling it after the parse, or twice, is
-  fatal. It registers `-photodiode`, `-photodiode-size`, `-marker-frames`,
+  fatal. It registers `-photodiode`, `-photodiode-size`, `-photodiode-corner`
+  (`tl|tr|bl|br`, `MarkerConfig.PhotodiodeCorner`), `-marker-frames`,
   `-ttl KIND[:PORT]` and `-ttl-ms`. Programs that don't call it don't have these
   flags.
 - **Without flags,** set `exp.MarkerConfig` before `Initialize`. Its `TTLDevice`
