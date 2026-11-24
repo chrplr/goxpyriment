@@ -27,8 +27,13 @@ func collectScheduling() SchedulingInfo {
 		Fidelity: "UNTESTED on macOS; cannot see per-thread " +
 			"THREAD_TIME_CONSTRAINT_POLICY, so RealTime is not authoritative",
 	}
+	// On darwin unix.Getpriority goes through libc's getpriority, which returns
+	// the nice value itself (-20..20). The 20-biased value is the raw Linux
+	// syscall's, which is why scheduling_linux.go subtracts from 20; doing that
+	// here reported 40 for a process at nice -20 and 20 for one at nice 0, so
+	// the check the macOS priority guide asks for could never pass.
 	if prio, err := unix.Getpriority(unix.PRIO_PROCESS, 0); err == nil {
-		info.Nice = 20 - prio
+		info.Nice = prio
 	}
 	return info
 }

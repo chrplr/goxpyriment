@@ -8,6 +8,7 @@ import (
 	"unsafe"
 
 	"github.com/Zyko0/go-sdl3/sdl"
+	"github.com/chrplr/goxpyriment/stimuli"
 )
 
 func keyEvent(typ sdl.EventType, key sdl.Keycode, ts uint64) sdl.Event {
@@ -105,4 +106,34 @@ func TestPollEventsReportsTheSignalQuitFlag(t *testing.T) {
 	if !e.PollEvents(nil).QuitRequested {
 		t.Error("quit flag set: QuitRequested = false")
 	}
+}
+
+// After an ESC consumed by a key wait, QuitRequested stays set. The next Wait,
+// Blank or Show must end the run: an experiment that discarded the key wait's
+// error used to run every remaining trial instantly and write a junk row for
+// each.
+func TestStickyQuitStopsTheNextWaitAndShow(t *testing.T) {
+	fakeQueue(t, keyEvent(sdl.EVENT_KEY_DOWN, sdl.K_ESCAPE, 1))
+	oldTicks := getTicks
+	getTicks = func() uint64 { return 0 }
+	t.Cleanup(func() { getTicks = oldTicks })
+	e := &Experiment{}
+	if !e.PollEvents(nil).QuitRequested {
+		t.Fatal("ESC did not set QuitRequested")
+	}
+
+	mustExit := func(name string, f func()) {
+		t.Helper()
+		defer func() {
+			r := recover()
+			if _, ok := r.(exitPanic); !ok {
+				t.Errorf("%s after ESC: recovered %v, want exitPanic", name, r)
+			}
+		}()
+		f()
+	}
+	// No SDL is loaded: these must stop before touching the screen.
+	mustExit("Wait", func() { _ = e.Wait(1000) })
+	mustExit("Show", func() { _ = e.Show(stimuli.NewRectangle(0, 0, 10, 10, White)) })
+	mustExit("BlankFrames", func() { _, _ = e.BlankFrames(1) })
 }

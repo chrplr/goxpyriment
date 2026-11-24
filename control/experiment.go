@@ -534,7 +534,13 @@ func (e *Experiment) ShowTS(v stimuli.VisualStimulus) (uint64, error) {
 
 // presentNoFlip clears and draws v, turning the quit sentinel into the panic
 // Run recovers, as ShowTS does.
+//
+// A quit already requested (ESC, window close, Ctrl-C) stops it before it
+// draws; see quitPending.
 func (e *Experiment) presentNoFlip(v stimuli.VisualStimulus) error {
+	if e.quitPending() {
+		panic(exitPanic{err: sdl.EndLoop})
+	}
 	if err := v.Present(e.Screen, true, false); err != nil {
 		if IsEndLoop(err) {
 			panic(exitPanic{err: err})
@@ -602,6 +608,9 @@ func (e *Experiment) ShowFrames(v stimuli.VisualStimulus, n int) (uint64, error)
 func (e *Experiment) BlankFrames(n int) (uint64, error) {
 	if n < 1 {
 		return 0, fmt.Errorf("control.Experiment.BlankFrames: n must be >= 1, got %d", n)
+	}
+	if e.quitPending() {
+		panic(exitPanic{err: sdl.EndLoop})
 	}
 	var offsetNS uint64
 	for i := 0; i < n; i++ {
@@ -1033,6 +1042,21 @@ func (e *Experiment) Blank(ms int) error {
 	return e.Wait(remainingMs(ms, onset))
 }
 
+// quitPending reports whether a quit has already been requested: by the signal
+// handler (Ctrl-C, SIGTERM), or by an ESC or window close that some earlier
+// poll saw. QuitRequested is sticky — nothing resets it — so once it is set
+// every key wait returns sdl.EndLoop at once.
+//
+// pumpFrame and every presentation helper consult it, so that the next Wait,
+// Blank or Show ends the run. They used to look only for an ESC still held or
+// a QUIT event still queued. An experiment that discarded a key wait's error —
+// `key, rt, _ := exp.ShowAndGetRT(...)`, the documented skeleton — therefore
+// carried on after ESC, every later wait returning at once, and wrote a junk
+// row for every remaining trial.
+func (e *Experiment) quitPending() bool {
+	return e.quitFlag.Load() != 0 || e.event.QuitRequested
+}
+
 // pumpFrame pumps OS events for one frame: keeps the window responsive on all
 // platforms (including Wayland), updates input-device state (mouse position,
 // keyboard state), and checks for quit/ESC — all without dequeuing events, so
@@ -1041,10 +1065,11 @@ func (e *Experiment) Blank(ms int) error {
 //
 // Returns sdl.EndLoop if quit or ESC was detected, nil otherwise.
 func (e *Experiment) pumpFrame() error {
-	// Honor a quit requested by the signal handler before issuing any SDL
-	// calls, so a pending shutdown is detected even while SDL is mid-teardown
-	// (and so this is checkable without a live SDL context).
-	if e.quitFlag.Load() != 0 {
+	// Honor a quit already requested — by the signal handler, or by an ESC or
+	// window close an earlier poll consumed — before issuing any SDL calls, so
+	// a pending shutdown is detected even while SDL is mid-teardown (and so this
+	// is checkable without a live SDL context).
+	if e.quitPending() {
 		return sdl.EndLoop
 	}
 	pumpEvents()
@@ -1291,11 +1316,12 @@ func (e *Experiment) Initialize() error {
 
 	// Measure the display before the experiment starts, and record it beside
 	// the nominal rate. The two disagreeing is the single most useful signal
-	// that a session's timing is not what the analysis will assume: below
-	// nominal means the driver is not blocking on VSYNC, above means frames
-	// are being dropped on the way to the panel (a compositor throttling an
-	// unfocused window, typically). Costs calibrationFrames refresh periods,
-	// on a screen that is still blank.
+	// that a session's timing is not what the analysis will assume. The
+	// calibration presents without pacing, so above nominal means the driver
+	// is not blocking on VSYNC (presents return faster than the panel
+	// refreshes), and below means frames are being dropped on the way to the
+	// panel (a compositor throttling an unfocused window, typically). Costs
+	// calibrationFrames refresh periods, on a screen that is still blank.
 	if measured, err := e.Screen.CalibrateRefresh(calibrationFrames); err == nil && measured > 0 {
 		sysInfo.MeasuredHz = float64(time.Second) / float64(measured)
 		if sysInfo.NominalHz > 0 {
