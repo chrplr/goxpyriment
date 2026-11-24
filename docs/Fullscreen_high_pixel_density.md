@@ -8,7 +8,7 @@ On **macOS** (Retina), running an experiment in fullscreen mode shows a gray scr
 
 ### The asymmetry in `apparatus/NewScreen`
 
-In `apparatus/screen.go`, the fullscreen and windowed paths differ in one critical flag:
+In `apparatus/screen.go` (as it was then; `NewScreen` now lives in `apparatus/screen_newscreen_notjs.go`), the fullscreen and windowed paths differed in one critical flag:
 
 **Fullscreen path:**
 ```go
@@ -44,7 +44,7 @@ With it, SDL3 bypasses logical scaling and gives raw physical pixels:
 
 `CenterToSDL` uses `renderer.RenderOutputSize()`, so it is always internally consistent. The problem is **any code that uses hardcoded pixel counts**.
 
-In `retinotopy/main.go`:
+In `examples/Retinotopy/main.go`:
 ```go
 const WindowWidth  = 768
 const WindowHeight = 768
@@ -80,7 +80,7 @@ After that fix the Pi works correctly in both windowed and fullscreen — confir
 
 ## The Mac issue — implemented fix
 
-The Mac fullscreen gray screen has been addressed with a framework-level fix in `apparatus/screen.go`.
+The Mac fullscreen gray screen has been addressed with a framework-level fix in `NewScreen` (now `apparatus/screen_newscreen_notjs.go`).
 
 ### Approach — `SetLogicalPresentation` (implemented)
 

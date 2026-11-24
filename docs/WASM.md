@@ -31,7 +31,7 @@ The Go side talks to the Emscripten side through `go-sdl3`'s js bindings
 
 | Piece | Location |
 |---|---|
-| go-sdl3 fork with the js/wasm target | [`github.com/chrplr/go-sdl3-wasm`](https://github.com/chrplr/go-sdl3-wasm), branch **`wasm-render-fixes`** (local clone: `~/00_git/go-sdl3-wasm`). The module path is unchanged (`github.com/Zyko0/go-sdl3`), and goxpyriment's `go.mod` has a `replace` pointing at a pinned pseudo-version of the fork; `vendor/` is kept in sync with `GOWORK=off go mod vendor` |
+| go-sdl3 fork with the js/wasm target | [`github.com/chrplr/go-sdl3-wasm`](https://github.com/chrplr/go-sdl3-wasm), branch **`wasm-render-fixes`** (local clone: `~/00_git/go-sdl3-wasm`). The module path is unchanged (`github.com/Zyko0/go-sdl3`), and goxpyriment's `go.mod` has a `replace` pointing at a pinned version of the fork (a released tag, or a pseudo-version between tags — see below); `vendor/` is kept in sync with `GOWORK=off go mod vendor` |
 | Prebuilt `sdl.js` / `sdl.wasm` + bundler | `cmd/wasmsdl` in the fork — embeds the blobs and an `index.html`, and builds/serves a complete browser bundle. Rebuild recipe: `.docker/emscripten-build/Dockerfile` in the fork |
 | goxpyriment js platform code | `control/platform_js.go` (URL-parameter flags, no dialog, audio device open), `apparatus/screen_newscreen_js.go` (canvas window), `apparatus/screen_present_js.go` (RAF-synced flips), `results/output_file_wasm.go` + `results/data_wasm.go` (session → one .zip download, or to the JATOS server), `results/jatos_wasm.go` (jatos.js bridge) — all build tag `js` |
 | Export-list generator | `cmd/gen-wasm-exports` — scans go-sdl3's js bindings + goxpyriment's own calls **as compiled for `GOOS=js`** (files excluded by build constraints, and `triggers/`, are not counted), emits `wasm/exported_functions.json` for `emcc -sEXPORTED_FUNCTIONS=@…`, and **lists the go-sdl3 calls whose js bindings are still panic-stubs** (the remaining-work list) |
@@ -59,10 +59,11 @@ js")` stubs. **To build your own experiment for the browser, copy the current
 
 When developing the fork itself, point the replace at the local clone instead
 (`go mod edit -replace github.com/Zyko0/go-sdl3=/home/cp983411/00_git/go-sdl3-wasm`,
-then `GOWORK=off go mod vendor`), and restore the pinned GitHub pseudo-version
-before committing (`git log -1 --format=%cd-%h --date=format:%Y%m%d%H%M%S` in
-the fork gives the timestamp/hash for a fresh pseudo-version; the base tag is
-`v0.1.1`, so the form is `v0.1.2-0.<timestamp>-<12-char-hash>`).
+then `GOWORK=off go mod vendor`), and restore a pinned GitHub version before
+committing: a released tag of the fork, or a pseudo-version
+(`git log -1 --format=%cd-%h --date=format:%Y%m%d%H%M%S` in the fork gives the
+timestamp/hash; the latest tag is now `v0.1.2`, so a commit after it takes the
+form `v0.1.3-0.<timestamp>-<12-char-hash>`).
 
 ## Building and serving an example
 
@@ -141,7 +142,8 @@ http://localhost:8080/?s=3&w        equivalent to:  -s 3 -w
 Keys that don't match a registered flag are ignored with a console note. The
 participant-info dialog never opens in the browser (it needs its own SDL
 window); when `s` is absent the subject ID defaults to 0, exactly like
-`-headless`.
+`-headless` — except under JATOS, where it defaults to the JATOS study result
+ID (`platformDefaultSubjectID` in `control/platform_js.go`).
 
 Programs that call `control.GetParticipantInfo` directly are answered from the
 same query string, by `platformParticipantInfo` in `control/platform_js.go`.
@@ -175,7 +177,8 @@ file:line, which tells you exactly what to un-stub next.
 
 ## Publishing to downloads.pallier.org
 
-Every tagged release publishes 86 of the 98 examples (as of 2026-09-17) as browser builds, served
+Every tagged release publishes the examples that can run in a browser — 92 of
+the 104 (as of 2026-11-24) — as browser builds, served
 from the Cloudflare R2 bucket. A visitor follows a **Run** link on
 <https://downloads.pallier.org/builds/latest/> and the experiment starts — no
 download, no install, no Gatekeeper.

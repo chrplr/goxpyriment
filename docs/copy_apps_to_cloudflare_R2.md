@@ -91,7 +91,8 @@ the domain serves plain HTTPS with no directory listing; for sync semantics use
 
 ## Browser versions
 
-90 of the 102 examples (counted on the live download page, 2026-10-23) are also
+92 of the 104 examples (counted in the repository on 2026-11-24: 104 example
+directories with a `main.go`, 12 of them in `wasm-skip.txt`) are also
 published as WebAssembly and run straight from a URL — `https://downloads.pallier.org/builds/latest/wasm/{app}/` — with no
 download and no install. The remaining 12 cannot: they read their stimuli from
 disk, and the browser has no filesystem. `examples/installers/wasm-skip.txt`
@@ -106,7 +107,7 @@ build. Each launcher page therefore loads them from `../_runtime/` and sets
 Emscripten's `Module.locateFile` so the glue fetches `sdl.wasm` from there too —
 without that one line the page loads and then cannot find its runtime.
 
-Measured 2026-08-29, when there were 79 bundles (90 now, not re-measured):
+Measured 2026-08-29, when there were 79 bundles (92 eligible on 2026-11-24, not re-measured):
 **607 MB**, median ~5.5 MB. One outlier
 dominates — `Retinotopy` is 129 MB, 21% of the whole tree, because its stimuli
 are embedded in the binary. `MEG-localizer` (29 MB) and `Language-Localizer`
@@ -153,7 +154,7 @@ release and then stops working. Documentation should link `builds/latest/`.
 |---|---|
 | `examples/installers/build-all-platforms.sh` | Cross-compiles everything. `KEEP_STAGE=1` keeps the per-platform staging directories; `ONLY=<name>` builds a single program, for quick local checks. |
 | `examples/installers/package-per-app.sh` | Zips each staged program into `_build/r2/<OS_ARCH>/<app>.zip`. Fails loudly if a name is used by both an example and a test. |
-| `cmd/gen-download-index` | Generates `index.html` by scanning `_build/r2/`, taking each program's description from its `meta.yaml` (the same files that feed `GalleryOfExamples.md`). `-latest <sha>` copies the download and launcher pages into the `builds/latest/` tree, each with a `<base href>` pointing back at the commit. |
+| `cmd/gen-download-index` | Generates `index.html` by scanning `_build/r2/`, taking each program's description from its `meta.yaml` (the same files that feed `GalleryOfExamples.md`). `-latest <sha> -out-tree <dir>` copies the download and launcher pages into a `builds/latest/` tree written to `<dir>` (CI uses `_build/latest`), each with a `<base href>` pointing back at the commit; `-latest` without `-out-tree` is fatal. |
 | `examples/installers/build-wasm-apps.sh` | Bundles every eligible example for the browser into `_build/r2/wasm/`, sharing one copy of the SDL runtime. Reports every failure at the end rather than stopping at the first. `ONLY=<name>` builds one. |
 | `cmd/gen-gallery` | Also injects the "Try it without building" block into each `examples/<app>/README.md` and the ▶ Run links into `docs/GalleryOfExamples.md`, from the same `wasm-skip.txt`. Run it with `make update-examples-gallery`. |
 | `cmd/gen-wasm-launcher` | Writes each app's launcher page — generated from its `meta.yaml`, or adapted from the example's own `web/index.html` when it has one. |
@@ -186,9 +187,12 @@ bash examples/installers/package-per-app.sh
 go run ./cmd/gen-download-index -root _build/r2 -commit local -tag v0.0.0-test
 xdg-open _build/r2/index.html
 
-# Upload, changing nothing (needs the R2 credentials exported)
+# Upload, changing nothing (needs the R2 credentials exported). publish-to-r2.sh
+# also needs the builds/latest/ pages in _build/latest/, as the workflow makes them.
+COMMIT_SHA=$(git rev-parse HEAD)
+go run ./cmd/gen-download-index -latest "$COMMIT_SHA" -root _build/r2 -out-tree _build/latest
 export AWS_ACCESS_KEY_ID=... AWS_SECRET_ACCESS_KEY=...
-COMMIT_SHA=$(git rev-parse HEAD) DRY_RUN=1 bash examples/installers/publish-to-r2.sh
+COMMIT_SHA=$COMMIT_SHA DRY_RUN=1 bash examples/installers/publish-to-r2.sh
 ```
 
 ## Custom-domain directory index

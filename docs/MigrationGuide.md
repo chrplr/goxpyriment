@@ -46,7 +46,7 @@ Goxpyriment was directly inspired by Expyriment and shares its philosophy: a sin
 | `trial.get_factor("cond")` | `trial.GetFactor("cond")` | |
 | `block.add_trials([t1, t2])` | `block.AddTrial(t, copies, randomPosition)` | |
 | `block.shuffle_trials()` | `block.ShuffleTrials()` | |
-| `io.DataFile` | `exp.Data` (`*io.DataFile`) | Opened automatically; output to `~/goxpy_data/`. `.csv` is the same CSV-with-comments format. |
+| `io.DataFile` | `exp.Data` (`*results.DataFile`) | Opened automatically; output to `~/goxpy_data/` (or `$GOXPY_DATA`). The `.csv` holds data rows only; the `#` metadata goes to a companion `-info.txt` (see below). |
 
 ### Side-by-side: simple RT trial
 
@@ -154,7 +154,7 @@ PsychoPy Coder mode and goxpyriment are structurally similar: both give you a wi
 | `thisExp.addData("rt", rt)` | `exp.Data.Add(rt)` | |
 | `data.QuestHandler(startVal, ...)` | `staircase.NewQuest(cfg)` | |
 | `data.StairHandler(startVal, ...)` | `staircase.NewUpDown(cfg)` | |
-| `sound.Sound('A', secs=0.5)` | `stimuli.NewTone(frequency, duration, volume)` | |
+| `sound.Sound('A', secs=0.5)` | `stimuli.NewTone(frequency, durationMs, amplitude)` | Duration in ms; amplitude 0–1. |
 | `sound.Sound('beep.wav')` | `stimuli.NewSound("beep.wav")` | |
 
 ### Side-by-side: simple RT trial
@@ -216,7 +216,7 @@ func main() {
 
 ### Key differences
 
-**Units and coordinate system.** PsychoPy supports multiple unit systems (norm, pix, deg, cm). Goxpyriment always uses pixels, with (0, 0) at the screen center, +X right, +Y **up** (same as PsychoPy's `units='pix'`). For visual-angle calculations, use the `units` package: `units.NewMonitor(widthCm, distanceCm, widthPx)` then `mon.DegToPx(deg)`.
+**Units and coordinate system.** PsychoPy supports multiple unit systems (norm, pix, deg, cm). Goxpyriment always uses pixels, with (0, 0) at the screen center, +X right, +Y **up** (same as PsychoPy's `units='pix'`). For visual-angle calculations, use the `units` package: `units.NewMonitor(widthCm, heightCm, widthPx, heightPx, distanceCm)` then `mon.DegToPx(deg)`.
 
 **Time units.** PsychoPy uses seconds throughout (`core.wait(0.5)`, `clock.getTime()` returns float seconds). Goxpyriment uses **milliseconds** for `exp.Wait` and `WaitKeysRT`, and **nanoseconds** for hardware event timestamps (`ShowTS`, `GetKeyEventTS`). Divide nanosecond differences by `1_000_000` to get milliseconds.
 
@@ -242,7 +242,7 @@ Psychtoolbox-3 (PTB) and goxpyriment share a lower-level philosophy: you open a 
 |---|---|---|
 | `Screen('OpenWindow', screenNum, bgColor)` | `control.NewExperimentFromFlags(...)` | Also initializes audio, font, and data file. |
 | `Screen('CloseAll')` | `defer exp.End()` | |
-| `Screen('Flip', win)` | `exp.Flip()` | Both return a timestamp. |
+| `Screen('Flip', win)` | `exp.Flip()` | `exp.Flip()` returns only an error; use `exp.Screen.FlipTS()` for the timestamp. |
 | `Screen('Flip', win)` → VBL timestamp | `exp.ShowTS(stim)` → `uint64` nanoseconds | PTB returns seconds (64-bit float); goxpyriment returns nanoseconds (uint64). |
 | `Screen('FillRect', win, color, rect)` | `stimuli.NewRectangle(cx, cy, w, h, color)` then `exp.Show(rect)` | |
 | `Screen('DrawText', win, text, x, y, color)` | `stimuli.NewTextLine(text, x, y, color)` then `exp.Show(tl)` | |
@@ -259,7 +259,7 @@ Psychtoolbox-3 (PTB) and goxpyriment share a lower-level philosophy: you open a 
 | `KbStrokeWait` / `KbName` | `exp.Keyboard.WaitKeys(keys, timeout)` | Pass `nil` for any key. |
 | RT via `GetSecs` before/after `KbWait` | `exp.Keyboard.WaitKeysRT(keys, timeout)` (ms) | Or `GetKeyEventTS` for nanosecond accuracy. |
 | `PsychPortAudio('Open', ...)` / `'Start'` | `stimuli.NewSound(path)` + `snd.Play()` | |
-| `MakeBeep(freq, dur, rate)` | `stimuli.NewTone(freq, duration, volume)` | |
+| `MakeBeep(freq, dur, rate)` | `stimuli.NewTone(freq, durationMs, amplitude)` | Duration in ms; amplitude 0–1. |
 | `Snd('Play', ...)` | `tone.Play()` | |
 | `Quest('init', ...)` | `staircase.NewQuest(cfg)` | |
 | `QuestUpdate(q, x, response)` | `sc.Update(correct)` | |
@@ -345,7 +345,7 @@ func main() {
 
 ## Common gotchas (all three tools)
 
-**ESC handling.** Goxpyriment treats ESC as a universal experiment abort. `exp.Wait`, `exp.Keyboard.WaitKeys`, and similar functions return `control.EndLoop` when ESC is pressed. Propagate this error upward from `exp.Run`'s callback; `control.IsEndLoop(err)` tests for it. There is no equivalent of PTB's `ListenChar`/`CharAvail` or PsychoPy's `event.clearEvents()` — use `exp.Keyboard.Clear()` to flush stale key presses before a new trial.
+**ESC handling.** Goxpyriment treats ESC as a universal experiment abort. `exp.Keyboard.WaitKeys` and the other key waits return `control.EndLoop` when ESC is pressed; propagate this error upward from `exp.Run`'s callback — `control.IsEndLoop(err)` tests for it. `exp.Wait`, `exp.Blank` and the `Show` family do not return it: once ESC (or a window close, or Ctrl-C) has been seen they end the run themselves, so the run stops even where an error was discarded. There is no equivalent of PTB's `ListenChar`/`CharAvail` or PsychoPy's `event.clearEvents()` — use `exp.Keyboard.Clear()` to flush stale key presses before a new trial.
 
 **GPU texture allocation.** The first time any visual stimulus is drawn, its SDL texture is allocated on the GPU. In all three tools the first presentation can be slower than subsequent ones. In goxpyriment, call `stimuli.PreloadVisualOnScreen(exp.Screen, stim)` (or `stimuli.PreloadAllVisual`) before the critical section to force allocation during an instruction screen, not during a timed trial.
 

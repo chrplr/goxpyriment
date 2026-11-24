@@ -2,7 +2,7 @@
 
 If want to run the [examples](GalleryOfExamples.md) directly, without compiling them, you download _pre-built apps_ and run them on your computer. There are three ways to get them:
 
-* **Run it in your browser** — no download, no install: 86 of the examples run directly from [**downloads.pallier.org/builds/latest/**](https://downloads.pallier.org/builds/latest/) via WebAssembly. Follow the **Run** link beside a program. Use a focused, foreground tab; your results arrive as a single `.zip` when the session ends. Paradigms needing sub-millisecond stimulus onset (rapid RSVP, subliminal priming) should still be run natively.
+* **Run it in your browser** — no download, no install: 92 of the 104 examples (as of 2026-11-24) run directly from [**downloads.pallier.org/builds/latest/**](https://downloads.pallier.org/builds/latest/) via WebAssembly. Follow the **Run** link beside a program. Use a focused, foreground tab; your results arrive as a single `.zip` when the session ends. Paradigms needing sub-millisecond stimulus onset (rapid RSVP, subliminal priming) should still be run natively.
 * **One program at a time** — browse [**downloads.pallier.org/builds/latest/**](https://downloads.pallier.org/builds/latest/), find the program you want, and download just that one (a few MB) for your platform. Every experiment, demonstration and technical test is listed there with its description.
 * **The whole collection** — download one archive holding every program for your platform, using the links below. These come from the [GitHub releases](https://github.com/chrplr/goxpyriment/releases/latest) page.
 
@@ -43,7 +43,7 @@ If a security dialog window pops out, you have forgotten to unblock the zip file
 Note: if you do not find a version for your hardware (e.g. Mac/Intel or Windows/ARM), do not despair: it is very easy to compile these examples  
 following the instructions in [Installation.md](Installation.md)
 ---
-Good programs to start: `Memory_span`, `Change-Blindness`, `Simon_task`, `LoT_geometry`, `Retinotopy`...
+Good programs to start: `Memory_span`, `Change-Blindness`, `Simon_task`, `LoT-geometry`, `Retinotopy`...
 
 When launched from the command line, most programs accept `-w` (windowed 1024×768 mode), `-d N` (open on monitor N, 0 = primary), and `-s <id>` (subject ID written to the `.csv` data file).
 

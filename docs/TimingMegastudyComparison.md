@@ -141,7 +141,8 @@ what a threshold can and cannot affect:
 A 6 ms sweep moves the **mean by 6 ms and the sd by at most 0.02 ms**. So every
 precision figure here is threshold-insensitive and every lag figure is not —
 quote a lag only with its level attached, which is why `extract-onsets.py`
-records it in the file.
+(in the separate [dlp-io8-g](https://github.com/chrplr/dlp-io8-g) repository,
+under `measurements/`) records it in the file.
 
 For A–D the BBTK independently reproduced the AD3's sd to three significant
 figures (2.33/2.342, 1.32/1.320, 1.35/1.344, 0.17/0.113 — the last at its 250 µs

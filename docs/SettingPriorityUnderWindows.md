@@ -12,8 +12,8 @@ the one most people expect.
 > real hardware, and every figure in it comes from a run. **This page has not
 > been.** goxpyriment's own Windows scheduling code
 > (`sysinfo/scheduling_windows.go`) is likewise written against the documented
-> Win32 API and never exercised — it says so at runtime, in the `Sched:` line of
-> every report.
+> Win32 API and never exercised — it says so at runtime, in the
+> `sys sched_fidelity:` line of every run's `-info.txt`.
 >
 > What follows is the mechanism and the procedure, not a result. [Measure
 > it](#how-to-find-out-whether-it-helped-on-your-machine) before quoting a
@@ -87,7 +87,8 @@ start /high /wait my_experiment.exe %*
 ```
 
 `/wait` keeps the console window attached so you can see the program's own log
-output, including the `Sched:` line.
+output. The priority class the run got is not printed there; it is recorded in
+the run's `-info.txt` (see [Step 4](#step-4-verify)).
 
 ### ⚠️ In PowerShell, `start` is a different command
 
@@ -100,9 +101,12 @@ start /high my_experiment.exe        # NOT what you want in PowerShell
 In PowerShell, `start` is an alias for `Start-Process`, which has no `/high`
 switch and no priority parameter at all. Depending on the version you will get
 an error about an unexpected argument, or `/high` will be passed through as an
-*argument to your program* — which goxpyriment's flag parser will reject, but a
-different program might silently ignore. Either way the priority class is
-`NORMAL`.
+*argument to your program*. goxpyriment's flag parser does **not** reject a lone
+non-flag argument like that — some programs take a file name there — so the
+run can start normally. A program built with `NewExperimentFromFlags` stops
+with an error only if flags follow it (Go would otherwise silently ignore
+them); `Timing-Tests` parses its flags without that check, so there the flags
+after it are simply not read. Either way the priority class is `NORMAL`.
 
 Two ways out. Call `cmd` explicitly:
 
@@ -152,7 +156,8 @@ Two further reasons to prefer `/high` as the default:
   over the OS itself, which is not what a dropped frame usually comes from.
 
 If you do use `/realtime`, launch the shell as Administrator, and **check the
-`Sched:` line afterwards** rather than assuming it took.
+`sys sched_policy:` line in the run's `-info.txt` afterwards** rather than
+assuming it took.
 
 ---
 
@@ -174,11 +179,14 @@ in practice you are likely to see a much smaller number, but that is a runtime
 implementation detail rather than a guarantee, which is why goxpyriment
 **measures** it (`NtQueryTimerResolution`) instead of assuming it.
 
-Read it off the report:
+Read it off the run's `-info.txt`:
 
 ```
-Sched:      policy: HIGH_PRIORITY_CLASS  nice: 0  [UNTESTED on Windows; no POSIX
-            policy, priority class shown instead; timer resolution 0.500 ms]
+# sys sched_policy: HIGH_PRIORITY_CLASS
+# sys sched_realtime: false
+# sys sched_nice: 0
+# sys sched_realtime_available: 0
+# sys sched_fidelity: UNTESTED on Windows; no POSIX policy, priority class shown instead; timer resolution 0.500 ms
 ```
 
 If that figure reads ~15.6 ms rather than ~1 ms or below, **stop and fix that
@@ -189,29 +197,30 @@ you do is quantised to a frame.
 
 ## Step 4: verify
 
-Every goxpyriment program's system report carries the state it actually ran
-with, so a recorded run is self-labelling. Print it without running an
-experiment:
-
-```bat
-Timing-Tests -sysinfo
-```
-
-and look at the `Sched:` line:
+Every goxpyriment run writes the state it actually ran with into its
+`-info.txt`, so a recorded run is self-labelling. Look at the `sys sched_*`
+lines:
 
 | what you see | what it means |
 |---|---|
-| `policy: NORMAL_PRIORITY_CLASS` | the prefix did not take — most likely the PowerShell trap above |
-| `policy: HIGH_PRIORITY_CLASS` | `/high` worked |
-| `policy: REALTIME_PRIORITY_CLASS … REAL-TIME` | `/realtime` worked *and* you had the privilege |
-| `policy: unknown` | `GetPriorityClass` failed; report it as a bug |
+| `sys sched_policy: NORMAL_PRIORITY_CLASS` | the prefix did not take — most likely the PowerShell trap above |
+| `sys sched_policy: HIGH_PRIORITY_CLASS` | `/high` worked |
+| `sys sched_policy: REALTIME_PRIORITY_CLASS` with `sys sched_realtime: true` | `/realtime` worked *and* you had the privilege |
+| `sys sched_policy: unknown` | `GetPriorityClass` failed; report it as a bug |
+
+To check a launcher before a session without running an experiment, put the
+same prefix on `Timing-Tests -sysinfo` (`start /high /wait Timing-Tests
+-sysinfo`) and read its `Sched:` line. That reports the `-sysinfo` process
+itself, so without the prefix it always shows `NORMAL_PRIORITY_CLASS`, whatever
+your experiments are launched with.
 
 Note the asymmetry that makes checking worth the two seconds: asking for
 `/realtime` **without** administrator rights shows `HIGH_PRIORITY_CLASS` here,
 which is exactly what a successful `/high` shows. The line tells you what you
 got, not what you asked for.
 
-The `[UNTESTED on Windows …]` note is printed deliberately and will stay until
+The `UNTESTED on Windows …` note in `sys sched_fidelity:` is recorded
+deliberately and will stay until
 someone runs the verification below on real hardware.
 
 ---
@@ -235,7 +244,7 @@ Then compare the two `-info.txt`/`.csv` pairs. What to read, in order:
    priority change moves the worst frames; it barely moves the median, so a
    comparison of means will show almost nothing even when the change helped.
 2. **The SD of the frame intervals.**
-3. **The `Sched:` line in each `-info.txt`**, which records which run was which
+3. **The `sys sched_policy:` line in each `-info.txt`**, which records which run was which
    so the two files cannot be mixed up afterwards.
 
 Do it on a machine in the state you will actually run participants on. An idle

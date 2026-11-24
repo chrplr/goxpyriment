@@ -133,7 +133,8 @@ Then:
     
     ```
     cd _build
-    ./
+    ./parity_decision
+    ```
 
 3. If you would like to read the documentation locally — both the API
    reference (via pkgsite) and this site (via zensical) — see

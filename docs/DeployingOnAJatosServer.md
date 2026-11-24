@@ -206,7 +206,7 @@ https://jatos.example.org/publix/AbCdEfGh?level=2         any flag the program d
   it has no flag for, and JATOS records them with each result. For Prolific,
   JATOS can also redirect participants back with a completion code: set the
   study's *End redirect URL* in the study properties.
-- **Participant information.** Fields of `exp.GetParticipantInfo` are filled
+- **Participant information.** Fields of `control.GetParticipantInfo` are filled
   from parameters of the same name (`?age=31&handedness=2`), as in any browser
   build. No dialog is shown online.
 

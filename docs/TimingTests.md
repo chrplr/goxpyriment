@@ -174,8 +174,12 @@ Audio out:  [0] Dummy Output
 Reviewers routinely ask for CPU model, OS version, graphics driver and audio
 server. Two lines repay a second look:
 
-- **`Sched:`** records the policy the run actually got, not the one it asked
-  for. See [Setting priority under Linux](SettingPriorityUnderLinux.md).
+- **`Sched:`** records the policy of the `-sysinfo` process itself, which exits
+  before it would request real-time priority — so on a machine with the grant
+  it reads `(real-time available up to 50, not used)`, as above. That says the
+  grant is in place; it does not say what a run got. The run's own record is the
+  `sys sched_policy:` / `sys sched_realtime:` lines in its `-info.txt`. See
+  [Setting priority under Linux](SettingPriorityUnderLinux.md).
 - **`Displays:`** — on a multi-monitor machine the heads differ in resolution,
   refresh rate and pixel density, and every calibration is per-display. Each
   data file's `-info.txt` records **which display the window actually opened
@@ -478,7 +482,8 @@ before reading this row.
 
 ### Loading the data in Python
 
-Each run writes two files to `~/goxpy_data/`, or to `-outdir` if given:
+Each run writes two files to `-outdir` if given, else to `$GOXPY_DATA` if set,
+else to `~/goxpy_data/`:
 
 - `Timing-Tests_sub-000_date-<YYYYMMDD>-<HHMMSS>.csv` — data rows, no comments
 - `...-info.txt` — session metadata: times, host, OS, and the display and audio
@@ -549,7 +554,8 @@ written, and 7 is the one thing no setting can remove.
   Timing-Tests -test display -duration-s 30    # asks for real-time itself
   Timing-Tests -realtime-priority 0 -test display   # opt out
   ```
-  The `Sched:` line in the system report records which policy it actually got.
+  The `sys sched_policy:` line in each run's `-info.txt` records which policy
+  it actually got.
   The full procedure — and the traps, including that the limit is inherited from
   your login session and a new terminal will not pick it up — is in
   [Setting priority under Linux](SettingPriorityUnderLinux.md).

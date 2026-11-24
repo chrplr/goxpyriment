@@ -23,8 +23,6 @@ A classic sequence: **Fixation Cross** (500 ms) → **Target Circle** → **Wait
 package main
 
 import (
-    "log"
-
     . "github.com/chrplr/goxpyriment/control"
     "github.com/chrplr/goxpyriment/stimuli"
 )
@@ -33,8 +31,8 @@ func main() {
     exp := NewExperimentFromFlags("SimpleTrial", Black, White, 32)
     defer exp.End()
 
-    fixation := stimuli.NewFixCross(20, 3, control.White)
-    target   := stimuli.NewCircle(50, control.White)
+    fixation := stimuli.NewFixCross(20, 3, White)
+    target   := stimuli.NewCircle(50, White)
 
     exp.ShowInstructions("Press SPACE when you see the circle.")
 
@@ -59,8 +57,8 @@ func main() {
 	exp := NewExperimentFromFlags("Test", Black, White, 32)
 	defer exp.End()
 
-	w, h, _ := exp.Screen.Size()
-	rect := stimuli.NewRectangle(0, 0, float32(w)/2.0, float32(h)/2.0, White)
+	w, h := exp.DrawArea()   // the logical drawing space, not the window's pixels
+	rect := stimuli.NewRectangle(0, 0, w/2, h/2, White)
 
 	sound := stimuli.NewTone(440, 120, 0.5)
 	sound.PreloadDevice(exp.AudioDevice)    // generates the sound
@@ -138,7 +136,7 @@ func main() {
             isEven := (n % 2 == 0)
             correct := (isEven && key == control.K_F) || (!isEven && key == control.K_J)
 
-            // Subject ID and timestamp are prepended automatically.
+            // The subject ID is prepended automatically.
             exp.Data.Add(n, isEven, rt, correct)
         }
         return control.EndLoop
@@ -188,7 +186,7 @@ func main() {
     exp := control.NewExperimentFromFlags("RSVP Demo", control.Black, control.White, 36)
     defer exp.End()
 
-    exp.AddDataVariableNames([]string{"target_pos", "detected", "rt_ms"})
+    exp.AddDataVariableNames([]string{"target_pos", "detected", "press_ms"})
 
     // A stream of words; "TIGER" is the target at position 3 (0-indexed).
     words     := []string{"CHAIR", "RIVER", "LAMP", "TIGER", "CLOCK", "STONE", "BREAD", "HOUSE"}
@@ -198,7 +196,7 @@ func main() {
         exp.ShowInstructions(
             "Words will flash rapidly on screen.\n\n" +
             "Press SPACE as quickly as possible when you see TIGER.\n\n" +
-            "Press any key to start.",
+            "Press SPACE to start.",
         )
 
         // 200 ms on, 50 ms off per word → ~4 words per second
@@ -215,8 +213,11 @@ func main() {
         }
 
         // Did the participant press SPACE during the stream?
+        // ev.Timestamp is measured from the START of the stream, not from the
+        // target's onset; for an RT from TIGER, subtract logs[targetPos].OnsetNS
+        // from ev.TimestampNS (both on the SDL clock).
         ev, detected := stimuli.FirstKeyPress(events, control.K_SPACE)
-        rtMs := ev.Timestamp.Milliseconds()
+        pressMs := ev.Timestamp.Milliseconds()
 
         // Optional: inspect timing quality. Read the authoritative SDL-clock
         // fields (OnsetNS/OffsetNS), not the Go-clock ActualOnset/ActualOffset
@@ -228,7 +229,7 @@ func main() {
                 i, l.TargetOn.Milliseconds(), shownMs, jitterMs)
         }
 
-        exp.Data.Add(targetPos, detected, rtMs)
+        exp.Data.Add(targetPos, detected, pressMs)
         return control.EndLoop
     })
     if err != nil && !control.IsEndLoop(err) {

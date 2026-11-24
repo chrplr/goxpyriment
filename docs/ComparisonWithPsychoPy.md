@@ -51,7 +51,7 @@ listed below — and most of the advantages.
 |---|---|---|
 | Deployment | Python environment plus wheels, or Pavlovia hosting | A single self-contained binary. SDL3, SDL3_ttf and SDL3_image are embedded as compressed blobs and loaded at startup — nothing to install on the target machine |
 | Presentation loop | Python, subject to the GIL and to interpreter overhead; Psychtoolbox/ioHub back-ends are used for precision | VSYNC-locked loops with the garbage collector disabled (`debug.SetGCPercent(-1)`) for the duration of the critical section |
-| Clock | `psychopy.clock`, `core.getTime` | `clock` package built on SDL's high-resolution performance counter |
+| Clock | `psychopy.clock`, `core.getTime` | Flip and input-event timestamps on SDL's nanosecond clock (`ShowTS`, `GetKeyEventTS`), plus a `clock` package on Go's monotonic clock for waits and durations |
 | RSVP and rapid streams | Written by hand as a frame-by-frame loop | A dedicated high-precision path, `stimuli.PresentStreamOfImages`, with variants for images, text, tones, mixed streams, and per-frame callbacks |
 | Adaptive procedures | `StairHandler`, `QuestHandler` | `staircase.UpDown` (Levitt 1971) and `staircase.Quest` (Watson & Pelli 1983) — the same two families |
 | Unit conversion | `psychopy.monitors`, `deg`/`cm`/`norm` units | `units` package: pixels ↔ degrees ↔ cm through a `Monitor` struct |
@@ -119,9 +119,13 @@ participant-recruitment integrations (Prolific, MTurk, Qualtrics, Sona),
 credit and statistics dashboards, and compatibility checking.
 
 goxpyriment compiles to WebAssembly and runs in the browser (see
-[WASM.md](WASM.md)), so the *runtime* half of this exists. What does not exist
-is the surrounding service: hosting, recruitment, and server-side data
-collection are left to you.
+[WASM.md](WASM.md)), so the *runtime* half of this exists. For server-side
+data collection, a browser build can be packaged as a study for a
+[JATOS](https://www.jatos.org) server (`make jatos-NAME` builds the `.jzip`), and
+its results are then uploaded there rather than downloaded (see
+[Deploying on a JATOS server](DeployingOnAJatosServer.md)). What does not exist
+is the rest of the surrounding service: you run the JATOS server yourself, and
+recruitment-platform integration is left to you.
 
 ### 4. Video
 

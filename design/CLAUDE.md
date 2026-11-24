@@ -7,7 +7,7 @@ Trial/block structure, randomization utilities, Latin-square counterbalancing, a
 
 ## Between-subjects (BWS) factors
 
-`GetPermutedBWSFactorCondition(name string, subjectID int)` indexes into a Latin-square row derived from `subjectID`, ensuring balanced assignment across subjects. `subjectID` is an **int** (1-based: subject 1 → first condition); `control.Experiment.GetPermutedBWSFactorCondition` passes `exp.SubjectNumber()`, which stops the program for a subject ID that is not a number. The default ID 0 and negative IDs are normalized into range via floored modulo, so the call never panics.
+`GetPermutedBWSFactorCondition(name string, subjectID int)` cycles through the factor's conditions by subject number — it is not a Latin square. With several BWS factors the subject number runs through every combination of their levels, the factor registered first changing slowest (`((subjectID-1)/nLower) % len(conditions)`), so consecutive subjects cover the full design. `subjectID` is an **int** (1-based: subject 1 → first condition); `control.Experiment.GetPermutedBWSFactorCondition` passes `exp.SubjectNumber()`, which stops the program for a subject ID that is not a number. The default ID 0 and negative IDs are normalized into range via floored modulo, so the call never panics.
 
 ## Latin-square permutation types
 

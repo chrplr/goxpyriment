@@ -44,8 +44,8 @@ Example: `exp.Keyboard.WaitKeys([]sdl.Keycode{control.K_SPACE}, -1)` can stay as
 
 You will still need the `sdl` import for:
 
-- Constructing **sdl.FRect** or other SDL types not yet wrapped (e.g. in `demo_play_two_videos` for destination rects).
-- Any SDL API not yet exposed by goxpyriment (e.g. raw `sdl.PollEvent` in special cases like loading screens).
+- SDL types not re-exported by `control` (`control.FRect`, `control.FPoint`, `control.Color`, `control.Event` and a few others are; `demo_play_two_videos` builds its destination rects as `control.FRect`).
+- Any SDL API not yet exposed by goxpyriment. For a hand-rolled event loop, `control.PollEvent`, `control.TicksNS` and the `control.EVENT_*` constants already cover the common cases.
 - Passing SDL types into stimuli that accept them (e.g. `sdl.Color` is still used by stimuli; control re-exports colors and RGB/RGBA helpers).
 
-Over time, more of these can be moved behind goxpyriment APIs so that most experiments only need `control`, `io`, `misc`, and `stimuli`.
+Over time, more of these can be moved behind goxpyriment APIs so that most experiments only need `control`, `design`, and `stimuli`.

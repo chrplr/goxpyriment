@@ -253,14 +253,20 @@ leaves the port's IRQ unarmed, which ppdev writes never use. See
 for the diagnosis in full.
 
 Verify the same way as the rest of this page — from the data, not from memory.
-A run that obtained the vblank clock says so in its `-info.txt`:
+With `GOXPY_VBLANK=on`, a run that obtained the vblank clock says so in its
+`-info.txt`:
 
 ```
-# sys vblank_backend: Linux DRM vblank (card /dev/dri/card2, crtc 0, ...)
+# sys vblank_backend: Linux DRM vblank (card /dev/dri/card2, crtc 0 driving ..., DRM_IOCTL_WAIT_VBLANK, hardware-verified)
 ```
 
-and a run that could not falls back silently to a software-derived onset, which
-is a difference of several parts per million in a long block.
+and a run that could not logs `present: Linux DRM vblank unavailable (…)` at
+startup, records `sys vblank_backend: none (onsets are estimated, not
+measured)`, and anchors its onsets on the present's return instead. Against a
+photodiode the two have measured indistinguishable — both flat to well under a
+ppm (see the `Vblank:` note in [Timing tests](TimingTests.md)) — so
+this matters for reading the file correctly, not for the timing. Without
+`GOXPY_VBLANK=on` the line reads `not requested (…)` whatever the groups.
 
 ---
 
@@ -286,24 +292,45 @@ It should return **`50`**. If it still returns `0`, the grant is not in effect �
 either the file was never written, or you have not fully logged out and back in.
 
 **4. Check from inside your experiment.**
-Any goxpyriment program's system report includes a `Sched:` line, so a recorded
-run carries its own evidence:
+Every goxpyriment run writes the scheduling it ended up with into its
+`-info.txt`, so a recorded run carries its own evidence:
 
 ```
-Sched:      policy: SCHED_FIFO  priority: 50  REAL-TIME
-Sched:      policy: SCHED_OTHER  nice: 0  (real-time available up to 50, not used)
-Sched:      policy: SCHED_OTHER  nice: 0  (real-time NOT available to this user)
+# sys sched_policy: SCHED_FIFO
+# sys sched_realtime: true
+# sys sched_priority: 50
+# sys sched_realtime_available: 50
 ```
 
-Those three lines are three different situations with three different fixes, and
+```
+# sys sched_policy: SCHED_OTHER
+# sys sched_realtime: false
+# sys sched_nice: 0
+# sys sched_realtime_available: 50
+```
+
+```
+# sys sched_policy: SCHED_OTHER
+# sys sched_realtime: false
+# sys sched_nice: 0
+# sys sched_realtime_available: 0
+```
+
+Those three are three different situations with three different fixes, and
 they are worth being able to tell apart after the fact.
 
-The **last** is this setup not being in place — go back to Step 2. The **middle**
-is the setup working but the program not having asked: for a goxpyriment program
-that means `-no-realtime` was passed or `RealTimePriority` was set to 0, since
-otherwise it asks on its own; for anything else it means no `chrt` prefix.
-Without the line in the data you would be left comparing timing distributions and
-guessing which had happened.
+The **last** (`sched_realtime_available: 0`) is this setup not being in place —
+go back to Step 2. The **middle** is the setup working but the program not
+having asked: for a goxpyriment program that means `-no-realtime` was passed or
+`RealTimePriority` was set to 0, since otherwise it asks on its own; for
+anything else it means no `chrt` prefix. Without these lines in the data you
+would be left comparing timing distributions and guessing which had happened.
+
+`Timing-Tests -sysinfo` prints the same facts as one `Sched:` line, but for its
+own process, which exits without requesting real-time priority. On a machine
+with the grant it therefore always reads `(real-time available up to 50, not
+used)` — useful for checking the grant before a session, not as a record of
+any run.
 
 ---
 
@@ -337,11 +364,12 @@ is `SDL_VIDEODRIVER=kmsdrm`.
 
 ### The console's mode is the mode you get
 
-goxpyriment **never changes the display mode.** On KMS/DRM it opens a
-fullscreen-desktop window and the fullscreen mode it passes is always the
-display's *current* mode, so resolution and refresh rate come from whatever the
-kernel already set on that console — not from the monitor's native mode, and not
-from what the desktop session was using before you stopped it.
+Unless you pass `-resolution WxH` (see [Pinning the mode](#pinning-the-mode)),
+goxpyriment **does not change the display mode.** On KMS/DRM it opens a
+fullscreen-desktop window on the display's *current* mode, so resolution and
+refresh rate come from whatever the kernel already set on that console — not
+from the monitor's native mode, and not from what the desktop session was using
+before you stopped it.
 
 That is easy to miss, because the number that changes is not the one you would
 watch. A Dell U2720Q (native 3840x2160) driven from a VT at **2560x1440** ran at
@@ -387,6 +415,14 @@ video=DP-1:3840x2160@60
 Add it to `GRUB_CMDLINE_LINUX_DEFAULT` in `/etc/default/grub`, run `sudo
 update-grub`, reboot, and check `/proc/cmdline` and the `-info.txt` afterwards.
 Several connectors take several `video=` entries.
+
+**From inside the program**, a goxpyriment experiment built with
+`NewExperimentFromFlags` takes `-resolution WxH` (e.g. `-resolution
+3840x2160`). In fullscreen it switches the display to that mode in exclusive
+fullscreen — on KMS/DRM too — at the desktop refresh rate where the display
+offers it there, and stops with an error rather than opening at another size
+if the display has no such mode. It sets the resolution only, not the refresh
+rate, so check `d refresh_rate_hz:` in the `-info.txt` afterwards as above.
 
 **A monitor on USB-C is still `DP-N`.** The DRM connector type names the
 *protocol*, not the plug: USB-C carries DisplayPort over Alt Mode, so a monitor

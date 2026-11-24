@@ -52,7 +52,7 @@ defer exp.End()
 | `-d N` | Display ID: open on monitor N (-1 = primary display) |
 | `-resolution WxH` | Fullscreen: switch the display to that mode, e.g. `1920x1080`, in exclusive fullscreen; the program stops if the display has no such mode (the error lists its modes) or if `-exclusive-fullscreen=off`. With `-w`: the size of the window. Default: the display's current mode |
 | `-s ID` | Set the subject ID: letters and digits (`7`, `007`, `P12`); written to the data file automatically. See *Subject IDs* below |
-| `-headless` | Skip the setup dialog (below) and use field defaults — for batch/automated runs |
+| `-headless` | Skip the setup dialog (below) and use the values it would have shown — the last session's cached display/fullscreen/folder choices, else the field defaults — for batch/automated runs |
 | `-version` | Print the version of the program and of goxpyriment, then exit (see below) |
 | `-config FILE` | Read the defaults of the flags from a TOML file (see below) |
 | `-center-shift-x PX`, `-center-shift-y PX` | Shift everything drawn by PX screen pixels (+Y up) — see [Display transform](#display-transform) |
@@ -120,9 +120,13 @@ If `-s` is **not** passed — most importantly when the binary is launched by
 **double-clicking its icon** rather than from a terminal — a small setup dialog
 opens before the experiment starts, letting the experimenter enter the **subject
 code** and confirm the **display**, **fullscreen/windowed** mode, and **results
-folder**. It seeds its defaults from any `-w`/`-d` you did pass and remembers the
-display/fullscreen/folder choices across sessions (the subject code is always
-asked fresh). Cancelling the dialog exits the program.
+folder**. It remembers the display/fullscreen/folder choices across sessions
+(the subject code is always asked fresh), and a remembered choice is what it
+shows: `-w`/`-d` only seed a field that has no remembered value yet. The results
+folder is the exception: while `GOXPY_DATA` is set, the field shows that folder
+instead of the remembered one (see [Choosing the output
+directory](#choosing-the-output-directory)). Cancelling the dialog exits the
+program.
 
 The dialog is skipped when `-s ID` is given (that value is used directly, as
 before), when `-headless` is passed, or when the program already collected
@@ -222,13 +226,14 @@ Fields of type `FieldText` (the default) render as text input boxes. Fields of t
 | Click a field | Focus it |
 | Type | Append text to the focused field |
 | Backspace | Delete last character |
-| Tab / Shift-Tab | Move focus to next / previous text field |
+| Tab / Shift-Tab, Down / Up | Move focus to next / previous field (text, checkbox or select) |
+| Right / Left, Space | Change the focused checkbox or select (Space types a space in a text field) |
 | Enter | Confirm (same as clicking OK) |
 | Escape / close window | Cancel — `ErrCancelled` is returned |
 
 ### Session persistence
 
-All values except `subject_id` are saved to `~/.cache/goxpyriment/last_session.json` when the experimenter confirms. They are pre-filled on the next run. `subject_id` is always reset — the experimenter must enter it fresh each session.
+All values except `subject_id` are saved to `~/.cache/goxpyriment/last_session.json` when the experimenter confirms. They are pre-filled on the next run, except `output_dir` while `GOXPY_DATA` is set, which then shows that folder. `subject_id` is always reset — the experimenter must enter it fresh each session.
 
 ### Using the results
 
@@ -262,7 +267,7 @@ if err := exp.Initialize(); err != nil {
 defer exp.End()
 ```
 
-When `exp.Info` is non-nil at the time `Initialize()` is called, the collected key/value pairs are automatically written as a `--PARTICIPANT INFO` block in the `.csv` metadata header — no extra call is required.
+When `exp.Info` is non-nil at the time `Initialize()` is called, the collected key/value pairs are automatically written as a `--PARTICIPANT INFO` block in the `-info.txt` metadata file (the `.csv` holds only the data rows) — no extra call is required.
 
 > **Note:** When using `GetParticipantInfo` you will typically call the lower-level `NewExperiment` + `Initialize()` instead of `NewExperimentFromFlags`, so you can pass the fullscreen/windowed choice from the dialog directly.
 
@@ -287,38 +292,55 @@ if err != nil && !control.IsEndLoop(err) {
 `exp.Run` does two important things:
 
 1. **Ensures everything runs on the SDL main thread.** SDL requires that all rendering and event calls happen on the thread that created the window. `exp.Run` guarantees this.
-2. **Installs a panic/recover guard.** When the participant presses ESC, the library immediately aborts the trial loop by calling `panic` with an internal sentinel value. `exp.Run` catches this panic, converts it back to an error, and returns it cleanly. Your data is saved.
+2. **Installs a panic/recover guard.** When the participant presses ESC (or closes the window, or Ctrl-C is caught), the presentation and waiting helpers abort the trial loop by calling `panic` with an internal sentinel value. `exp.Run` catches this panic, converts it back to an error, and returns it cleanly. Your data is saved. Key waits are the exception: they *return* the quit as an error (see below).
 
 ### Returning from the callback
 
 | Return value | Meaning |
 |---|---|
-| `control.EndLoop` | Normal exit; experiment is done |
+| `control.EndLoop` (or an error wrapping it) | Normal exit; experiment is done |
 | `nil` | Continue — call the callback again on the next frame |
 | any other `error` | Propagated as the return value of `exp.Run` |
 
 In a typical experiment you run the full trial loop inside a single callback invocation and return `control.EndLoop` at the end. The `nil` / "keep looping" pattern is used for frame-by-frame animation; in most cases you will never return `nil`.
 
-### You don't need to check every error
+### Which errors you need to check
 
-Because pressing ESC triggers the panic/recover mechanism, any call that would have returned an error (e.g., `exp.Show`, `exp.Wait`, `exp.Keyboard.WaitKey`) will instead abort the loop immediately. The error never reaches your code.
+A quit request — ESC, closing the window, or a caught Ctrl-C — is sticky: once
+seen, it stays set for the rest of the run. Two kinds of call react to it
+differently:
 
-This means the following two styles are both correct:
+- **Presentation and waiting helpers** — `exp.Wait`, `exp.Blank`, `exp.Show`,
+  `exp.ShowTS`, `exp.ShowTimed`, `exp.ShowFrames`, `exp.BlankFrames` and
+  `exp.ShowInstructions` (through `Show`) — end the run with the panic/recover
+  mechanism: `Wait` (and the waits inside `Blank`/`ShowTimed`) as soon as it
+  sees the quit, and every one of them at its start once a quit has been
+  requested. Their error never reaches your code.
+- **Key and button waits** — `exp.Keyboard.WaitKey`/`WaitKeys`/`WaitKeysRT`,
+  `GetKeyEventTS`, the wait inside `exp.ShowAndGetRT`, `exp.WaitAnyEventTS`, and
+  the `Mouse` waits — *return* `sdl.EndLoop` as an error and do not unwind
+  anything. If you ignore that error, the code after the wait still runs once
+  with whatever the wait returned (0, or `K_ESCAPE`, and an RT of 0); the run
+  only stops at the next presentation or wait.
+
+So the presentation calls can go unchecked, but a key wait's error should be
+returned from the callback, which `exp.Run` treats as a clean exit:
 
 ```go
-// Style A — check errors explicitly (safer for library/production code)
-if err := exp.Show(fixation); err != nil {
-    return err
-}
-if err := exp.Wait(500); err != nil {
-    return err
-}
-
-// Style B — omit error checks inside exp.Run (fine for experiment scripts)
+// Presentation helpers: no check needed inside exp.Run
 exp.ShowTimed(fixation, 500)
+
+// Key waits: return the error, or the aborted trial is written to the data file
+key, rt, err := exp.ShowAndGetRT(target, keys, 3000)
+if err != nil {
+    return err // EndLoop on ESC: Run returns cleanly and End saves the data
+}
+exp.Data.Add(condition, key, rt)
 ```
 
-Style B works because if something goes wrong (ESC pressed, window closed), the panic/recover mechanism unwinds the call stack before your code can observe an error. Use Style A if you have cleanup that must run on abort; otherwise Style B keeps experiment scripts readable.
+Check the presentation calls too (`if err := exp.Show(stim); err != nil { return err }`)
+if you have cleanup that must run on abort, or to catch rendering errors that are
+not a quit.
 
 ---
 
@@ -494,8 +516,10 @@ recordOnset()                         4. decide this frame's onset
 previous `Update()` call.** That onset comes from the best source available, in
 this order: the kernel's vblank timestamp (`GOXPY_VBLANK=on`), the scheduled
 boundary if pacing held the frame, or the moment `SDL_RenderPresent` returned.
-Whichever it was, `target = anchor + FrameDuration()`, and the run's
-`onset_source` column records which.
+Whichever it was, `target = anchor + FrameDuration()`, and
+`exp.Screen.OnsetSource()` reports which for the last flip (`tests/Timing-Tests`
+records it per cycle in its `onset_source` column; an ordinary experiment's data
+file does not).
 
 Now let `now` be the clock read the instant `SDL_RenderPresent` returned. Where
 it falls decides everything:
@@ -549,12 +573,16 @@ Two things follow that are worth knowing:
 - A late present is tallied as `blocked`, the same as a healthy blocking one, so
   the pacing counters alone do not reveal lateness. What reveals it is the
   measured-vs-nominal comparison in [Startup calibration](#startup-calibration)
-  below, and `sequence_gaps` when the vblank clock is enabled.
+  below, and, when the vblank clock is enabled, `SequenceGaps` in
+  `exp.Screen.VblankStats()` (printed as `sequence_gaps` by `tests/Timing-Tests`).
 - Pacing is skipped entirely when VSync is off, on the grounds that a caller who
   turned it off wants frames as fast as the GPU can make them.
 
-The tallies land in the run's `-info.txt`, and `early` is a **subset** of
-`blocked` rather than a fourth category:
+The tallies are counted by `exp.Screen.PacingStats()` (re-exported as
+`control.PacingStats`; `ResetPacingStats()` excludes a warm-up). An experiment
+does not write them to its `-info.txt` by itself; `tests/Timing-Tests` writes
+them into its own, and `early` is a **subset** of `blocked` rather than a
+fourth category:
 
 ```
 # sys pacing: presents=30000 blocked=30000 early=29610 paced=0 vblank_held=0 … class=blocking
@@ -640,7 +668,7 @@ goxpyriment exposes time through **two independent clocks with different zero po
 
 | Clock | Read it via | Zero point | Use it for |
 |---|---|---|---|
-| **Go monotonic clock** | `clock.GetTime()`, `clock.GetTimeNS()`, `Clock.Now()`, `Clock.NowMillis()`, `Clock.NowNanos()` | First use of the `clock` package, or `clock.NewClock()` | *Scheduling and logging in your own code*: inter-trial and inter-stimulus intervals, drift-free trial pacing (`SleepUntil`), and "time since start of block" columns in your data file |
+| **Go monotonic clock** | `clock.GetTime()`, `clock.GetTimeNS()`, `Clock.Now()`, `Clock.NowMillis()`, `Clock.NowNanos()` | Initialisation of the `clock` package (before `main` runs), or `clock.NewClock()` | *Scheduling and logging in your own code*: inter-trial and inter-stimulus intervals, drift-free trial pacing (`SleepUntil`), and "time since start of block" columns in your data file |
 | **SDL event clock** | `exp.ShowTS()`, `Screen.FlipTS()`, `Keyboard.GetKeyEventTS()`, `WaitAnyEventTS()`, and the `Timestamp` field of any SDL event (all on `sdl.TicksNS()`) | SDL initialisation | **Reaction-time measurement**: whenever you subtract a stimulus onset from a response, *both* values must come from this clock |
 
 **The rule.** Measure reaction times entirely on the SDL clock — subtract a `FlipTS`/`ShowTS` onset from a `GetKeyEventTS` response. Use the Go clock only for things you *schedule* rather than *measure*: ISIs, fixation durations, block pacing, and log timestamps. Crossing the two — e.g. `keyTS - clock.GetTimeNS()` — is meaningless.
@@ -800,7 +828,8 @@ nanosecond clock, captured right after each `Present()` returns. Their
 difference measures the software-controlled stimulus duration. On a VRR
 display this equals the actual on-screen duration plus a small, constant
 hardware pipeline latency (GPU scan-out + panel response, typically 1–5 ms)
-that can be measured independently with the `frames` test and a photodiode.
+that can be measured independently with a photodiode and the `av` sub-test of
+`Timing-Tests` (`-no-sound` makes it a pure visual-onset test).
 
 #### VRR range and self-diagnosis
 
@@ -814,7 +843,7 @@ You can characterise your panel's VRR window empirically with the
 `Timing-Tests` suite:
 
 ```bash
-go run ./tests/Timing-Tests -test vrr -vrr-max-ms 50 -cycles 5
+go run ./tests/Timing-Tests -test vrr -vrr-max-ms 50 -vrr-reps 5
 ```
 
 This sweeps target durations from 1 ms to 50 ms in 1 ms steps and reports
@@ -999,8 +1028,10 @@ held := exp.Mouse.IsPressed(sdl.BUTTON_LEFT)
 // Wait for MOUSE_BUTTON_UP; returns its SDL hardware timestamp (nanoseconds)
 upTS, err := exp.Mouse.WaitButtonReleaseTS(btn, 5000)
 
-// Current cursor position in center-based coordinates
+// Current cursor position in window pixels (SDL's top-left origin, +Y down)
 x, y := exp.Mouse.Position()
+// ... or in the center-based stimulus coordinates (+Y up)
+cx, cy := exp.Screen.MousePosition()
 
 // Show / hide cursor
 exp.Mouse.ShowCursor(false)
@@ -1071,7 +1102,7 @@ All of the input methods above are device-specific: `GetKeyEventTS` for keyboard
 `ResponseDevice` is a single interface that abstracts over all of them:
 
 ```go
-// in package io
+// in package apparatus
 type ResponseDevice interface {
     WaitResponse(ctx context.Context) (Response, error)
     DrainResponses(ctx context.Context) error
@@ -1107,13 +1138,17 @@ var rd apparatus.ResponseDevice = apparatus.NewTTLResponseDevice(box, 5*time.Mil
 All three look identical inside a trial loop:
 
 ```go
+_ = rd.DrainResponses(ctx)         // clear stale presses from previous trial — BEFORE the onset
 onset, _ := exp.ShowTS(stim)
-_ = rd.DrainResponses(ctx)         // clear stale presses from previous trial
 resp, err := rd.WaitResponse(ctx)
 if err != nil { /* ESC, timeout, etc. */ }
 
-rtMs := resp.RT.Milliseconds()     // always valid
+rtMs := resp.RT.Milliseconds()     // always valid; measured from the WaitResponse call
 ```
+
+Drain before `ShowTS`, never after it: for the keyboard and mouse,
+`DrainResponses` empties the whole SDL event queue, so draining after the onset
+discards a response the participant has already made.
 
 #### Timing precision and the `Precise` flag
 
@@ -1122,20 +1157,21 @@ The `Precise` field tells you whether `RT` came from a nanosecond hardware event
 | Device | `Precise` | RT accuracy |
 |--------|-----------|-------------|
 | Keyboard, Mouse, Gamepad | `true` | SDL3 hardware event timestamp, nanosecond resolution — identical to using `GetKeyEventTS` directly |
-| MEGTTLBox, DLPIO8 | `false` | `time.Now()` at poll detection; accuracy bounded by poll interval (default 5 ms) |
+| MEGTTLBox, DLPIO8 | `false` | `time.Now()` at poll detection; accuracy bounded by the poll interval passed to `NewTTLResponseDevice` (5 ms in the examples above) |
 
-When `Precise` is `true`, the RT in the `Response` is computed from `sdl.TicksNS()` captured at the `WaitResponse` call versus the SDL3 hardware event timestamp — the same nanosecond clock used by `Screen.FlipTS`. It is therefore suitable for stimulus-onset-locked RT:
+When `Precise` is `true`, the RT in the `Response` is computed from `sdl.TicksNS()` captured at the `WaitResponse` call versus the SDL3 hardware event timestamp — the same nanosecond clock used by `Screen.FlipTS`. Because it is measured from the call, not from the onset, add the time from the onset to the call to get a stimulus-onset-locked RT:
 
 ```go
 onset, _ := exp.ShowTS(stim)
+callNS := control.TicksNS()          // just before WaitResponse reads its own start
 resp, _ := rd.WaitResponse(ctx)
 if resp.Precise {
     // resp.RT was computed from SDL hardware timestamps: nanosecond accuracy
-    rtFromOnset := time.Duration(int64(onset) + resp.RT.Nanoseconds())  // approximate
+    rtFromOnset := time.Duration(callNS-onset) + resp.RT  // short by the gap between the two clock reads
 }
 ```
 
-When `Precise` is `false`, `RT` is still a valid elapsed duration — it just has ~poll-interval jitter (5 ms by default). For typical behavioral RT tasks this is acceptable; for EEG/MEG experiments requiring sub-millisecond synchrony, use the TTL output path for stimulus marking and treat RT as an approximate measure or use a hardware response box with sub-ms timestamping.
+When `Precise` is `false`, `RT` is still a valid elapsed duration — it just has poll-interval jitter (up to the interval you passed). For typical behavioral RT tasks this is acceptable; for EEG/MEG experiments requiring sub-millisecond synchrony, use the TTL output path for stimulus marking and treat RT as an approximate measure or use a hardware response box with sub-ms timestamping.
 
 ---
 
@@ -1179,7 +1215,8 @@ field, by `exp.SetOutputDirectory()` or by a program's own flag (e.g.
 `Initialize()` opens the files:
 
 ```go
-exp := control.NewExperiment("My Experiment", control.Black, control.White, 32)
+exp := control.NewExperiment("My Experiment", 0, 0, true, // width, height, fullscreen
+    control.Black, control.White, 32)
 exp.SetOutputDirectory("/path/to/mydata")  // must come before Initialize()
 if err := exp.Initialize(); err != nil { log.Fatal(err) }
 defer exp.End()
@@ -1545,12 +1582,12 @@ snd.Play()
 ### Procedural tones
 
 ```go
-tone := stimuli.NewTone(1000.0, 200*time.Millisecond, 200) // 1 kHz, 200 ms, medium volume
+tone := stimuli.NewTone(1000.0, 200, 0.5) // 1 kHz, 200 ms, half amplitude
 tone.PreloadDevice(exp.AudioDevice)
 tone.Play()
 ```
 
-Volume is 0–255. Use `PreloadDevice` once; then call `Play` repeatedly.
+The duration is in milliseconds (an `int`) and the amplitude is 0–1. Use `PreloadDevice` once; then call `Play` repeatedly.
 
 ### Segment playback with fade
 
@@ -1641,8 +1678,9 @@ imageOnsetNS, _ := exp.ShowTS(picture)   // picture naming
 // — or —
 stimulusNS, _ := tone.PlaySyncedWithFlip(exp.Screen)  // shadowing
 
-// 3. Wait for the vocal response (2-second window).
-onsetNS, pcm, err := vk.WaitOnset(captureStartNS, 2000)
+// 3. Wait for the vocal response (2-second window), then keep recording
+//    1000 ms after the onset so pcm holds the spoken response (0 = stop at onset).
+onsetNS, pcm, err := vk.WaitOnset(captureStartNS, 2000, 1000)
 if errors.Is(err, apparatus.ErrVoiceTimeout) {
     // participant did not respond in time
 }
@@ -1656,7 +1694,7 @@ rtMs := int64(onsetNS - imageOnsetNS) / 1_000_000
 **Threshold calibration.** A value of 0.02–0.05 works in a quiet room. If you observe:
 
 - **Spuriously short RTs (< 100 ms)** — the threshold is too low; it is triggering on breath noise, lip smacks, or microphone bleed from the speakers. Raise the threshold or use headphones.
-- **`detected = false` (missed responses)** — the threshold is too high for soft or breathy voices. Lower it.
+- **`ErrVoiceTimeout` on trials where the participant did speak (missed responses)** — the threshold is too high for soft or breathy voices. Lower it.
 
 Always verify using the saved WAV files rather than adjusting the threshold blindly.
 
@@ -1784,19 +1822,27 @@ exp.AddBWSFactor("mapping", []interface{}{"F=left/J=right", "F=right/J=left"})
 mapping := exp.GetPermutedBWSFactorCondition("mapping").(string)
 ```
 
-The assignment follows a balanced Latin square so that conditions rotate across subjects (subject 1 → condition A, subject 2 → condition B, subject 3 → condition A, …).
+The assignment cycles through the conditions in the order given, by subject number (subject 1 → condition A, subject 2 → condition B, subject 3 → condition A, …). With several between-subjects factors, the subject number runs through every combination of their levels, the factor registered first changing slowest. It uses `exp.SubjectNumber()`, so it stops the program for a subject ID that is not a number.
 
 ### Constrained shuffling
 
-For designs where you need to prevent the same condition from appearing more than N times in a row, use block-level `AddTrial` with `randomPosition: true`, which inserts each trial at a random position rather than appending:
+For designs where you need to prevent the same condition from appearing more than N times in a row, shuffle the block with `ShuffleTrialsConstrained`, which takes a `design.Constraint` per factor name (`p > 0`: at most `p` consecutive trials share a value; `-g`: two trials sharing a value are at least `g` positions apart):
 
 ```go
 for _, cond := range conditions {
     t := design.NewTrial()
     t.SetFactor("condition", cond)
-    block.AddTrial(t, 5, true)  // 5 copies each, randomly interleaved during construction
+    block.AddTrial(t, 5, false)  // 5 copies each
+}
+err := block.ShuffleTrialsConstrained(map[string]design.Constraint{
+    "condition": 2, // never more than 2 in a row
+}, 1000)          // attempts before giving up; 0 = len(block.Trials)
+if err != nil {
+    log.Fatal(err) // no ordering satisfies the constraints
 }
 ```
+
+`AddTrial(t, n, true)` only inserts each copy at a random position; it does not limit repetitions. `design.ShuffleTableConstrained` does the same for the rows of a `[][]string` table.
 
 ---
 
@@ -1975,7 +2021,10 @@ err = exp.Run(func() error {
     for _, t := range trials {
         exp.Blank(500)
         stim := stimuli.NewTextLine(t.condition, 0, 0, control.White)
-        key, rt, _ := exp.ShowAndGetRT(stim, []control.Keycode{control.K_F, control.K_J}, 3000)
+        key, rt, err := exp.ShowAndGetRT(stim, []control.Keycode{control.K_F, control.K_J}, 3000)
+        if err != nil {
+            return err // ESC: ends the run cleanly, without writing this trial
+        }
         correct := string(key.KeyName()) == t.correctKey
         exp.Data.Add(t.condition, t.soaMs, rt, correct)
     }
@@ -2024,7 +2073,7 @@ The embedded assets are included in all cross-compiled outputs automatically.
 
 ## 14. Animated Stimuli
 
-Three functions run self-contained VSYNC-locked animation loops. All three:
+Four functions run self-contained VSYNC-locked animation loops — `PresentMovingDotCloud`, `PresentMovingGrating`, `PresentMovingGabor` and `PresentMovingGratingDisk` (a grating in a circular aperture; same parameters as the Gabor, with a diameter in place of size and sigma). All four:
 
 - Disable GC for the duration of the loop.
 - Drain the SDL event queue before the first frame.
@@ -2261,7 +2310,7 @@ One-shot, for when the video *is* the trial:
 events, logs, err := stimuli.PlayGv(exp.Screen, "stim.gv", 0, 0)
 ```
 
-`PlayGv` disables GC, locks to VSYNC, and returns a per-frame `TimingLog` you can
+`PlayGv` disables GC, locks to VSYNC, and returns a per-frame `[]VideoFrameLog` (below) you can
 write to your data file to verify that no frame was late. It exits on ESC.
 
 ##### The clip's frame rate must divide the refresh rate
@@ -2307,9 +2356,9 @@ exp.Run(func() error {
 })
 ```
 
-`Flip` is an alias for `Update`; both hold one frame. On drivers that
-present without blocking (triple/mailbox buffering), `Update` returns
-immediately and the loop runs faster than the display, swallowing frames.
+`Flip` is an alias for `Update`; both hold one frame, also on drivers that
+present without blocking (triple/mailbox buffering), so the loop cannot run
+faster than the display.
 
 `Width`, `Height`, `FrameCount` and `FPS` are read from the header at
 construction; the GPU texture is allocated lazily on the first `Update` or
@@ -3134,8 +3183,8 @@ The actual software-controlled duration is
 `(offsetNS - onsetNS) / 1e6` ms. On a VRR-capable display this equals
 the true on-screen duration plus a small, constant hardware pipeline
 latency (GPU scan-out and panel response, typically 1–5 ms) that can be
-calibrated once with a photodiode using the `frames` timing sub-test of
-the `Timing-Tests` suite.
+calibrated once with a photodiode using the `av` sub-test of the
+`Timing-Tests` suite.
 
 Every VRR panel supports VRR only within a finite refresh-rate window
 (e.g., 48–144 Hz, corresponding to frame durations of 6.9–20.8 ms for
@@ -3223,7 +3272,10 @@ func main() {
 
             // Stimulus + Response
             stim := stimuli.NewTextLine(t.word, 0, 0, t.color)
-            key, rt, _ := exp.ShowAndGetRT(stim, keys, ResponseTimeout)
+            key, rt, err := exp.ShowAndGetRT(stim, keys, ResponseTimeout)
+            if err != nil {
+                return err // ESC or window close: Run returns cleanly, this trial is not written
+            }
 
             // Score
             correct := false
@@ -3262,8 +3314,8 @@ Key patterns illustrated:
 - `exp.AddDataVariableNames` before the run loop.
 - `design.ShuffleList` for trial randomization.
 - `stimuli.PreloadVisualOnScreen` inside `exp.Run` for timing-sensitive stimuli.
-- `exp.Show` for single stimuli; `exp.Blank` for ITIs.
-- `exp.Keyboard.WaitKeysRT` for response + RT.
+- `exp.ShowTimed` for single timed stimuli; `exp.Blank` for ITIs.
+- `exp.ShowAndGetRT` for stimulus + response + RT, with its error returned from the callback so ESC ends the run without writing the aborted trial.
 - `stim.Unload()` for dynamically created stimuli.
 - `exp.Audio.PlayBuzzer()` for feedback.
 - `return control.EndLoop` at the end.

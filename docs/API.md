@@ -24,6 +24,8 @@ geometry/     ← coordinate conversion helpers
 triggers/     ← hardware trigger devices (EEG sync, etc.)
 staircase/    ← adaptive threshold estimation (up/down, QUEST)
 units/        ← pixels ↔ degrees ↔ cm through a Monitor
+eyetracker/   ← vendor-neutral gaze-tracker interface (EyeLink, Tobii via a bridge)
+config/       ← flag defaults from a TOML file (-config)
 assets_embed/ ← embedded default font and sounds
 ```
 
@@ -75,14 +77,17 @@ type FieldType int
 const (
     FieldText     FieldType = iota // text input box (default)
     FieldCheckbox                  // tick-box; value is "true" or "false"
+    FieldNumber                    // text box; validated as a positive number on submit
+    FieldSelect                    // row of clickable option buttons; value is the selected option
 )
 
 // InfoField describes one entry in the dialog.
 type InfoField struct {
     Name    string    // key in the returned map
     Label   string    // displayed label
-    Default string    // initial value
-    Type    FieldType // FieldText (default) or FieldCheckbox
+    Default string    // initial value; "true"/"false" for FieldCheckbox
+    Type    FieldType // FieldText (default), FieldCheckbox, FieldNumber, or FieldSelect
+    Options []string  // choices for FieldSelect; first entry used if Default is empty
 }
 ```
 
@@ -94,6 +99,7 @@ type InfoField struct {
 | `control.MonitorFields` | `screen_width_cm`, `viewing_distance_cm`, `refresh_rate_hz` |
 | `control.StandardFields` | `ParticipantFields` + `MonitorFields` |
 | `control.FullscreenField` | Checkbox: `fullscreen` (`"true"` / `"false"`) |
+| `control.DisplayField` | Text: `display_id` (0 = primary monitor); read it back with `control.DisplayIDFromInfo(info) int` |
 
 #### Function
 
@@ -103,7 +109,7 @@ type InfoField struct {
 
 #### Session persistence
 
-All values except `subject_id` are saved to `~/.cache/goxpyriment/last_session.json` on OK and pre-filled on the next run. `subject_id` is always reset.
+All values except `subject_id` are saved to `~/.cache/goxpyriment/last_session.json` on OK and pre-filled on the next run. `subject_id` is always reset, and `output_dir` is not taken from the cache while `GOXPY_DATA` is set — the variable wins, and the field's default already shows it.
 
 #### Using the fullscreen checkbox and persisting to the data file
 
@@ -156,6 +162,9 @@ control.ErrCancelled  // returned when the user cancels the dialog
 | `exp.Run(logic func() error) error` | Runs the main trial loop on the SDL main thread. Return `control.EndLoop` to exit cleanly. |
 | `exp.HideCursor() error` | Hides the mouse cursor. `Initialize()` already does this — only needed to hide it again after a `ShowCursor` call. |
 | `exp.ShowCursor() error` | Makes the mouse cursor visible. Call it after `Initialize()` in mouse-driven paradigms; the cursor is hidden by default so it never sits over the stimuli. Equivalent to setting `exp.CursorVisible = true` before `Initialize()`. `GetParticipantInfo` shows the cursor for its own dialog regardless. |
+| `exp.Fatal(format string, args ...any)` | Cleans up SDL resources, then logs the message and exits. Use it instead of `log.Fatalf` anywhere after `Initialize()` succeeds. |
+| `exp.WaitForFocus(timeout time.Duration) bool` | Blocks until the experiment window holds keyboard focus, or until `timeout` (`control.FocusWaitTimeout` = 60 s); reports whether it got it. SDL delivers keys only to the focused window. |
+| `exp.ReclaimDisplay()` | Puts the window back in front and repaints it after another process owned the display (e.g. an EyeLink calibration through `eyetracker.Bridge.Calibrate`). Best-effort; problems are reported, not returned. |
 
 ### Presentation Methods
 
@@ -172,9 +181,16 @@ control.ErrCancelled  // returned when the user cancels the dialog
 | `exp.FittedTextBox(text string) *stimuli.TextBox` | A centered `TextBox` wrapped to the drawing area and rendered at the largest point size — never above the default — at which the whole block fits. See *Laying out a block of text* below. |
 | `exp.DrawArea() (w, h float32)` | Size of the coordinate space stimuli are drawn in (the logical resolution). What layout code should measure against. |
 | `exp.Blank(ms int) error` | Clear and flip screen, then wait until `ms` milliseconds have passed since that flip. |
-| `exp.Wait(ms int) error` | Wait `ms` ms while pumping SDL events (ESC-abortable). |
+| `exp.Wait(ms int) error` | Wait `ms` ms while pumping SDL events (ESC-abortable: it ends the run itself rather than returning an error). |
 | `exp.ShowSplash(waitForKey bool) error` | Show experiment name + version splash. |
 | `exp.Flip() error` | Present the backbuffer and hold to the frame boundary (one call = one display frame). |
+
+**Quitting.** ESC, a window close and a caught Ctrl-C/SIGTERM set a sticky quit
+request. From then on every key wait returns `control.EndLoop` as an error, and
+the next `Wait`, `Blank`, `Show`, `ShowTS`, `ShowTimed`, `ShowFrames` or
+`BlankFrames` ends the run by itself (it unwinds to `Run`, and `End` saves the
+data) — so an experiment that discards a key wait's error does not carry on
+writing junk rows.
 
 ### Input
 
@@ -189,13 +205,22 @@ control.ErrCancelled  // returned when the user cancels the dialog
 
 ```go
 type EventState struct {
-    LastKey            sdl.Keycode
-    LastMouseButton    uint32
-    LastKeyTimestamp   uint64  // SDL nanosecond timestamp of the last key event
-    LastMouseTimestamp uint64  // SDL nanosecond timestamp of the last mouse event
-    QuitRequested      bool
+    LastKey                    sdl.Keycode
+    LastMouseButton            uint32
+    LastKeyTimestamp           uint64  // SDL nanosecond timestamp of the key-down event
+    LastMouseTimestamp         uint64  // SDL nanosecond timestamp of the mouse-button-down event
+    LastKeyUp                  sdl.Keycode
+    LastKeyUpTimestamp         uint64  // SDL nanosecond timestamp of the KEY_UP event
+    LastMouseButtonUp          uint32
+    LastMouseButtonUpTimestamp uint64  // SDL nanosecond timestamp of the MOUSE_BUTTON_UP event
+    QuitRequested              bool    // sticky: ESC, window close, or a caught Ctrl-C/SIGTERM
 }
 ```
+
+For a hand-rolled input loop (text input, bespoke event handling) without importing
+`go-sdl3`, `control` also re-exports `PollEvent(event *Event) bool`, `PumpEvents()`,
+`TicksNS() uint64`, the types `Event`, `EventType`, `KeyboardEvent`, `TextInputEvent`,
+and the constants `EVENT_QUIT`, `EVENT_KEY_DOWN`, `EVENT_KEY_UP`, `EVENT_TEXT_INPUT`.
 
 ### Design and Data
 
@@ -207,6 +232,9 @@ type EventState struct {
 | `exp.ShuffleBlocks()` | Randomize block presentation order. |
 | `exp.AddBWSFactor(name string, conditions []interface{})` | Register a between-subjects factor for Latin-square counterbalancing. |
 | `exp.GetPermutedBWSFactorCondition(name string) interface{}` | Return this subject's condition for a BWS factor. |
+| `exp.Subject` | `control.Subject` (= `results.Subject`) — participant ID of letters and digits; `.Seed()`, `.Number()`, `.Label()`. |
+| `exp.SubjectNumber() int` | The subject ID as a number, for counterbalancing by subject. A non-numeric ID such as `AB12` stops the program with an error. |
+| `exp.AddExperimentInfo(text string)` | Record a line of free-form session metadata as an `e <text>` comment in the `-info.txt` (held until `Initialize` if called before it). |
 | `exp.Design` | `*design.Experiment` — full design object |
 | `exp.Info` | `map[string]string` — values from `GetParticipantInfo`; set before `Initialize()` to persist them automatically to the `-info.txt` file |
 | `exp.CursorVisible` | `bool` — whether the mouse pointer is shown over the experiment window. Defaults to `false`: `Initialize()` hides the cursor. Set it to `true` before `Initialize()` (or call `ShowCursor()` after) for mouse-driven paradigms. |
@@ -220,6 +248,7 @@ type EventState struct {
 | `exp.SetVSync(vsync int) error` | Toggle vertical sync (1 = on, 0 = off). |
 | `exp.SetLogicalSize(w, h int32) error` | Set device-independent logical resolution. |
 | `exp.SetOutputDirectory(dir string)` | Override default data file directory (`$GOXPY_DATA`, else `~/goxpy_data`). |
+| `control.ListDisplays() ([]DisplayInfo, error)` | Metadata for every connected display, index 0 = primary. Assign an index to `exp.ScreenNumber` before `Initialize()`. |
 
 ### Gamma Correction
 
@@ -298,11 +327,12 @@ control.MarkerFlags(defaults ...control.MarkerConfig) // before NewExperimentFro
                                                       // -photodiode -photodiode-size -photodiode-corner -marker-frames -ttl -ttl-ms
 type control.MarkerConfig struct {
     Photodiode     bool
-    PhotodiodeSize float32                // screen pixels, whatever the logical size; 0 = DefaultPhotodiodeSize (100)
-    Frames         int                    // white frames per onset; 0 = DefaultMarkerFrames (3)
-    TTL            string                 // device spec for triggers.Open; "" = no TTL
-    TTLDevice      apparatus.MarkerOutput // an already-open output, used instead of TTL
-    TTLDuration    time.Duration          // 0 = Frames frame periods
+    PhotodiodeSize   float32                // screen pixels, whatever the logical size; 0 = DefaultPhotodiodeSize (100)
+    PhotodiodeCorner apparatus.MarkerCorner // corner of the square (default top-left); -photodiode-corner tl|tr|bl|br
+    Frames           int                    // white frames per onset; 0 = DefaultMarkerFrames (3)
+    TTL              string                 // device spec for triggers.Open; "" = no TTL
+    TTLDevice        apparatus.MarkerOutput // an already-open output, used instead of TTL
+    TTLDuration      time.Duration          // 0 = Frames frame periods
 }
 exp.MarkerConfig                          // set before Initialize when not using flags
 exp.Marker *apparatus.Marker              // never nil after Initialize (does nothing if unconfigured)
@@ -328,6 +358,15 @@ stats are written to the `-info.txt`. See UserManual Section 17.
 
 ```go
 exp.AudioDevice  // sdl.AudioDeviceID — pass to Sound.PreloadDevice()
+
+// exp.Audio (*control.AudioManager) — playback helpers on that device
+exp.Audio.PlaySync(s *stimuli.Sound) error      // preload, play, wait until done
+exp.Audio.PlayAsync(s *stimuli.Sound) error     // start and return; unloaded when done
+exp.Audio.PlayMemorySync(data []byte) error
+exp.Audio.PlayMemoryAsync(data []byte) error
+exp.Audio.PlayBuzzer() error                    // embedded feedback sounds, asynchronous
+exp.Audio.PlayCorrect() error
+exp.Audio.Shutdown()                            // wait for async playbacks; refuse new ones
 
 // Top-level helper (call before NewExperiment)
 control.SetAudioSampleFrames(frames int)  // set audio buffer size (256–2048)
@@ -398,6 +437,10 @@ Both support a `Font *ttf.Font` field — set it to override the screen default.
 | `NewCircle(radius float32, color Color) *Circle` | Filled circle. |
 | `NewRectangle(cx, cy, w, h float32, color Color) *Rectangle` | Filled rectangle. |
 | `NewLine(start, end FPoint, color Color, lineWidth float32) *Line` | Line segment; always 1 px wide (`lineWidth` is ignored — use `NewPolyLine` for thicker strokes). |
+| `NewPolyLine(points []FPoint, closed bool, lineWidth float32, color Color) *PolyLine` | Open or closed polyline with a real stroke width. |
+| `NewShape(points []FPoint, color Color) *Shape` | Filled polygon. |
+| `NewCanvas(width, height float32, color Color) *Canvas` | Off-screen render target with a background colour: `Blit(stim, screen)` stimuli onto it, then draw the canvas. |
+| `NewStimulusCircle(radius float32, stimuli []VisualStimulus) *StimulusCircle` | Arranges stimuli evenly on a circle; `Make(shuffle, jitter bool)` lays them out. |
 
 `Circle`, `Shape`, `PolyLine` and `DotCloud` have antialiased edges: each
 outline gets a 1-pixel ring whose alpha fades to zero, so edge pixels take
@@ -423,6 +466,8 @@ translucent colour (alpha < 255) these shapes blend over what is already drawn.
 | `PlayGv(screen, path string, x, y float32) ([]UserEvent, []VideoFrameLog, error)` | Play a `.gv` (LZ4-compressed RGBA) video file, VSYNC-locked. |
 | `PlayGvFunc(screen, path string, x, y float32, onFrame GvFrameCallback, marks ...GvMark) ([]UserEvent, []VideoFrameLog, error)` | `PlayGv` with a post-flip per-frame callback (may be nil), and optional `GvMark{Frame int; Code byte}` values: each listed frame's onset is marked with the screen's onset marker (photodiode square + TTL code, code 0 = square only) on that frame's first refresh. |
 | `NewGvVideo(path string) (*GvVideo, error)` | Open a `.gv` file for frame-by-frame access. |
+| `PlayGvSequence(screen, paths []string, x, y float32) ([]UserEvent, []VideoFrameLog, error)` | Several `.gv` clips as one seamless VSYNC-locked sequence. |
+| `NewVideo(screen, path string) (*Video, error)` | MPEG-1 video (optional MP2 audio), decoded in pure Go; `Play`, `Update`, `Draw(screen, x, y int32)`. Convert timing-critical clips to `.gv`. |
 
 #### Psychophysics Stimuli
 
@@ -472,7 +517,7 @@ Navigation: UP/DOWN arrows move the highlight; ENTER or SPACE confirms; number k
 
 ### Animated / VSYNC-locked Loops
 
-All three functions disable GC, lock to VSYNC, and return `(MotionResult, error)`.
+All four functions disable GC, lock to VSYNC, and return `(MotionResult, error)`.
 
 ```go
 type MotionResult struct {
@@ -487,6 +532,7 @@ type MotionResult struct {
 | `PresentMovingDotCloud(screen, nDots int, dotRadius, cloudRadius float32, center FPoint, speedPxPerSec float32, maxDurationMs int64, interruptKeys []Keycode, catchMouse bool, dotColor, bgColor Color) (MotionResult, error)` | Animated random-dot cloud. Each dot moves at a fixed speed and respawns when it exits the boundary. |
 | `PresentMovingGrating(screen, width, height float32, center FPoint, orientation, spatialFreq, temporalFreq, contrast, bgLuminance float64, maxDurationMs int64, interruptKeys []Keycode, catchMouse bool) (MotionResult, error)` | Drifting sinusoidal grating in a rectangular aperture. |
 | `PresentMovingGabor(screen, size float32, sigma float64, center FPoint, orientation, spatialFreq, temporalFreq, contrast, bgLuminance float64, maxDurationMs int64, interruptKeys []Keycode, catchMouse bool) (MotionResult, error)` | Drifting Gabor patch with Gaussian envelope (alpha-blended edges). |
+| `PresentMovingGratingDisk(screen, diameter float32, center FPoint, orientation, spatialFreq, temporalFreq, contrast, bgLuminance float64, maxDurationMs int64, interruptKeys []Keycode, catchMouse bool) (MotionResult, error)` | Drifting grating in a hard-edged circular aperture. |
 
 Spatial frequency is in **cycles per pixel** (e.g. `0.05` = one cycle every 20 px).
 Temporal frequency is in **Hz**. Orientation is in **degrees from horizontal** (0° = vertical bars drifting right).
@@ -721,14 +767,18 @@ snd.Wait()                                    // block until done
 snd.IsPlaying()                               // still queued? (poll responses while it plays)
 snd.Duration()                                // length of the loaded WAV (time.Duration)
 snd.PlaySegment(onset, offset, rampSec)       // time-delimited segment with optional fade
+onsetNS, err := snd.PlayTS()                  // play; return the ESTIMATED onset (queue time + OutputLatency), SDL ns clock
+flipNS, err := snd.PlaySyncedWithFlip(exp.Screen)  // present the backbuffer and start audio right after that flip; returns the flip timestamp
+lat, err := snd.OutputLatency()               // estimated queue-to-ear latency (time.Duration), ±one callback period
 
 // Embedded WAV
 snd := stimuli.NewSoundFromMemory(data)
 
 // Procedural tone
-tone := stimuli.NewTone(frequency, duration, volume)   // duration: time.Duration; volume: 0–255
+tone := stimuli.NewTone(frequency, durationMs, amplitude)   // frequency float64 Hz; durationMs int; amplitude float32 0–1
+tone := stimuli.NewComplexTone(frequencies, durationMs, rampMs, amplitude) // summed sines, linear on/off ramp
 tone.PreloadDevice(exp.AudioDevice)
-tone.Play()
+tone.Play()                                   // Tone also has PlayTS, PlaySyncedWithFlip, OutputLatency
 
 // One-shot helper (no preload needed)
 stimuli.PlaySoundFromMemory(exp.AudioDevice, data)
@@ -852,7 +902,7 @@ There is no "wait for n frames" call that skips the redraw. A hold must redraw i
 
 ```go
 key, err := exp.Keyboard.Wait()                                   // any key
-key, err := exp.Keyboard.WaitKey(control.K_SPACE)                // specific key
+err := exp.Keyboard.WaitKey(control.K_SPACE)                     // specific key
 key, err := exp.Keyboard.WaitKeys(keys, timeoutMS)                // first of several keys (−1 = no timeout)
 key, rt, err := exp.Keyboard.WaitKeysRT(keys, timeoutMS)          // with RT in ms from call site
 key, ts, err := exp.Keyboard.GetKeyEventTS(keys, timeoutMS)       // with SDL event timestamp (nanoseconds)
@@ -888,7 +938,7 @@ btn, err := exp.Mouse.WaitPress()                         // block until button 
 btn, rt, err := exp.Mouse.WaitPressRT(timeoutMS)          // with RT in ms from call site
 btn, ts, err := exp.Mouse.GetPressEventTS(timeoutMS)      // with SDL event timestamp (nanoseconds)
 btn, err := exp.Mouse.Check()                             // non-blocking poll
-held := exp.Mouse.IsPressed(sdl.BUTTON_LEFT)              // true if button is physically held now
+held := exp.Mouse.IsPressed(control.BUTTON_LEFT)          // true if button is physically held now
 upTS, err := exp.Mouse.WaitButtonReleaseTS(btn, timeoutMS) // wait for MOUSE_BUTTON_UP; hardware timestamp
 exp.Mouse.ShowCursor(show bool) error
 ```
@@ -1023,9 +1073,12 @@ vk := apparatus.NewVoiceKey(mic, threshold float32, windowSz int) *VoiceKey
 // threshold: RMS amplitude (0–1). Recommended starting value: 0.02–0.05.
 // windowSz:  samples per RMS window. 0 → 128 (≈ 2.9 ms at 44100 Hz).
 
-captureStartNS, err := vk.Arm()   // flush mic buffer, start capture, return TicksNS()
+captureStartNS, err := vk.Arm()   // flush mic buffer, start capture, return TicksNS();
+                                  // errors for a microphone not opened as AUDIO_F32LE
 
-onsetNS, pcm, err := vk.WaitOnset(captureStartNS uint64, timeoutMS int) (uint64, []byte, error)
+onsetNS, pcm, err := vk.WaitOnset(captureStartNS uint64, timeoutMS int, postOnsetMS int) (uint64, []byte, error)
+// timeoutMS < 0 = no timeout. postOnsetMS: how long to keep recording after the onset
+// (0 = stop at once; 1000–1500 suits single-word responses).
 // Returns: onset timestamp (sdl.TicksNS() domain), all PCM bytes captured, nil or ErrVoiceTimeout.
 ```
 
@@ -1034,7 +1087,7 @@ onsetNS, pcm, err := vk.WaitOnset(captureStartNS uint64, timeoutMS int) (uint64,
 ```go
 captureStartNS, _ := vk.Arm()
 imageOnsetNS, _   := exp.ShowTS(picture)
-onsetNS, pcm, _   := vk.WaitOnset(captureStartNS, 2000)
+onsetNS, pcm, _   := vk.WaitOnset(captureStartNS, 2000, 1000)
 rtMs := int64(onsetNS - imageOnsetNS) / 1_000_000
 ```
 
@@ -1074,7 +1127,7 @@ exp.Data.WriteParticipantInfo(info)           // append --PARTICIPANT INFO block
 exp.Data.WriteEndTime()                       // append end time + duration to the info file
 ```
 
-Two files are written to `~/goxpy_data/` for each session:
+Two files are written for each session to the results folder — `~/goxpy_data/` by default, or the folder named by `GOXPY_DATA`, the setup dialog, or `exp.SetOutputDirectory`:
 
 | File | Contents |
 |------|----------|
@@ -1179,6 +1232,10 @@ block := design.NewBlock("Practice")
 block.SetFactor("type", "practice")
 block.AddTrial(trial, copies, randomPosition)
 block.ShuffleTrials()
+err := block.ShuffleTrialsConstrained(map[string]design.Constraint{
+    "condition": 1,   // p > 0: at most p consecutive trials share a value
+    "target":    -3,  // -g: trials sharing a value are at least g positions apart
+}, 0)                 // maxAttempts; 0 = len(block.Trials)
 
 // Experiment design (separate from control.Experiment)
 exp.Design  // *design.Experiment — contains Blocks, DataVariableNames, etc.
@@ -1193,6 +1250,7 @@ design.CoinFlip(headBias float64) bool              // weighted coin flip
 design.RandNorm(a, b float64) float64               // truncated normal in [a, b]
 design.ShuffleList(list []T)                        // in-place Fisher-Yates shuffle (generic)
 design.MakeMultipliedShuffledList(list []T, n int) []T  // n shuffled copies concatenated
+design.RepeatList(list []T, count int) []T          // count copies concatenated, unshuffled
 design.RandIntSequence(first, last int) []int       // shuffled range [first, last]
 ```
 
@@ -1657,6 +1715,96 @@ i.e. `DegToPx(1)`), and `String()` for logging the geometry into a data file.
 ```go
 radiusPx := float32(m.DegToPx(2.5))            // a 2.5° stimulus
 disk := stimuli.NewCircle(radiusPx, control.White)
+```
+
+---
+
+## Package `eyetracker`
+
+Import: `github.com/chrplr/goxpyriment/eyetracker`
+
+A vendor-neutral interface to gaze trackers. The vendor SDK runs in a separate
+Python bridge process (`eyetracker/bridge/eyelink_bridge.py`,
+`tobii_bridge.py`) that speaks line-delimited JSON over a local socket, so the Go
+build stays CGo-free. The bridge is not in the timing path: mark stimulus onsets
+with a TTL (see `triggers`), not with `Mark`.
+
+```go
+type Tracker interface {
+    Open() error
+    Close() error
+    Connected() bool
+    Calibrate(opts CalibrationOptions) error   // BLOCKS; never inside a frame loop
+    StartRecording() error
+    StopRecording() error
+    Recording() bool
+    Mark(text string) error                    // timestamped on arrival at the tracker
+    Latest() (Sample, bool)                    // never blocks: for gaze-contingent loops
+    DrainSamples() []Sample                    // call at least once per trial
+    DrainEvents() []Event                      // fixations, saccades, blinks
+    Dropped() int                              // samples lost to a full buffer
+    TrackerTime() (float64, error)             // tracker clock, ms
+}
+
+type CalibrationOptions struct {
+    Points  int   // 3, 5, 9 or 13; 0 = tracker default
+    Skip    bool  // run no calibration, return nil
+    DwellMs int   // stepwise trackers: hold per target before sampling; 0 = 700
+}
+
+// Implementations
+tr := eyetracker.NewBridge(addr string, opts ...eyetracker.Option) *Bridge  // "" = DefaultBridgeAddr (127.0.0.1:5010)
+tr := eyetracker.NewSimulated(pos func() (x, y float64, ok bool)) *Simulated // e.g. driven by the mouse
+var tr eyetracker.NullTracker                                               // silent no-op
+// Bridge options: WithHost, WithEDF, WithGeometry, WithTimeouts, WithBufferSize, WithClock, WithLogger
+
+eyetracker.StandardPoints(n int) [][2]float64   // normalized targets, origin top-left, inset to 0.1–0.9
+```
+
+`Sample` and `Event` positions are in tracker screen pixels, origin top-left,
+**+Y down** — not goxpyriment's convention; convert with
+`Geometry{WidthPx, HeightPx}.ToCentre(x, y)`. `Sample.TrackerMs` is the
+tracker's own clock; `Sample.LocalNs` is the experiment machine's clock at
+decode time.
+
+Calibration goes through the experiment, which handles both vendor shapes — a
+tracker that runs its own routine (EyeLink) and one whose targets the client must
+draw (`StepwiseCalibrator`, e.g. Tobii):
+
+| Method | Description |
+|---|---|
+| `exp.CalibrateTracker(t eyetracker.Tracker, opts eyetracker.CalibrationOptions) error` | Calibrates `t`, drawing each target with `ShowTS` for a stepwise tracker. Blocks; Esc ends the run. The result goes into the `-info.txt`. |
+| `exp.CalibrationPoints(n int, radius float32) [][2]float64` | `n` targets in normalized drawing-space coordinates, placed so a disc of `radius` is seen whole: inside `Screen.VisibleRect` and clear of the photodiode square. |
+
+---
+
+## Package `config`
+
+Import: `github.com/chrplr/goxpyriment/config`
+
+Default flag values from a TOML file, so a lab's settings (monitor, TTL device,
+response keys) are written once. Keys are flag names without the dash; top-level
+keys apply to every program that defines the flag, and a table named after the
+executable applies to that program alone. A value given on the command line
+always wins.
+
+```toml
+d = 1
+ttl = "parallel:/dev/parport1"
+
+[MEG-Reading-Sentences]
+resp-key = "1"
+```
+
+`NewExperimentFromFlags` registers `-config FILE` and applies it; the file and the
+values taken from it are written to the `-info.txt`. Set a default file with
+`control.SetDefaultConfigFile(path string)` before `NewExperimentFromFlags`.
+
+```go
+config.Load(path, table string) (map[string]string, error)
+config.ParseFlags(fs *flag.FlagSet, args []string, table string) ([]config.Setting, error)
+config.CheckArgs(fs *flag.FlagSet, args []string) error   // catches "-flag false" and flags after a non-flag argument
+config.FlagName                                           // "config"
 ```
 
 ---

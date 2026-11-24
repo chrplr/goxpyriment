@@ -144,9 +144,13 @@ Useful command-line flags that every experiment understands automatically:
 
 ```bash
 go run . -w          # windowed mode (1024×768) instead of fullscreen — great for development
-go run . -s 007      # set the subject/participant ID to 007
+go run . -s 7        # set the subject/participant ID to 7 (files are labelled sub-007)
 go run . -d 1        # use monitor #1 (for a second screen)
 ```
+
+A numeric subject ID loses its leading zeros: `-s 007` is subject 7. Without `-s`,
+a small setup dialog opens first, asking for the subject ID and confirming the
+monitor, fullscreen mode and results folder.
 
 When the experiment ends, two files are written to `~/goxpy_data/` (or to the
 folder named by the environment variable `GOXPY_DATA`, if set): a `.csv` with

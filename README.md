@@ -17,7 +17,7 @@
   executable binaries with zero runtime dependencies. This drastically
   simplifies distribution to collaborators and testing computers.  The
   library includes an array of visual stimuli (text, shapes, images,
-  Gabor patches, motion clouds, ...) and audio capabilities (WAV
+  Gabor patches, moving dot clouds, ...) and audio capabilities (WAV
   playback and tone generation).  A lot of effort was devoted to
   ensure timing reliability. For instance, input events are
   timestamped by the operating system at hardware-interrupt time, so

@@ -41,7 +41,9 @@ For assets that are too large to embed in the binary (e.g., video files), bundle
 
 ## Step 2: GoReleaser Configuration
 
-Create a `.goreleaser.yaml` in your project root. Here is a template based on the `retinotopy` example:
+Create a `.goreleaser.yaml` in your project root. Here is a template, adapted from the GoReleaser configuration kept in the repository as `tests/retino-goreleaser.yaml`.
+
+> That file is a historical reference, not a ready-to-use configuration: it was written for the former standalone retinotopy repository (its `homepage` is `chrplr/retinotopy-go`), builds `./retinotopy.go` (the example is now `examples/Retinotopy/main.go`), and still downloads SDL3 DLLs for the Windows archives — unnecessary since `binsdl` embeds SDL3 in the binary (see Prerequisites). The template below omits that step.
 
 ```yaml
 version: 2
@@ -100,7 +102,7 @@ The resulting binaries and packages will be in the `dist/` folder.
 1.  Commit your changes.
 2.  Tag your repository: `git tag -a v1.0.0 -m "First release"`
 3.  Push the tag: `git push origin v1.0.0`
-4.  Run GoReleaser (or use a GitHub Action like `retinotopy_build.yml`):
+4.  Run GoReleaser (or use a GitHub Action such as `tests/retinotopy_build.yml`, see below):
 
 ```bash
 goreleaser release --clean
@@ -120,4 +122,4 @@ For macOS, GoReleaser creates a binary. To create a proper `.app` bundle or `.dm
 
 ## Using GitHub Actions
 
-You can automate this entire process by using the `retinotopy_build.yml` workflow. Whenever you push a new version tag (e.g., `v1.2.3`), GitHub will automatically build all versions and attach them to a new Release page on your repository.
+You can automate this entire process with a workflow like `tests/retinotopy_build.yml`. It is not one of goxpyriment's own workflows (those live in `.github/workflows/`): copy it to `.github/workflows/` in your experiment's repository, next to your own `.goreleaser.yaml`. Whenever you push a new version tag (e.g., `v1.2.3`), it runs `goreleaser release --clean`, which builds all versions and attaches them to a new Release page on your repository; on pull requests it only runs a snapshot build.

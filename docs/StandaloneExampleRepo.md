@@ -18,7 +18,7 @@ It is the process used for the two reference repos — copy either as a template
 >
 > ```bash
 > make share-<ExampleName>                    # → _build/share/<ExampleName>/
-> make share-<ExampleName> VERSION=v0.12.5     # pin a specific goxpyriment release
+> make share-<ExampleName> VERSION=v0.31.0     # pin a specific goxpyriment release
 > ```
 >
 > That exports a standalone *module* (buildable on its own with `go run .`, no
@@ -41,12 +41,13 @@ need sub-millisecond onset control (rapid RSVP, subliminal priming). See
 - For a **browser** build: the example must embed *all* its assets with
   `//go:embed` (no filesystem exists in the browser), and it should avoid APIs
   still stubbed on js — see [WASM.md](WASM.md#what-remains-for-a-complete-port).
-- Use a goxpyriment release that contains the browser fixes (**≥ v0.12.5**):
-  the js `Save()` no-op (one download at the end, not per block) and the mouse
-  path fix (`RenderCoordinatesFromWindow`). Earlier releases crash or spam
-  downloads in the browser.
-- **Pin a release that delivers the session as a single `.zip`.** Until
-  2026-08-29 the browser build fired two downloads (the `.csv` and the
+- Use a goxpyriment release that contains the browser fixes (**≥ v0.15.2**).
+  v0.12.5 brought the js `Save()` no-op (one download at the end, not per
+  block) and the mouse path fix (`RenderCoordinatesFromWindow`); earlier
+  releases crash or spam downloads in the browser. v0.15.2 is the first that
+  delivers the session as a single `.zip` (next point).
+- **Pin a release that delivers the session as a single `.zip`** (v0.15.2 or
+  later). Until 2026-08-29 the browser build fired two downloads (the `.csv` and the
   `-info.txt`) milliseconds apart, and browsers set to *ask where to save each
   file* silently dropped the second one — sessions arrived with their metadata
   and no results. See ["Why the results arrive as a
@@ -63,8 +64,8 @@ pinned (or pass a specific version):
 ```bash
 bash examples/share.sh <ExampleName> <version> <output-parent-dir>
 # e.g.
-bash examples/share.sh Rush-Hour v0.12.5 ~/00_git
-# → ~/00_git/Rush-Hour/  with a generated go.mod/go.sum requiring goxpyriment v0.12.5
+bash examples/share.sh Rush-Hour v0.31.0 ~/00_git
+# → ~/00_git/Rush-Hour/  with a generated go.mod/go.sum requiring goxpyriment v0.31.0
 ```
 
 `share.sh` copies the directory, drops the workspace `go.mod`/`go.work` coupling,
@@ -157,7 +158,7 @@ work (copy Rush-Hour's file and change nothing but the repo name in comments):
 
 > **Gotcha — branch ref, not pinned commit.** `pages.yml` tracks the fork's
 > *branch HEAD*, whereas goxpyriment's own `go.mod` pins a specific fork
-> pseudo-version. A fix that lives only in goxpyriment's vendored copy (or an
+> version (a released tag today, `v0.1.2`; a pseudo-version between tags). A fix that lives only in goxpyriment's vendored copy (or an
 > uncommitted fork edit) will **not** reach your repo's browser build until it is
 > committed and pushed to `wasm-render-fixes`. This is the trap that broke
 > Rush-Hour's first deploy.

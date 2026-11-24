@@ -12,8 +12,8 @@ the one most people expect.
 > real hardware, and every figure in it comes from a run. **This page has not
 > been.** goxpyriment's own Darwin scheduling code
 > (`sysinfo/scheduling_darwin.go`) is likewise written against the documented
-> BSD/Darwin APIs and never exercised — it says so at runtime, in the `Sched:`
-> line of every report.
+> BSD/Darwin APIs and never exercised — it says so at runtime, in the
+> `sys sched_fidelity:` line of every run's `-info.txt`.
 >
 > What follows is the mechanism and the procedure, not a result. [Measure
 > it](#how-to-find-out-whether-it-helped-on-your-machine) before quoting a
@@ -55,8 +55,7 @@ lever here than it looks:
 > platform.
 
 So on macOS the priority decision is made **outside** the program.
-`-no-realtime` and `-realtime-priority` have no effect there beyond suppressing
-the message.
+`-no-realtime` and `-realtime-priority` have no effect there.
 
 ---
 
@@ -78,12 +77,15 @@ and the band that gives hard wake-up guarantees is entered by setting a
 threads. A negative nice value does not move a thread into that band.
 
 goxpyriment does not set such a policy. `sysinfo/scheduling_darwin.go` is
-explicit that it cannot even *see* one:
+explicit that it cannot even *see* one, in the `-info.txt` of a run started
+with `nice -n -20`:
 
 ```
-Sched:      policy: SCHED_OTHER (assumed)  nice: -20  [UNTESTED on macOS; cannot
-            see per-thread THREAD_TIME_CONSTRAINT_POLICY, so RealTime is not
-            authoritative]
+# sys sched_policy: SCHED_OTHER (assumed)
+# sys sched_realtime: false
+# sys sched_nice: -20
+# sys sched_realtime_available: 0
+# sys sched_fidelity: UNTESTED on macOS; cannot see per-thread THREAD_TIME_CONSTRAINT_POLICY, so RealTime is not authoritative
 ```
 
 The practical reading: **expect `nice` to reduce preemption by other processes,
@@ -161,17 +163,17 @@ beside the experiment rather than relying on everyone remembering the prefix.
 
 ## Step 2: verify
 
-Every goxpyriment program's system report carries the state it actually ran
-with, so a recorded run is self-labelling:
+Every goxpyriment run writes the state it actually ran with into its
+`-info.txt`, so a recorded run is self-labelling. Read the
+`sys sched_nice:` line — `-20` if the prefix took, `0` if it did not.
 
-```bash
-Timing-Tests -sysinfo
-```
+To check the prefix before a session without running an experiment, put it on
+`Timing-Tests -sysinfo` (`sudo nice -n -20 Timing-Tests -sysinfo`) and read the
+`nice:` field of its `Sched:` line. That reports the `-sysinfo` process itself,
+so without the prefix it always shows `0`, whatever your experiments are
+launched with.
 
-Read the `nice:` field of the `Sched:` line — `-20` if the prefix took, `0` if
-it did not.
-
-What the line **cannot** tell you is whether anything is in the time-constraint
+What these lines **cannot** tell you is whether anything is in the time-constraint
 band, and it says so rather than guessing. `RealTime` stays `false` on macOS
 even if a thread does hold such a policy; a confident "not real-time" would be
 an answer this code is not in a position to give.
@@ -196,7 +198,7 @@ Then compare the two `-info.txt`/`.csv` pairs. What to read, in order:
    priority change moves the worst frames; it barely moves the median, so a
    comparison of means will show almost nothing even when the change helped.
 2. **The SD of the frame intervals.**
-3. **The `Sched:` line in each `-info.txt`**, which records which run was which
+3. **The `sys sched_nice:` line in each `-info.txt`**, which records which run was which
    so the two files cannot be mixed up afterwards.
 
 Do it on a machine in the state you will actually run participants on. An idle

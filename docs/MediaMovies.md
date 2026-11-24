@@ -207,8 +207,7 @@ background thread.
 
 | Method | Purpose |
 |---|---|
-| `Add(m *Movie)` | Implicitly called by `NewMovie`. |
-| `Remove(m *Movie)` | Deregister a movie. |
+| `Remove(m *Movie)` | Deregister a movie. (Registration has no public method: `NewMovie` does it.) |
 | `Movies() []*Movie` | Snapshot of registered movies in registration order. |
 
 #### Burst (atomic command groups)
@@ -632,7 +631,7 @@ post-hoc by subtracting the calibrated wire-arrival delay.
 | Platform | Backend | Precision | Status | Prerequisites |
 |---|---|---|---|---|
 | **macOS** (Apple Silicon + Intel) | `CVDisplayLink` via `purego` (CoreVideo + libSystem) | `HardwareVerified`, sub-ms | **Shipped** | None — frameworks are part of the OS |
-| **Linux** (X11 + Wayland) | `DRM_IOCTL_WAIT_VBLANK` via `syscall` on `/dev/dri/cardN` | `HardwareVerified`, sub-ms | **Shipped** | User must be in `video` group (default on most distros). At least one DRM device. |
+| **Linux** (X11 + Wayland) | `DRM_IOCTL_WAIT_VBLANK` via `syscall` on `/dev/dri/cardN` | `HardwareVerified`, sub-ms | **Shipped** | Read/write on `/dev/dri/cardN`: a desktop session usually grants it through a logind ACL; from a bare virtual console the user needs the `video` group (see [Setting priority under Linux](SettingPriorityUnderLinux.md), Step 6). At least one DRM device driving the screen's display. |
 | **Windows** | (none yet) | `VsyncEstimated` only | **Not yet shipped** | — |
 | **FreeBSD / OpenBSD / others** | (none) | `VsyncEstimated` only | Falls back to `Fallback` | — |
 
@@ -640,18 +639,20 @@ The startup log line confirms the chosen backend:
 
 ```
 media: present backend: macOS CVDisplayLink (CoreVideo, hardware-verified) (precision=hardware-verified)
-media: present backend: Linux DRM vblank (DRM_IOCTL_WAIT_VBLANK, hardware-verified) (precision=hardware-verified)
-media: present backend: vsync-estimated (post-Present FlipTS, no OS integration) (precision=vsync-estimated)
+media: present backend: Linux DRM vblank (card /dev/dri/cardN, crtc N driving <head> <mode>, DRM_IOCTL_WAIT_VBLANK, hardware-verified) (precision=hardware-verified)
+media: present backend: vsync-estimated (post-present flip timestamp, no OS integration) (precision=vsync-estimated)
 ```
 
-If auto-detection fails (e.g., Linux without `video` group, missing
-`/dev/dri/cardN`), the manager logs the failure once and falls back
-gracefully:
+If auto-detection fails (e.g., Linux with no access to `/dev/dri/cardN`,
+no DRM node, or no CRTC driving the screen's display), the manager logs the
+failure once and falls back gracefully:
 
 ```
-present: Linux DRM vblank unavailable (open /dev/dri/cardN: permission denied); falling back to vsync-estimated
-media: present backend: vsync-estimated (post-Present FlipTS, no OS integration) (precision=vsync-estimated)
+present: Linux DRM vblank unavailable (no DRM node drives the display (…: open: permission denied; …)); falling back to vsync-estimated
+media: present backend: vsync-estimated (post-present flip timestamp, no OS integration) (precision=vsync-estimated)
 ```
+
+The parenthesis lists each `/dev/dri/cardN` tried and why it was refused.
 
 ### 8.1 What Windows users get today
 
@@ -701,7 +702,7 @@ Skeleton:
 ```go
 //go:build windows
 
-package present
+package vblank
 
 // Use purego.Dlopen("dwmapi.dll") to get a handle, then bind:
 //   DwmGetCompositionTimingInfo(HWND, *DWM_TIMING_INFO) HRESULT
@@ -709,8 +710,13 @@ package present
 // units) for the most recent vblank. Convert QPC ticks to SDL ticks
 // via QueryPerformanceFrequency at startup.
 
-func newWindowsBackend(screen *apparatus.Screen) (Timer, error) { ... }
+// autoDetect replaces the fallback in autodetect_other.go, whose build
+// tag must then also exclude windows.
+func autoDetect(t Target) Timer { ... }
 ```
+
+`media/present.AutoDetect` needs no change: it already wraps whatever
+`vblank.AutoDetectFor` returns.
 
 Estimated effort: ~250 lines of Go (similar shape to the existing macOS
 backend), plus ~100 lines of tests (purego symbol-loading, QPC →
