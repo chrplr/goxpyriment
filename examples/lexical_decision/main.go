@@ -281,7 +281,10 @@ func main() {
 			counter := stimuli.NewTextLine(fmt.Sprintf("%d/%d", i+1, len(practiceTrials)), 0, 0, control.DefaultTextColor)
 			exp.ShowTimed(counter, 500)
 			exp.Blank(500)
-			key, _, _ := exp.ShowAndGetRT(t.stim, []control.Keycode{WordResponseKey, NonWordResponseKey}, MaxResponseDelay)
+			key, _, err := exp.ShowAndGetRT(t.stim, []control.Keycode{WordResponseKey, NonWordResponseKey}, MaxResponseDelay)
+			if err != nil {
+				return err // ESC or window close: Run ends cleanly, no row for this trial
+			}
 			showFeedback(key == correctKeyFor(t.category))
 		}
 		exp.ShowInstructions("End of practice.\n\nThe real experiment will now begin.\n\nTry to respond as quickly and accurately as possible.\n\nPress the SPACE bar to start.")
@@ -294,7 +297,10 @@ func main() {
 			exp.Blank(500)
 
 			// Stimulus + response
-			key, rt, _ := exp.ShowAndGetRT(t.stim, []control.Keycode{WordResponseKey, NonWordResponseKey}, MaxResponseDelay)
+			key, rt, err := exp.ShowAndGetRT(t.stim, []control.Keycode{WordResponseKey, NonWordResponseKey}, MaxResponseDelay)
+			if err != nil {
+				return err // ESC or window close: Run ends cleanly, no row for this trial
+			}
 
 			correct := key == correctKeyFor(t.category)
 			stats.record(t.category, correct, rt)

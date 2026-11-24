@@ -47,7 +47,10 @@ func main() {
 			exp.Wait(waitTime)
 
 			// Target stimulus — show and measure hardware-precise RT
-			key, rtMS, _ := exp.ShowAndGetRT(target, nil, MaxResponseDelay)
+			key, rtMS, err := exp.ShowAndGetRT(target, nil, MaxResponseDelay)
+			if err != nil {
+				return err // ESC or window close: Run ends cleanly, no row for this trial
+			}
 
 			if key != 0 {
 				rts = append(rts, float64(rtMS))

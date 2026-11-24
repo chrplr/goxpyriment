@@ -59,7 +59,10 @@ func main() {
         for i, t := range trials {
             exp.Blank(1000)          // inter-trial interval
             stim := stimuli.NewTextLine(t.word, 0, 0, t.color)
-            key, rt, _ := exp.ShowAndGetRT(stim, responseKeys, -1)
+            key, rt, err := exp.ShowAndGetRT(stim, responseKeys, -1)
+            if err != nil {
+                return err           // ESC / window close: no row for this trial
+            }
             exp.Data.Add(i, t.cond, keyName(key), rt, isCorrect(key, t))
         }
         return control.EndLoop       // the experiment is over — see below
@@ -84,6 +87,13 @@ frame, return) returns `nil`, and it still needs an `EndLoop` escape.
 `ShowTS` panic with. `exp.End()` recovers it too, so an experiment written
 without `Run` still exits cleanly on ESC — but wrap the logic in `Run` anyway:
 it is where the browser build hooks its frame loop and its crash overlay.
+
+**Key waits return the quit; they do not panic.** `ShowAndGetRT`,
+`Keyboard.WaitKey(s)`, `GetKeyEventTS` and `WaitAnyEventTS` return
+`control.EndLoop` as an error on ESC or window close. Check it and return it, as
+the skeleton does. If you discard it, the library still stops the run at the
+next `Wait`, `Blank` or `Show` (the quit request is sticky), but the trial in
+progress has already been recorded with an ESC "response".
 
 ## How results are saved
 

@@ -71,7 +71,10 @@ func main() {
 
 			// Stimulus + response
 			stim := stimuli.NewTextLine(t.word, 0, 0, t.color)
-			key, rt, _ := exp.ShowAndGetRT(stim, responseKeys, -1)
+			key, rt, err := exp.ShowAndGetRT(stim, responseKeys, -1)
+			if err != nil {
+				return err // ESC or window close: Run ends cleanly, no row for this trial
+			}
 
 			var resp string
 			switch key {
