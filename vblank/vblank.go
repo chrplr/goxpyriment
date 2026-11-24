@@ -137,8 +137,8 @@ type Timer interface {
 type Stats struct {
 	// Frames resolved to a measured vblank.
 	Frames uint64
-	// WaitedForNext counts frames where the query beat the vblank IRQ and an
-	// absolute wait was needed. A large fraction is not an error — it means the
+	// WaitedForNext counts frames where the query beat the vblank IRQ and the
+	// backend had to poll for it. A large fraction is not an error — it means the
 	// caller consistently gets there first — but it is where the old code
 	// silently returned the previous frame instead.
 	WaitedForNext uint64
