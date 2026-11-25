@@ -60,6 +60,11 @@ type MovieManager struct {
 	precisionWarned bool
 	timeoutWarned   bool
 	closed          bool
+
+	// ticksNS and frameDuration are sdl.TicksNS and screen.FrameDuration,
+	// held as fields so the queue logic can be tested without a display.
+	ticksNS       func() uint64
+	frameDuration func() time.Duration
 }
 
 // staleFlipMultiplier is how many frame periods a pending flip may
@@ -76,6 +81,14 @@ type pendingFlip struct {
 	deferredFires []stagedCallback // OnAtDisplay
 	onsetFires    []stagedCallback // Display[Onset]
 	offsetFires   []stagedCallback // Display[Offset]
+}
+
+// fire runs the flip's callbacks with the given onset, in the documented
+// order: per-movie OnAtDisplay, then Display[Onset], then Display[Offset].
+func (p pendingFlip) fire(ts uint64, source OnsetSource) {
+	firePendingWithOnset(p.deferredFires, ts, source)
+	firePendingWithOnset(p.onsetFires, ts, source)
+	firePendingWithOnset(p.offsetFires, ts, source)
 }
 
 // ManagerOption mutates a MovieManager at construction.
@@ -122,6 +135,8 @@ func NewMovieManager(screen *apparatus.Screen, opts ...ManagerOption) *MovieMana
 		offsetCallbacks: make(map[string][]onsetCB),
 		lastVisible:     make(map[string]bool),
 		pendingVisible:  make(map[string]bool),
+		ticksNS:         sdl.TicksNS,
+		frameDuration:   screen.FrameDuration,
 	}
 	for _, opt := range opts {
 		opt(mgr)
@@ -137,6 +152,12 @@ func NewMovieManager(screen *apparatus.Screen, opts ...ManagerOption) *MovieMana
 // Close releases the present timer's OS resources. After Close the
 // manager continues to function but with vsync-estimated precision
 // only. Idempotent; safe to defer next to the manager's other resources.
+//
+// Callbacks still waiting for a flip's vsync timestamp fire here, in flip
+// order, before the timer is released: with the timestamp if it has arrived
+// by now, otherwise with the flip's FlipTS and Source VsyncEstimated.
+// Dropping them would lose the last frame's Display[Offset] — its trigger
+// and its log entry.
 func (mgr *MovieManager) Close() error {
 	mgr.mu.Lock()
 	if mgr.closed {
@@ -146,7 +167,18 @@ func (mgr *MovieManager) Close() error {
 	mgr.closed = true
 	t := mgr.presentTimer
 	mgr.presentTimer = present.NewFallback()
+	pending := mgr.pendingFlips
+	mgr.pendingFlips = nil
 	mgr.mu.Unlock()
+	for _, p := range pending {
+		ts, source := p.flipTS, VsyncEstimated
+		if t != nil {
+			if o, s, ok := t.OnsetForFlip(p.flipTS); ok {
+				ts, source = o, s
+			}
+		}
+		p.fire(ts, source)
+	}
 	if t != nil {
 		return t.Close()
 	}
@@ -285,13 +317,14 @@ func (mgr *MovieManager) maybeWarnPrecision() {
 	if timer.Precision() == HardwareVerified {
 		return
 	}
-	period := mgr.screen.FrameDuration()
+	period := mgr.frameDuration()
 	log.Printf("media: display-onset precision is vsync-period (~%v at this refresh rate). Install a sub-ms presentation backend (Stage 5: Vulkan VK_EXT_present_timing or Metal addPresentedHandler) for hardware-verified timing.", period)
 }
 
 // warnTimeoutOnce logs a single runtime warning when a flip's
-// hardware-verified vsync timestamp doesn't arrive within
-// staleFlipMultiplier × frame period and we fall back to VsyncEstimated.
+// hardware-verified vsync timestamp doesn't arrive — within
+// staleFlipMultiplier × frame period, or before a later flip's — and we
+// fall back to VsyncEstimated.
 func (mgr *MovieManager) warnTimeoutOnce(framePeriod time.Duration) {
 	mgr.mu.Lock()
 	if mgr.timeoutWarned {
@@ -300,7 +333,7 @@ func (mgr *MovieManager) warnTimeoutOnce(framePeriod time.Duration) {
 	}
 	mgr.timeoutWarned = true
 	mgr.mu.Unlock()
-	log.Printf("media: hardware-verified vsync timestamp not delivered within %v; affected frames fall back to vsync-estimated. This typically indicates compositor latency or a backend-specific issue.",
+	log.Printf("media: hardware-verified vsync timestamp not delivered (within %v, or before a later flip's); affected frames fall back to vsync-estimated. This typically indicates compositor latency or a backend-specific issue.",
 		time.Duration(staleFlipMultiplier)*framePeriod)
 }
 
@@ -415,7 +448,7 @@ func (mgr *MovieManager) advanceMovie(m *Movie, now time.Duration) ([]stagedCall
 	eff := m.effectiveLocked(now)
 
 	// Cumulative target frame from effective time.
-	totalTarget := int(math.Floor(eff.Seconds()*m.fps)) + 1
+	totalTarget := m.frameAt(eff)
 	if totalTarget < 1 {
 		totalTarget = 1
 	}
@@ -641,6 +674,13 @@ func (mgr *MovieManager) NotifyFlipped(ts uint64) {
 	for _, m := range movies {
 		m.mu.Lock()
 		m.currentFrameIndex = m.totalFramesDecoded
+		if !m.isActive {
+			// A movie that is not playing shows nothing, so no target of
+			// it can be on screen — not even Frame(0), which would
+			// otherwise match every flip before Play and fire again at it.
+			m.mu.Unlock()
+			continue
+		}
 		eff := m.effectiveLocked(mgr.clock.Now())
 		for _, c := range m.conditions {
 			if !c.deferToDisplay {
@@ -691,20 +731,13 @@ func (mgr *MovieManager) NotifyFlipped(ts uint64) {
 		}
 	}
 
-	// Try to get the hardware-verified onset for THIS flip.
-	onset, source, ok := mgr.presentTimer.OnsetForFlip(ts)
-	if ok {
-		// Common case: OS timestamp already available, fire immediately.
-		// Order: per-movie OnAtDisplay, then Display[Onset], then
-		// Display[Offset]. The last two are independent across names but
-		// ordered for reproducibility.
-		firePendingWithOnset(deferredFires, onset, source)
-		firePendingWithOnset(onsetFires, onset, source)
-		firePendingWithOnset(offsetFires, onset, source)
-	} else if len(deferredFires)+len(onsetFires)+len(offsetFires) > 0 {
-		// Defer this flip's callbacks; they'll fire from a future
-		// NotifyFlipped once the OS publishes the matching vsync
-		// timestamp.
+	// Queue this flip's callbacks behind any earlier flip still waiting
+	// for its vsync timestamp, then fire whatever is ready, oldest first.
+	// When the queue is empty and the timestamp is in — the common case —
+	// that fires this flip at once. Firing it directly whenever its own
+	// timestamp was in would let it overtake an earlier waiting flip: a
+	// movie's Display[Offset] trigger ahead of its Display[Onset].
+	if len(deferredFires)+len(onsetFires)+len(offsetFires) > 0 {
 		mgr.mu.Lock()
 		mgr.pendingFlips = append(mgr.pendingFlips, pendingFlip{
 			flipTS:        ts,
@@ -714,59 +747,58 @@ func (mgr *MovieManager) NotifyFlipped(ts uint64) {
 		})
 		mgr.mu.Unlock()
 	}
-
-	// Drain any previously-deferred flips whose vsync has now arrived
-	// (or which have aged out of the wait window).
 	mgr.processPendingFlips()
 }
 
-// processPendingFlips drains the pendingFlips queue: fires any flip
-// whose hardware-verified vsync is now available, gives up on flips
-// older than staleFlipMultiplier × frame period (firing them with
-// VsyncEstimated as a fallback), and re-queues the rest.
+// processPendingFlips drains the pendingFlips queue in flip order. A flip
+// fires once its hardware-verified vsync timestamp is available; one older
+// than staleFlipMultiplier × frame period fires with (FlipTS,
+// VsyncEstimated) instead, with a one-time warning. So does a flip whose
+// timestamp is missing while a LATER flip's has arrived: the backend has
+// moved past it, and holding it would hold every later flip behind it. The
+// first flip that is still worth waiting for stops the drain, so no flip's
+// callbacks ever fire before an earlier flip's.
 func (mgr *MovieManager) processPendingFlips() {
 	mgr.mu.Lock()
 	pending := mgr.pendingFlips
 	mgr.pendingFlips = nil
+	timer := mgr.presentTimer
 	mgr.mu.Unlock()
 	if len(pending) == 0 {
 		return
 	}
 
-	framePeriod := mgr.screen.FrameDuration()
+	framePeriod := mgr.frameDuration()
 	staleNS := uint64(time.Duration(staleFlipMultiplier) * framePeriod)
-	nowSDL := sdl.TicksNS()
+	nowSDL := mgr.ticksNS()
 
-	type readyFlip struct {
-		flip   pendingFlip
+	type resolved struct {
 		ts     uint64
 		source OnsetSource
+		ok     bool // hardware timestamp available
 	}
-	var ready []readyFlip
-	var stillPending []pendingFlip
-
-	for _, p := range pending {
-		onset, source, ok := mgr.presentTimer.OnsetForFlip(p.flipTS)
-		switch {
-		case ok:
-			ready = append(ready, readyFlip{p, onset, source})
-		case nowSDL > p.flipTS+staleNS:
-			mgr.warnTimeoutOnce(framePeriod)
-			ready = append(ready, readyFlip{p, p.flipTS, VsyncEstimated})
-		default:
-			stillPending = append(stillPending, p)
+	res := make([]resolved, len(pending))
+	cut := 0 // pending[:cut] fire now
+	for i, p := range pending {
+		onset, source, ok := timer.OnsetForFlip(p.flipTS)
+		res[i] = resolved{onset, source, ok}
+		if ok || nowSDL > p.flipTS+staleNS {
+			cut = i + 1
 		}
 	}
 
-	if len(stillPending) > 0 {
+	if cut < len(pending) {
 		mgr.mu.Lock()
-		mgr.pendingFlips = append(stillPending, mgr.pendingFlips...)
+		mgr.pendingFlips = append(append([]pendingFlip(nil), pending[cut:]...), mgr.pendingFlips...)
 		mgr.mu.Unlock()
 	}
 
-	for _, r := range ready {
-		firePendingWithOnset(r.flip.deferredFires, r.ts, r.source)
-		firePendingWithOnset(r.flip.onsetFires, r.ts, r.source)
-		firePendingWithOnset(r.flip.offsetFires, r.ts, r.source)
+	for i, p := range pending[:cut] {
+		if res[i].ok {
+			p.fire(res[i].ts, res[i].source)
+			continue
+		}
+		mgr.warnTimeoutOnce(framePeriod)
+		p.fire(p.flipTS, VsyncEstimated)
 	}
 }

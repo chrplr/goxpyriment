@@ -131,7 +131,13 @@ If a stashed flip sits longer than `~3 × frame period` (~50 ms at
 60 Hz), the manager gives up waiting and fires with the FlipTS as a
 fallback (`VsyncEstimated`), logging a single warning. This handles
 edge cases like compositor latency or display-link stalls without
-silently inaccurate timing.
+silently inaccurate timing. A stashed flip still missing its stamp when
+a later flip's has arrived falls back at once.
+
+Flips fire strictly in order (`processPendingFlips` stops at the first
+flip still worth waiting for), so a flip whose stamp is in waits behind
+an earlier stashed one — otherwise an Offset trigger could precede its
+Onset. `Close` fires whatever is still stashed instead of dropping it.
 
 ### Lifecycle
 

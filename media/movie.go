@@ -5,6 +5,7 @@ package media
 
 import (
 	"fmt"
+	"math"
 	"sync"
 	"time"
 
@@ -96,6 +97,8 @@ func WithRate(r float64) Option { return func(m *Movie) { m.rate = r } }
 func WithRepeat(n int) Option { return func(m *Movie) { m.repeatCount = n } }
 
 // WithFromTime sets the starting position within the movie. Defaults to 0.
+// Conditions whose target lies before it are skipped, not fired: see
+// SeekTime.
 func WithFromTime(d time.Duration) Option { return func(m *Movie) { m.fromTime = d } }
 
 // WithScale sets the scale mode. Defaults to ScaleNone. Ignored when
@@ -262,6 +265,7 @@ func (m *Movie) Play() {
 		for _, c := range m.conditions {
 			c.fired = false
 		}
+		m.skipTargetsBeforeLocked(m.fromTime)
 		return
 	}
 	if m.isPaused {
@@ -358,7 +362,9 @@ func (m *Movie) SetRate(r float64) error {
 
 // SeekTime jumps to the given effective media time and forces a re-decode
 // on the next Draw. Conditions reset their fired flags so a re-pass over
-// the same target re-fires.
+// the same target re-fires; those whose target lies before d — a Frame
+// before the first frame shown after the jump, an AtTime before d — are
+// skipped, because those frames are never shown.
 func (m *Movie) SeekTime(d time.Duration) error {
 	if d < 0 {
 		return fmt.Errorf("media.Movie.SeekTime: negative time %v", d)
@@ -377,7 +383,43 @@ func (m *Movie) SeekTime(d time.Duration) error {
 	for _, c := range m.conditions {
 		c.fired = false
 	}
+	m.skipTargetsBeforeLocked(d)
 	return nil
+}
+
+// frameAt returns the cumulative 1-based frame on screen at effective media
+// time d. The tolerance absorbs float rounding at an exact frame boundary:
+// without it, 4.1 s at 30 fps computes as 122.99999999999999 frames and
+// names frame 123 where frame 124 starts — so SeekFrame(124) would show 123.
+// 1e-6 of a frame is under 20 ns at any rate a display runs.
+func (m *Movie) frameAt(d time.Duration) int {
+	return int(math.Floor(d.Seconds()*m.fps+1e-6)) + 1
+}
+
+// skipTargetsBeforeLocked marks as fired, without calling them, the
+// conditions whose target the playhead jumps over when playback starts at
+// media time d (WithFromTime, SeekTime, SeekFrame): a Frame before the
+// first frame decoded at d, an AtTime before d. advanceMovie steps through
+// every frame from 1 after a jump, so without this they would all fire at
+// once on the first frame drawn — triggers for frames never shown.
+// Caller must hold m.mu.
+func (m *Movie) skipTargetsBeforeLocked(d time.Duration) {
+	first := m.frameAt(d) // the frame advanceMovie decodes at d
+	if d <= 0 || first <= 1 {
+		return // no jump: Frame(0) and Frame(1) must still fire
+	}
+	for _, c := range m.conditions {
+		switch t := c.target.(type) {
+		case Frame:
+			if int(t) < first {
+				c.fired = true
+			}
+		case AtTime:
+			if time.Duration(t) < d {
+				c.fired = true
+			}
+		}
+	}
 }
 
 // SeekFrame jumps to the given cumulative 1-based frame.
@@ -663,6 +705,8 @@ func (m *Movie) OnAt(t Target, fn func(Onset)) func() {
 // MovieManager.NotifyFlipped after the target frame has appeared on
 // the display. The Onset.TimestampNS is the post-vsync FlipTS value
 // (Source: VsyncEstimated until Stage 5 ships hardware-verified timing).
+// It is checked only on flips while the movie is playing (after Play, before
+// Stop), so even Frame(0) waits for Play.
 func (m *Movie) OnAtDisplay(t Target, fn func(Onset)) func() {
 	m.mgr.maybeWarnPrecision()
 	return m.addCondition(t, true, fn)

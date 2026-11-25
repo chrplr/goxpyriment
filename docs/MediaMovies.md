@@ -198,7 +198,7 @@ background thread.
 
 | Method | Purpose |
 |---|---|
-| `(*MovieManager).Close() error` | Stops the macOS CVDisplayLink thread / closes the Linux DRM fd. Idempotent. **Defer this before `exp.End()`.** |
+| `(*MovieManager).Close() error` | Fires any callbacks still waiting for a vsync timestamp (see §7.4), then stops the macOS CVDisplayLink thread / closes the Linux DRM fd. Idempotent. **Defer this before `exp.End()`.** |
 | `(*MovieManager).Clock() *MasterClock` | Returns the shared master clock (call `Reset()` at trial boundaries if needed). |
 | `(*MovieManager).LogicalSize() (float32, float32)` | Returns the renderer's coordinate-space size (HiDPI-correct). Use for layout instead of `Screen.Size()`. |
 | `(*MovieManager).LastFlipTS() uint64` | Most recent `FlipTS` passed to `NotifyFlipped`. |
@@ -270,7 +270,7 @@ WithPersistent(b bool)           // last frame stays on screen after Done
 
 | Method | Effect |
 |---|---|
-| `Play()` | Start (first call) or resume (after `Pause`). Fresh start anchors playhead at `WithFromTime`. Idempotent. |
+| `Play()` | Start (first call) or resume (after `Pause`). Fresh start anchors playhead at `WithFromTime`; conditions targeting earlier frames or times are skipped, as for `SeekTime`. Idempotent. |
 | `Pause()` | Freeze at current frame. |
 | `PauseWithLoop(window time.Duration)` | Pause and bounce within ±|window| of pause point. Sign chooses bias. Window=0 ⇒ `Pause`. |
 | `Stop()` | Halt, release GPU texture, reset state. After `Stop` the movie can be `Play`-ed again from `WithFromTime`. |
@@ -294,7 +294,7 @@ WithPersistent(b bool)           // last frame stays on screen after Done
 | Method | Effect |
 |---|---|
 | `SetRate(r float64) error` | Change playback rate; preserves current effective time. r ≤ 0 returns an error. |
-| `SeekTime(d time.Duration) error` | Jump to elapsed media time `d`. Resets condition fired-flags so re-pass over the same target re-fires. |
+| `SeekTime(d time.Duration) error` | Jump to elapsed media time `d`. Resets condition fired-flags so re-pass over the same target re-fires. Targets the jump passes over — a `Frame` before the first frame shown at `d`, an `AtTime` before `d` — are skipped, not fired: those frames are never shown. |
 | `SeekFrame(n int) error` | Jump to cumulative 1-based frame `n`. |
 
 #### Conditions / callbacks
@@ -557,7 +557,17 @@ If a stash sits in the queue for more than `~3 × frame period`
 (~50 ms at 60 Hz), the manager gives up waiting and fires the callbacks
 with `(FlipTS, VsyncEstimated)` as a fallback, logging a single warning.
 This handles compositor stalls and display-link issues without
-silently inaccurate timestamps.
+silently inaccurate timestamps. A stashed flip whose timestamp is still
+missing when a *later* flip's has arrived falls back the same way at
+once, since the backend has moved past it.
+
+Flips fire strictly in order: a flip whose timestamp is already in
+still waits behind an earlier stashed flip, so a movie's
+`Display[Offset]` can never fire before its `Display[Onset]`.
+`MovieManager.Close` fires whatever is still stashed (with the
+hardware timestamp if it has arrived, otherwise `(FlipTS,
+VsyncEstimated)`) rather than dropping it — otherwise the last frame's
+Offset trigger and log entry would be lost.
 
 On Linux this race does not happen: `RecordFlip` queries DRM
 synchronously right after `FlipTS`, the kernel returns the matching
