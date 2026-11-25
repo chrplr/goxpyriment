@@ -515,23 +515,14 @@ procedures, and a \texttt{units} package converts between pixels,
 centimetres and degrees of visual angle for a described monitor and
 viewing distance.
 
-A small but consequential safeguard: modern desktops refuse to give a
-window keyboard focus that it did not obtain from the user, and SDL
-delivers key events only to the focused window, so an experiment
-resumed after an eye-tracker calibration owned the display could run its
-trials without seeing a single response. After such a calibration,
-\texttt{goxpyriment} flashes its window and waits, for up to a minute, for
-the click that gives it focus back; an experiment can make the same check
-itself, at any point, with \texttt{WaitForFocus}.
-
-Another thing which is not transparent from the source code is the fact
-that \texttt{goxpyriment} provides a graphical
-\texttt{GetParticipantInfo} dialog that opens (optionally) before the
-main experiment window (see Fig.~\ref{fig:getinfo}). This allows the
-experimenter to input subject IDs, select experimental conditions from
-discrete menus, and toggle settings like fullscreen mode. These values
-are automatically recorded in the session's \texttt{-info.txt} companion
-file.
+Another thing which is not transparent from the listing of the parity
+decision example is the fact that \texttt{goxpyriment} provides a
+graphical \texttt{GetParticipantInfo} dialog that opens (optionally)
+before the main experiment window (see Fig.~\ref{fig:getinfo}). This
+allows the experimenter to input subject IDs, select experimental
+conditions from discrete menus, and toggle settings like fullscreen
+mode. These values are automatically recorded in the session's
+\texttt{-info.txt} companion file.
 
 \begin{figure}[t]
 \centering
@@ -556,7 +547,10 @@ file.
 
 \section{Timing Validation}\label{timing-verification}
 
-in progress...
+This section used to contains a long an convoluted analysis of many timing tests.
+I have decided to clean it and redo a campaign of measurments.
+
+Work in progress...
 
 \section{Gallery of Examples}
 
@@ -703,13 +697,15 @@ pure-Go client without a bridge.
 \textbf{No video recording}. While there is currently some support for
 recording audio responses and measuring naming times, the framework
 does not currently allow to capture videos (unless one controls a
-networked video recorder, which the trigger package supports over TCP/IP).  As SDL3 supports recording
-video, this feature might be implemented in the future.
+networked video recorder, which the trigger package supports over
+TCP/IP).  As SDL3 supports recording video, this feature might be
+implemented in the future.
 
 \textbf{Server-side collection only through JATOS}.  A browser build
-can upload its results to a JATOS server (Section~\ref{browser}), but native
-builds save their results locally, and there is no built-in upload to
-other back-ends, for example an on-line database behind a REST api.
+can upload its results to a JATOS server (Section~\ref{browser}), but
+native builds save their results locally, and there is no built-in
+upload to other back-ends, for example an on-line database behind a
+REST api.
 
 \textbf{Language barrier.}  Researchers who are unfamiliar with Go,
 that is, the vast majority, will need to invest a bit of time in
