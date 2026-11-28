@@ -27,7 +27,7 @@ make update-examples-gallery
 ### Local preview
 
 ```bash
-make serve   # live-reload at http://127.0.0.1:8000
+make docs-serve   # live-reload at http://127.0.0.1:8000
 ```
 
 This does **not** need to be committed — `site/` is gitignored.

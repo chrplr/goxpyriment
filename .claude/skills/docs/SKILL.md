@@ -39,7 +39,8 @@ pip install -r docs/requirements.txt   # install Zensical once
 make pdfs      # docs/*.pdf via pandoc + xelatex (one per page)
 make book      # docs/goxpyriment-docs.pdf — the whole documentation as ONE PDF
                # (cmd/gen-book takes chapter order from zensical.toml's nav)
-make serve     # live-reload preview at http://127.0.0.1:8000
+make docs-serve  # live-reload preview at http://127.0.0.1:8000 (alias: serve)
+make api-serve   # Go API reference (pkgsite) at http://localhost:6060
 make docs      # static HTML → site/ (zensical build --clean)
 make deploy    # PDFs + site locally
 make clean     # remove _build/ and site/

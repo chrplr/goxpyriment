@@ -1,4 +1,4 @@
-.PHONY: all examples update-examples-gallery readme tests timing-drift pdfs book docs serve deploy clean help
+.PHONY: all examples update-examples-gallery readme tests timing-drift pdfs book docs docs-serve serve api-serve deploy clean help
 
 # Discover every directory holding a main.go directly under examples/ or
 # tests/. We use make's built-in $(wildcard)/$(patsubst) rather than `find`
@@ -19,7 +19,7 @@ help:
 	@echo "Available targets:"
 	@echo "  help      Show this message"
 	@echo "  all       Build all examples and tests to _build / (default)"
-	@echo "  examples       Same as target "all"<Down>Build all examples to _build/"
+	@echo "  examples       Build all examples to _build/"
 	@echo "  update-examples-gallery  Regenerate docs/GalleryOfExamples.md tables from meta.yaml files"
 	@echo "  readme    Regenerate README.md from docs/index.md (single source of truth)"
 	@echo "  run-NAME       Build and run a single example (e.g. make run-parity_decision)"
@@ -34,7 +34,8 @@ help:
 	@echo "  pdfs      Generate PDF docs via pandoc + xelatex (one per page)"
 	@echo "  book      Generate the whole documentation as one PDF in docs/"
 	@echo "  docs      Build Zensical HTML site to site/"
-	@echo "  serve     Live-reload docs preview at http://127.0.0.1:8000"
+	@echo "  docs-serve  Live-reload docs preview at http://127.0.0.1:8000 (alias: serve)"
+	@echo "  api-serve   Go API reference (pkgsite) at http://localhost:6060"
 	@echo "  deploy    Generate PDFs and build docs (GitHub Actions pushes to Pages)"
 	@echo "  clean     Remove _build/ and site/"
 
@@ -129,8 +130,24 @@ docs:
 	zensical build --clean
 
 # Live-reload preview at http://127.0.0.1:8000
-serve:
+docs-serve:
 	zensical serve
+
+# Former name of docs-serve, kept so the old habit still works.
+serve: docs-serve
+
+# Go API reference (every package, type and function) from the source comments.
+# Port 6060, not pkgsite's default 8080, which wasm-NAME-serve uses. pkgsite is
+# looked up on PATH, then in $(go env GOPATH)/bin, where go install puts it.
+api-serve:
+	@PKGSITE=$$(command -v pkgsite || echo "$$(go env GOPATH)/bin/pkgsite"); \
+	if [ ! -x "$$PKGSITE" ]; then \
+		echo "pkgsite not found. Install it once with:"; \
+		echo "  go install golang.org/x/pkgsite/cmd/pkgsite@latest"; \
+		exit 1; \
+	fi; \
+	echo "API reference: http://localhost:6060/github.com/chrplr/goxpyriment"; \
+	"$$PKGSITE" -http=localhost:6060 .
 
 # Generate PDFs and build docs locally.
 # GitHub Actions (.github/workflows/docs.yml) handles the push to GitHub Pages.

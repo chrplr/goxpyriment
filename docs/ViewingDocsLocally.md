@@ -19,19 +19,22 @@ Install it once:
 go install golang.org/x/pkgsite/cmd/pkgsite@latest
 ```
 
-Then run it from the repository root and open
-<http://127.0.0.1:8080> in your browser:
+Then, from the repository root, run
 
 ```bash
-cd goxpyriment
-pkgsite
+make api-serve
 ```
+
+and open <http://localhost:6060/github.com/chrplr/goxpyriment> in your browser.
+The target runs `pkgsite -http=localhost:6060 .`, on port 6060 because
+`make wasm-NAME-serve` uses pkgsite's default port, 8080. Running `pkgsite`
+yourself works too; it then serves on <http://localhost:8080>.
 
 To jump straight to a package, append its import path, for example the
 `stimuli` package:
 
 ```
-http://localhost:8080/github.com/chrplr/goxpyriment@v0.0.0/stimuli
+http://localhost:6060/github.com/chrplr/goxpyriment/stimuli
 ```
 
 ## This documentation site (zensical)
@@ -49,7 +52,7 @@ Then, **from the repository root**, start a live-reload preview at
 <http://127.0.0.1:8000>:
 
 ```bash
-zensical serve        # or: make serve
+zensical serve        # or: make docs-serve
 ```
 
 To produce a static HTML build in `site/` instead:
