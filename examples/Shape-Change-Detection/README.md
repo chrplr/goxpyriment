@@ -57,9 +57,13 @@ One row per trial:
 | `rt_ms` | Response time from the onset of the first changed image (hits only) |
 | `resp_from_start_ms` | Response time from the onset of the first image |
 | `outcome` | `hit`, `miss`, `anticipation` (response before the change), `false_alarm`, `correct_rejection` |
+| `max_dur_err_ms` | Worst difference between an image's on-screen duration (`TimingLog.OffsetNS − OnsetNS`) and its nominal whole-frame duration, over the images shown. 0 to a fraction of a millisecond means no frame was dropped; about one frame (16.7 ms at 60 Hz) means one was |
 
-Both times are differences of SDL hardware timestamps: the input event's and
-the onset flip's.
+Both response times are differences of SDL hardware timestamps: the input
+event's and the onset flip's.
+
+The same task built from pre-rendered canvases, with a discussion of the two
+approaches, is [`demo_canvas_stream`](../demo_canvas_stream/).
 
 ## References
 

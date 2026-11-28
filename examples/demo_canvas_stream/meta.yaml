@@ -1,0 +1,3 @@
+category: demo
+description: The Shape-Change-Detection task with each image pre-rendered into an off-screen Canvas and the stream presenting the canvases; compare with the DrawFunc version
+reference: ""

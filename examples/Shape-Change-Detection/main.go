@@ -179,9 +179,10 @@ type response struct {
 }
 
 // runTrial presents one stream and stops it at the first response. It returns
-// the response and the onset of every image that was shown, both on the SDL
-// clock. An error satisfying control.IsEndLoop means ESC or window close.
-func runTrial(exp *control.Experiment, t trial, xLeft, xRight float32) (response, []uint64, error) {
+// the response, the onset of every image that was shown (both on the SDL
+// clock) and the worst on-screen duration error (see maxDurErrMs). An error
+// satisfying control.IsEndLoop means ESC or window close.
+func runTrial(exp *control.Experiment, t trial, xLeft, xRight float32) (response, []uint64, float64, error) {
 	elems := stimuli.MakeRegularStream(scenes(t, xLeft, xRight), imageOn, imageOff)
 
 	// Onsets are taken from the onset hook, not from the returned TimingLog:
@@ -217,9 +218,9 @@ func runTrial(exp *control.Experiment, t trial, xLeft, xRight float32) (response
 	// The stream does not empty the event queue, so a click made during the
 	// inter-trial interval would otherwise count as an instant response.
 	exp.Keyboard.Clear()
-	_, _, err := stimuli.PresentStreamOfStimuliHooks(exp.Screen, elems, 0, 0, onFrame, onOnset)
+	_, logs, err := stimuli.PresentStreamOfStimuliHooks(exp.Screen, elems, 0, 0, onFrame, onOnset)
 	if err != nil && !(control.IsEndLoop(err) && resp.responded) {
-		return resp, onsets, err // ESC / quit, or a real error
+		return resp, onsets, 0, err // ESC / quit, or a real error
 	}
 	// The image on screen (or in its blank) when the response was made: the
 	// last one whose onset precedes it. Taken from the timestamps rather than
@@ -232,7 +233,27 @@ func runTrial(exp *control.Experiment, t trial, xLeft, xRight float32) (response
 			}
 		}
 	}
-	return resp, onsets, nil
+	return resp, onsets, maxDurErrMs(exp, logs), nil
+}
+
+// maxDurErrMs returns the worst difference, in ms, between an image's on-screen
+// duration and its nominal whole-frame duration, over the images in logs. Each
+// image should stay on for a whole number of frames, so 0 (to a fraction of a
+// millisecond) means no frame was dropped and about one frame means one was.
+// logs covers only the images that finished, not the one a response
+// interrupted.
+func maxDurErrMs(exp *control.Experiment, logs []stimuli.TimingLog) float64 {
+	fd := exp.Screen.FrameDuration()
+	nominal := ((imageOn + fd/2) / fd) * fd
+	worst := 0.0
+	for _, l := range logs {
+		if l.OnsetNS == 0 || l.OffsetNS == 0 {
+			continue
+		}
+		e := math.Abs(float64(int64(l.OffsetNS-l.OnsetNS)-nominal.Nanoseconds())) / 1e6
+		worst = math.Max(worst, e)
+	}
+	return worst
 }
 
 // ── Main ─────────────────────────────────────────────────────────────────────
@@ -244,6 +265,7 @@ func main() {
 	exp.AddDataVariableNames([]string{
 		"trial", "change_side", "base_shape", "new_shape", "change_image", "n_images",
 		"responded", "device", "resp_image", "rt_ms", "resp_from_start_ms", "outcome",
+		"max_dur_err_ms",
 	})
 
 	trials := buildTrials()
@@ -269,7 +291,7 @@ func main() {
 			if err := exp.Blank(itiMs); err != nil {
 				return err
 			}
-			resp, onsets, err := runTrial(exp, t, xLeft, xRight)
+			resp, onsets, durErr, err := runTrial(exp, t, xLeft, xRight)
 			if err != nil {
 				return err // ESC: no row for the aborted trial
 			}
@@ -304,7 +326,8 @@ func main() {
 				newShape = t.other.String()
 			}
 			exp.Data.Add(i+1, t.side, t.base.String(), newShape, t.changeImg, maxImages,
-				resp.responded, resp.device, resp.image, rt, fromStart, outcome)
+				resp.responded, resp.device, resp.image, rt, fromStart, outcome,
+				durErr)
 		}
 
 		summary := fmt.Sprintf("Detected changes: %d / %d\nFalse alarms: %d / %d",
