@@ -168,13 +168,29 @@ type KeyboardEvent = sdl.KeyboardEvent
 // Its Text (UTF-8) and Timestamp (nanoseconds) fields carry the composed input.
 type TextInputEvent = sdl.TextInputEvent
 
+// MouseButtonEvent re-exports the SDL mouse-button event returned by
+// Event.MouseButtonEvent(). Its Button (compare with uint32(ev.Button) ==
+// BUTTON_LEFT), Timestamp (nanoseconds, same clock as TicksNS and
+// Screen.FlipTS), Down and Clicks fields are the ones typically read. Its X, Y
+// are raw window pixels (top-left origin, Y down), not stimulus coordinates;
+// exp.Screen.MousePosition() gives the current pointer in stimulus coordinates.
+type MouseButtonEvent = sdl.MouseButtonEvent
+
+// MouseMotionEvent re-exports the SDL mouse-motion event returned by
+// Event.MouseMotionEvent(). X, Y are window pixels (top-left origin, Y down).
+type MouseMotionEvent = sdl.MouseMotionEvent
+
 // Event types (re-exported from SDL) needed to classify polled events in a
-// hand-rolled loop: window close, key press/release, and IME text input.
+// hand-rolled loop — window close, key press/release, IME text input, mouse
+// buttons and motion — or the UserEvent slice a stimulus stream returns.
 const (
-	EVENT_QUIT       = sdl.EVENT_QUIT
-	EVENT_KEY_DOWN   = sdl.EVENT_KEY_DOWN
-	EVENT_KEY_UP     = sdl.EVENT_KEY_UP
-	EVENT_TEXT_INPUT = sdl.EVENT_TEXT_INPUT
+	EVENT_QUIT              = sdl.EVENT_QUIT
+	EVENT_KEY_DOWN          = sdl.EVENT_KEY_DOWN
+	EVENT_KEY_UP            = sdl.EVENT_KEY_UP
+	EVENT_TEXT_INPUT        = sdl.EVENT_TEXT_INPUT
+	EVENT_MOUSE_BUTTON_DOWN = sdl.EVENT_MOUSE_BUTTON_DOWN
+	EVENT_MOUSE_BUTTON_UP   = sdl.EVENT_MOUSE_BUTTON_UP
+	EVENT_MOUSE_MOTION      = sdl.EVENT_MOUSE_MOTION
 )
 
 // PollEvent dequeues the next pending event into *event, returning false when

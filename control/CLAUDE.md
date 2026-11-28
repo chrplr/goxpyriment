@@ -161,8 +161,8 @@ Enough of the SDL event API is re-exported to build a custom input loop — e.g.
 text-input/typing loop with per-keystroke hardware timestamps and a blinking
 cursor — without importing `go-sdl3`:
 
-- **Types:** `Event`, `EventType`, `KeyboardEvent`, `TextInputEvent`
-- **Event constants:** `EVENT_QUIT`, `EVENT_KEY_DOWN`, `EVENT_KEY_UP`, `EVENT_TEXT_INPUT`
+- **Types:** `Event`, `EventType`, `KeyboardEvent`, `TextInputEvent`, `MouseButtonEvent`, `MouseMotionEvent`
+- **Event constants:** `EVENT_QUIT`, `EVENT_KEY_DOWN`, `EVENT_KEY_UP`, `EVENT_TEXT_INPUT`, `EVENT_MOUSE_BUTTON_DOWN`, `EVENT_MOUSE_BUTTON_UP`, `EVENT_MOUSE_MOTION`
 - **Functions:** `PollEvent(*Event) bool`, `TicksNS() uint64`
 
 Start/stop IME text input via `exp.Screen.Window.StartTextInput()` /
